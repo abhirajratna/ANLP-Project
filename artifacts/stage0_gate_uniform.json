@@ -1,0 +1,82 @@
+{
+  "traces": "runs/traces-v2/llada-8b-4bit-n20.parquet",
+  "mask_kind": "uniform",
+  "n_documents": 20,
+  "beta_z": {
+    "value": 0.06143735487787427,
+    "se": 0.042326656401552754,
+    "ci": [
+      -0.02347415552741313,
+      0.14158153254018788
+    ]
+  },
+  "dispersion": 0.0,
+  "power": {
+    "n_required": 75,
+    "target_effect": 0.06143735487787427,
+    "se_at_pilot": 0.042326656401552754,
+    "n_pilot": 20,
+    "power": 0.8,
+    "alpha": 0.05,
+    "binding_bar": "pilot_estimate"
+  },
+  "gate": {
+    "proceed_full": false,
+    "n_required": 75,
+    "dispersion": 0.0,
+    "dispersion_threshold": 0.25,
+    "max_documents": 1000,
+    "reasons": [
+      "required sample 75 <= 1000 documents",
+      "noise dispersion 0.000 BELOW threshold 0.25; under near-homoskedastic noise the selection question has no content and a nonzero beta_z would indicate misspecification, not selection"
+    ]
+  },
+  "commitment_gap": [
+    {
+      "m": 2,
+      "gap": -0.014626343306736067,
+      "ci_low": -0.03454348577208293,
+      "ci_high": 0.004877402841593711,
+      "n": 1280,
+      "mean_agree": 0.72578125,
+      "mean_conf": 0.7404075933067361
+    },
+    {
+      "m": 4,
+      "gap": -0.002824834302572965,
+      "ci_low": -0.017605959976281154,
+      "ci_high": 0.012273681303340693,
+      "n": 1280,
+      "mean_agree": 0.846875,
+      "mean_conf": 0.849699834302573
+    },
+    {
+      "m": 8,
+      "gap": 0.0009167319991260081,
+      "ci_low": -0.011416212469016652,
+      "ci_high": 0.011658105167546961,
+      "n": 1280,
+      "mean_agree": 0.92578125,
+      "mean_conf": 0.924864518000874
+    },
+    {
+      "m": 16,
+      "gap": -0.002344039803034881,
+      "ci_low": -0.011750879361934495,
+      "ci_high": 0.005193416718488617,
+      "n": 1280,
+      "mean_agree": 0.96796875,
+      "mean_conf": 0.9703127898030349
+    },
+    {
+      "m": 32,
+      "gap": -0.004001684680969841,
+      "ci_low": -0.013302841933523712,
+      "ci_high": 0.004198895493096596,
+      "n": 1280,
+      "mean_agree": 0.98359375,
+      "mean_conf": 0.9875954346809699
+    }
+  ],
+  "gap_slope_log2m": 0.002173011175107053
+}

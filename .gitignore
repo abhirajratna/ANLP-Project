@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+
+# Run outputs: traces, checkpoints, tokenised shards. Large and regenerable.
+runs/
+data/
+wandb/
+*.parquet
+*.bin
+*.pt
+
+# artifacts/ is deliberately NOT ignored: the Stage 0 gate decision and the
+# estimator validation report are pre-registration records and belong in git.

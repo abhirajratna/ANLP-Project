@@ -1,0 +1,82 @@
+{
+  "traces": "runs/traces-v2/llada-8b-4bit-n20.parquet",
+  "mask_kind": "decoder",
+  "n_documents": 20,
+  "beta_z": {
+    "value": 0.14879468348675418,
+    "se": 0.1074238584548195,
+    "ci": [
+      -0.06956603469726268,
+      0.351077804434634
+    ]
+  },
+  "dispersion": 0.428224948379919,
+  "power": {
+    "n_required": 82,
+    "target_effect": 0.14879468348675418,
+    "se_at_pilot": 0.1074238584548195,
+    "n_pilot": 20,
+    "power": 0.8,
+    "alpha": 0.05,
+    "binding_bar": "pilot_estimate"
+  },
+  "gate": {
+    "proceed_full": true,
+    "n_required": 82,
+    "dispersion": 0.428224948379919,
+    "dispersion_threshold": 0.25,
+    "max_documents": 1000,
+    "reasons": [
+      "required sample 82 <= 1000 documents",
+      "noise dispersion 0.428 >= threshold 0.25"
+    ]
+  },
+  "commitment_gap": [
+    {
+      "m": 2,
+      "gap": -0.013040726041072051,
+      "ci_low": -0.03445477229448443,
+      "ci_high": 0.010763870882801712,
+      "n": 1280,
+      "mean_agree": 0.1109375,
+      "mean_conf": 0.12397822604107205
+    },
+    {
+      "m": 4,
+      "gap": -0.01802209618617781,
+      "ci_low": -0.0477412993254984,
+      "ci_high": 0.010803611491937763,
+      "n": 1280,
+      "mean_agree": 0.1546875,
+      "mean_conf": 0.17270959618617782
+    },
+    {
+      "m": 8,
+      "gap": -0.0117479428590741,
+      "ci_low": -0.038087872919131766,
+      "ci_high": 0.014868364747671808,
+      "n": 1280,
+      "mean_agree": 0.225,
+      "mean_conf": 0.2367479428590741
+    },
+    {
+      "m": 16,
+      "gap": -0.026671992096817088,
+      "ci_low": -0.06738966747623636,
+      "ci_high": 0.017487697418182506,
+      "n": 1280,
+      "mean_agree": 0.30625,
+      "mean_conf": 0.3329219920968171
+    },
+    {
+      "m": 32,
+      "gap": -0.0490703815186862,
+      "ci_low": -0.09899026973216678,
+      "ci_high": 0.0002915271802336903,
+      "n": 1280,
+      "mean_agree": 0.39140625,
+      "mean_conf": 0.4404766315186862
+    }
+  ],
+  "gap_slope_log2m": -0.008070920686586757
+}

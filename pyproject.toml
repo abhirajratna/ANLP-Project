@@ -1,0 +1,26 @@
+[project]
+name = "c3"
+version = "0.1.0"
+description = "C3: Committed Confidence Calibration - selection-conditional calibration audit for diffusion LMs"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "pandas>=2.0",
+    "pyarrow>=14",
+]
+
+[project.optional-dependencies]
+models = ["torch>=2.2", "transformers>=4.44", "datasets>=2.20", "tokenizers>=0.19", "huggingface_hub>=0.24"]
+dev = ["pytest>=8.0", "statsmodels>=0.14"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["c3*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
