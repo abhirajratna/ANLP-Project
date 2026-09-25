@@ -36,6 +36,10 @@ fi
 module load u22/python/3.12.4 u22/cuda/12.4
 source "$REPO_DIR/slurm/activate_env.sh"
 
+# The 2080 Ti has ~10.6 GiB usable and this run peaks near 9.4 GiB, so
+# allocator fragmentation is the difference between fitting and an OOM.
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
 LOCAL_SHARDS="$C3_SCRATCH/c3-shards"
 CKPT_DIR="$C3_SCRATCH/train110m"
 mkdir -p "$LOCAL_SHARDS" "$CKPT_DIR"
@@ -77,8 +81,14 @@ push_ckpt() {
 ( while true; do sleep 1800; push_ckpt; done ) &
 SYNC_PID=$!
 
+# Push on EXIT, not just on the happy path. With `set -e` a crashing srun skipped
+# the final push entirely, stranding the newest checkpoint on a node's local SSD
+# where nothing else can reach it.
+trap 'kill $SYNC_PID 2>/dev/null || true; push_ckpt' EXIT
 trap 'echo "[slurm] walltime signal"; push_ckpt; scontrol requeue "$SLURM_JOB_ID"; exit 0' USR1
 
+# `|| true`: a non-zero srun must still reach the EXIT trap and push the
+# checkpoint rather than aborting the script under `set -e`.
 srun --kill-on-bad-exit=1 "$(dirname "$C3_PY")/torchrun" \
      --nproc_per_node=4 --nnodes=1 \
      scripts/train_110m.py \
@@ -88,8 +98,7 @@ srun --kill-on-bad-exit=1 "$(dirname "$C3_PY")/torchrun" \
        --batch-size "${C3_BATCH:-32}" \
        --grad-accum "${C3_ACCUM:-4}" \
        --wandb-project "${C3_WANDB:-c3-dllm-calibration}" &
-wait $!
-
-kill $SYNC_PID 2>/dev/null || true
-push_ckpt
-echo "[train] finished; final checkpoint on $BLOBS/train110m"
+TRAIN_RC=0
+wait $! || TRAIN_RC=$?
+echo "[train] torchrun exited with status $TRAIN_RC; EXIT trap will push the checkpoint"
+exit $TRAIN_RC

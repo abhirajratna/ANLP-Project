@@ -24,7 +24,8 @@ def load_docs(path, tokenizer, max_tokens, limit=None):
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", required=True, help=f"{sorted(KNOWN_MODELS)} or 'toy'")
+    ap.add_argument("--model", required=True,
+                    help=f"{sorted(KNOWN_MODELS)}, 'local-110m' or 'toy'")
     ap.add_argument("--model-path", default=None,
                     help="local checkpoint dir (e.g. /share1/ishita/llada_model)")
     ap.add_argument("--precision", default="4bit", choices=["4bit", "fp16", "fp32", "bf16"])
@@ -45,6 +46,8 @@ def main() -> int:
         rng = np.random.default_rng(0)
         docs = [(i, rng.integers(0, 60, a.max_tokens)) for i in range(a.limit or 20)]
     else:
+        # Each model is evaluated under its own tokeniser, so token counts per
+        # document differ slightly across arms; the state fixed effects absorb it.
         docs = load_docs(a.docs, model.tokenizer, a.max_tokens, a.limit)
     print(f"[collect] {len(docs)} documents, model={a.model}, precision={a.precision}")
 

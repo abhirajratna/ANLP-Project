@@ -161,6 +161,56 @@ class HFDiffusionLM(DiffusionLM):
 
 
 @dataclass
+class LocalMDLM(DiffusionLM):
+    """The 110M model this project trains: the controlled instrument.
+
+    Unlike the 8B checkpoints, its training set is known and the calibration
+    corpus was removed from it, which is what lets the audit make claims about
+    the *level* of calibration error rather than only its gradient.
+    """
+
+    name: str = "local-110m"
+    path: str = ""                 # final.pt written by c3.training.train
+    device: str = "cuda"
+    precision: str = "fp32"        # small enough that fp32 costs nothing
+    model: object = field(default=None, repr=False)
+    tokenizer: object = field(default=None, repr=False)
+    mask_token_id: int = 50257
+    vocab_size: int = 50258
+
+    def load(self) -> "LocalMDLM":
+        import torch
+        from transformers import AutoTokenizer
+
+        from ..training.model import MaskedDiffusionLM, ModelConfig
+
+        state = torch.load(self.path, map_location="cpu", weights_only=False)
+        # The checkpoint stores "model_cfg"; train_summary.json spells the same
+        # thing "model_config". Accept either rather than depending on which
+        # artefact the caller happened to look at.
+        raw_cfg = state.get("model_cfg") or state.get("model_config")
+        if raw_cfg is None:
+            raise KeyError(f"{self.path} has no model config (keys: {sorted(state)})")
+        cfg = ModelConfig(**raw_cfg)
+        self.mask_token_id = cfg.mask_token_id
+        self.vocab_size = cfg.vocab_size
+        model = MaskedDiffusionLM(cfg)
+        model.load_state_dict(state["model"])
+        dtype = {"fp16": torch.float16, "fp32": torch.float32}[self.precision]
+        self.model = model.to(self.device, dtype=dtype).eval()
+        # The 110M model is trained on GPT-2 BPE; the mask id sits one past the
+        # tokenizer's vocabulary and is never produced by tokenisation.
+        self.tokenizer = AutoTokenizer.from_pretrained("gpt2")
+        print(f"[model] local-110m: {state['step']} steps, "
+              f"{state['tokens_seen']/1e9:.2f}B tokens, {cfg.n_params/1e6:.0f}M params",
+              flush=True)
+        return self
+
+    def logits(self, input_ids):
+        return self.model(input_ids)
+
+
+@dataclass
 class ToyDiffusionLM(DiffusionLM):
     """A deterministic stand-in used to test the harness without a GPU.
 
@@ -199,6 +249,11 @@ def build_model(name: str, precision: str = "4bit", path: str | None = None,
                 device: str = "cuda") -> DiffusionLM:
     if name == "toy":
         return ToyDiffusionLM()
+    if name == "local-110m":
+        if not path:
+            raise ValueError("local-110m needs --model-path pointing at final.pt")
+        return LocalMDLM(path=path, device=device,
+                         precision=("fp32" if precision == "4bit" else precision)).load()
     if name not in KNOWN_MODELS:
         raise KeyError(f"unknown model {name!r}; known: {sorted(KNOWN_MODELS)} or 'toy'")
     spec = KNOWN_MODELS[name]

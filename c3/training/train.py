@@ -105,12 +105,21 @@ def train(cfg: TrainConfig, model_cfg: ModelConfig | None = None) -> Path:
 
     step, tokens_seen = 0, 0
     if ckpt_path.exists():
-        state = torch.load(ckpt_path, map_location=device, weights_only=False)
+        # map_location="cpu", not the GPU. The checkpoint carries fp32 optimizer
+        # moments as well as weights (~1.5 GB here); loading it straight to the
+        # device holds that on top of the model, optimizer and activations, and
+        # the resumed job dies in backward with a CUDA OOM while the identical
+        # fresh run trains fine. load_state_dict copies CPU tensors into the
+        # existing device tensors, and the optimizer state follows its params.
+        state = torch.load(ckpt_path, map_location="cpu", weights_only=False)
         raw.load_state_dict(state["model"])
         opt.load_state_dict(state["opt"])
         scaler.load_state_dict(state["scaler"])
         step, tokens_seen = state["step"], state["tokens_seen"]
         data.rng = np.random.default_rng(state["data_seed"] + step)
+        del state
+        if device.startswith("cuda"):
+            torch.cuda.empty_cache()
         if is_main:
             print(f"[train] resumed from {ckpt_path} at step {step} "
                   f"({tokens_seen/1e9:.2f}B tokens)", flush=True)
@@ -182,5 +191,14 @@ def train(cfg: TrainConfig, model_cfg: ModelConfig | None = None) -> Path:
              "model_config": asdict(model_cfg)}, indent=2))
         print(f"[train] done -> {final}", flush=True)
     if ddp:
-        torch.distributed.destroy_process_group()
+        # NCCL teardown can fail on its own -- this run lost its last 43 steps to
+        #   DistBackendError ... ncclUnhandledCudaError ... Cuda failure 'out of memory'
+        # raised inside _shutdown_backend after training had finished. Letting a
+        # shutdown fault propagate throws away a completed run, so it is logged
+        # and swallowed: by this point the weights are already saved.
+        try:
+            torch.cuda.empty_cache()
+            torch.distributed.destroy_process_group()
+        except Exception as exc:
+            print(f"[train] non-fatal error during NCCL teardown: {exc}", flush=True)
     return out_dir / "final.pt"
