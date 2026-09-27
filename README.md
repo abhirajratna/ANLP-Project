@@ -121,7 +121,7 @@ reproduce; plan v2 analyses go through `scripts/analyze_traces.py`):
 ```bash
 python scripts/collect_traces.py --model llada-8b --limit 20 --repeat 5 \
     --docs runs/corpus/calibration_docs.jsonl --out runs/traces/pilot.parquet
-python scripts/measure_floor.py --traces runs/traces/pilot.rep*.parquet
+python scripts/measure_floor.py --traces runs/traces/pilot.rep*.parquet --out runs/floor.json
 python scripts/run_stage0.py --traces runs/traces/pilot.rep0.parquet --floor <from above>
 ```
 

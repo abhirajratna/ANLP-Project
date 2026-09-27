@@ -336,3 +336,34 @@ def test_t2_pilot_preset():
     assert p["model"] == "llada-8b-base"
     assert len(cfg.mask_rates) == 5 and cfg.masks_per_rate == 2
     assert cfg.decoder_k == (4,) and cfg.decoder_states is None and cfg.topk == 20
+
+
+# --------------------------------------------------------------------------- #
+# Command line: collection, floor, single-shard merge
+# --------------------------------------------------------------------------- #
+
+def _run(*args):
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    return subprocess.run([sys.executable, *map(str, args)], check=True, capture_output=True,
+                          text=True, cwd=root)
+
+
+def test_cli_floor_run_and_single_shard_merge(tmp_path):
+    common = ["--model", "toy", "--device", "cpu", "--limit", "3", "--max-tokens", "40",
+              "--mask-rates", "0.3", "0.7", "--decoder-k", "4"]
+    _run("scripts/collect_traces.py", *common, "--repeat", "2", "--out", tmp_path / "f.parquet")
+    _run("scripts/measure_floor.py", "--traces", tmp_path / "f.rep0.parquet",
+         tmp_path / "f.rep1.parquet", "--out", tmp_path / "floor.json")
+    floor = json.loads((tmp_path / "floor.json").read_text())
+    assert floor["plan_v2"]["floor_delta"] == 0.0 and floor["bitwise_identical"]
+    assert {"uniform", "decoder", "uniform_matched"} <= set(floor["plan_v2"]["per_arm"])
+
+    _run("scripts/collect_traces.py", *common, "--resume", "--out", tmp_path / "s")
+    df = load_traces(tmp_path / "s.parquet")
+    assert sorted(df.doc_id.unique()) == [0, 1, 2]
+    meta = json.loads((tmp_path / "s.meta.json").read_text())
+    assert meta["n_docs"] == 3 and meta["schema_version"] == 2

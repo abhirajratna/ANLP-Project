@@ -5,6 +5,13 @@ Sec. 7 declares an effect only if the estimate exceeds twice this floor, so it
 has to be measured before any endpoint can be read.  Identical inputs are run
 repeatedly; whatever ``beta_z`` moves by across those runs is noise the hardware
 and kernels produce on their own, and no effect smaller than that is real.
+
+Plan v2 (T1 step 4) defines the floor as the largest change in ell and in
+Delta(m) across 5 runs of the 20 pilot documents; that is reported per arm under
+``plan_v2``, and ``plan_v2.floor_delta`` (Delta units) is what
+``analyze_traces.py --floor`` takes.  The beta_z spread is kept for the
+proposal-era record.  ``--out`` has no default so a re-check can never overwrite
+the committed ``artifacts/nondeterminism_floor.json``.
 """
 from __future__ import annotations
 
@@ -17,10 +24,49 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import numpy as np
 
-from c3 import LEGACY_POOL_SIZES
-from c3.assemble import frame_from_traces
+from c3 import LEGACY_POOL_SIZES, N_POOLS, POOL_SIZES
+from c3.assemble import (SCALAR_COLUMNS, arm_labels, frame_from_traces, load_traces,
+                         position_and_pool_frames)
+from c3.endpoints.e1 import delta_m
+from c3.provenance import collect as provenance
 from c3.regression import fit_once
 from c3.splines import Spline
+from c3.stats import doc_boot_counts
+
+
+def plan_v2_floor(paths) -> dict:
+    """Per arm: the largest change across repeats in ell and in Delta(m)."""
+    dfs = [load_traces(p, columns=SCALAR_COLUMNS) for p in paths]
+    for df in dfs:
+        df["arm"] = arm_labels(df)
+    arms, overall = {}, 0.0
+    for arm in sorted(dfs[0]["arm"].unique()):
+        ells, deltas, levels = [], [], None
+        for df in dfs:
+            d = df[df["arm"] == arm].reset_index(drop=True)
+            ells.append(d["ell"].to_numpy())
+            try:
+                pos, pools = position_and_pool_frames(d, pool_sizes=POOL_SIZES,
+                                                      n_pools_per_size=N_POOLS, seed=0,
+                                                      min_state_size=max(POOL_SIZES))
+            except ValueError:
+                continue                  # no state large enough for a pool
+            codes = np.unique(pos.doc_id)
+            g = delta_m(pools, pos, codes, doc_boot_counts(codes.size, 1, label="floor"))
+            deltas.append(g.point)
+            levels = g.levels
+        same = len({e.shape for e in ells}) == 1
+        rec = {"max_abs_delta_ell": float(max(np.abs(e - ells[0]).max() for e in ells))
+               if same else None, "rows_identical_shape": same}
+        if deltas and len({x.shape for x in deltas}) == 1:
+            D = np.vstack(deltas)
+            spread = np.abs(D - D[0]).max(axis=0)
+            rec["max_abs_change_delta_m"] = {int(m): float(v) for m, v in zip(levels, spread)}
+            rec["max_abs_change_delta"] = float(spread.max())
+            overall = max(overall, rec["max_abs_change_delta"])
+        arms[arm] = rec
+    return {"per_arm": arms, "floor_delta": overall, "effect_bar_2x_floor": 2 * overall,
+            "definition": "max over arms and m of |Delta_rep(m) - Delta_rep0(m)|"}
 
 
 def main() -> int:
@@ -30,7 +76,8 @@ def main() -> int:
     ap.add_argument("--mask-kind", default="uniform")
     ap.add_argument("--knots", type=int, default=9)
     ap.add_argument("--n-pools", type=int, default=16)
-    ap.add_argument("--out", default="artifacts/nondeterminism_floor.json")
+    ap.add_argument("--out", required=True,
+                    help="new path; never the committed artifacts/nondeterminism_floor.json")
     a = ap.parse_args()
 
     if len(a.traces) < 2:
@@ -66,9 +113,17 @@ def main() -> int:
         "max_abs_delta_ell": max_dell, "agree_flips_across_repeats": n_agree_flips,
         "agree_rate_per_run": agree_rates, "ell_mean_per_run": ell_means,
         "bitwise_identical": bool(same_shape and max_dell == 0.0 and n_agree_flips == 0),
+        "plan_v2": plan_v2_floor(a.traces),
+        "traces": a.traces,
+        "provenance": provenance(),
     }
     for k, v in result.items():
-        print(f"  {k}: {v}")
+        if k not in ("plan_v2", "traces", "provenance"):
+            print(f"  {k}: {v}")
+    v2 = result["plan_v2"]
+    print(f"  plan v2 floor (max |change in Delta(m)|): {v2['floor_delta']:.6f}; "
+          f"per arm max |change in ell|: "
+          f"{ {a: r['max_abs_delta_ell'] for a, r in v2['per_arm'].items()} }")
 
     if result["bitwise_identical"]:
         print("""
