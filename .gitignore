@@ -4,13 +4,17 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 
-# Run outputs: traces, checkpoints, tokenised shards. Large and regenerable.
+# Run outputs: large, regenerable, or machine-specific.
 runs/
-data/
 wandb/
-*.parquet
+logs/
+
+# Anchored to the repo root. An unanchored "data/" also matches c3/data/, which
+# silently kept the corpus-sampling module out of the repository and left three
+# scripts unrunnable from a fresh clone.
+/data/
+
+# Large binaries. Small scientific artefacts under artifacts/ are tracked
+# deliberately -- see artifacts/README.md.
 *.bin
 *.pt
-
-# artifacts/ is deliberately NOT ignored: the Stage 0 gate decision and the
-# estimator validation report are pre-registration records and belong in git.

@@ -1,0 +1,20 @@
+{
+  "config": {
+    "mask_rates": [
+      0.2,
+      0.4,
+      0.6,
+      0.8
+    ],
+    "decoder_states": 4,
+    "tokens_per_step": 8,
+    "min_masked": 32,
+    "include_uniform": true,
+    "include_decoder": true,
+    "eps": 1e-06,
+    "seed": 20260917
+  },
+  "model": "llada-8b",
+  "precision": "4bit",
+  "n_rows": 21710
+}

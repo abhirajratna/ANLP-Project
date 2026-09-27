@@ -35,6 +35,7 @@ def main() -> int:
     ap.add_argument("--run-name", default=None)
     ap.add_argument("--seed", type=int, default=20260917)
     ap.add_argument("--wandb-project", default=None)
+    ap.add_argument("--wandb-entity", default=None, help="wandb team, e.g. ANLP-project")
     ap.add_argument("--n-gpus", type=int, default=4)
     ap.add_argument("--budget-only", action="store_true",
                     help="print the compute budget and exit without training")
@@ -58,7 +59,8 @@ def main() -> int:
                       ckpt_every=a.ckpt_every, eval_every=a.eval_every,
                       eval_batches=a.eval_batches, ema_decay=a.ema_decay,
                       window_mode=a.window_mode, init_from=a.init_from, run_name=a.run_name,
-                      seed=a.seed, wandb_project=a.wandb_project)
+                      seed=a.seed, wandb_project=a.wandb_project,
+                      wandb_entity=a.wandb_entity)
     train(cfg, mcfg)
     return 0
 

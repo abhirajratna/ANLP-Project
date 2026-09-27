@@ -142,7 +142,8 @@ srun --kill-on-bad-exit=1 "$(dirname "$C3_PY")/torchrun" \
        --window-mode "${C3_WINDOWS:-chunks}" \
        --n-gpus "$NGPU" \
        --run-name "$RUN" \
-       --wandb-project "${C3_WANDB:-c3-dllm-calibration}" &
+       --wandb-project "${C3_WANDB:-c3-dllm-calibration}" \
+       --wandb-entity "${C3_WANDB_ENTITY:-ANLP-project}" &
 TRAIN_RC=0
 wait $! || TRAIN_RC=$?
 echo "[train] torchrun exited with status $TRAIN_RC; EXIT trap will push the checkpoint"

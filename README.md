@@ -9,10 +9,20 @@ Cluster facts and their consequences: [`slurm/CLUSTER.md`](slurm/CLUSTER.md).
 
 ## Project links
 
-- **Weights & Biases:** `c3-dllm-calibration` — _TODO: paste the project URL once the first run logs._
-- **HuggingFace:** _TODO: paste the org/model/dataset URLs once the 110M checkpoint and the released traces are uploaded._
+- **Weights & Biases:** https://wandb.ai/ANLP-project/c3-dllm-calibration
+  (110M training run: `train110m`)
+- **HuggingFace:** not used yet. The 110M checkpoint and the released traces are
+  still on Ada only — see [`artifacts/README.md`](artifacts/README.md) for where.
+  The proposal commits to releasing the traces, so this needs an upload before
+  the final submission.
 
-(Both are required in this README for the mid and final submissions.)
+**Standing requirement, unverified:** the guidelines require this repository to be
+public *or* to grant the TA mentors access. Someone should confirm which, once.
+
+Large artefacts (trained model, shards, corpus) live on Ada and are inventoried
+in [`artifacts/README.md`](artifacts/README.md). Everything small enough to
+version — the gate decisions, the exclusion manifest, the pilot traces — is in
+`artifacts/`.
 
 ## What is here
 

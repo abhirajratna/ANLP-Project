@@ -11,9 +11,17 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# transformers is pinned to the cluster env (slurm/build_env.sbatch): LLaDA/Dream remote
-# code breaks on 5.x.
-models = ["torch>=2.2", "transformers==4.46.3", "datasets>=2.20", "tokenizers>=0.20,<0.21",
+# transformers is pinned to the 4.x line and must stay there. LLaDA-8B and
+# Dream-7B both ship trust_remote_code modeling files written against 4.x; under
+# 5.x the bitsandbytes 4-bit path calls get_keys_to_not_convert(), which reads
+# `model.all_tied_weights_keys`, an attribute those files do not define:
+#   AttributeError: 'LLaDAModelLM' object has no attribute 'all_tied_weights_keys'
+# 4.46.3 is the version Dream's own config records and is verified working
+# (LLaDA-8B loads in 4-bit at 5.67 GB VRAM on a 2080 Ti). huggingface_hub is held
+# below 1.0 because transformers 4.x requires it; datasets is pinned to the
+# version actually installed in the cluster env (slurm/build_env.sbatch) so a
+# local install matches what produced the results.
+models = ["torch>=2.2", "transformers==4.46.3", "datasets==3.1.0", "tokenizers>=0.20,<0.21",
           "huggingface_hub>=0.24,<1.0", "accelerate", "bitsandbytes", "wandb"]
 analysis = ["matplotlib>=3.8"]
 dev = ["pytest>=8.0", "statsmodels>=0.14"]

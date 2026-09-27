@@ -37,7 +37,7 @@ from .model import MaskedDiffusionLM, ModelConfig, mdlm_loss, nelbo_eval
 
 # Fields that may differ between the job that wrote a checkpoint and the job
 # resuming it without making it a different run.
-_RESUMABLE_FIELDS = {"out_dir", "log_every", "ckpt_every", "wandb_project", "eval_every",
+_RESUMABLE_FIELDS = {"out_dir", "log_every", "ckpt_every", "wandb_project", "wandb_entity", "eval_every",
                      "eval_batches", "index_path"}
 
 
@@ -64,6 +64,10 @@ class TrainConfig:
     init_from: str | None = None      # weights-only start (fine-tuning, T9)
     run_name: str | None = None       # W&B id; default: out_dir name + config hash
     wandb_project: str | None = None
+    # The team (wandb "entity") the run belongs to. Left unset, runs land in the
+    # submitter's personal namespace, which is not where a shared project's runs
+    # should live.
+    wandb_entity: str | None = None
 
 
 def config_hash(cfg: TrainConfig, model_cfg: ModelConfig, index_path: str | None = None) -> str:
@@ -250,7 +254,7 @@ def train(cfg: TrainConfig, model_cfg: ModelConfig | None = None) -> Path:
             import wandb
 
             from ..provenance import git_commit
-            run = wandb.init(project=cfg.wandb_project,
+            run = wandb.init(project=cfg.wandb_project, entity=cfg.wandb_entity,
                              config={**asdict(cfg), **asdict(model_cfg), "config_hash": chash,
                                      "git_commit": git_commit()[0]},
                              resume="allow", id=cfg.run_name or f"{out_dir.name}-{chash}")
