@@ -111,7 +111,8 @@ On Ada (see [`slurm/CLUSTER.md`](slurm/CLUSTER.md) first):
 sbatch slurm/build_env.sbatch               # one-time, builds the env and ships it as one tarball
 sbatch slurm/build_shards.sbatch            # tokenise training stream, minus calibration docs
 sbatch slurm/train_110m.sbatch              # 4 GPUs, 4 days, self-requeuing
-sbatch --export=ALL,C3_MODEL=llada-8b,C3_LIMIT=20 slurm/collect_traces.sbatch
+# one collection run; an array over shards for full sweeps (slurm/CLUSTER.md)
+sbatch --gres=gpu:2 --export="ALL,C3_MODEL=llada-8b-base,C3_PRECISION=fp16,C3_DEVICE_MAP=auto,C3_MAX_MEMORY=0=9GiB;1=9GiB,C3_LIMIT=20,C3_RUN=<name>" slurm/collect_traces.sbatch
 ```
 
 Proposal-era Stage 0 (these scripts pin the proposal-era pool design so the
