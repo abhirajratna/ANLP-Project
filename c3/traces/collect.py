@@ -159,17 +159,20 @@ def _score_masks(model, x0: np.ndarray, masks: list, cfg: CollectConfig,
     out: list[dict] = []
     dev = getattr(model, "input_device", None)
     for s in range(0, len(masks), max(1, cfg.batch_size)):
-        chunk = np.stack(masks[s:s + cfg.batch_size])
-        ids = np.repeat(x0[None, :], chunk.shape[0], axis=0)
+        batch = np.stack(masks[s:s + cfg.batch_size])
+        ids = np.repeat(x0[None, :], batch.shape[0], axis=0)
         truth = ids.copy()
-        ids[chunk] = model.mask_token_id
+        ids[batch] = model.mask_token_id
         t = torch.as_tensor(ids, dtype=torch.long)
         if dev is not None:
             t = t.to(dev)
         with torch.no_grad():
             lg = model.logits(t)
             check_finite_logits(lg, model.name, getattr(model, "precision", "na"))
-            st = position_stats(lg, chunk, model.mask_token_id, true_ids=truth, topk=cfg.topk)
+            # 256 rows at a time: at a 126k vocabulary each float32 temporary is
+            # ~130 MB, which fits beside 9 GiB of weights on an 11 GB card.
+            st = position_stats(lg, batch, model.mask_token_id, true_ids=truth, topk=cfg.topk,
+                                chunk=256)
         counter["forward_passes"] += 1
         rows = st.pop("rows")
         st.pop("cols")
