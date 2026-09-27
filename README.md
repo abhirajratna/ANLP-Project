@@ -27,13 +27,19 @@ c3/
   splines.py        restricted cubic spline for the flexible control f(ell)
   design.py         post-hoc pool draws and ranks with random tie-breaking
   logit.py          logistic IRLS with high-cardinality state fixed effects
-  frame.py          the analysis table; document-level splitting
-  regression.py     Eqs. 2-3, cross-fitting, document-clustered bootstrap
-  calibration.py    the commitment gap Delta(m)
-  dispersion.py     dispersion of position-specific noise (the Stage 0 gate input)
-  power.py          required sample size and the written gate
-  simulate.py       synthetic DGPs with known truth
-  assemble.py       stored traces -> analysis frame
+  frame.py          pool-row and position-level tables; fixed document halves
+  regression.py     Eqs. 2-3 with and without state FE, cross-fitting, bootstrap
+  stats.py          document-first means, shared doc-bootstrap, Holm, declare rule
+  metrics.py        equal-mass ECE, smooth ECE, reliability bins, isotonic (PAV)
+  calibrators.py    pi_hat(l) and the context-aware pi_hat(l, s), cross-fitted
+  endpoints/        E1 Delta(m) (sign conf - agree) and E2 field-term decomposition
+  sim/              position-level traces with known truth (test fixture)
+  provenance.py     git commit, versions, GPU, SLURM job for every output
+  calibration.py    proposal-era commitment gap (old sign; kept for the records)
+  dispersion.py     dispersion of position-specific noise (proposal-era gate input)
+  power.py          plan v2 sample size (7.85 sigma_d^2 / delta_min^2); old gate
+  simulate.py       proposal-era synthetic DGPs with known truth
+  assemble.py       stored traces -> analysis tables
   traces/           masks, model adapters, the collection harness
   data/             FineWeb-Edu sampling and the exclusion manifest
   training/         110M MDLM: model, loss, resumable loop, compute budget
@@ -68,11 +74,19 @@ affordable at full scale.
 ## Running it
 
 ```bash
-# environment (local, analysis only)
+# environment (local, analysis only; add the "models" extra for torch)
 uv venv --python 3.12 .venv
-uv pip install --python .venv/bin/python -e ".[dev]"
+uv pip install --python .venv/bin/python -e ".[dev,analysis]"
 
-.venv/bin/python -m pytest tests/ -q
+.venv/bin/python -m pytest tests/ -q      # torch-dependent tests skip without torch
+
+# plan v2 endpoints on a trace (or on a synthetic trace with known truth)
+.venv/bin/python scripts/analyze_traces.py \
+    --traces artifacts/traces/stage0_llada8b_4bit_n20.parquet \
+    --split kfold-doc --eq-boot 2000 --n-jobs 8 --out artifacts/v2_pilot --macro-prefix Pilot
+.venv/bin/python scripts/analyze_traces.py --traces sim:context --split half --out /tmp/sim
+# (E1/E2 bootstraps take seconds; the Eq. 2/3 bootstrap refits a logistic model per
+#  resample, so --eq-boot and --n-jobs control most of the runtime.)
 
 # the week 3-4 requirement: validate the estimator on known truth
 .venv/bin/python scripts/validate_estimator.py --out artifacts/estimator_validation.json
@@ -90,7 +104,9 @@ sbatch slurm/train_110m.sbatch              # 4 GPUs, 4 days, self-requeuing
 sbatch --export=ALL,C3_MODEL=llada-8b,C3_LIMIT=20 slurm/collect_traces.sbatch
 ```
 
-Stage 0, once pilot traces exist:
+Proposal-era Stage 0 (these scripts pin the proposal-era pool design so the
+committed `artifacts/stage0_gate_*.json` and `estimator_validation.json` still
+reproduce; plan v2 analyses go through `scripts/analyze_traces.py`):
 
 ```bash
 python scripts/collect_traces.py --model llada-8b --limit 20 --repeat 5 \
@@ -109,6 +125,8 @@ full study rather than reconstructed after it.
 rather than cross-fitted, so these are feasibility estimates, not results. Full
 output in `artifacts/stage0_gate_*.json`.
 
+> **Sign convention.** This section and `artifacts/stage0_gate_*.json` use agree − conf, so a *negative* gap means overconfidence. Every new output use conf − agree (positive = overconfident). The pilot's checkpoint variant (Base or Instruct) was not recorded and is being verified.
+
 | | uniform masks | decoder-induced masks |
 |---|---|---|
 | `beta_z` | +0.061 `[-0.024, +0.142]` | +0.149 `[-0.070, +0.351]` |
@@ -123,8 +141,9 @@ log-odds track correctness essentially one-for-one (attenuation slope 1.12-1.24,
 i.e. above 1), so there is no detectable position-specific approximation error for
 selection to act on, and Sec. 5.1 says the question is then empty. Under
 decoder-induced masks, which is the regime inference actually runs in, dispersion
-is 0.428 and the commitment gap widens monotonically with field size
-(-0.013 at m=2 to -0.049 at m=32, the m=32 interval almost excluding zero).
+is 0.428 and the commitment gap widens with field size overall, though not
+monotonically (-0.013 at m=2, -0.018 at m=4, -0.012 at m=8, -0.049 at m=32; the
+m=32 interval almost excluding zero).
 That is the winner's-curse signature, appearing only where the decoder operates.
 
 Read with care. Every interval includes zero at n=20. `beta_z` is **positive** in

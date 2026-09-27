@@ -10,11 +10,17 @@
 #SBATCH --time=12:00:00
 #SBATCH --output=/home2/%u/c3/logs/shards-%j.out
 #
-# Tokenises the 110M training stream with the calibration documents removed.
+# Tokenises the 110M training stream with every evaluation document removed:
+# document-aligned shards (no packing) plus a small validation split.
 #
-# Shards are built on node-local SSD and then pushed to /share1, not /home2:
-# 6B tokens is 12 GB as uint16 and /home2 has ~5 GB free. /share1 has ~73 GB and
-# a 3,000-inode quota, which suits ~30 large shard files exactly.
+# Exclusion uses the v2 manifest from scripts/build_exclusion.py (FineWeb id +
+# text hash + first-256-token hash, covering the main, pilot, time-split and
+# validation documents).  Without it the proposal-era manifest (text hashes
+# only) is used and the job prints a warning.  The build fails if a held-out
+# document sampled from the stream is never matched.
+#
+# Shards are built on node-local SSD and pushed to /share1, not /home2: 10B
+# tokens is 20 GB as uint16 and /home2 has ~5 GB free.
 set -euo pipefail
 REPO_DIR="${C3_REPO:-/home2/$USER/c3}"
 PERSIST="${C3_PERSIST:-/home2/$USER/c3-runs}"
@@ -29,17 +35,27 @@ source "$REPO_DIR/slurm/activate_env.sh"
 
 LOCAL_SHARDS="$C3_SCRATCH/c3-shards"
 export HF_HOME="$C3_SCRATCH/hf"
+rm -rf "$LOCAL_SHARDS"
 mkdir -p "$HF_HOME" "$LOCAL_SHARDS"
 cd "$REPO_DIR"
 
+MANIFEST="${C3_MANIFEST:-$PERSIST/corpus/exclusion_v2.json}"
+if [ ! -f "$MANIFEST" ]; then
+    echo "[shards] WARNING: $MANIFEST not found; falling back to the proposal-era manifest"
+    MANIFEST="$PERSIST/corpus/exclusion_manifest.json"
+fi
+
 "$C3_PY" scripts/build_training_shards.py \
     --out-dir "$LOCAL_SHARDS" \
-    --manifest "$PERSIST/corpus/exclusion_manifest.json" \
-    --target-tokens "${C3_MAX_TOKENS:-6000000000}"
+    --manifest "$MANIFEST" \
+    --target-tokens "${C3_MAX_TOKENS:-10000000000}" \
+    --val-fraction "${C3_VAL_FRACTION:-0.0005}"
 
 echo "[stage] pushing shards to $BLOBS/shards"
-ssh $SSH_OPTS "$USER@ada" "mkdir -p '$BLOBS/shards'"
-rsync -a --inplace --partial -e "ssh $SSH_OPTS" \
-    "$LOCAL_SHARDS/" "$USER@ada:$BLOBS/shards/" \
+ssh $SSH_OPTS "$USER@ada" "rm -rf '$BLOBS/shards.new' && mkdir -p '$BLOBS/shards.new'"
+rsync -a --partial -e "ssh $SSH_OPTS" \
+    "$LOCAL_SHARDS/" "$USER@ada:$BLOBS/shards.new/" \
     || { echo "[stage] FATAL: shard push failed"; exit 1; }
+# Swap in only once the whole set has arrived.
+ssh $SSH_OPTS "$USER@ada" "rm -rf '$BLOBS/shards.old'; [ -d '$BLOBS/shards' ] && mv '$BLOBS/shards' '$BLOBS/shards.old'; mv '$BLOBS/shards.new' '$BLOBS/shards'"
 echo "[stage] done: $(du -sh "$LOCAL_SHARDS" | cut -f1) -> $BLOBS/shards"

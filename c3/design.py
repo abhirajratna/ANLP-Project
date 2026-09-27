@@ -19,6 +19,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from . import N_POOLS, POOL_SIZES
 from .rng import generator
 
 
@@ -55,11 +56,12 @@ def rank_within_pools(ell_pool: np.ndarray, rng: np.random.Generator) -> np.ndar
 
 def draw_pools(
     ell: np.ndarray,
-    pool_sizes=(2, 4, 8, 16, 32),
-    n_pools_per_size: int = 64,
+    pool_sizes=POOL_SIZES,
+    n_pools_per_size: int = N_POOLS,
     seed: int = 0,
     state_key: str = "",
     retain: int | str = "all",
+    stream: str = "per_m",
 ) -> PoolDraw:
     """Draw random pools at one fixed masked state.
 
@@ -69,10 +71,17 @@ def draw_pools(
     n_pools_per_size : pools drawn per size ``m``.
     retain : ``"all"`` records every pool member with its rank (the rank profile
         of Eq. 3 needs ranks ``k >= 2``); an integer records only the top ``k``.
+    stream : ``"per_m"`` gives every pool size its own random substream, so
+        adding or removing a size (e.g. m=1) leaves the pools of every other size
+        unchanged.  ``"shared"`` is the proposal-era behaviour, one stream
+        consumed across sizes in order; it exists only so the scripts behind the
+        committed proposal-era artifacts still reproduce them.
     """
+    if stream not in {"per_m", "shared"}:
+        raise ValueError(f"stream must be 'per_m' or 'shared', got {stream!r}")
     ell = np.asarray(ell, dtype=np.float64).ravel()
     n = ell.size
-    rng = generator(seed, "pools", state_key)
+    shared_rng = generator(seed, "pools", state_key) if stream == "shared" else None
 
     rows, pools, ms, rs = [], [], [], []
     next_pool_id = 0
@@ -80,6 +89,7 @@ def draw_pools(
         if m > n:
             # Not enough masked positions at this state to form a pool of size m.
             continue
+        rng = shared_rng if shared_rng is not None else generator(seed, "pools", state_key, str(m))
         keys = rng.random((n_pools_per_size, n))
         idx = np.argsort(keys, axis=1, kind="stable")[:, :m]      # membership
         ell_pool = ell[idx]

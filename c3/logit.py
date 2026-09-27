@@ -47,6 +47,16 @@ def _sigmoid(x: np.ndarray) -> np.ndarray:
     return out
 
 
+def _loglik(y: np.ndarray, cw: np.ndarray, eta: np.ndarray) -> float:
+    mu = np.clip(_sigmoid(eta), 1e-12, 1 - 1e-12)
+    return float(np.sum(cw * (y * np.log(mu) + (1 - y) * np.log1p(-mu))))
+
+
+def _penalty(alpha: np.ndarray, beta: np.ndarray, ridge_fe: float, ridge_beta: float) -> float:
+    """The ridge terms the IRLS normal equations correspond to (x 1/2)."""
+    return 0.5 * (ridge_fe * float(alpha @ alpha) + ridge_beta * float(beta @ beta))
+
+
 def fit_fe_logit(
     y: np.ndarray,
     X: np.ndarray,
@@ -135,6 +145,25 @@ def fit_fe_logit(
             new_beta = np.linalg.lstsq(S, rhs, rcond=None)[0]
         new_alpha = Dinv * (rhs_a - B @ new_beta)
 
+        # Step-halving.  Under quasi-separation (e.g. every high-confidence
+        # position correct, so the spline's tail coefficients are pushed towards
+        # infinity) a full Newton step can overshoot and *lower* the likelihood,
+        # and the iteration then oscillates or diverges.  Accept a step only if
+        # it does not decrease the (penalised) log-likelihood; otherwise halve it.
+        # Well-behaved fits never trigger this, so their results are unchanged.
+        ll = _loglik(y, cw, new_alpha[groups] + X @ new_beta + off)
+        if np.isfinite(prev_ll):
+            pen_prev = prev_ll - _penalty(alpha, beta, ridge_fe, ridge_beta)
+            h = 1.0
+            cand_a, cand_b = new_alpha, new_beta
+            while (not np.isfinite(ll) or ll - _penalty(cand_a, cand_b, ridge_fe, ridge_beta)
+                   < pen_prev - 1e-12 * (abs(pen_prev) + 1.0)) and h > 1e-10:
+                h *= 0.5
+                cand_b = beta + h * (new_beta - beta)
+                cand_a = alpha + h * (new_alpha - alpha)
+                ll = _loglik(y, cw, cand_a[groups] + X @ cand_b + off)
+            new_alpha, new_beta = cand_a, cand_b
+
         step = float(np.max(np.abs(new_beta - beta))) if p else 0.0
         beta, alpha = new_beta, new_alpha
         if not np.all(np.isfinite(beta)):
@@ -144,9 +173,6 @@ def fit_fe_logit(
         # coefficient step is unreachable once coefficients are O(10): round-off
         # keeps the step jittering near 1e-8 long after the log-likelihood has
         # gone flat, so the fit is reported as non-converged while being exact.
-        eta_new = alpha[groups] + X @ beta + off
-        mu_new = np.clip(_sigmoid(eta_new), 1e-12, 1 - 1e-12)
-        ll = float(np.sum(cw * (y * np.log(mu_new) + (1 - y) * np.log1p(-mu_new))))
         rel_step = step / (1.0 + float(np.max(np.abs(beta)))) if p else 0.0
         rel_ll = abs(ll - prev_ll) / (abs(ll) + 1.0)
         prev_ll = ll

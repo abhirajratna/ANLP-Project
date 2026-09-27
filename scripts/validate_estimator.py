@@ -25,6 +25,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from c3 import LEGACY_POOL_SIZES
 from c3.regression import fit_once
 from c3.simulate import simulate
 from c3.splines import Spline
@@ -49,8 +50,11 @@ def main() -> int:
     ap.add_argument("--out", default="artifacts/estimator_validation.json")
     a = ap.parse_args()
 
+    # Proposal-era pool design, pinned so artifacts/estimator_validation.json
+    # reproduces now that the library defaults follow plan v2.
     base = dict(n_docs=a.n_docs, n_states_per_doc=3, n_positions=a.n_positions,
-                n_pools_per_size=a.n_pools)
+                n_pools_per_size=a.n_pools, pool_sizes=LEGACY_POOL_SIZES,
+                pool_stream="shared")
     report: dict = {"config": vars(a), "checks": {}}
     ok = True
 

@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Stage 0: the 20-document pilot and the written gate (proposal Sec. 5.3).
+"""PROPOSAL-ERA record: Stage 0 pilot and gate (proposal Sec. 5.3).
+
+Superseded by plan v2 (see scripts/analyze_traces.py and the T2 pilot).  Kept so
+artifacts/stage0_gate_*.json stay reproducible: it pins the proposal-era pool
+grid and random stream, and reports the gap in the old sign (agree - conf;
+negative = overconfident).  Plan v2 uses conf - agree.
 
 Estimates the two parameters that decide whether C1 is feasible -- the overall
 scale of the bias and the dispersion of position-specific noise -- computes the
@@ -17,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import numpy as np
 
+from c3 import LEGACY_POOL_SIZES
 from c3.assemble import frame_from_traces
 from c3.calibration import commitment_gap, gap_slope
 from c3.dispersion import estimate_dispersion
@@ -40,7 +46,8 @@ def main() -> int:
     a = ap.parse_args()
 
     frame = frame_from_traces(a.traces, mask_kind=a.mask_kind,
-                              n_pools_per_size=a.n_pools, seed=7)
+                              n_pools_per_size=a.n_pools, seed=7,
+                              pool_sizes=LEGACY_POOL_SIZES, stream="shared")
     n_docs = int(np.unique(frame.doc_id).size)
     print(f"[stage0] {len(frame)} pool rows, {n_docs} documents, "
           f"{frame.state_index[1]} states, mask_kind={a.mask_kind}")
@@ -63,7 +70,7 @@ def main() -> int:
                        dispersion_threshold=a.dispersion_threshold)
     print(f"\n[stage0] GATE: {gate}")
 
-    gaps = commitment_gap(frame, n_boot=min(a.n_boot, 2000))
+    gaps = commitment_gap(frame, n_boot=a.n_boot)
     print("\n[stage0] commitment gap by field size:")
     for g in gaps:
         print(f"   {g}")

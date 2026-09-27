@@ -1,4 +1,9 @@
-"""Stage 0 arithmetic: required sample size and the written gate.
+"""Sample-size arithmetic and the written gates.
+
+``required_documents_sd`` is the plan v2 G1 formula.  ``required_documents`` and
+``stage0_gate`` are the proposal-era gate (beta_z plus a dispersion threshold),
+kept so the committed Stage 0 artifacts remain reproducible; v2 drops the
+dispersion condition.
 
 The proposal pre-registers a strict gate (Sec. 5.3): run the full C1 study only
 if the sample size needed for 80% power is at most 1,000 documents *and* the
@@ -60,6 +65,26 @@ def required_documents(beta_hat: float, se_pilot: float, n_pilot: int,
     n_req = n_pilot * ((z_a + z_b) * se_pilot / target) ** 2
     return PowerResult(int(np.ceil(n_req)), float(target), float(se_pilot),
                        int(n_pilot), float(power), float(alpha), binding)
+
+
+def required_documents_sd(sigma_d: float, delta_min: float, power: float = 0.80,
+                          alpha: float = 0.05) -> int:
+    """Plan v2 T2: documents needed to detect ``delta_min`` on a per-document contrast.
+
+    N = (z_{1-alpha/2} + z_{power})^2 sigma_d^2 / delta_min^2, i.e. about
+    7.85 sigma_d^2 / delta_min^2 at 80% power and 5% significance.  ``sigma_d``
+    is the standard deviation across documents of the per-document contrast
+    (e.g. Delta_d(32) - Delta_d(1)); ``delta_min`` is fixed before looking.
+    Unlike :func:`required_documents` this does not power against the pilot's
+    own point estimate, which with 20 documents would make the gate pass almost
+    by construction.
+    """
+    if not (np.isfinite(sigma_d) and sigma_d >= 0):
+        raise ValueError(f"sigma_d must be finite and non-negative, got {sigma_d}")
+    if delta_min <= 0:
+        raise ValueError(f"delta_min must be positive, got {delta_min}")
+    z = norm.ppf(1 - alpha / 2) + norm.ppf(power)
+    return int(np.ceil((z * sigma_d / delta_min) ** 2))
 
 
 @dataclass

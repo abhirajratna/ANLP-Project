@@ -17,22 +17,78 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-# Mask token ids read from each checkpoint's own config.json on 2026-09-18, not
-# copied from a paper. Getting one wrong would silently corrupt every trace: the
-# model would be conditioned on an ordinary token where a mask was intended, and
-# nothing downstream would flag it.
+# Mask token ids read from each checkpoint's own config.json (Instruct on
+# 2026-09-18, Base on 2026-09-26), not copied from a paper. Getting one wrong would
+# silently corrupt every trace: the model would be conditioned on an ordinary token
+# where a mask was intended, and nothing downstream would flag it.
+#
+# ``revision`` pins the HF commit (checked 2026-09-26), so trust_remote_code runs
+# the code the traces were validated against.  ``logit_shift`` is 1 for Dream:
+# it keeps the autoregressive alignment of its Qwen initialisation, so the logits
+# at position i predict token i+1, and its reference sampler
+# (generation_utils.py) shifts them right by one before reading position i.
+# Without the shift every Dream trace scores the wrong position.  ``variant`` is
+# recorded in every trace; plan v2 uses Base on raw text and Instruct on tasks.
 KNOWN_MODELS = {
-    "llada-8b": {
-        "path": "GSAI-ML/LLaDA-8B-Instruct",
+    "llada-8b-base": {
+        "path": "GSAI-ML/LLaDA-8B-Base",
+        "revision": "0f2787f2d87eac5eed8a087d5ecd24277e6255b2",
+        "variant": "base",
         "mask_token_id": 126336,       # verified: vocab 126464, 32 layers, d_model 4096
-        "local_hint": "/share1/ishita/llada_model",   # already on Ada, 15 GB, group-readable
+        "logit_shift": 0,
+        "local_hint": None,
     },
-    "dream-7b": {
-        "path": "Dream-org/Dream-v0-Instruct-7B",
+    "llada-8b-instruct": {
+        "path": "GSAI-ML/LLaDA-8B-Instruct",
+        "revision": "08b83a6feb34df1a6011b80c3c00c7563e963b07",
+        "variant": "instruct",
+        "mask_token_id": 126336,
+        "logit_shift": 0,
+        # On Ada, 15 GB, group-readable -- but which variant it holds is not
+        # recorded; detect_variant() checks before it is used.
+        "local_hint": "/share1/ishita/llada_model",
+    },
+    "dream-7b-base": {
+        "path": "Dream-org/Dream-v0-Base-7B",
+        "revision": "6572adb5535263e4d1a337b56942ba48b6dee2a9",
+        "variant": "base",
         "mask_token_id": 151666,       # verified: vocab 152064, 28 layers, hidden 3584
+        "logit_shift": 1,
+        "local_hint": None,
+    },
+    "dream-7b-instruct": {
+        "path": "Dream-org/Dream-v0-Instruct-7B",
+        "revision": "05334cb9faaf763692dcf9d8737c642be2b2a6ae",
+        "variant": "instruct",
+        "mask_token_id": 151666,
+        "logit_shift": 1,
         "local_hint": None,
     },
 }
+
+# Proposal-era names.  They meant the Instruct checkpoints; kept as aliases so old
+# job scripts keep working, but traces are labelled with the explicit key.
+MODEL_ALIASES = {"llada-8b": "llada-8b-instruct", "dream-7b": "dream-7b-instruct"}
+
+
+def detect_variant(path: str) -> str | None:
+    """'instruct' if a local checkpoint ships a chat template, 'base' if not.
+
+    Returns None when ``path`` is not a local directory (a hub id), since then
+    the registry's pinned revision already fixes the variant.
+    """
+    import json
+    from pathlib import Path
+
+    d = Path(path)
+    cfg = d / "tokenizer_config.json"
+    if not d.is_dir() or not cfg.exists():
+        return None
+    try:
+        has_template = bool(json.loads(cfg.read_text()).get("chat_template"))
+    except (OSError, ValueError):
+        return None
+    return "instruct" if has_template else "base"
 
 
 def verify_mask_token(model) -> None:
@@ -51,10 +107,10 @@ def verify_mask_token(model) -> None:
 
 @dataclass
 class ModelOutputs:
-    ell: np.ndarray          # confidence log-odds at masked positions
+    ell: np.ndarray          # confidence log-odds at masked positions (exact, unclipped)
     conf: np.ndarray         # raw top-1 probability
     top1: np.ndarray         # argmax token id
-    n_saturated: int = 0     # positions whose confidence hit the clip bound
+    n_saturated: int = 0     # positions whose confidence rounds to 1 (or 0) at eps
 
 
 def _to_logodds(conf: np.ndarray, eps: float) -> tuple[np.ndarray, int]:
@@ -80,18 +136,47 @@ class DiffusionLM:
     def logits(self, input_ids):  # pragma: no cover - interface
         raise NotImplementedError
 
+    @property
+    def input_device(self):
+        """Where input ids must live for a forward pass."""
+        import torch
+
+        m = getattr(self, "model", None)
+        if m is None:
+            return torch.device("cpu")
+        dev = getattr(m, "device", None)
+        if dev is not None:
+            return dev
+        try:
+            return next(m.parameters()).device
+        except (AttributeError, StopIteration):
+            return torch.device("cpu")
+
     def score_masked(self, input_ids, mask, eps: float = 1e-6) -> ModelOutputs:
-        """One forward pass; read off confidence and top-1 at masked positions."""
+        """One forward pass; read off confidence and top-1 at masked positions.
+
+        The mask token itself is excluded from the prediction (its logit is set
+        to -inf, the SUBS parameterisation): a masked slot can never be filled
+        with [MASK].  The log-odds are computed exactly as
+        ell = z_top1 - logsumexp(z_others) in float32 on the logits, so confidence
+        that rounds to 1.0 in low precision still gets a finite, ordered ell;
+        ``n_saturated`` counts those positions for the record.
+        """
         import torch
 
         with torch.no_grad():
             lg = self.logits(input_ids)
-            sel = lg[0][torch.as_tensor(np.flatnonzero(mask), device=lg.device)]
-            probs = torch.softmax(sel.float(), dim=-1)
-            conf, top1 = probs.max(dim=-1)
-            conf = conf.cpu().numpy()
+            sel = lg[0][torch.as_tensor(np.flatnonzero(mask), device=lg.device)].float()
+            if 0 <= int(self.mask_token_id) < sel.shape[-1]:
+                sel[:, int(self.mask_token_id)] = float("-inf")
+            z1, top1 = sel.max(dim=-1)
+            others = sel.scatter(1, top1[:, None], float("-inf"))
+            ell_t = z1 - torch.logsumexp(others, dim=-1)
+            conf_t = torch.softmax(sel, dim=-1).gather(1, top1[:, None])[:, 0]
+            ell = ell_t.double().cpu().numpy()
+            conf = conf_t.cpu().numpy()
             top1 = top1.cpu().numpy()
-        ell, n_sat = _to_logodds(conf, eps)
+        n_sat = int(np.sum(conf >= 1.0 - eps) + np.sum(conf <= eps))
         return ModelOutputs(ell=ell, conf=conf, top1=top1, n_saturated=n_sat)
 
 
@@ -104,6 +189,9 @@ class HFDiffusionLM(DiffusionLM):
     mask_token_id: int
     precision: str = "4bit"      # "4bit" | "fp16" | "fp32" | "bf16"
     device: str = "cuda"
+    revision: str | None = None
+    variant: str | None = None
+    logit_shift: int = 0
     model: object = field(default=None, repr=False)
     tokenizer: object = field(default=None, repr=False)
     vocab_size: int = 0
@@ -147,8 +235,20 @@ class HFDiffusionLM(DiffusionLM):
                 "fp16": torch.float16, "fp32": torch.float32, "bf16": torch.bfloat16
             }[self.precision]
 
-        self.tokenizer = AutoTokenizer.from_pretrained(self.path, trust_remote_code=True)
-        self.model = AutoModel.from_pretrained(self.path, **kwargs)
+        found = detect_variant(self.path)
+        if found is not None and self.variant is not None and found != self.variant:
+            raise RuntimeError(
+                f"{self.name}: registry says variant={self.variant!r} but the checkpoint at "
+                f"{self.path} looks like {found!r} (chat template "
+                f"{'present' if found == 'instruct' else 'absent'}); pick the matching model key")
+        if found is not None:
+            self.variant = found
+        # A local directory is whatever was copied there; the pinned revision
+        # applies only to hub downloads.
+        rev = None if found is not None else self.revision
+        self.tokenizer = AutoTokenizer.from_pretrained(self.path, trust_remote_code=True,
+                                                       revision=rev)
+        self.model = AutoModel.from_pretrained(self.path, revision=rev, **kwargs)
         if self.precision != "4bit":
             self.model = self.model.to(self.device)
         self.model.eval()
@@ -157,7 +257,11 @@ class HFDiffusionLM(DiffusionLM):
 
     def logits(self, input_ids):
         out = self.model(input_ids)
-        return out.logits if hasattr(out, "logits") else out[0]
+        lg = out.logits if hasattr(out, "logits") else out[0]
+        if self.logit_shift:
+            import torch
+            lg = torch.cat([lg[:, :1], lg[:, :-1]], dim=1)
+        return lg
 
 
 @dataclass
@@ -173,6 +277,9 @@ class LocalMDLM(DiffusionLM):
     path: str = ""                 # final.pt written by c3.training.train
     device: str = "cuda"
     precision: str = "fp32"        # small enough that fp32 costs nothing
+    variant: str = "base"
+    revision: str | None = None
+    use_ema: bool = True           # MDLM evaluates with the EMA weights
     model: object = field(default=None, repr=False)
     tokenizer: object = field(default=None, repr=False)
     mask_token_id: int = 50257
@@ -195,15 +302,19 @@ class LocalMDLM(DiffusionLM):
         self.mask_token_id = cfg.mask_token_id
         self.vocab_size = cfg.vocab_size
         model = MaskedDiffusionLM(cfg)
-        model.load_state_dict(state["model"])
-        dtype = {"fp16": torch.float16, "fp32": torch.float32}[self.precision]
+        weights = state.get("model_ema") if self.use_ema and state.get("model_ema") else state["model"]
+        self.weights = "ema" if weights is not state["model"] else "raw"
+        model.load_state_dict(weights)
+        dtype = {"fp16": torch.float16, "fp32": torch.float32,
+                 "bf16": torch.bfloat16}[self.precision]
         self.model = model.to(self.device, dtype=dtype).eval()
         # The 110M model is trained on GPT-2 BPE; the mask id sits one past the
         # tokenizer's vocabulary and is never produced by tokenisation.
         self.tokenizer = AutoTokenizer.from_pretrained("gpt2")
+        self.revision = state.get("config_hash")
         print(f"[model] local-110m: {state['step']} steps, "
-              f"{state['tokens_seen']/1e9:.2f}B tokens, {cfg.n_params/1e6:.0f}M params",
-              flush=True)
+              f"{state['tokens_seen']/1e9:.2f}B tokens, {cfg.n_params/1e6:.0f}M params, "
+              f"{self.weights} weights", flush=True)
         return self
 
     def logits(self, input_ids):
@@ -214,8 +325,13 @@ class LocalMDLM(DiffusionLM):
 class ToyDiffusionLM(DiffusionLM):
     """A deterministic stand-in used to test the harness without a GPU.
 
-    Confidence is a smooth function of a fixed per-token propensity plus
-    position-specific noise, so the harness can be exercised end to end on CPU.
+    At a masked position the toy boosts the logit of the *true* token by a fixed
+    per-token skill plus position-specific noise, so its top-1 is right with a
+    probability that tracks its confidence -- the harness tests then exercise
+    agreement and calibration, not just shapes.  It learns the true tokens through
+    :meth:`set_reference`, which ``collect_document`` calls for models that have
+    it (only this toy).  Each row's noise is seeded by hashing the row, so a
+    row's output does not depend on what else is in the batch.
     """
 
     name: str = "toy"
@@ -224,24 +340,38 @@ class ToyDiffusionLM(DiffusionLM):
     seed: int = 0
     noise_scale: float = 1.0
     noise_dispersion: float = 0.0
+    precision: str = "fp32"
+    variant: str = "toy"
 
     def __post_init__(self) -> None:
         rng = np.random.default_rng(self.seed)
-        self.token_skill = rng.normal(0.0, 1.5, self.vocab_size)
+        self.token_skill = rng.normal(1.0, 1.5, self.vocab_size)
         self.pos_log_sigma = rng.normal(0.0, self.noise_dispersion, 4096)
+        self.reference: np.ndarray | None = None
+
+    def set_reference(self, x0: np.ndarray) -> None:
+        self.reference = np.asarray(x0, dtype=np.int64) % self.vocab_size
 
     def logits(self, input_ids):
+        import hashlib
+
         import torch
 
         ids = input_ids.detach().cpu().numpy()
         B, L = ids.shape
-        rng = np.random.default_rng(self.seed + int(ids.sum()) % 100_000)
-        out = rng.normal(0.0, 0.3, size=(B, L, self.vocab_size))
         sig = self.noise_scale * np.exp(self.pos_log_sigma[:L])
+        out = np.empty((B, L, self.vocab_size))
         for b in range(B):
+            h = int.from_bytes(hashlib.blake2b(ids[b].tobytes(), digest_size=8).digest(), "little")
+            rng = np.random.default_rng([self.seed, h])
+            out[b] = rng.normal(0.0, 0.3, size=(L, self.vocab_size))
             for pos in range(L):
-                true_tok = int(ids[b, pos]) % self.vocab_size
-                out[b, pos, true_tok] += self.token_skill[true_tok] + rng.normal(0, sig[pos])
+                tok = int(ids[b, pos])
+                if (tok == self.mask_token_id and self.reference is not None
+                        and pos < self.reference.size):
+                    tok = int(self.reference[pos])
+                tok %= self.vocab_size
+                out[b, pos, tok] += self.token_skill[tok] + rng.normal(0, sig[pos])
         return torch.as_tensor(out, dtype=torch.float32)
 
 
@@ -249,6 +379,7 @@ def build_model(name: str, precision: str = "4bit", path: str | None = None,
                 device: str = "cuda") -> DiffusionLM:
     if name == "toy":
         return ToyDiffusionLM()
+    name = MODEL_ALIASES.get(name, name)
     if name == "local-110m":
         if not path:
             raise ValueError("local-110m needs --model-path pointing at final.pt")
@@ -259,6 +390,8 @@ def build_model(name: str, precision: str = "4bit", path: str | None = None,
     spec = KNOWN_MODELS[name]
     model = HFDiffusionLM(name=name, path=path or spec["path"],
                           mask_token_id=spec["mask_token_id"],
-                          precision=precision, device=device).load()
+                          precision=precision, device=device,
+                          revision=spec.get("revision"), variant=spec.get("variant"),
+                          logit_shift=int(spec.get("logit_shift", 0))).load()
     verify_mask_token(model)
     return model

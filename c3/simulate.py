@@ -11,9 +11,11 @@ processes are provided, each pinning a different part of the claim:
 
 ``heteroskedastic``
     Same, but the per-position noise scale is lognormal with dispersion ``tau``.
-    Sec. 5.1 argues the question "is empty unless approximation error varies in
-    scale across positions", so this is the DGP under which the design is
-    supposed to have power.
+    The proposal (Sec. 5.1) expected power here; plan v2's Prop. 1 shows that
+    position-level noise, however unequal, leaves beta_z with state FE at zero
+    and moves Delta(m) only through ordinary miscalibration.  None of these DGPs
+    has a nonzero field term: the state latent shifts correctness, never the
+    confidences.  The v2 scenarios live in ``c3.sim``.
 
 ``direct_rank``
     Correctness is generated to depend on ``z_{r,m}`` with a known coefficient
@@ -37,6 +39,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from . import POOL_SIZES
 from .design import draw_pools
 from .frame import AnalysisFrame
 from .order_stats import z_vector
@@ -69,10 +72,11 @@ def simulate(
     mu_ell: float = 1.0,
     sd_ell: float = 1.5,
     sd_state: float = 0.5,
-    pool_sizes=(2, 4, 8, 16, 32),
+    pool_sizes=POOL_SIZES,
     n_pools_per_size: int = 16,
     retain: int | str = "all",
     seed: int = 0,
+    pool_stream: str = "per_m",
 ) -> tuple[AnalysisFrame, Truth]:
     """Generate an :class:`AnalysisFrame` together with the truth that made it."""
     if dgp not in {"homoskedastic", "heteroskedastic", "direct_rank", "curvature"}:
@@ -103,7 +107,8 @@ def simulate(
             ell = ell_star + rng.normal(0.0, 1.0, n_positions) * sig_i
 
             pd = draw_pools(ell, pool_sizes, n_pools_per_size, seed=seed,
-                            state_key=f"{dgp}/{state_id}", retain=retain)
+                            state_key=f"{dgp}/{state_id}", retain=retain,
+                            stream=pool_stream)
             if len(pd) == 0:
                 continue
 
@@ -112,7 +117,9 @@ def simulate(
                 p = 1.0 / (1.0 + np.exp(-(alpha + ell_star[pd.state_row] + delta * z)))
                 a = (rng.random(p.size) < p).astype(np.float64)
             else:
-                lin = 0.6 * ell_star ** 1.4 if dgp == "curvature" else ell_star
+                # sign * |x|^1.4: a plain power is NaN for negative log-odds.
+                lin = (0.6 * np.sign(ell_star) * np.abs(ell_star) ** 1.4
+                       if dgp == "curvature" else ell_star)
                 p_pos = 1.0 / (1.0 + np.exp(-(alpha + lin)))
                 agree_pos = (rng.random(n_positions) < p_pos).astype(np.float64)
                 a = agree_pos[pd.state_row]

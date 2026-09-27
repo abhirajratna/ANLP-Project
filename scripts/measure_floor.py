@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import numpy as np
 
+from c3 import LEGACY_POOL_SIZES
 from c3.assemble import frame_from_traces
 from c3.regression import fit_once
 from c3.splines import Spline
@@ -38,7 +39,8 @@ def main() -> int:
     betas, agree_rates, ell_means, ells, agrees = [], [], [], [], []
     for path in a.traces:
         fr = frame_from_traces(path, mask_kind=a.mask_kind,
-                               n_pools_per_size=a.n_pools, seed=7)
+                               n_pools_per_size=a.n_pools, seed=7,
+                               pool_sizes=LEGACY_POOL_SIZES, stream="shared")
         sp = Spline.fit(fr.ell, n_knots=a.knots)
         betas.append(fit_once(fr, sp, "eq2").coef("beta_z"))
         agree_rates.append(float(fr.agree.mean()))

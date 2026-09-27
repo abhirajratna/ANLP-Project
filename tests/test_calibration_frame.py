@@ -1,6 +1,10 @@
-"""The commitment gap endpoint, and document-level splitting."""
+"""The proposal-era commitment gap, and document-level splitting.
+
+The v2 gap (sign conf - agree, document-first) is tested in test_endpoints.py.
+"""
 import numpy as np
 
+from c3 import POOL_SIZES
 from c3.calibration import commitment_gap, gap_slope
 from c3.frame import AnalysisFrame
 from c3.simulate import simulate
@@ -11,7 +15,7 @@ BASE = dict(n_docs=40, n_states_per_doc=3, n_positions=256, n_pools_per_size=8)
 def test_gap_reported_for_every_pool_size():
     fr, _ = simulate(dgp="homoskedastic", seed=11, **BASE)
     gaps = commitment_gap(fr, n_boot=100)
-    assert [g.m for g in gaps] == [2, 4, 8, 16, 32]
+    assert [g.m for g in gaps] == list(POOL_SIZES)
     assert all(g.ci_low <= g.gap <= g.ci_high for g in gaps)
 
 

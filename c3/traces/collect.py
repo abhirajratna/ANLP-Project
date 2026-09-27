@@ -25,10 +25,15 @@ from ..rng import generator
 from .masks import MaskedState, decoder_trajectory_masks, uniform_masks
 
 TRACE_COLUMNS = (
-    "model", "precision", "mask_kind", "mask_rate", "step",
-    "doc_id", "state_id", "position", "ell", "conf", "agree", "top1",
-    "n_masked", "doc_len",
+    "model", "variant", "precision", "mask_kind", "mask_rate", "step",
+    "doc_id", "state_id", "state_idx", "position", "ell", "conf", "agree", "top1",
+    "n_masked", "doc_len", "seed",
 )
+
+# A state id is doc_id * STATE_STRIDE + state index.  The proposal-era stride of
+# 1000 would collide once a document has 1000 states, which recording every
+# decoder state for several k and decoders reaches.
+STATE_STRIDE = 100_000
 
 
 @dataclass
@@ -36,7 +41,8 @@ class CollectConfig:
     mask_rates: tuple = (0.2, 0.4, 0.6, 0.8)
     decoder_states: int = 4
     tokens_per_step: int = 8
-    min_masked: int = 32
+    min_masked: int = 32          # decoder trajectory: smallest state recorded
+    uniform_min_masked: int = 1   # uniform masks stay Bernoulli; pools skip m > |M|
     include_uniform: bool = True
     include_decoder: bool = True
     eps: float = 1e-6
@@ -52,10 +58,10 @@ def _masked_input(x0: np.ndarray, mask: np.ndarray, mask_token_id: int):
 
 
 def score_state(model, x0: np.ndarray, state: MaskedState, eps: float):
-    import torch
-
     ids = _masked_input(x0, state.mask, model.mask_token_id)
-    dev = getattr(getattr(model, "model", None), "device", None)
+    # HF models expose .device; the 110M model is a plain nn.Module, so the
+    # adapter's input_device falls back to its parameters' device.
+    dev = getattr(model, "input_device", None)
     if dev is not None:
         ids = ids.to(dev)
     out = model.score_masked(ids, state.mask, eps=eps)
@@ -64,13 +70,16 @@ def score_state(model, x0: np.ndarray, state: MaskedState, eps: float):
     return out, agree
 
 
-def collect_document(model, doc_id: int, x0: np.ndarray, cfg: CollectConfig) -> list[dict]:
-    """Every masked state for one document, as position-level rows."""
+def _collect_document(model, doc_id: int, x0: np.ndarray,
+                      cfg: CollectConfig) -> tuple[list[dict], int]:
+    """Rows for every masked state of one document, and its saturation count."""
     L = int(x0.size)
+    if hasattr(model, "set_reference"):     # the CPU toy model only
+        model.set_reference(x0)
     rng = generator(cfg.seed, "masks", str(doc_id))
     states: list[MaskedState] = []
     if cfg.include_uniform:
-        states += uniform_masks(L, cfg.mask_rates, rng, cfg.min_masked)
+        states += uniform_masks(L, cfg.mask_rates, rng, min(cfg.uniform_min_masked, L))
     if cfg.include_decoder:
         def confidences_fn(mask):
             out, _ = score_state(model, x0, MaskedState(mask, "decoder", 0, float(mask.mean())), cfg.eps)
@@ -80,19 +89,25 @@ def collect_document(model, doc_id: int, x0: np.ndarray, cfg: CollectConfig) -> 
             max_states=cfg.decoder_states, min_masked=cfg.min_masked)
 
     rows: list[dict] = []
+    n_sat = 0
+    if len(states) >= STATE_STRIDE:
+        raise ValueError(f"document {doc_id} has {len(states)} states; state ids would collide")
     for si, st in enumerate(states):
         out, agree = score_state(model, x0, st, cfg.eps)
+        n_sat += int(out.n_saturated)
         pos = np.flatnonzero(st.mask)
-        state_id = doc_id * 1000 + si
+        state_id = doc_id * STATE_STRIDE + si
         for j in range(pos.size):
             rows.append({
                 "model": model.name,
+                "variant": getattr(model, "variant", None) or "na",
                 "precision": getattr(model, "precision", "na"),
                 "mask_kind": st.kind,
                 "mask_rate": st.rate,
                 "step": st.step,
                 "doc_id": doc_id,
                 "state_id": state_id,
+                "state_idx": si,
                 "position": int(pos[j]),
                 "ell": float(out.ell[j]),
                 "conf": float(out.conf[j]),
@@ -100,8 +115,14 @@ def collect_document(model, doc_id: int, x0: np.ndarray, cfg: CollectConfig) -> 
                 "top1": int(out.top1[j]),
                 "n_masked": st.n_masked,
                 "doc_len": L,
+                "seed": cfg.seed,
             })
-    return rows
+    return rows, n_sat
+
+
+def collect_document(model, doc_id: int, x0: np.ndarray, cfg: CollectConfig) -> list[dict]:
+    """Every masked state for one document, as position-level rows."""
+    return _collect_document(model, doc_id, x0, cfg)[0]
 
 
 def collect(model, documents, cfg: CollectConfig, out_path: str | Path,
@@ -116,7 +137,8 @@ def collect(model, documents, cfg: CollectConfig, out_path: str | Path,
     n_rows = n_sat = 0
     try:
         for i, (doc_id, x0) in enumerate(documents):
-            rows = collect_document(model, int(doc_id), np.asarray(x0), cfg)
+            rows, sat = _collect_document(model, int(doc_id), np.asarray(x0), cfg)
+            n_sat += sat
             if not rows:
                 continue
             table = pa.Table.from_pylist(rows)
@@ -130,8 +152,15 @@ def collect(model, documents, cfg: CollectConfig, out_path: str | Path,
         if writer is not None:
             writer.close()
 
+    from ..provenance import collect as provenance
+
     meta = {"config": asdict(cfg), "model": model.name,
-            "precision": getattr(model, "precision", "na"), "n_rows": n_rows}
+            "variant": getattr(model, "variant", None),
+            "revision": getattr(model, "revision", None),
+            "path": getattr(model, "path", None),
+            "precision": getattr(model, "precision", "na"), "n_rows": n_rows,
+            "n_saturated": n_sat,
+            "provenance": provenance(with_gpu=True)}
     out_path.with_suffix(".meta.json").write_text(json.dumps(meta, indent=2))
     print(f"[collect] wrote {n_rows} rows -> {out_path}")
     return out_path

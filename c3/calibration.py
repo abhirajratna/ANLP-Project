@@ -1,4 +1,14 @@
-"""The commitment gap: a selection endpoint that survives conditioning on ell.
+"""PROPOSAL-ERA commitment gap.  Deprecated: use ``c3.endpoints.e1``.
+
+This version has the proposal's sign, Delta = agree - conf (negative means
+overconfident), weights rows rather than documents, and draws independent
+resamples per pool size.  Plan v2 defines Delta(m) = E_m[conf - agree], averages
+within documents first, and shares resamples across m (``c3.endpoints.e1``).  It
+is kept unchanged because it produced the committed Stage 0 artifacts.
+
+The original rationale follows.
+
+The commitment gap: a selection endpoint that survives conditioning on ell.
 
 Eq. 2 asks whether accuracy varies with selection intensity *at matched reported
 confidence*.  That is the right question for the sufficiency claim, but it is

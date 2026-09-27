@@ -31,6 +31,10 @@ SECONDS_PER_DAY = 86_400
 TFLOPS_2080TI_FP16_SUSTAINED = 27.7
 MEASURED_TOKENS_PER_S_PER_GPU = 37_300
 
+# ModelConfig().n_params for the default sizes, repeated here so the budget can be
+# printed without importing torch (tests/test_training.py keeps the two in sync).
+N_PARAMS_DEFAULT = 123_729_408
+
 
 @dataclass
 class TrainBudget:
@@ -71,10 +75,10 @@ class TrainBudget:
         )
 
 
-def compare_budgets(n_params: float = 124e6, n_gpus: int = 4) -> str:
+def compare_budgets(n_params: float = N_PARAMS_DEFAULT, n_gpus: int = 4) -> str:
     rows = [("MDLM published recipe", 5.2e11), ("3 epochs of 10BT", 3.0e10),
-            ("1 epoch of 10BT", 1.0e10), ("project default", 6.0e9),
-            ("smoke test", 5.0e8)]
+            ("plan v2 upper (20B)", 2.0e10), ("plan v2 default (10B)", 1.0e10),
+            ("proposal-era default", 6.0e9), ("smoke test", 5.0e8)]
     out = [f"Budget on {n_gpus} x RTX 2080 Ti at {TFLOPS_2080TI_FP16_SUSTAINED} TFLOP/s sustained:"]
     for name, toks in rows:
         b = TrainBudget(n_params, toks, n_gpus)

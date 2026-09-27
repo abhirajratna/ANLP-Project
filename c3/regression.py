@@ -1,11 +1,14 @@
 """Eqs. 2 and 3, with cross-fitting and the document-clustered bootstrap.
 
-Eq. 2   Pr(agree) = sigma( alpha_state + f(ell_i) + beta_z * z_{r,m} )
-Eq. 3   Pr(agree) = sigma( alpha_state + f(ell_i) + sum_{k>=2} gamma_k 1{r=k} )
+Eq. 2   Pr(agree) = sigma( alpha [+ alpha_state] + f(ell_i) + beta_z * z_{r,m} )
+Eq. 3   Pr(agree) = sigma( alpha [+ alpha_state] + f(ell_i) + sum_{k>=2} gamma_k 1{r=k} )
 
-``beta_z`` is the primary endpoint: 0 under calibration-given-selection, < 0
-under a winner's curse.  Eq. 3's rank profile is the co-primary, carrying the
-discrimination against dependency accounts, which are indifferent to rank.
+Plan v2 fits both equations twice, with and without the state intercepts
+(``fe=True`` / ``fe=False``).  Under Prop. 1 the state fixed effects absorb the
+field term, so ``beta_z`` with FE is ~0 even when a winner's curse is present;
+``beta_z < 0`` without FE and ~0 with FE is the field-effect signature, and
+``beta_z != 0`` even with FE points to errors shared within a state.  Eq. 2 is
+fitted on winning tokens (``frame.winners()``), Eq. 3 on the top ranks.
 
 Cross-fitting.  The proposal fits coefficients on the first document half and
 reports from the second.  Here that means the confidence-accuracy curve
@@ -42,6 +45,8 @@ class Estimate:
     ci_low: float = float("nan")
     ci_high: float = float("nan")
     boot: np.ndarray | None = field(default=None, repr=False)
+    converged: bool | None = None     # did the point fit converge
+    n_iter: int | None = None
 
     @property
     def excludes_zero(self) -> bool:
@@ -93,7 +98,8 @@ def _boot_worker(b: int) -> np.ndarray:
     try:
         return fit_fe_logit(st["y"][keep], st["X"][keep], g_dense,
                             n_groups=int(g_dense.max()) + 1, names=st["names"],
-                            offset=st["off"][keep], weights=w[keep]).beta
+                            offset=st["off"][keep], weights=w[keep],
+                            ridge_beta=st.get("ridge_beta", 0.0)).beta
     except (FloatingPointError, np.linalg.LinAlgError):
         return np.full(len(st["names"]), np.nan)
 
@@ -162,11 +168,18 @@ def build_design(frame: AnalysisFrame, spline: Spline, equation: str = "eq2",
     raise ValueError(f"equation must be 'eq2' or 'eq3', got {equation!r}")
 
 
+def _groups(frame: AnalysisFrame, fe: bool) -> tuple[np.ndarray, int]:
+    """State intercepts (``fe=True``) or a single common intercept (``fe=False``)."""
+    if fe:
+        return frame.state_index
+    return np.zeros(len(frame), dtype=np.int64), 1
+
+
 def fit_once(frame: AnalysisFrame, spline: Spline, equation: str = "eq2",
              offset: np.ndarray | None = None, weights: np.ndarray | None = None,
-             max_rank: int = 32, **kw) -> LogitFit:
+             max_rank: int = 32, fe: bool = True, **kw) -> LogitFit:
     X, names = build_design(frame, spline, equation, max_rank)
-    groups, n_groups = frame.state_index
+    groups, n_groups = _groups(frame, fe)
     return fit_fe_logit(frame.agree, X, groups, n_groups=n_groups, names=names,
                         offset=offset, weights=weights, **kw)
 
@@ -188,6 +201,8 @@ def cluster_bootstrap(
     max_rank: int = 32,
     n_jobs: int = 1,
     report: list[str] | None = None,
+    fe: bool = True,
+    ridge_beta: float = 0.0,
 ) -> dict[str, Estimate]:
     """Percentile CIs from a document-clustered bootstrap.
 
@@ -197,20 +212,24 @@ def cluster_bootstrap(
     block.
     """
     X, names = build_design(frame, spline, equation, max_rank)
-    groups, n_groups = frame.state_index
+    groups, n_groups = _groups(frame, fe)
     doc_idx, n_docs = frame.doc_index
     y = frame.agree
     off = np.zeros(len(frame)) if offset is None else offset
 
-    point = fit_fe_logit(y, X, groups, n_groups=n_groups, names=names, offset=off)
+    point = fit_fe_logit(y, X, groups, n_groups=n_groups, names=names, offset=off,
+                         ridge_beta=ridge_beta)
     wanted = report or [n for n in names if not n.startswith("f_ell")]
 
     draws = _run_bootstrap(n_boot, n_jobs, {
         "seed": seed, "label": "bootstrap", "n_docs": n_docs, "doc_idx": doc_idx,
         "y": y, "X": X, "groups": groups, "n_groups": n_groups, "names": names,
-        "off": off,
+        "off": off, "ridge_beta": ridge_beta,
     })
-    return _percentiles(draws, names, point.beta, wanted, alpha)
+    out = _percentiles(draws, names, point.beta, wanted, alpha)
+    for e in out.values():
+        e.converged, e.n_iter = point.converged, point.n_iter
+    return out
 
 
 def fit_and_report(
@@ -223,24 +242,36 @@ def fit_and_report(
     n_jobs: int = 1,
     max_rank: int = 32,
     cross_fit: bool = True,
+    fe: bool = True,
+    fit_docs=None,
+    alpha: float = 0.05,
+    ridge_beta: float = 0.0,
 ) -> dict[str, Estimate]:
     """The pre-registered path: fit f(ell) on half 1, report from half 2.
 
     ``cross_fit=False`` pools both halves into a single fit.  That is for the
-    Stage 0 pilot only, where 20 documents will not support a split; it is not
-    the reporting path.
+    pilot only, where 20 documents will not support a split; it is not the
+    reporting path.  ``fit_docs`` fixes the fit half explicitly (the committed
+    split); otherwise the proposal-era seeded permutation is used.  With
+    ``fe=False`` the nuisance fit and the eval fit each carry one common
+    intercept, so the offset carries only the shape of f.
     """
     if not cross_fit:
         spline = Spline.fit(frame.ell, n_knots=n_knots)
-        return cluster_bootstrap(frame, spline, equation, n_boot, seed,
-                                 max_rank=max_rank, n_jobs=n_jobs)
+        return cluster_bootstrap(frame, spline, equation, n_boot, seed, alpha=alpha,
+                                 max_rank=max_rank, n_jobs=n_jobs, fe=fe,
+                                 ridge_beta=ridge_beta)
 
-    fit_half, eval_half = frame.split_by_document(0.5, seed=split_seed)
+    if fit_docs is not None:
+        fit_half, eval_half = frame.split_by_documents(fit_docs)
+    else:
+        fit_half, eval_half = frame.split_by_document(0.5, seed=split_seed)
     if len(fit_half) == 0 or len(eval_half) == 0:
         raise ValueError("document split produced an empty half; too few documents")
 
     spline = Spline.fit(fit_half.ell, n_knots=n_knots)   # knots frozen on half 1
-    nuisance = fit_once(fit_half, spline, equation, max_rank=max_rank)
+    nuisance = fit_once(fit_half, spline, equation, max_rank=max_rank, fe=fe,
+                        ridge_beta=ridge_beta)
     offset = _spline_offset(eval_half, spline, nuisance)
 
     # On the eval half only the selection terms are free; f(ell) is an offset.
@@ -252,14 +283,18 @@ def fit_and_report(
         X = np.column_stack([(eval_half.r == k).astype(np.float64) for k in ks])
         names = [f"gamma_{k}" for k in ks]
 
-    groups, n_groups = eval_half.state_index
+    groups, n_groups = _groups(eval_half, fe)
     doc_idx, n_docs = eval_half.doc_index
     y = eval_half.agree
-    point = fit_fe_logit(y, X, groups, n_groups=n_groups, names=names, offset=offset)
+    point = fit_fe_logit(y, X, groups, n_groups=n_groups, names=names, offset=offset,
+                         ridge_beta=ridge_beta)
 
     draws = _run_bootstrap(n_boot, n_jobs, {
         "seed": seed, "label": "bootstrap-xfit", "n_docs": n_docs, "doc_idx": doc_idx,
         "y": y, "X": X, "groups": groups, "n_groups": n_groups, "names": names,
-        "off": offset,
+        "off": offset, "ridge_beta": ridge_beta,
     })
-    return _percentiles(draws, names, point.beta, names, 0.05)
+    out = _percentiles(draws, names, point.beta, names, alpha)
+    for e in out.values():
+        e.converged, e.n_iter = point.converged, point.n_iter
+    return out

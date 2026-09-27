@@ -1,6 +1,8 @@
 """The trace harness end to end, on CPU, with no model download."""
 import numpy as np
+import pytest
 
+from c3 import POOL_SIZES
 from c3.assemble import frame_from_traces, load_traces
 from c3.traces.collect import CollectConfig, collect
 from c3.traces.masks import decoder_trajectory_masks, uniform_masks
@@ -44,6 +46,7 @@ def test_saturated_confidence_is_clipped_and_counted():
 
 
 def test_collect_to_frame_roundtrip(tmp_path):
+    pytest.importorskip("torch")
     rng = np.random.default_rng(0)
     docs = [(i, rng.integers(0, 60, 96)) for i in range(6)]
     out = collect(ToyDiffusionLM(noise_dispersion=0.5),
@@ -53,5 +56,5 @@ def test_collect_to_frame_roundtrip(tmp_path):
     assert {"uniform", "decoder"} <= set(df.mask_kind.unique())
     assert df.agree.isin([0, 1]).all() and np.isfinite(df.ell).all()
     frame = frame_from_traces(out, mask_kind="uniform", n_pools_per_size=8)
-    assert len(frame) > 0 and set(frame.m.tolist()) <= {2, 4, 8, 16, 32}
+    assert len(frame) > 0 and set(frame.m.tolist()) <= set(POOL_SIZES)
     assert (tmp_path / "t.meta.json").exists()
