@@ -443,6 +443,11 @@ def _collect_into(model, docs: list[Document], cfg: CollectConfig, next_path,
             writer.abort()
         stats["forward_passes"] += counter["forward_passes"]
         stats["seconds"] += time.time() - t0
+    secs = max(time.time() - t0, 1e-9)
+    if docs:
+        print(f"[collect] throughput: {len(docs)} docs, {counter['forward_passes']} forward "
+              f"passes in {secs:.0f} s = {len(docs) / secs * 3600:.1f} docs/hour, "
+              f"{counter['forward_passes'] / secs:.2f} passes/s", flush=True)
     return parts
 
 
