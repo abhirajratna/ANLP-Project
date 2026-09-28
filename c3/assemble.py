@@ -60,13 +60,56 @@ def frame_from_arrays(doc_id, state_id, position, ell, agree,
         src_row=np.concatenate(SRC).astype(np.int64))
 
 
+SCALAR_COLUMNS = (
+    "model", "variant", "precision", "dataset", "mask_kind", "policy", "k", "target_rate",
+    "mask_rate", "step", "n_masked", "doc_id", "state_id", "state_idx", "doc_len",
+    "position", "top1", "conf", "ell", "p_true", "entropy", "margin", "delta_ell",
+    "agree", "committed", "commit_rank",
+)
+"""Everything but the top-k lists: what the endpoint analyses read."""
+
+
+def trace_meta(path: str | Path) -> dict:
+    """The ``.meta.json`` written next to a trace, or {} if there is none."""
+    import json
+
+    p = Path(path).with_suffix(".meta.json")
+    return json.loads(p.read_text()) if p.exists() else {}
+
+
+def upgrade_v1(df, meta: dict | None = None):
+    """Give a schema-v1 trace the v2 design columns, where v1 implies them.
+
+    v1 decoder states came from one teacher-forced confidence top-k trajectory
+    whose k the meta records as ``tokens_per_step``.  Measurements v1 never took
+    (p_true, entropy, committed, ...) are left absent rather than invented;
+    ``endpoints.e1.native_gap`` rebuilds the v1 commit sets itself.
+    """
+    meta = meta or {}
+    if "policy" not in df.columns and "mask_kind" in df.columns:
+        dec = (df["mask_kind"] == "decoder").to_numpy()
+        k = int(meta.get("config", {}).get("tokens_per_step", 8))
+        df["policy"] = np.where(dec, "topk_conf", "na")
+        df["k"] = np.where(dec, k, 0).astype(np.int16)
+    return df
+
+
 def load_traces(path: str | Path, mask_kind: str | None = None,
-                model: str | None = None, precision: str | None = None):
-    """Read a parquet trace, optionally filtered to one arm of the design."""
+                model: str | None = None, precision: str | None = None,
+                columns=None):
+    """Read a parquet trace, optionally filtered to one arm of the design.
+
+    ``columns`` limits what is read (names a file lacks are skipped), which
+    matters for v2 files whose top-k lists dominate their size.  v1 files are
+    upgraded with :func:`upgrade_v1`.
+    """
     import pyarrow.parquet as pq
 
-    t = pq.read_table(path)
-    df = t.to_pandas()
+    if columns is not None:
+        names = set(pq.read_schema(path).names)
+        columns = [c for c in columns if c in names]
+    df = pq.read_table(path, columns=columns).to_pandas()
+    df = upgrade_v1(df, trace_meta(path))
     if mask_kind is not None:
         df = df[df["mask_kind"] == mask_kind]
     if model is not None:
@@ -74,6 +117,28 @@ def load_traces(path: str | Path, mask_kind: str | None = None,
     if precision is not None:
         df = df[df["precision"] == precision]
     return df.reset_index(drop=True)
+
+
+def arm_labels(df) -> np.ndarray:
+    """The design arm of every row: the mask kind, split by (policy, k) where needed.
+
+    A v2 trace records decoder trajectories for several k (and later several
+    decoders) under one ``mask_kind``; they are different arms and must not be
+    pooled.  A kind with a single (policy, k) keeps its bare name, so v1 traces
+    and single-arm runs are labelled exactly as before.
+    """
+    kind = df["mask_kind"].astype(str).to_numpy()
+    if "policy" not in df.columns or "k" not in df.columns:
+        return kind.astype(object)
+    policy = df["policy"].astype(str).to_numpy()
+    k = df["k"].to_numpy(np.int64)
+    out = kind.astype(object)
+    for kd in np.unique(kind):
+        sel = kind == kd
+        combos = set(zip(policy[sel], k[sel]))
+        if len(combos) > 1:
+            out[sel] = [f"{kd}:{p}:k{kk}" for p, kk in zip(policy[sel], k[sel])]
+    return out
 
 
 def frame_from_traces(path_or_df, mask_kind: str | None = None, model: str | None = None,

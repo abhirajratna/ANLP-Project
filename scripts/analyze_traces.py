@@ -37,7 +37,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import numpy as np
 
 from c3 import DEFAULT_KNOTS, DELTA_MIN, N_BOOT, N_POOLS, POOL_SIZES, RETAIN
-from c3.assemble import load_traces, position_and_pool_frames
+from c3.assemble import SCALAR_COLUMNS, arm_labels, load_traces, position_and_pool_frames
 from c3.calibrators import crossfit_predictions, fit_on_half
 from c3.endpoints.e1 import delta_m, gap_slope_log2, native_gap
 from c3.endpoints.e2 import decompose, icc_residuals
@@ -61,7 +61,7 @@ def load_input(spec: str):
             k, v = p.split("=")
             kw[k] = type(_SIM_DEFAULTS.get(k, 0.0))(v) if k in _SIM_DEFAULTS else float(v)
         return simulate_positions(parts[0], **kw), {"source": spec}
-    df = load_traces(spec)
+    df = load_traces(spec, columns=SCALAR_COLUMNS)
     meta = {"source": spec, "sha256": sha256_file(spec)}
     meta_path = Path(spec).with_suffix(".meta.json")
     if meta_path.exists():
@@ -81,8 +81,18 @@ def fold_assignment(split: str, codes: np.ndarray, seed: int, manifest: str | No
     if split == "half":
         if manifest:
             m = json.loads(Path(manifest).read_text())
+            missing = [int(d) for d in codes if str(int(d)) not in m]
+            if missing:
+                raise SystemExit(
+                    f"{len(missing)} documents in the trace are not in {manifest} (first: "
+                    f"{missing[:5]}); pilot documents are left out of the manifest on "
+                    f"purpose -- drop them, or use the right manifest")
             half = np.array([int(m[str(int(d))]) for d in codes])
         else:
+            print("\n" + "!" * 78 + "\n[analyze] WARNING: --split half without --manifest uses "
+                  "hash_halves, not the\n[analyze] committed split. Reported numbers must "
+                  "use --manifest artifacts/split_manifest.json.\n" + "!" * 78 + "\n",
+                  file=sys.stderr, flush=True)
             half = hash_halves(codes, seed)
         return None, codes[half == 0], codes[half == 1]
     raise ValueError(split)
@@ -191,11 +201,15 @@ def analyze_kind(df_k, kind, codes, counts, args, fit_info):
 
     # ---- native gap for decoder-induced states
     native = None
-    if kind == "decoder" and args.native_k:
+    if kind.split(":")[0] == "decoder" and args.native_k:
+        # v2 traces store the commits; v1 commit sets are rebuilt from k.
+        committed = (df_k["committed"].to_numpy(bool) if "committed" in df_k.columns else None)
+        k_arm = int(df_k["k"].iloc[0]) if "k" in df_k.columns else args.native_k
         try:
-            native = native_gap(pos, codes, counts, k=args.native_k, min_masked=args.min_masked,
-                                pos_mask=report_mask)
-            res["native"] = {"k": args.native_k, "grouped_by": "2^floor(log2 |M_t|)",
+            native = native_gap(pos, codes, counts, k=k_arm, min_masked=args.min_masked,
+                                pos_mask=report_mask, committed=committed)
+            res["native"] = {"k": k_arm, "grouped_by": "2^floor(log2 |M_t|)",
+                             "commits": "stored" if committed is not None else "rebuilt (v1)",
                              "rows": native.to_records("delta")}
         except ValueError as exc:
             res["native"] = {"error": str(exc)}
@@ -233,7 +247,7 @@ def make_figures(out: Path, objs: dict, results: dict) -> list[str]:
         ax.set_title(f"{kind} masks")
         ax.legend(frameon=False, fontsize=7)
         fig.tight_layout()
-        p = out / f"fig_gap_{kind}.png"
+        p = out / f"fig_gap_{kind.replace(':', '_')}.png"
         fig.savefig(p, dpi=200)
         plt.close(fig)
         written.append(p.name)
@@ -261,11 +275,26 @@ def make_figures(out: Path, objs: dict, results: dict) -> list[str]:
         ax.set_ylabel("confidence $-$ accuracy (committed)")
         ax.set_title(f"native gap, {kind}")
         fig.tight_layout()
-        p = out / f"fig_native_{kind}.png"
+        p = out / f"fig_native_{kind.replace(':', '_')}.png"
         fig.savefig(p, dpi=200)
         plt.close(fig)
         written.append(p.name)
     return written
+
+
+_KIND_TAGS = {"uniform": "Uni", "decoder": "Dec", "uniform_matched": "UniMatched"}
+
+
+def arm_tag(arm: str) -> str:
+    """Digit-free macro tag of an arm: 'decoder:topk_conf:k4' -> 'DecTopkConfKFour'."""
+    kind, *rest = arm.split(":")
+    tag = _KIND_TAGS.get(kind, kind.title().replace("_", ""))
+    for part in rest:
+        if part[:1] == "k" and part[1:].isdigit():
+            tag += "K" + _WORDS[int(part[1:])]
+        else:
+            tag += "".join(w.title() for w in part.split("_"))
+    return tag
 
 
 def _macro_name(prefix: str, *parts) -> str:
@@ -283,7 +312,7 @@ def write_macros(path: Path, prefix: str, results: dict) -> None:
         lines.append(f"\\newcommand{{\\{name}}}{{{fmt.format(value)}}}")
 
     for kind, r in results["by_mask_kind"].items():
-        k = "Uni" if kind == "uniform" else ("Dec" if kind == "decoder" else kind.title())
+        k = arm_tag(kind)
         for row in r["delta"]:
             m = _WORDS[int(row["level"])]
             add(_macro_name(prefix, "Gap", m, k), row["delta"])
@@ -314,6 +343,9 @@ def main() -> int:
     ap.add_argument("--mask-kinds", nargs="+", default=None)
     ap.add_argument("--split", choices=["kfold-doc", "half", "none"], default="kfold-doc")
     ap.add_argument("--manifest", default=None, help="JSON {doc_id: 0|1}; 0 = fit half (split=half)")
+    ap.add_argument("--exclude-docs", default=None,
+                    help="contamination screen output (flagged documents are dropped) or a "
+                         "JSON list of doc ids")
     ap.add_argument("--n-boot", type=int, default=N_BOOT)
     ap.add_argument("--eq-boot", type=int, default=None, help="resamples for Eq. 2/3 (default: --n-boot)")
     ap.add_argument("--knots", type=int, default=DEFAULT_KNOTS)
@@ -343,13 +375,23 @@ def main() -> int:
         args.eq_boot = args.n_boot
 
     df, meta = load_input(args.traces)
+    if args.exclude_docs:
+        from c3.data.contamination import excluded_doc_ids
+        drop = excluded_doc_ids(args.exclude_docs)
+        present = sorted(set(df["doc_id"].unique().tolist()) & drop)
+        df = df[~df["doc_id"].isin(drop)].reset_index(drop=True)
+        meta["excluded_docs"] = {"source": args.exclude_docs, "n_listed": len(drop),
+                                 "n_dropped": len(present), "doc_ids": present}
+        print(f"[analyze] excluded {len(present)} flagged documents ({args.exclude_docs})",
+              flush=True)
     tcfg = meta.get("trace_meta", {}).get("config", {})
     if args.native_k is None:
         args.native_k = int(tcfg.get("tokens_per_step", 8))
     if args.min_masked is None:
         args.min_masked = int(tcfg.get("min_masked", 32))
 
-    kinds = args.mask_kinds or sorted(df["mask_kind"].unique().tolist())
+    df["arm"] = arm_labels(df)
+    kinds = args.mask_kinds or sorted(df["arm"].unique().tolist())
     codes = np.unique(df["doc_id"].to_numpy(np.int64))
     counts = doc_boot_counts(codes.size, args.n_boot, seed=args.seed, label="analyze-traces")
     fit_info = fold_assignment(args.split, codes, args.seed, args.manifest)
@@ -368,7 +410,7 @@ def main() -> int:
         "by_mask_kind": {}}
     objs = {}
     for kind in kinds:
-        df_k = df[df["mask_kind"] == kind]
+        df_k = df[df["arm"] == kind]
         if len(df_k) == 0:
             continue
         print(f"[analyze] {kind}: {len(df_k)} rows", flush=True)

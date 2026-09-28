@@ -132,14 +132,16 @@ def gap_slope_log2(g: GroupedMean) -> tuple[float, np.ndarray]:
 
 
 def native_gap(pos: PositionFrame, codes: np.ndarray, counts: np.ndarray, k: int,
-               min_masked: int = 32, pos_mask: np.ndarray | None = None) -> GroupedMean:
+               min_masked: int = 32, pos_mask: np.ndarray | None = None,
+               committed: np.ndarray | None = None) -> GroupedMean:
     """Delta over the tokens a teacher-forced top-k decoder actually committed.
 
-    The v1 trace harness does not store which positions were committed, but its
-    decoder is deterministic: at every recorded state it commits the
+    Schema-v2 traces store the commits: pass that column (aligned with ``pos``)
+    as ``committed`` and it is used as is.  The v1 harness did not store them,
+    but its decoder is deterministic: at every recorded state it commits the
     ``min(k, |M| - min_masked + 1)`` most confident positions, ties to the lower
     position (``masks.decoder_trajectory_masks``).  Rows are stored in position
-    order with the same confidences, so the commit set can be rebuilt exactly.
+    order with the same confidences, so for v1 the commit set is rebuilt exactly.
     Results are grouped by floor(log2 |M_t|).
     """
     sel = pos.mask_kind == "decoder"
@@ -148,6 +150,11 @@ def native_gap(pos: PositionFrame, codes: np.ndarray, counts: np.ndarray, k: int
     p = pos.select(sel)
     if len(p) == 0:
         raise ValueError("no decoder-induced states in this frame")
+    if committed is not None:
+        c = p.select(np.asarray(committed, bool)[sel])
+        grp = np.floor(np.log2(np.maximum(c.n_masked, 1))).astype(np.int64)
+        return grouped_doc_mean(c.conf - c.agree, _doc_idx(c.doc_id, codes), codes.size,
+                                2 ** grp, counts)
     order = np.lexsort((p.position, p.state_id))
     s_sorted = p.state_id[order]
     bounds = np.flatnonzero(np.diff(s_sorted)) + 1

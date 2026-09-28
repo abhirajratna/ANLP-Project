@@ -9,13 +9,67 @@ logits under audit.  The guard below matters on this project's cluster: Ada's
 u22 partition is RTX 2080 Ti (compute capability 7.5, Turing), which has no
 bfloat16 support, so the planned bf16 replication cannot run there and must be
 fp32 or move to an Ampere partition.
+
+An 8B model does not fit one 11 GB card in fp16 (~16 GB of weights), so the
+non-quantised paths accept ``device_map="auto"`` with a ``max_memory`` budget:
+split across two cards, or offload to CPU for fp32.  fp16 has a narrow range,
+and an overflow shows up as inf/NaN logits that would silently become NaN
+confidences, so every forward pass is checked (:func:`check_finite_logits`).
 """
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 
 import numpy as np
+
+
+def set_deterministic(seed: int) -> dict:
+    """Fix every seed and turn on PyTorch's deterministic settings (T1 step 4).
+
+    Must run before the first CUDA call: cuBLAS reads its workspace setting when
+    the context is created.  ``warn_only`` because some kernels (bitsandbytes)
+    have no deterministic variant; the non-determinism floor measures what is
+    left.  Returns the settings, for the trace meta.
+    """
+    import random
+
+    import torch
+
+    os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+    random.seed(seed)
+    np.random.seed(seed % (2 ** 32))
+    torch.manual_seed(seed)
+    torch.use_deterministic_algorithms(True, warn_only=True)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
+    return {"seed": int(seed), "use_deterministic_algorithms": True, "warn_only": True,
+            "cudnn_benchmark": False,
+            "CUBLAS_WORKSPACE_CONFIG": os.environ["CUBLAS_WORKSPACE_CONFIG"]}
+
+
+def check_finite_logits(logits, name: str = "model", precision: str = "na") -> None:
+    """Refuse inf/NaN logits instead of letting them become NaN confidences."""
+    import torch
+
+    if not bool(torch.isfinite(logits).all()):
+        n_bad = int((~torch.isfinite(logits)).sum())
+        hint = (" fp16 overflows above 65504; use fp32 (with CPU offload if needed)"
+                if precision == "fp16" else "")
+        raise FloatingPointError(f"{name} ({precision}): {n_bad} non-finite logits.{hint}")
+
+
+def parse_max_memory(spec: str | None) -> dict | None:
+    """'0=10GiB,1=10GiB,cpu=60GiB' -> {0: '10GiB', 1: '10GiB', 'cpu': '60GiB'}."""
+    if not spec:
+        return None
+    out: dict = {}
+    for part in spec.split(","):
+        dev, _, amount = part.partition("=")
+        dev = dev.strip()
+        out[int(dev) if dev.isdigit() else dev] = amount.strip()
+    return out
 
 # Mask token ids read from each checkpoint's own config.json (Instruct on
 # 2026-09-18, Base on 2026-09-26), not copied from a paper. Getting one wrong would
@@ -192,6 +246,8 @@ class HFDiffusionLM(DiffusionLM):
     revision: str | None = None
     variant: str | None = None
     logit_shift: int = 0
+    device_map: str | None = None     # "auto": split across GPUs / offload to CPU
+    max_memory: dict | None = None    # per-device budget for device_map="auto"
     model: object = field(default=None, repr=False)
     tokenizer: object = field(default=None, repr=False)
     vocab_size: int = 0
@@ -234,6 +290,12 @@ class HFDiffusionLM(DiffusionLM):
             kwargs["torch_dtype"] = {
                 "fp16": torch.float16, "fp32": torch.float32, "bf16": torch.bfloat16
             }[self.precision]
+            if self.device_map:
+                # Both LLaDA and Dream declare _no_split_modules, which is what
+                # device_map="auto" needs to place whole blocks per device.
+                kwargs["device_map"] = self.device_map
+                if self.max_memory:
+                    kwargs["max_memory"] = self.max_memory
 
         found = detect_variant(self.path)
         if found is not None and self.variant is not None and found != self.variant:
@@ -249,10 +311,14 @@ class HFDiffusionLM(DiffusionLM):
         self.tokenizer = AutoTokenizer.from_pretrained(self.path, trust_remote_code=True,
                                                        revision=rev)
         self.model = AutoModel.from_pretrained(self.path, revision=rev, **kwargs)
-        if self.precision != "4bit":
+        if self.precision != "4bit" and not self.device_map:
             self.model = self.model.to(self.device)
         self.model.eval()
         self.vocab_size = int(getattr(self.model.config, "vocab_size", 0))
+        placement = getattr(self.model, "hf_device_map", None)
+        if placement:
+            devs = sorted({str(v) for v in placement.values()})
+            print(f"[model] {self.name}: {self.precision} over {devs}", flush=True)
         return self
 
     def logits(self, input_ids):
@@ -340,7 +406,7 @@ class ToyDiffusionLM(DiffusionLM):
     seed: int = 0
     noise_scale: float = 1.0
     noise_dispersion: float = 0.0
-    precision: str = "fp32"
+    precision: str = "fp32"       # fp16/bf16 round the logits, as a half-precision head would
     variant: str = "toy"
 
     def __post_init__(self) -> None:
@@ -372,13 +438,16 @@ class ToyDiffusionLM(DiffusionLM):
                     tok = int(self.reference[pos])
                 tok %= self.vocab_size
                 out[b, pos, tok] += self.token_skill[tok] + rng.normal(0, sig[pos])
-        return torch.as_tensor(out, dtype=torch.float32)
+        dtype = {"fp32": torch.float32, "fp16": torch.float16, "bf16": torch.bfloat16}
+        return torch.as_tensor(out, dtype=torch.float32).to(dtype[self.precision])
 
 
 def build_model(name: str, precision: str = "4bit", path: str | None = None,
-                device: str = "cuda") -> DiffusionLM:
+                device: str = "cuda", device_map: str | None = None,
+                max_memory: dict | None = None) -> DiffusionLM:
     if name == "toy":
-        return ToyDiffusionLM()
+        # 4-bit is meaningless for the toy; it stands in as full precision.
+        return ToyDiffusionLM(precision="fp32" if precision == "4bit" else precision)
     name = MODEL_ALIASES.get(name, name)
     if name == "local-110m":
         if not path:
@@ -388,10 +457,13 @@ def build_model(name: str, precision: str = "4bit", path: str | None = None,
     if name not in KNOWN_MODELS:
         raise KeyError(f"unknown model {name!r}; known: {sorted(KNOWN_MODELS)} or 'toy'")
     spec = KNOWN_MODELS[name]
+    if device_map and precision == "4bit":
+        raise ValueError("device_map applies to fp16/fp32/bf16; 4-bit loads on one GPU")
     model = HFDiffusionLM(name=name, path=path or spec["path"],
                           mask_token_id=spec["mask_token_id"],
                           precision=precision, device=device,
                           revision=spec.get("revision"), variant=spec.get("variant"),
-                          logit_shift=int(spec.get("logit_shift", 0))).load()
+                          logit_shift=int(spec.get("logit_shift", 0)),
+                          device_map=device_map, max_memory=max_memory).load()
     verify_mask_token(model)
     return model

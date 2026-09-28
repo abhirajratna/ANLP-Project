@@ -70,3 +70,42 @@ a fine place to *store* large files and a useless place to *read* them from.
    inside a job (the `python/3.12.4` module only resolves on compute nodes),
    tarred to `/share1` as one ~3 GB file, and extracted back to `/ssd_scratch` by
    each job that needs it (`slurm/activate_env.sh`).
+
+## Trace collection, schema v2 (`slurm/collect_traces.sbatch`)
+
+The sbatch is a SLURM array: task *I* collects the documents with
+`doc_id % C3_NUM_SHARDS == I`, so pass `--array=0-(N-1)` with `C3_NUM_SHARDS=N`
+(QOS: at most 4 GPUs at once, so `%2` throttling for 2-GPU tasks). Parts go to
+`/ssd_scratch/$USER/traces/$C3_RUN/`, are pushed to `/share1/$USER/traces/$C3_RUN/`
+every 30 minutes and on exit, and a requeued or resubmitted task pulls its shard's
+parts back and resumes (`--resume`). A killed task loses at most one part
+(50 documents). Merge with `scripts/merge_traces.py --stem <dir>/<run> --out ...`;
+a one-shard run merges itself.
+
+Cost per 256-token document under the plan v2 design (Sec. 3.3: 9 rates x 2
+uniform masks, top-k trajectories for k = 2, 4, 8 recording every state, and a
+matched uniform state for each decoder state): **466 forward passes and ~60k
+rows**. Without the matched arm: 242 passes, ~31k rows. The T2 pilot design
+(5 rates x 2, k = 4 only): 74 passes, ~9.6k rows. Disk: see
+`artifacts/trace_size_estimate.json`.
+
+**8B precision on 2080 Ti (no bf16).** fp16 weights are ~15 GiB, so one 11 GB
+card is not enough:
+
+| option | how | cost |
+|---|---|---|
+| fp16 over 2 GPUs | `--gres=gpu:2`, `C3_DEVICE_MAP=auto`, `C3_MAX_MEMORY=0=9GiB;1=9GiB` | layers run in sequence, so ~1 GPU of throughput for 2 GPUs of QOS; fp16 range, so every pass is checked for inf/NaN logits |
+| fp32 + CPU offload | `C3_DEVICE_MAP=auto`, `C3_MAX_MEMORY=0=9GiB;cpu=60GiB`, `--mem=96G` | ~32 GB of weights, most streamed over PCIe every pass: far too slow for a sweep, usable for a 2-document spot check |
+| 4-bit (NF4) | one GPU | an ablation only in plan v2 |
+
+**Measured throughput:** not yet measured for schema v2. The log prints
+docs/hour every 25 documents; record it here after the pilot re-run.
+
+**Model staging** lives in `slurm/stage_model.sh`, sourced by `collect_traces.sbatch`
+and `contamination.sbatch`. The shared LLaDA copy is used only if it exists and its
+tokenizer config matches the requested variant (a chat template means Instruct);
+otherwise the pinned hub revision is downloaded to `/ssd_scratch/$USER/hf`.
+
+**Contamination screen** (`slurm/contamination.sbatch`): ~50 forward passes of
+~100 tokens per document, one job per model; needs `C3_THRESHOLD` until
+`c3.CONTAM_THRESHOLD` is fixed, and writes `$PERSIST/contamination_<model>.json`.

@@ -1,4 +1,7 @@
-"""Decoding-side instrument: per-position scoring from one forward pass.
+"""Decoding: per-position scoring, commit policies and the shared decode loop.
 
-The shared decode loop and commit policies (plan v2 T1/T12) will live here too.
+``scoring``   per-position statistics from one forward pass (plan v2 Sec. 3.4)
+``policies``  the T12 commit rules (top-k confidence, Fast-dLLM threshold,
+              EB-Sampler, margin, KLASS, PC-Sampler)
+``loop``      free-running, sampled or teacher-forced decoding, block-wise or not
 """

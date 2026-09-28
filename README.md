@@ -110,7 +110,8 @@ On Ada (see [`slurm/CLUSTER.md`](slurm/CLUSTER.md) first):
 ```bash
 bash slurm/submit_t3.sh                     # T3 end to end, env build included (see the runbook)
 sbatch slurm/build_env.sbatch               # the env alone, if you only need trace collection
-sbatch --export=ALL,C3_MODEL=llada-8b,C3_LIMIT=20 slurm/collect_traces.sbatch
+# one collection run; an array over shards for full sweeps (slurm/CLUSTER.md)
+sbatch --gres=gpu:2 --export="ALL,C3_MODEL=llada-8b-base,C3_PRECISION=fp16,C3_DEVICE_MAP=auto,C3_MAX_MEMORY=0=9GiB;1=9GiB,C3_LIMIT=20,C3_RUN=<name>" slurm/collect_traces.sbatch
 ```
 
 Proposal-era Stage 0 (these scripts pin the proposal-era pool design so the
@@ -120,7 +121,7 @@ reproduce; plan v2 analyses go through `scripts/analyze_traces.py`):
 ```bash
 python scripts/collect_traces.py --model llada-8b --limit 20 --repeat 5 \
     --docs runs/corpus/calibration_docs.jsonl --out runs/traces/pilot.parquet
-python scripts/measure_floor.py --traces runs/traces/pilot.rep*.parquet
+python scripts/measure_floor.py --traces runs/traces/pilot.rep*.parquet --out runs/floor.json
 python scripts/run_stage0.py --traces runs/traces/pilot.rep0.parquet --floor <from above>
 ```
 
