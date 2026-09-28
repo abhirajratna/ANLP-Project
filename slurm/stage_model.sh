@@ -32,9 +32,10 @@ else
     if [ -n "$WANT_VARIANT" ]; then
         SHARED_VARIANT=absent
         if ssh $SSH_OPTS "$USER@ada" "test -r $SHARED_LLADA/config.json" 2>/dev/null; then
-            # Not the chat template (Base ships the same one): Instruct's vocabulary
-            # adds <|eot_id|>, Base's does not (c3.traces.models.detect_variant).
-            if ssh $SSH_OPTS "$USER@ada" "grep -qF '<|eot_id|>' $SHARED_LLADA/tokenizer_config.json" 2>/dev/null; then
+            # Not the chat template (Base ships the same one, and it mentions
+            # <|eot_id|>): Instruct's vocabulary has <|eot_id|> as an added-token
+            # entry, Base's does not (c3.traces.models.detect_variant).
+            if ssh $SSH_OPTS "$USER@ada" "grep -qE '\"content\": *\"<\\|eot_id\\|>\"' $SHARED_LLADA/tokenizer_config.json" 2>/dev/null; then
                 SHARED_VARIANT=instruct
             else
                 SHARED_VARIANT=base
