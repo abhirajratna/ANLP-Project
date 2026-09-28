@@ -38,7 +38,10 @@ def main() -> int:
 
     rows = [json.loads(line) for line in Path(a.history).read_text().splitlines() if line.strip()]
     metric = a.metric if any(a.metric in r for r in rows) else "val_nelbo"
-    pts = sorted((r["step"], r[metric]) for r in rows if metric in r)
+    # A requeued job re-logs the steps after its last checkpoint; keep the last
+    # value written for each step.
+    by_step = {r["step"]: r[metric] for r in rows if metric in r}
+    pts = sorted(by_step.items())
     if len(pts) < 3:
         raise SystemExit(f"need at least 3 validation points, have {len(pts)}")
     steps = np.array([p[0] for p in pts], dtype=float)

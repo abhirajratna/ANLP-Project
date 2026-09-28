@@ -14,6 +14,11 @@ Two details follow the MDLM recipe (Sahoo et al., 2024):
 
 Padding (short documents, plan v2's "no packing") is handled by a key-padding
 mask, so real tokens never attend to pad positions and pads never enter the loss.
+
+``causal=True`` turns the same network into a left-to-right language model: the
+autoregressive reference of plan v2 T3 ("a same-size autoregressive GPT-2 on the
+same data"), trained by the same loop with ``ar_loss`` so its exact perplexity
+can be set beside the diffusion model's bound.
 """
 
 from __future__ import annotations
@@ -35,6 +40,7 @@ class ModelConfig:
     d_ff: int = 3072
     dropout: float = 0.0
     mask_token_id: int = 50257
+    causal: bool = False           # True: the autoregressive reference model
 
     @property
     def n_params(self) -> int:
@@ -46,6 +52,7 @@ class ModelConfig:
 class Block(nn.Module):
     def __init__(self, cfg: ModelConfig):
         super().__init__()
+        self.causal = cfg.causal
         self.ln1 = nn.LayerNorm(cfg.d_model)
         self.qkv = nn.Linear(cfg.d_model, 3 * cfg.d_model)
         self.proj = nn.Linear(cfg.d_model, cfg.d_model)
@@ -61,8 +68,9 @@ class Block(nn.Module):
         q, k, v = self.qkv(h).chunk(3, dim=-1)
         shape = (B, L, self.n_heads, D // self.n_heads)
         q, k, v = (t.view(shape).transpose(1, 2) for t in (q, k, v))
-        # Bidirectional: no causal mask; only padding is hidden, when present.
-        a = F.scaled_dot_product_attention(q, k, v, attn_mask=attn_mask, is_causal=False)
+        # Bidirectional unless this is the AR reference; padding is hidden when present.
+        a = F.scaled_dot_product_attention(q, k, v, attn_mask=attn_mask,
+                                           is_causal=self.causal and attn_mask is None)
         a = a.transpose(1, 2).contiguous().view(B, L, D)
         x = x + self.drop(self.proj(a))
         h = self.ln2(x)
@@ -97,6 +105,11 @@ class MaskedDiffusionLM(nn.Module):
         if valid is not None and not bool(valid.all()):
             # (B, 1, 1, L): True = this key may be attended to.
             attn_mask = valid[:, None, None, :].to(torch.bool)
+            if self.cfg.causal:
+                tri = torch.ones(L, L, dtype=torch.bool, device=ids.device).tril()
+                # Keep the diagonal so a pad query still attends to something.
+                attn_mask = (attn_mask & tri[None, None]) | torch.eye(
+                    L, dtype=torch.bool, device=ids.device)[None, None]
         for blk in self.blocks:
             x = blk(x, attn_mask)
         logits = self.head(self.ln_f(x))
@@ -191,3 +204,33 @@ def nelbo_eval(model: nn.Module, x0: torch.Tensor, mask_token_id: int,
                              reduction="none").view(B, L)
         total += (ce * mask).sum().double() / float(t)
     return float(total / n_t), float(valid.sum())
+
+
+def ar_loss(model: nn.Module, x0: torch.Tensor, valid: torch.Tensor | None = None
+            ) -> tuple[torch.Tensor, dict]:
+    """Next-token cross-entropy per predicted real token (the AR reference)."""
+    B, L = x0.shape
+    if valid is None:
+        valid = torch.ones_like(x0, dtype=torch.bool)
+    logits = model(x0, valid)
+    ce = F.cross_entropy(logits[:, :-1].reshape(-1, logits.size(-1)).float(),
+                         x0[:, 1:].reshape(-1), reduction="none").view(B, L - 1)
+    tgt = valid[:, 1:] & valid[:, :-1]
+    loss = (ce * tgt).sum() / tgt.sum().clamp(min=1)
+    stats = {"ce_per_masked_token": float(loss.detach()), "mask_rate": 0.0,
+             "real_tokens": int(valid.sum())}
+    return loss, stats
+
+
+@torch.no_grad()
+def ar_nll_eval(model: nn.Module, x0: torch.Tensor, valid: torch.Tensor | None = None,
+                **_) -> tuple[float, float]:
+    """(summed exact NLL in nats, predicted tokens) for a batch under the AR model."""
+    B, L = x0.shape
+    if valid is None:
+        valid = torch.ones_like(x0, dtype=torch.bool)
+    logits = model(x0, valid)
+    ce = F.cross_entropy(logits[:, :-1].reshape(-1, logits.size(-1)).float(),
+                         x0[:, 1:].reshape(-1), reduction="none").view(B, L - 1)
+    tgt = valid[:, 1:] & valid[:, :-1]
+    return float((ce * tgt).sum()), float(tgt.sum())

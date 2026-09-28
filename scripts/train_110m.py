@@ -31,6 +31,8 @@ def main() -> int:
     ap.add_argument("--window-mode", choices=["chunks", "prefix"], default="chunks",
                     help="chunks: every 256-token chunk of every document (no packing); "
                          "prefix: only each document's first 256 tokens (the eval setting)")
+    ap.add_argument("--objective", choices=["mdlm", "ar"], default="mdlm",
+                    help="mdlm: the diffusion model; ar: the same-size autoregressive reference")
     ap.add_argument("--init-from", default=None, help="weights-only start, for fine-tuning (T9)")
     ap.add_argument("--run-name", default=None)
     ap.add_argument("--seed", type=int, default=20260917)
@@ -52,13 +54,14 @@ def main() -> int:
     from c3.training.model import ModelConfig
     from c3.training.train import TrainConfig, train
 
-    mcfg = ModelConfig(max_len=a.seq_len)
+    mcfg = ModelConfig(max_len=a.seq_len, causal=a.objective == "ar")
     cfg = TrainConfig(index_path=a.index, out_dir=a.out_dir, seq_len=a.seq_len,
                       batch_size=a.batch_size, grad_accum=a.grad_accum, lr=a.lr,
                       warmup_steps=a.warmup_steps, max_tokens=a.max_tokens,
                       ckpt_every=a.ckpt_every, eval_every=a.eval_every,
                       eval_batches=a.eval_batches, ema_decay=a.ema_decay,
-                      window_mode=a.window_mode, init_from=a.init_from, run_name=a.run_name,
+                      window_mode=a.window_mode, objective=a.objective,
+                      init_from=a.init_from, run_name=a.run_name,
                       seed=a.seed, wandb_project=a.wandb_project,
                       wandb_entity=a.wandb_entity)
     train(cfg, mcfg)

@@ -116,8 +116,8 @@ def build_token_shards(
     if content_hash_fn is None:
         from ..data.fineweb import content_hash as content_hash_fn
     if records is None:
-        from datasets import load_dataset
-        records = load_dataset(DATASET, name=SUBSET, split="train", streaming=True)
+        from ..data.fineweb import fineweb_stream
+        records = fineweb_stream()
 
     train_w = _ShardWriter(out_dir, "train", shard_tokens)
     val_w = _ShardWriter(out_dir, "val", min(shard_tokens, 50_000_000))

@@ -108,9 +108,8 @@ uv pip install --python .venv/bin/python -e ".[dev,analysis]"
 On Ada (see [`slurm/CLUSTER.md`](slurm/CLUSTER.md) first):
 
 ```bash
-sbatch slurm/build_env.sbatch               # one-time, builds the env and ships it as one tarball
-sbatch slurm/build_shards.sbatch            # tokenise training stream, minus calibration docs
-sbatch slurm/train_110m.sbatch              # 4 GPUs, 4 days, self-requeuing
+bash slurm/submit_t3.sh                     # T3 end to end, env build included (see the runbook)
+sbatch slurm/build_env.sbatch               # the env alone, if you only need trace collection
 sbatch --export=ALL,C3_MODEL=llada-8b,C3_LIMIT=20 slurm/collect_traces.sbatch
 ```
 

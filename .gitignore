@@ -18,3 +18,4 @@ logs/
 # deliberately -- see artifacts/README.md.
 *.bin
 *.pt
+.gitattributes

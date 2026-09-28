@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from dataclasses import dataclass, asdict
 from pathlib import Path
 
@@ -23,6 +24,27 @@ import numpy as np
 
 DATASET = "HuggingFaceFW/fineweb-edu"
 SUBSET = "sample-10BT"
+
+
+def fineweb_stream(streaming: bool = True):
+    """FineWeb-Edu sample-10BT as an iterable of records, in the Hub's order.
+
+    With ``C3_FINEWEB_DIR`` set, reads the parquet files that
+    scripts/fetch_fineweb.py downloaded and verified; otherwise streams from the
+    Hub.  The Hub config resolves ``sample/10BT/*`` to the same files in sorted
+    order, so both yield the same records in the same order, and a corpus sampled
+    from either is the committed one (scripts/check_corpus.py confirms it).
+    """
+    from datasets import load_dataset
+
+    local = os.environ.get("C3_FINEWEB_DIR")
+    if not local:
+        return load_dataset(DATASET, name=SUBSET, split="train", streaming=streaming)
+    files = sorted(str(p) for p in Path(local).glob("*.parquet"))
+    if not files:
+        raise FileNotFoundError(f"C3_FINEWEB_DIR={local} holds no .parquet files")
+    print(f"[data] reading {len(files)} local parquet files from {local}", flush=True)
+    return load_dataset("parquet", data_files=files, split="train", streaming=streaming)
 
 
 def content_hash(text: str) -> str:
@@ -45,17 +67,15 @@ class CorpusSpec:
 def sample_documents(spec: CorpusSpec, out_dir: str | Path, streaming: bool = True) -> Path:
     """Reservoir-sample the calibration corpus and write it with its manifest.
 
-    Sampling streams the dataset rather than downloading it: the full 10BT subset
-    is far larger than this project's disk quota, and only 2,000 documents are
-    needed.
+    Sampling streams the dataset -- from the verified local copy when
+    C3_FINEWEB_DIR is set (see ``fineweb_stream``) -- and reads only the first
+    ``reservoir_pool`` qualifying documents, never the whole subset.
     """
-    from datasets import load_dataset
-
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(spec.seed)
 
-    ds = load_dataset(DATASET, name=SUBSET, split="train", streaming=streaming)
+    ds = fineweb_stream(streaming)
     reservoir: list[dict] = []
     seen = 0
     for rec in ds:
@@ -74,6 +94,12 @@ def sample_documents(spec: CorpusSpec, out_dir: str | Path, streaming: bool = Tr
         if seen >= spec.reservoir_pool:
             break
 
+    if seen < spec.reservoir_pool:
+        # A stream that ends early (e.g. a partial local copy) samples from a
+        # smaller pool: a different corpus, not an error anything else would catch.
+        raise RuntimeError(
+            f"the stream ended after {seen} qualifying documents, before the "
+            f"{spec.reservoir_pool}-document pool was filled")
     if len(reservoir) < spec.n_documents:
         raise RuntimeError(
             f"only {len(reservoir)} documents met the length filter, needed "

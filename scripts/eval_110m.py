@@ -5,6 +5,10 @@
   2,000 calibration documents, first 256 tokens each, never seen in training --
   with a document-bootstrap interval.
 * A handful of unconditional samples, decoded, for a human to read.
+* Optionally (``--gpt2-reference``) the exact perplexity of pretrained GPT-2
+  small (124M, same tokenizer) on the same documents: the sanity range gate G2
+  compares against.  A checkpoint trained with ``--objective ar`` is scored the
+  same way, exactly, instead of by the diffusion bound.
 
 The NELBO uses a fixed grid of diffusion times and fixed mask draws, so two runs
 on the same checkpoint give the same number.
@@ -34,6 +38,8 @@ def main() -> int:
     ap.add_argument("--samples", type=int, default=4)
     ap.add_argument("--sample-steps", type=int, default=256)
     ap.add_argument("--raw-weights", action="store_true", help="evaluate raw instead of EMA weights")
+    ap.add_argument("--gpt2-reference", action="store_true",
+                    help="also report pretrained GPT-2 small's exact perplexity on the same documents")
     ap.add_argument("--device", default="cuda")
     ap.add_argument("--out", default="artifacts/eval_110m.json")
     a = ap.parse_args()
@@ -43,12 +49,15 @@ def main() -> int:
     from c3.provenance import collect as provenance
     from c3.stats import doc_boot_counts, percentile_ci
     from c3.traces.models import LocalMDLM
-    from c3.training.model import nelbo_eval
+    from c3.training.model import ar_nll_eval, nelbo_eval
     from c3.training.sample import ancestral_sample
 
     dev = a.device if torch.cuda.is_available() or a.device == "cpu" else "cpu"
     m = LocalMDLM(path=a.ckpt, device=dev, use_ema=not a.raw_weights).load()
     tok = m.tokenizer
+    causal = bool(getattr(m.model.cfg, "causal", False))
+    # Learned positions: the model cannot read past its training context.
+    a.max_tokens = min(a.max_tokens, int(m.model.cfg.max_len))
     docs = []
     with open(a.docs, encoding="utf-8") as f:
         for line in f:
@@ -69,8 +78,12 @@ def main() -> int:
             valid[b, :len(d)] = True
         # One document at a time inside the batch so each gets its own total.
         for b in range(len(chunk)):
-            s, n = nelbo_eval(m.model, torch.from_numpy(ids[b:b + 1]).to(dev), m.mask_token_id,
-                              torch.from_numpy(valid[b:b + 1]).to(dev), n_t=a.n_t, seed=i + b)
+            x = torch.from_numpy(ids[b:b + 1]).to(dev)
+            v = torch.from_numpy(valid[b:b + 1]).to(dev)
+            if causal:
+                s, n = ar_nll_eval(m.model, x, v)
+            else:
+                s, n = nelbo_eval(m.model, x, m.mask_token_id, v, n_t=a.n_t, seed=i + b)
             per_doc_nelbo.append(s)
             per_doc_tokens.append(n)
     nel, ntok = np.array(per_doc_nelbo), np.array(per_doc_tokens)
@@ -79,16 +92,40 @@ def main() -> int:
     draws = (counts @ nel) / (counts @ ntok)
     lo, hi = percentile_ci(draws)
 
+    ref = None
+    if a.gpt2_reference:
+        from transformers import AutoModelForCausalLM
+        gpt2 = AutoModelForCausalLM.from_pretrained("gpt2").to(dev).eval()
+        r_nll, r_tok = [], []
+        with torch.no_grad():
+            for d in docs:
+                # Prepend <|endoftext|> so every document token is predicted, as the
+                # diffusion bound scores every token.
+                x = torch.tensor([[50256] + d], device=dev)
+                lg = gpt2(x).logits[0, :-1].float()
+                nll = torch.nn.functional.cross_entropy(lg, x[0, 1:], reduction="sum")
+                r_nll.append(float(nll))
+                r_tok.append(len(d))
+        r_nll, r_tok = np.array(r_nll), np.array(r_tok)
+        rp = float(r_nll.sum() / r_tok.sum())
+        rd = (counts @ r_nll) / (counts @ r_tok)
+        rlo, rhi = percentile_ci(rd)
+        ref = {"model": "gpt2 (124M, pretrained on WebText)", "nll_per_token": rp,
+               "ppl": math.exp(rp), "ppl_ci": [math.exp(rlo), math.exp(rhi)]}
+
     samples = []
-    if a.samples:
+    if a.samples and not causal:
         x = ancestral_sample(m.model, a.samples, a.max_tokens, m.mask_token_id,
                              steps=a.sample_steps, device=dev)
         samples = [tok.decode([t for t in row.tolist() if t != m.mask_token_id]) for row in x]
 
-    res = {"checkpoint": a.ckpt, "weights": m.weights, "documents": len(docs),
+    res = {"checkpoint": a.ckpt, "weights": m.weights, "objective": "ar" if causal else "mdlm",
+           "bound": "exact NLL" if causal else "NELBO (upper bound on NLL)",
+           "documents": len(docs),
            "tokens": int(ntok.sum()), "nelbo_per_token": point, "nelbo_ci": [lo, hi],
            "ppl_bound": math.exp(point), "ppl_bound_ci": [math.exp(lo), math.exp(hi)],
-           "n_t": a.n_t, "samples": samples, "provenance": provenance(with_gpu=True)}
+           "n_t": a.n_t, "gpt2_reference": ref, "samples": samples,
+           "provenance": provenance(with_gpu=True)}
     print(json.dumps({k: v for k, v in res.items() if k not in ("provenance", "samples")}, indent=2))
     for s in samples:
         print("---\n" + s[:600])

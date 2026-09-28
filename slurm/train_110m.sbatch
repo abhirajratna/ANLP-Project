@@ -33,6 +33,9 @@
 # is not mounted on compute nodes), and the newer of the local and durable copy
 # is chosen by the step recorded in the checkpoint's JSON sidecar.
 #
+# The AR reference is the same job with C3_OBJECTIVE=ar and its own run name:
+#     sbatch --export=ALL,C3_OBJECTIVE=ar,C3_RUN_NAME=ar110m-v2 slurm/train_110m.sbatch
+#
 # Each run has its own directory, C3_RUN_NAME (default train110m-v2).  The
 # trainer refuses to resume a checkpoint written with a different configuration,
 # or one from the proposal-era trainer, so a new run cannot silently continue
@@ -49,7 +52,22 @@ if ! type module >/dev/null 2>&1; then
 fi
 module load u22/python/3.12.4 u22/cuda/12.4
 source "$REPO_DIR/slurm/activate_env.sh"
+# Fail in seconds, not after staging 20 GB, on a node whose GPUs are unusable
+# (gnode076, 2026-09-28: "CUDA unknown error").  slurm/launch_train.sbatch
+# probes a node more thoroughly before submitting this job there.
+"$C3_PY" "$REPO_DIR/scripts/probe_gpus.py" "$NGPU" \
+    || { echo "[probe] FATAL: GPUs on $(hostname) are unusable; resubmit with --exclude=$(hostname -s)"; exit 1; }
 export C3_GIT_COMMIT="$(git -C "$REPO_DIR" rev-parse HEAD 2>/dev/null || echo unknown)"
+# Without a W&B key on this account, log offline to $REPO_DIR/wandb; upload later
+# with `wandb sync wandb/offline-run-*` after `wandb login`.
+if [ -z "${WANDB_MODE:-}" ]; then
+    if grep -qs api.wandb.ai "$HOME/.netrc" || [ -n "${WANDB_API_KEY:-}" ]; then
+        export WANDB_MODE=online
+    else
+        export WANDB_MODE=offline
+    fi
+fi
+echo "[wandb] mode=$WANDB_MODE"
 
 # The 2080 Ti has ~10.6 GiB usable and this run peaks near 9.4 GiB, so
 # allocator fragmentation is the difference between fitting and an OOM.
@@ -140,6 +158,7 @@ srun --kill-on-bad-exit=1 "$(dirname "$C3_PY")/torchrun" \
        --batch-size "${C3_BATCH:-32}" \
        --grad-accum "${C3_ACCUM:-4}" \
        --window-mode "${C3_WINDOWS:-chunks}" \
+       --objective "${C3_OBJECTIVE:-mdlm}" \
        --n-gpus "$NGPU" \
        --run-name "$RUN" \
        --wandb-project "${C3_WANDB:-c3-dllm-calibration}" \

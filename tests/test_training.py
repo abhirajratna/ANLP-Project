@@ -204,9 +204,158 @@ def test_train_checkpoint_resume_guards_and_g2(tmp_path, monkeypatch):
     assert json.loads(out.read_text())["pass"] is False
 
 
+def test_resume_from_a_mid_run_checkpoint_continues_to_the_end(tmp_path):
+    from c3.training import train as T
+    from c3.training.model import ModelConfig as MC
+
+    rng = np.random.default_rng(3)
+    _build(tmp_path, _records(400, rng, 30, 400), [ExclusionEntry(role="main", id="doc1")],
+           val_fraction=0.1)
+    mcfg = MC(max_len=64, **TINY)
+    cfg = T.TrainConfig(index_path=str(tmp_path / "shards" / "index.json"),
+                        out_dir=str(tmp_path / "run"), seq_len=64, batch_size=4, grad_accum=1,
+                        lr=1e-3, warmup_steps=2, max_tokens=4 * 64 * 6, log_every=1,
+                        ckpt_every=2, eval_every=2, eval_batches=2, ema_decay=0.9)
+    T.train(cfg, mcfg)
+    # Rewind the checkpoint to step 2, as if the job had been killed there.  The
+    # smoke test caught a resume that crashed in the first EMA update: the EMA
+    # was restored on the CPU while the model was on the GPU.
+    ck_path = tmp_path / "run" / "checkpoint.pt"
+    ck = torch.load(ck_path, map_location="cpu", weights_only=False)
+    total = ck["total_steps"]
+    assert total > 2
+    ck["step"] = 2
+    torch.save(ck, ck_path)
+    (tmp_path / "run" / "final.pt").unlink()
+    T.train(cfg, mcfg)
+    final = torch.load(tmp_path / "run" / "final.pt", map_location="cpu", weights_only=False)
+    assert final["step"] == total and final["model_ema"] is not None
+
+
 def test_budget_only_needs_no_torch_import():
     r = subprocess.run([sys.executable, "-c",
                         "import sys; sys.argv=['x','--budget-only'];"
                         "import runpy; runpy.run_path('scripts/train_110m.py', run_name='__main__')"],
                        capture_output=True, text=True, cwd=ROOT)
     assert r.returncode == 0 and "plan v2 default" in r.stdout
+
+
+def test_legacy_manifest_contributes_ids_and_hashes(tmp_path):
+    p = tmp_path / "legacy.json"
+    p.write_text(json.dumps({"excluded_hashes": ["h1", "h2"], "excluded_ids": ["a", "b"]}))
+    ex = Exclusion.load(p)
+    assert len(ex.entries) == 4
+    assert ex.check(rec_id="a") == "id" and ex.check(content="h2") == "content"
+    assert {e.id for e in ex.unmatched()} == {"b", None}
+
+
+def test_reserve_skips_main_documents_and_respects_the_pool():
+    from c3.training.exclusion import sample_reserve
+    recs = [{"id": f"d{i}", "text": "x" * (1300 if i % 3 else 10)} for i in range(3000)]
+    main = {f"d{i}" for i in range(0, 3000, 5)}
+    got = sample_reserve(recs, main, n_documents=50, pool=1000, seed=1)
+    ids = [g["id"] for g in got]
+    assert len(set(ids)) == 50 and not set(ids) & main
+    # only the first 1000 qualifying documents are eligible
+    qualifying = [r["id"] for r in recs if len(r["text"]) >= 1200][:1000]
+    assert set(ids) <= set(qualifying)
+
+
+def test_ar_reference_is_causal_and_its_nll_is_exact():
+    from c3.training.model import ar_loss, ar_nll_eval
+    torch.manual_seed(0)
+    cfg = ModelConfig(max_len=10, causal=True, **TINY)
+    m = MaskedDiffusionLM(cfg).eval()
+    x = torch.randint(0, 1000, (2, 10))
+    y = x.clone()
+    y[:, 6:] = 5
+    assert torch.allclose(m(x)[:, :6], m(y)[:, :6], atol=1e-6)      # no peeking ahead
+    valid = torch.ones_like(x, dtype=torch.bool)
+    valid[1, 7:] = False
+    s, n = ar_nll_eval(m, x, valid)
+    lg = m(x, valid)
+    manual = sum(float(torch.nn.functional.cross_entropy(lg[b, :k - 1], x[b, 1:k], reduction="sum"))
+                 for b, k in ((0, 10), (1, 7)))
+    assert n == 9 + 6 and s == pytest.approx(manual, rel=1e-5)
+    loss, _ = ar_loss(m, x, valid)
+    assert float(loss) == pytest.approx(s / n, rel=1e-5)
+
+
+def test_ar_objective_trains_and_checkpoint_is_evaluable(tmp_path):
+    from c3.training import train as T
+    rng = np.random.default_rng(3)
+    _build(tmp_path, _records(200, rng, 30, 300), [ExclusionEntry(role="main", id="doc1")],
+           val_fraction=0.1)
+    index = str(tmp_path / "shards" / "index.json")
+    cfg = T.TrainConfig(index_path=index, out_dir=str(tmp_path / "ar"), seq_len=32, batch_size=4,
+                        grad_accum=1, warmup_steps=1, max_tokens=4 * 32 * 3, log_every=1,
+                        ckpt_every=10, eval_every=2, eval_batches=1, ema_decay=0.9,
+                        objective="ar")
+    with pytest.raises(ValueError):
+        T.train(cfg, ModelConfig(max_len=32, **TINY))              # objective/causal mismatch
+    final = T.train(cfg, ModelConfig(max_len=32, causal=True, **TINY))
+    docs = tmp_path / "docs.jsonl"
+    docs.write_text("\n".join(json.dumps({"text": r["text"]}) for r in _records(5, rng, 40, 60)))
+    out = tmp_path / "eval.json"
+    r = subprocess.run([sys.executable, str(ROOT / "scripts" / "eval_110m.py"), "--ckpt", str(final),
+                        "--docs", str(docs), "--device", "cpu", "--n-boot", "50", "--samples", "0",
+                        "--out", str(out)], capture_output=True, text=True, cwd=ROOT)
+    assert r.returncode == 0, r.stderr[-2000:]
+    ev = json.loads(out.read_text())
+    assert ev["objective"] == "ar" and ev["bound"] == "exact NLL" and ev["ppl_bound"] > 1
+
+
+def test_eval_and_hf_dry_run_on_a_diffusion_checkpoint(tmp_path):
+    from c3.training import train as T
+    rng = np.random.default_rng(4)
+    _build(tmp_path, _records(200, rng, 30, 300), [ExclusionEntry(role="main", id="doc1")],
+           val_fraction=0.1)
+    cfg = T.TrainConfig(index_path=str(tmp_path / "shards" / "index.json"),
+                        out_dir=str(tmp_path / "run"), seq_len=32, batch_size=4, grad_accum=1,
+                        warmup_steps=1, max_tokens=4 * 32 * 2, eval_every=0, ema_decay=0.9)
+    final = T.train(cfg, ModelConfig(max_len=32, **TINY))
+    docs = tmp_path / "docs.jsonl"
+    docs.write_text("\n".join(json.dumps({"text": r["text"]}) for r in _records(4, rng, 40, 60)))
+    out = tmp_path / "eval.json"
+    r = subprocess.run([sys.executable, str(ROOT / "scripts" / "eval_110m.py"), "--ckpt", str(final),
+                        "--docs", str(docs), "--device", "cpu", "--n-boot", "50", "--samples", "1",
+                        "--sample-steps", "8", "--max-tokens", "32", "--out", str(out)],
+                       capture_output=True, text=True, cwd=ROOT)
+    assert r.returncode == 0, r.stderr[-2000:]
+    ev = json.loads(out.read_text())
+    assert ev["weights"] == "ema" and len(ev["samples"]) == 1 and ev["nelbo_ci"][0] <= ev["nelbo_per_token"]
+    pytest.importorskip("safetensors")
+    r = subprocess.run([sys.executable, str(ROOT / "scripts" / "upload_hf.py"), "--ckpt", str(final),
+                        "--repo", "team/test", "--eval", str(out), "--dry-run"],
+                       capture_output=True, text=True, cwd=ROOT)
+    assert r.returncode == 0, r.stderr[-2000:]
+    up = Path(final).with_name("hf_upload")
+    assert (up / "model.safetensors").exists() and "held-out NELBO" in (up / "README.md").read_text()
+
+
+def test_g2_keeps_the_last_value_per_step(tmp_path):
+    rows = [{"step": s, "val_nelbo": 3.0} for s in range(0, 1000, 50)]
+    rows.append({"step": 950, "val_nelbo": 9.0})        # a requeue re-logged step 950
+    rows.append({"step": 950, "val_nelbo": 3.0})
+    h = tmp_path / "h.jsonl"
+    h.write_text("\n".join(json.dumps(r) for r in rows))
+    out = tmp_path / "g2.json"
+    subprocess.run([sys.executable, str(ROOT / "scripts" / "check_g2.py"), "--history", str(h),
+                    "--out", str(out)], check=True, capture_output=True, cwd=ROOT)
+    assert json.loads(out.read_text())["pass"] is True
+
+
+def test_check_corpus_detects_a_mismatch(tmp_path):
+    from c3.data.fineweb import content_hash
+    docs = [{"doc_id": i, "id": f"x{i}", "text": f"text {i}"} for i in range(3)]
+    man = tmp_path / "m.json"
+    man.write_text(json.dumps({"excluded_hashes": [content_hash(d["text"]) for d in docs],
+                               "excluded_ids": [d["id"] for d in docs]}))
+    good = tmp_path / "good.jsonl"
+    good.write_text("\n".join(json.dumps(d) for d in docs))
+    bad = tmp_path / "bad.jsonl"
+    bad.write_text("\n".join(json.dumps({**d, "text": d["text"] + "!"}) for d in docs))
+    run = lambda p: subprocess.run([sys.executable, str(ROOT / "scripts" / "check_corpus.py"),
+                                    "--docs", str(p), "--manifest", str(man)],
+                                   capture_output=True, text=True, cwd=ROOT).returncode
+    assert run(good) == 0 and run(bad) == 1

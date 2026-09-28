@@ -15,7 +15,7 @@ A100 assumptions, drive every budget decision in the repo.
 | Compute-visible persistent | `/home2/$USER` (NFS), 30 GB quota, 25.7 GB used | **~5 GB free** — the binding storage constraint; `~/.cache` holds 5.3 GB of reclaimable pip/HF cache |
 | Inode quota on `/share1` | 3,000 files | the built env is **47,361 files**, so it ships as a single tarball |
 | `/share7`, `/cvit_contrib_packages` | NFS, compute-visible, **read-only** | not usable for output |
-| Compute-node internet | yes (`huggingface.co` reachable) | stream/tokenise directly on the node |
+| Compute-node internet | yes (`huggingface.co` reachable), but downloads can stall (PyPI ran at 43 kB/s on 2026-09-27) | download data once, verified, and read it locally (`slurm/fetch_fineweb.sbatch`); don't stream it through a multi-hour job |
 | Python / CUDA | `module load u22/python/3.12.4 u22/cuda/12.4` | torch cu124 wheels include sm_75 |
 | LLaDA-8B at `/share1/ishita/llada_model` | 15 GB, group-readable | `rsync` it from `ada` to `/ssd_scratch` at job start — a LAN copy, not a 15 GB HuggingFace download, and free against the `/home2` quota |
 | Interactive `srun` | capped at 6 h | batch jobs get the full 4 days |

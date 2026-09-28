@@ -109,10 +109,16 @@ class Exclusion:
             raw = json.loads(Path(path).read_text())
             if isinstance(raw, dict) and raw.get("version") == MANIFEST_VERSION:
                 entries += [ExclusionEntry(**e) for e in raw["entries"]]
-            else:
-                from ..data.fineweb import load_exclusion   # proposal-era format
+            elif isinstance(raw, dict) and "excluded_hashes" in raw:
+                # Proposal-era manifest (c3.data.fineweb.sample_documents): sorted
+                # lists of ids and text hashes that cannot be paired, so each key
+                # becomes its own entry.  Both were sampled from the stream.
                 entries += [ExclusionEntry(role="main", content_hash=h)
-                            for h in sorted(load_exclusion(path))]
+                            for h in raw["excluded_hashes"]]
+                entries += [ExclusionEntry(role="main", id=str(i))
+                            for i in raw.get("excluded_ids", [])]
+            else:
+                raise ValueError(f"{path}: not a recognised exclusion manifest")
         return cls(entries)
 
 
@@ -140,3 +146,42 @@ def entries_from_jsonl(path: str | Path, role: str, tokenizer, from_stream: bool
                                       content_hash=content_hash_fn(text),
                                       token_hash=token_hash(ids), from_stream=from_stream))
     return out
+
+
+def sample_reserve(records, exclude_ids, n_documents: int = 500, pool: int = 200_000,
+                   seed: int = 20260927, min_chars: int = 1200) -> list[dict]:
+    """Reservoir-sample spare held-out documents from the calibration corpus's pool.
+
+    Plan v2 needs held-out documents beyond the 2,000 main ones: 20 pilot
+    documents kept out of the main set, and replacements for the proposal-era
+    pilot's documents.  They have to be excluded from the 110M run too, and the
+    shards are built once, so they are drawn now: from the same first ``pool``
+    qualifying documents of the stream as ``c3.data.fineweb.sample_documents``
+    (same length filter), skipping every main document, with a different seed.
+    """
+    rng = np.random.default_rng(seed)
+    exclude = {str(i) for i in exclude_ids}
+    reservoir: list[dict] = []
+    seen = 0
+    for rec in records:
+        text = rec.get("text", "")
+        if len(text) < min_chars:
+            continue
+        seen += 1
+        rid = str(rec.get("id", f"idx{seen}"))
+        if rid not in exclude:
+            item = {"id": rid, "text": text}
+            if len(reservoir) < n_documents:
+                reservoir.append(item)
+            else:
+                j = int(rng.integers(0, seen))
+                if j < n_documents:
+                    reservoir[j] = item
+        if seen >= pool:
+            break
+    if seen < pool:
+        raise RuntimeError(f"the stream ended after {seen} qualifying documents, before the "
+                           f"{pool}-document pool was filled")
+    if len(reservoir) < n_documents:
+        raise RuntimeError(f"only {len(reservoir)} reserve documents found, needed {n_documents}")
+    return reservoir

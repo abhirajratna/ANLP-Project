@@ -46,12 +46,34 @@ python3 -c 'import sys; assert sys.version_info[:2]==(3,12), sys.version' \
 
 rm -rf "$SCRATCH_ENV"
 python3 -m venv "$SCRATCH_ENV"
+# The python module puts its own site-packages ahead of the venv's (job 2719298
+# ran the system pip 24.0 right after upgrading the venv's pip). Clear it so the
+# build uses the venv's pip and installs every dependency into the venv.
+unset PYTHONPATH
 # Always `python -m pip`, never the `pip` script -- see constraint 3 above.
 PIP="$SCRATCH_ENV/bin/python -m pip"
-$PIP install --no-cache-dir --upgrade pip wheel
+
+# PyPI from compute nodes can crawl (43 kB/s in job 2719298), and pip's --retries
+# covers connecting, not a download that stalls midway, which is what killed that
+# build. So: a long read timeout, a node-local cache so a retry re-fetches only
+# what failed, and each install retried a few times.
+export PIP_CACHE_DIR="${C3_SCRATCH:-/ssd_scratch/$USER}/pip-cache"
+pip_install() {
+    local attempt
+    for attempt in 1 2 3 4 5; do
+        $PIP install --timeout 120 --retries 10 "$@" && return 0
+        echo "[env] pip install failed (attempt $attempt/5); retrying in 60 s"
+        sleep 60
+    done
+    echo "[env] FATAL: pip install $* failed 5 times"
+    return 1
+}
+
+pip_install --upgrade pip wheel
+echo "[env] $($PIP --version)"
 
 # cu124 wheels carry sm_75 kernels, which is what a 2080 Ti needs.
-$PIP install --no-cache-dir --index-url https://download.pytorch.org/whl/cu124 torch
+pip_install --index-url https://download.pytorch.org/whl/cu124 torch
 
 # transformers is pinned to the 4.x line. LLaDA-8B and Dream-7B both ship
 # trust_remote_code modeling files written against transformers 4.x; on 5.x the
@@ -60,10 +82,10 @@ $PIP install --no-cache-dir --index-url https://download.pytorch.org/whl/cu124 t
 #   AttributeError: 'LLaDAModelLM' object has no attribute 'all_tied_weights_keys'
 # 4.46.3 is the version Dream's own config records, and LLaDA-8B loads in 4-bit
 # under it (verified: 5.67 GB VRAM, correct infilling).
-$PIP install --no-cache-dir \
+pip_install \
     "transformers==4.46.3" "tokenizers>=0.20,<0.21" "huggingface_hub<1.0" \
     "datasets==3.1.0" accelerate bitsandbytes wandb
-$PIP install --no-cache-dir numpy scipy pandas pyarrow statsmodels pytest
+pip_install numpy scipy pandas pyarrow statsmodels pytest
 
 echo "[env] verifying"
 "$SCRATCH_ENV/bin/python" - <<'PY'

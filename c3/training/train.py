@@ -33,7 +33,8 @@ import numpy as np
 import torch
 
 from .data import DocWindowDataset
-from .model import MaskedDiffusionLM, ModelConfig, mdlm_loss, nelbo_eval
+from .model import (MaskedDiffusionLM, ModelConfig, ar_loss, ar_nll_eval, mdlm_loss,
+                    nelbo_eval)
 
 # Fields that may differ between the job that wrote a checkpoint and the job
 # resuming it without making it a different run.
@@ -60,6 +61,7 @@ class TrainConfig:
     eval_batches: int = 16
     ema_decay: float = 0.9999
     window_mode: str = "chunks"       # "chunks" (whole corpus) | "prefix" (first 256 only)
+    objective: str = "mdlm"           # "mdlm" | "ar" (the autoregressive reference)
     seed: int = 20260917
     init_from: str | None = None      # weights-only start (fine-tuning, T9)
     run_name: str | None = None       # W&B id; default: out_dir name + config hash
@@ -126,14 +128,21 @@ class EMA:
         model.load_state_dict({k: v.to(model.state_dict()[k].dtype) for k, v in self.shadow.items()})
 
 
-def evaluate(model: torch.nn.Module, batches, mask_token_id: int, device) -> dict:
-    """Validation NELBO per real token and the perplexity bound exp(NELBO)."""
+def evaluate(model: torch.nn.Module, batches, mask_token_id: int, device,
+             objective: str = "mdlm") -> dict:
+    """Validation NELBO per real token and the perplexity bound exp(NELBO).
+
+    For the AR reference the same keys hold its exact NLL and perplexity.
+    """
     model.eval()
     tot = tok = 0.0
     for i, (ids, valid) in enumerate(batches):
         x = torch.from_numpy(ids).to(device)
         v = torch.from_numpy(valid).to(device)
-        s, n = nelbo_eval(model, x, mask_token_id, v, seed=i)
+        if objective == "ar":
+            s, n = ar_nll_eval(model, x, v)
+        else:
+            s, n = nelbo_eval(model, x, mask_token_id, v, seed=i)
         tot += s
         tok += n
     model.train()
@@ -143,7 +152,11 @@ def evaluate(model: torch.nn.Module, batches, mask_token_id: int, device) -> dic
 
 
 def train(cfg: TrainConfig, model_cfg: ModelConfig | None = None) -> Path:
-    model_cfg = model_cfg or ModelConfig(max_len=cfg.seq_len)
+    model_cfg = model_cfg or ModelConfig(max_len=cfg.seq_len, causal=cfg.objective == "ar")
+    if cfg.objective not in {"mdlm", "ar"}:
+        raise ValueError(f"objective must be 'mdlm' or 'ar', got {cfg.objective!r}")
+    if (cfg.objective == "ar") != model_cfg.causal:
+        raise ValueError("objective 'ar' needs ModelConfig(causal=True), and 'mdlm' causal=False")
     out_dir = Path(cfg.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     ckpt_path = out_dir / "checkpoint.pt"
@@ -233,7 +246,11 @@ def train(cfg: TrainConfig, model_cfg: ModelConfig | None = None) -> Path:
         opt.load_state_dict(state["opt"])
         scaler.load_state_dict(state["scaler"])
         if ema is not None and state.get("model_ema") is not None:
-            ema.shadow = {k: v.float() for k, v in state["model_ema"].items()}
+            # The state was loaded to the CPU (see above), and unlike the model and
+            # optimizer, nothing copies the EMA back: move it to the model's device,
+            # or the first ema.update() after a resume mixes cuda and cpu tensors.
+            ema.shadow = {k: v.to(device, dtype=torch.float32)
+                          for k, v in state["model_ema"].items()}
         step, tokens_seen = state["step"], state["tokens_seen"]
         total_steps = state.get("total_steps", total_steps)
         del state
@@ -297,7 +314,10 @@ def train(cfg: TrainConfig, model_cfg: ModelConfig | None = None) -> Path:
             ctx = model.no_sync() if (ddp and not sync) else torch.enable_grad()
             with ctx:
                 with torch.autocast("cuda", dtype=torch.float16, enabled=use_cuda):
-                    loss, stats = mdlm_loss(model, x, model_cfg.mask_token_id, v)
+                    if cfg.objective == "ar":
+                        loss, stats = ar_loss(model, x, v)
+                    else:
+                        loss, stats = mdlm_loss(model, x, model_cfg.mask_token_id, v)
                 scaler.scale(loss / cfg.grad_accum).backward()
             agg_loss += float(loss.detach()) / cfg.grad_accum
             real += stats["real_tokens"]
@@ -324,11 +344,11 @@ def train(cfg: TrainConfig, model_cfg: ModelConfig | None = None) -> Path:
                      "tokens": tokens_seen, "tokens_per_s": tps})
 
         if is_main and val_batches and (step % cfg.eval_every == 0 or step == total_steps):
-            ev = evaluate(raw, val_batches, model_cfg.mask_token_id, device)
+            ev = evaluate(raw, val_batches, model_cfg.mask_token_id, device, cfg.objective)
             if ema is not None:
                 live = copy.deepcopy(raw.state_dict())
                 ema.copy_to(raw)
-                ev_ema = evaluate(raw, val_batches, model_cfg.mask_token_id, device)
+                ev_ema = evaluate(raw, val_batches, model_cfg.mask_token_id, device, cfg.objective)
                 raw.load_state_dict(live)
                 ev.update({f"ema_{k}": v for k, v in ev_ema.items() if k != "val_tokens"})
             print(f"[train] step {step} val NELBO {ev['val_nelbo']:.4f} "

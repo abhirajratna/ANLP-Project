@@ -7,7 +7,7 @@
 #SBATCH --exclude=gnode066,gnode069
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=48G
-#SBATCH --time=12:00:00
+#SBATCH --time=1-00:00:00
 #SBATCH --output=/home2/%u/c3/logs/shards-%j.out
 #
 # Tokenises the 110M training stream with every evaluation document removed:
@@ -38,6 +38,7 @@ export HF_HOME="$C3_SCRATCH/hf"
 rm -rf "$LOCAL_SHARDS"
 mkdir -p "$HF_HOME" "$LOCAL_SHARDS"
 cd "$REPO_DIR"
+c3_stage_fineweb        # all 14 files: the build reads the whole stream
 
 MANIFEST="${C3_MANIFEST:-$PERSIST/corpus/exclusion_v2.json}"
 if [ ! -f "$MANIFEST" ]; then

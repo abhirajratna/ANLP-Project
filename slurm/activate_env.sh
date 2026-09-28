@@ -55,3 +55,26 @@ fi
 
 export C3_PY="$C3_SCRATCH_ENV/bin/python"
 echo "[env] $("$C3_PY" -V 2>&1) ready on $(hostname)"
+
+# c3_stage_fineweb [N]: copy the verified FineWeb parquet files that
+# slurm/fetch_fineweb.sbatch stored on /share1 to node-local SSD, and point
+# C3_FINEWEB_DIR at them so the job reads that copy instead of streaming from the
+# Hub.  N > 0 stages only the first N files, for jobs that read just the start
+# of the stream; the samplers fail loudly if the stream ends before their pool.
+c3_stage_fineweb() {
+    local first="${1:-0}" repo="${C3_REPO:-/home2/$USER/c3}"
+    local src="$C3_BLOBS/fineweb-10BT" dst="$C3_SCRATCH/fineweb-10BT"
+    mkdir -p "$dst"
+    exec 8>"$C3_SCRATCH/.c3-fineweb.lock"
+    flock 8
+    rsync -a -e "ssh $C3_SSH_OPTS" "$USER@ada:$src/MANIFEST.json" "$dst/MANIFEST.json" \
+        || { echo "[fineweb] FATAL: no complete copy at $src; run slurm/fetch_fineweb.sbatch"; return 1; }
+    "$C3_PY" "$repo/scripts/fetch_fineweb.py" names --dir "$dst" --first "$first" > "$dst/.staging-list"
+    echo "[fineweb] staging $(wc -l < "$dst/.staging-list") file(s) from $src to $dst"
+    rsync -a --partial-dir=.rsync-partial --files-from="$dst/.staging-list" -e "ssh $C3_SSH_OPTS" \
+        "$USER@ada:$src/" "$dst/" || { echo "[fineweb] FATAL: staging from $src failed"; return 1; }
+    "$C3_PY" "$repo/scripts/fetch_fineweb.py" check --dir "$dst" --first "$first" || return 1
+    flock -u 8
+    exec 8>&-
+    export C3_FINEWEB_DIR="$dst"
+}
