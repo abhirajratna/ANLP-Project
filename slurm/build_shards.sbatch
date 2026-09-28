@@ -52,6 +52,27 @@ fi
     --target-tokens "${C3_MAX_TOKENS:-10000000000}" \
     --val-fraction "${C3_VAL_FRACTION:-0.0005}"
 
+NODE="$(hostname -s)"
+echo "$(date +%F_%T) shards built on $NODE:$LOCAL_SHARDS (job ${SLURM_JOB_ID:-?})" >> logs/shards_node.txt
+
+# C3_SHARDS_PUSH=0: keep the shards on this node's SSD only, for when /share1
+# cannot hold them next to the FineWeb copy (~27 GB + ~19 GB). Training must then
+# run on this node: C3_TRAIN_HERE=1 submits it pinned here, with C3_TRAIN_BLOBS
+# (an existing directory whose shards/ is empty) as the durable home of its
+# checkpoints. A requeue lands back on this node, where the shards still are.
+# Push them later from this node, once there is room, to lift the pinning.
+if [ "${C3_SHARDS_PUSH:-1}" = 0 ]; then
+    echo "[stage] C3_SHARDS_PUSH=0: shards stay on $NODE:$LOCAL_SHARDS ($(du -sh "$LOCAL_SHARDS" | cut -f1)); not pushed"
+    if [ "${C3_TRAIN_HERE:-0}" = 1 ]; then
+        TB="${C3_TRAIN_BLOBS:?set C3_TRAIN_BLOBS with C3_TRAIN_HERE=1}"
+        TRAIN=$(sbatch --parsable --nodelist="$NODE" --export=ALL,C3_BLOBS="$TB",C3_ENV_BLOBS="$BLOBS" slurm/train_110m.sbatch)
+        VERIFY=$(sbatch --parsable --dependency=afterok:"$TRAIN" --export=ALL,C3_BLOBS="$TB",C3_ENV_BLOBS="$BLOBS" slurm/verify_110m.sh)
+        echo "[stage] submitted train=$TRAIN verify=$VERIFY pinned to $NODE, checkpoints -> $TB"
+        echo "$(date +%F_%T) shards=${SLURM_JOB_ID:-?} on $NODE -> train=$TRAIN verify=$VERIFY (C3_BLOBS=$TB)" >> logs/t3_jobs.txt
+    fi
+    exit 0
+fi
+
 echo "[stage] pushing shards to $BLOBS/shards"
 ssh $SSH_OPTS "$USER@ada" "rm -rf '$BLOBS/shards.new' && mkdir -p '$BLOBS/shards.new'"
 rsync -a --partial -e "ssh $SSH_OPTS" \
