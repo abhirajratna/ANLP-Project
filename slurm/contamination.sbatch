@@ -8,6 +8,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
 #SBATCH --time=1-00:00:00
+#SBATCH --requeue
 #SBATCH --output=/home2/%u/c3/logs/contam-%j.out
 #
 # The T4 contamination screen for one model (scripts/contamination_screen.py):
@@ -15,6 +16,9 @@
 # forward passes of ~100 tokens per document, so 2,000 documents fit one job.
 #
 #   sbatch --gres=gpu:2 --export="ALL,C3_MODEL=llada-8b-base,C3_PRECISION=fp16,C3_DEVICE_MAP=auto,C3_MAX_MEMORY=0=9GiB;1=9GiB,C3_THRESHOLD=32" slurm/contamination.sbatch
+#
+# Resumable: per-document results go to <out>.partial.jsonl on /home2, so a
+# requeued job (node failure) continues where it stopped.
 #
 # C3_THRESHOLD is required until c3.CONTAM_THRESHOLD is fixed. The output is
 # written to $PERSIST/contamination_<model>.json (small) for copying into artifacts/.
