@@ -100,3 +100,12 @@ card is not enough:
 
 **Measured throughput:** not yet measured for schema v2. The log prints
 docs/hour every 25 documents; record it here after the pilot re-run.
+
+**Model staging** lives in `slurm/stage_model.sh`, sourced by `collect_traces.sbatch`
+and `contamination.sbatch`. The shared LLaDA copy is used only if it exists and its
+tokenizer config matches the requested variant (a chat template means Instruct);
+otherwise the pinned hub revision is downloaded to `/ssd_scratch/$USER/hf`.
+
+**Contamination screen** (`slurm/contamination.sbatch`): ~50 forward passes of
+~100 tokens per document, one job per model; needs `C3_THRESHOLD` until
+`c3.CONTAM_THRESHOLD` is fixed, and writes `$PERSIST/contamination_<model>.json`.

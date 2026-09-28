@@ -81,8 +81,18 @@ def fold_assignment(split: str, codes: np.ndarray, seed: int, manifest: str | No
     if split == "half":
         if manifest:
             m = json.loads(Path(manifest).read_text())
+            missing = [int(d) for d in codes if str(int(d)) not in m]
+            if missing:
+                raise SystemExit(
+                    f"{len(missing)} documents in the trace are not in {manifest} (first: "
+                    f"{missing[:5]}); pilot documents are left out of the manifest on "
+                    f"purpose -- drop them, or use the right manifest")
             half = np.array([int(m[str(int(d))]) for d in codes])
         else:
+            print("\n" + "!" * 78 + "\n[analyze] WARNING: --split half without --manifest uses "
+                  "hash_halves, not the\n[analyze] committed split. Reported numbers must "
+                  "use --manifest artifacts/split_manifest.json.\n" + "!" * 78 + "\n",
+                  file=sys.stderr, flush=True)
             half = hash_halves(codes, seed)
         return None, codes[half == 0], codes[half == 1]
     raise ValueError(split)
@@ -333,6 +343,9 @@ def main() -> int:
     ap.add_argument("--mask-kinds", nargs="+", default=None)
     ap.add_argument("--split", choices=["kfold-doc", "half", "none"], default="kfold-doc")
     ap.add_argument("--manifest", default=None, help="JSON {doc_id: 0|1}; 0 = fit half (split=half)")
+    ap.add_argument("--exclude-docs", default=None,
+                    help="contamination screen output (flagged documents are dropped) or a "
+                         "JSON list of doc ids")
     ap.add_argument("--n-boot", type=int, default=N_BOOT)
     ap.add_argument("--eq-boot", type=int, default=None, help="resamples for Eq. 2/3 (default: --n-boot)")
     ap.add_argument("--knots", type=int, default=DEFAULT_KNOTS)
@@ -362,6 +375,15 @@ def main() -> int:
         args.eq_boot = args.n_boot
 
     df, meta = load_input(args.traces)
+    if args.exclude_docs:
+        from c3.data.contamination import excluded_doc_ids
+        drop = excluded_doc_ids(args.exclude_docs)
+        present = sorted(set(df["doc_id"].unique().tolist()) & drop)
+        df = df[~df["doc_id"].isin(drop)].reset_index(drop=True)
+        meta["excluded_docs"] = {"source": args.exclude_docs, "n_listed": len(drop),
+                                 "n_dropped": len(present), "doc_ids": present}
+        print(f"[analyze] excluded {len(present)} flagged documents ({args.exclude_docs})",
+              flush=True)
     tcfg = meta.get("trace_meta", {}).get("config", {})
     if args.native_k is None:
         args.native_k = int(tcfg.get("tokens_per_step", 8))
