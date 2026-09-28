@@ -36,6 +36,7 @@ already in a complete part.  ``c3.traces.shards.merge`` joins the parts.
 from __future__ import annotations
 
 import json
+import re
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -515,7 +516,11 @@ def collect_shard(model, documents, cfg: CollectConfig, stem: str | Path, shard:
     print(f"[collect] shard {shard}/{num_shards}: {len(docs)} docs, {len(done)} already done, "
           f"{len(todo)} to go", flush=True)
 
-    counter = [len(existing)]
+    # Number new parts after the highest existing index, not the count: with a
+    # gap (a part lost in transfer) the count names an existing, complete part,
+    # and the rename below would silently replace it.
+    idx = [int(m.group(1)) for m in (re.search(r"\.p(\d+)\.parquet$", q.name) for q in existing) if m]
+    counter = [max(idx) + 1 if idx else 0]
 
     def next_path():
         p = base.with_name(f"{base.name}.p{counter[0]:04d}.parquet")
@@ -528,7 +533,11 @@ def collect_shard(model, documents, cfg: CollectConfig, stem: str | Path, shard:
         meta["doc_ids_done"] = sorted(d for p in parts for d in p["doc_ids"])
         meta["complete"] = complete
         meta["stats"] = stats
-        meta_path.write_text(json.dumps(meta, indent=2))
+        # Atomic: a job killed mid-write (or a push racing it) must not leave a
+        # truncated meta that every later resume fails to parse.
+        tmp = meta_path.with_name(meta_path.name + ".tmp")
+        tmp.write_text(json.dumps(meta, indent=2))
+        tmp.replace(meta_path)
 
     write_meta(old_parts, complete=not todo)
     new_parts = _collect_into(model, todo, cfg, next_path, part_docs, progress_every, stats)
