@@ -18,6 +18,7 @@ lives on Ada — see the inventory at the bottom.
 | `exclusion_v2.json` | v2 held-out record: FineWeb id + text hash + first-256-token hash for the 2,000 main and 500 reserve documents (job 2722135); the v2 110M shards matched all 2,500 | `slurm/prepare_exclusion.sbatch` |
 | `eval_110m_train110m.json` | proposal-era 110M (`/share1/ojas.k/train110m`): perplexity bound 38.4 [37.7, 39.2] on the 2,000 held-out docs vs GPT-2 small 28.5, plus 4 samples; no G2 (its history.jsonl was not kept) | `scripts/eval_110m.py` (job 2722239) |
 | `contamination_llada-8b-base.json` | T4 screen, LLaDA-8B-Base fp16: 2 / 1,979 flagged at a run of >= 32 of 50 tokens (threshold from plan v2 T4, **not yet pre-registered**); median run 1, max 39 | `scripts/contamination_screen.py` (job 2722128) |
+| `contamination_dream-7b-base.json` | T4 screen, Dream-v0-7B-Base fp16: 1 / 1,976 flagged at >= 32 (same threshold, not yet pre-registered); median run 1, max 43 | `scripts/contamination_screen.py` (job 2722129) |
 | `t2_pilot/` | T2 pilot, LLaDA-8B-Base fp16 over 2 GPUs, reserve docs 100000-100020 (20 with >= 256 tokens): `floor_llada_base_fp16.json` (5 repeats bitwise identical, floor 0), `gate_g1.json` (N = 20 -> full plan), `analysis/` (kfold-doc, prefix `TTwoPilot`). Traces: `/share1/ojas.k/traces/t2pilot-llada-base-fp16/` | `slurm/collect_traces.sbatch` (job 2722140), `scripts/measure_floor.py`, `scripts/gate_g1.py`, `scripts/analyze_traces.py` |
 
 The gate files are committed on purpose: the proposal pre-registers the Stage 0
