@@ -1,0 +1,115 @@
+{
+  "gate": "G1",
+  "input": {
+    "source": "runs/traces/t2pilot/t2pilot-llada-base-fp16.rep0.parquet",
+    "sha256": "33331da922109cf71636bf58d0019bd99fa994fe95f724057e22285875b1b924"
+  },
+  "floor_source": "artifacts/t2_pilot/floor_llada_base_fp16.json",
+  "config": {
+    "n_boot": 10000,
+    "knots": 9,
+    "delta_min": 0.02,
+    "seed": 0,
+    "field_calibrators": "leave-one-document-out"
+  },
+  "arms": {
+    "decoder": {
+      "n_docs": 20,
+      "n_states": 1280,
+      "delta_contrast": {
+        "name": "(32) - (1)",
+        "value": 0.005040471639146809,
+        "ci": [
+          -0.008702729785512503,
+          0.01870047000579698
+        ],
+        "n_docs": 20,
+        "sigma_d": 0.03181458958334624,
+        "n_required": 20
+      },
+      "field_contrast": {
+        "name": "(32) - (1)",
+        "value": -0.0003580385649424809,
+        "ci": [
+          -0.0014382193571635122,
+          0.0007219528616845183
+        ],
+        "n_docs": 20,
+        "sigma_d": 0.0025327270938122564,
+        "n_required": 1
+      },
+      "ece": {
+        "value": 0.005954230529795705,
+        "ci": [
+          0.004615555482128491,
+          0.011420221704513935
+        ]
+      }
+    },
+    "uniform": {
+      "n_docs": 20,
+      "n_states": 200,
+      "delta_contrast": {
+        "name": "(32) - (1)",
+        "value": 0.0015216794775915875,
+        "ci": [
+          -0.00837686910777179,
+          0.011601512895931565
+        ],
+        "n_docs": 20,
+        "sigma_d": 0.023229069785499174,
+        "n_required": 11
+      },
+      "field_contrast": {
+        "name": "(32) - (1)",
+        "value": 0.006237562348926204,
+        "ci": [
+          0.005236087451585167,
+          0.007252520831796655
+        ],
+        "n_docs": 20,
+        "sigma_d": 0.0023601618220865823,
+        "n_required": 1
+      },
+      "ece": {
+        "value": 0.008577229839055565,
+        "ci": [
+          0.006967733294906623,
+          0.015736174232283306
+        ]
+      }
+    }
+  },
+  "decision": {
+    "decision": "full_plan",
+    "meaning": "N <= 1,000: run the full plan",
+    "n_required_max": 20,
+    "binding": {
+      "arm": "decoder",
+      "endpoint": "delta_contrast"
+    },
+    "max_docs": 1000,
+    "delta_min": 0.02,
+    "floor": 0.0,
+    "delta_min_above_2x_floor": true
+  },
+  "note": "recorded for the team; acting on it is a team decision",
+  "provenance": {
+    "git_commit": "99a1439c8b55dc4f5a9fd557b38698ed2eec0361",
+    "git_dirty": false,
+    "python": "3.12.12",
+    "platform": "Linux-7.2.6-arch2-1-x86_64-with-glibc2.44",
+    "host": "arch",
+    "slurm_job_id": null,
+    "packages": {
+      "numpy": "2.5.3",
+      "scipy": "1.18.1",
+      "pandas": "3.0.5",
+      "pyarrow": "25.0.1",
+      "torch": "2.14.0+cpu",
+      "transformers": "5.17.0",
+      "matplotlib": "3.11.2"
+    }
+  },
+  "generated_at": "2026-09-29T01:15:09+00:00"
+}
