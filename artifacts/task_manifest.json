@@ -1,0 +1,53 @@
+{
+  "tasks": [
+    {
+      "task": "gsm8k",
+      "path": "openai/gsm8k",
+      "config": "main",
+      "split": "test",
+      "revision": "740312add88f781978c0658806c59bc2815b9866",
+      "n": 1319,
+      "file": "gsm8k_test.jsonl",
+      "sha256": "b183e93afd8839f1a591c3dc68c063f99d7c2cc816ae5416b5cc6c47efaa807e"
+    },
+    {
+      "task": "humaneval",
+      "path": "openai/openai_humaneval",
+      "config": null,
+      "split": "test",
+      "revision": "7dce6050a7d6d172f3cc5c32aa97f52fa1a2e544",
+      "n": 164,
+      "file": "humaneval_test.jsonl",
+      "sha256": "4aa17324879d79a2b3b199459f266b4d412d43bbfdd24e52b57d4c839dbcd105"
+    },
+    {
+      "task": "mbpp",
+      "path": "google-research-datasets/mbpp",
+      "config": "full",
+      "split": "test",
+      "revision": "4bb6404fdc6cacfda99d4ac4205087b89d32030c",
+      "n": 500,
+      "file": "mbpp_test.jsonl",
+      "sha256": "5ae0bb957231ad7887ed69b6cb6094220dc25214c63a84f0ec21ed18122037dc"
+    }
+  ],
+  "provenance": {
+    "git_commit": "11657a667b3cfafceebef7d1f1380f181321fc45",
+    "git_dirty": true,
+    "python": "3.12.11",
+    "platform": "Linux-6.17.0-41-generic-x86_64-with-glibc2.42",
+    "host": "andaburger",
+    "slurm_job_id": null,
+    "packages": {
+      "numpy": "2.5.3",
+      "scipy": "1.18.1",
+      "pandas": "3.0.6",
+      "pyarrow": "25.0.1",
+      "torch": "2.14.0+cpu",
+      "transformers": "4.46.3",
+      "bitsandbytes": "0.50.2",
+      "accelerate": "1.15.0",
+      "matplotlib": "3.11.2"
+    }
+  }
+}

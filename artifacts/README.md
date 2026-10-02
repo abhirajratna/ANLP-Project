@@ -11,7 +11,10 @@ lives on Ada — see the inventory at the bottom.
 | `stage0_gate_decoder.json` | Stage 0 written gate, decoder-induced masks → **PROCEED** | `scripts/run_stage0.py` |
 | `exclusion_manifest.json` | the 2,000 content hashes removed from the 110M training stream | `scripts/prepare_corpus.py` |
 | `train_summary.json` | provenance of the trained 110M model (76,293 steps, 10.0B tokens) | `scripts/train_110m.py` |
-| `pilot/*.parquet` | position-level traces, LLaDA-8B 4-bit, 20 documents | `scripts/collect_traces.py` |
+| `pilot/*.parquet` | position-level traces, LLaDA-8B 4-bit, 20 documents (schema v1; a feasibility run, not the T2 pilot) | `scripts/collect_traces.py` |
+| `task_manifest.json` | GSM8K / MBPP / HumanEval test splits: hub revision, record count and sha256 of the JSONL | `scripts/prepare_tasks.py` |
+| `t0/` | T0: the four-scenario table (`table.json`, `table.tex`), Figure 1 (`figure1.pdf/png`), the true field term against m at five noise levels (`field_growth.png`), and `macros.tex` (prefix `TZero`); 200 simulated documents, 10,000 resamples, fit half -> report half | `scripts/t0_scenarios.py` |
+| `trace_size_estimate.json` | rows, forward passes and parquet bytes per document for schema v2, and the disk the plan needs per variant (top-20, top-10, top-20 with fp16 probabilities) | `scripts/estimate_trace_size.py` |
 
 The gate files are committed on purpose: the proposal pre-registers the Stage 0
 decision, so it has to be recorded before the full study rather than
@@ -33,6 +36,9 @@ them over ssh — see `slurm/CLUSTER.md`.
 The corpus is regenerable from a fixed seed (`CorpusSpec(seed=20260917)`), but
 only while the upstream FineWeb-Edu stream order is stable — treat
 `exclusion_manifest.json` here as the authoritative record of what was held out.
+Regenerated off-cluster on 2026-09-28 with `scripts/prepare_corpus.py --out-dir
+runs/corpus`, its manifest was byte-identical to the committed one (same 2,000 ids
+and content hashes), so the stream order had not changed.
 
 ## Provenance
 

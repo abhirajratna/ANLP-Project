@@ -2,9 +2,10 @@
 
 This generator exists to test the v2 estimators end to end: it emits exactly the
 columns ``c3.traces.collect`` writes, so the real-data pipeline
-(``scripts/analyze_traces.py``) runs on it unchanged.  It is a test fixture, not
-the T0 simulation of record -- the plan's Figure 1 and four-scenario table come
-from ``scripts/sim_field.py``.
+(``scripts/analyze_traces.py``) runs on it unchanged.  It is also the T0
+simulation of record: ``scripts/t0_scenarios.py`` builds the plan's four-scenario
+table and Figure 1 from it, and ``c3.sim.truth`` gives its exact pi(l, s) and
+pi(l).  (The plan cites a ``sim_field.py``, which is not in this repository.)
 
 Each masked position has a true log-odds ell* and correctness a ~ Bernoulli(
 sigma(ell*)); the model reports ell = ell* + noise.  The scenarios switch on the
@@ -42,7 +43,11 @@ def simulate_positions(scenario: str = "context", n_docs: int = 200, states_per_
                        sd: float = 1.5, sigma: float = 1.0, difficulty_shift: float = 1.0,
                        difficulty_noise: float = 0.6, misread_prob: float = 0.3,
                        misread_frac: float = 0.25, misread_shift: float = 2.0):
-    """Return a pandas DataFrame in the trace schema, plus the true pi(l, s) column.
+    """Return a pandas DataFrame in the trace schema, plus two columns of truth.
+
+    ``p_true`` is sigma(ell*), the position's true probability of being right, and
+    ``difficulty`` is the state's latent d_s (it moves the field only in
+    'context'), from which ``c3.sim.truth`` computes the exact pi(l, s).
 
     Random numbers are keyed by (seed, doc, state) and not by scenario, so the
     scenarios share their draws (common random numbers) and differ only by the
@@ -54,7 +59,8 @@ def simulate_positions(scenario: str = "context", n_docs: int = 200, states_per_
         raise ValueError(f"unknown scenario {scenario!r}; known: {SCENARIOS}")
 
     cols = {k: [] for k in ("doc_id", "state_id", "position", "ell", "conf", "agree",
-                            "mask_kind", "mask_rate", "n_masked", "step", "doc_len", "p_true")}
+                            "mask_kind", "mask_rate", "n_masked", "step", "doc_len", "p_true",
+                            "difficulty")}
     doc_len = int(round(n_positions / min(_RATES)))
     for d in range(n_docs):
         for s in range(states_per_doc):
@@ -93,6 +99,7 @@ def simulate_positions(scenario: str = "context", n_docs: int = 200, states_per_
             cols["step"].append(np.zeros(n_positions, np.int64))
             cols["doc_len"].append(np.full(n_positions, doc_len, np.int64))
             cols["p_true"].append(p_true)
+            cols["difficulty"].append(np.full(n_positions, d_s))
 
     df = pd.DataFrame({k: np.concatenate(v) for k, v in cols.items()})
     df["model"] = f"sim:{scenario}"
