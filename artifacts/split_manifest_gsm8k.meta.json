@@ -1,0 +1,31 @@
+{
+  "task": "gsm8k",
+  "seed": 20260917,
+  "n": 1319,
+  "n_fit": 660,
+  "n_report": 659,
+  "revision": "740312add88f781978c0658806c59bc2815b9866",
+  "records": "runs/corpus/tasks/gsm8k_test.jsonl",
+  "records_sha256": "b183e93afd8839f1a591c3dc68c063f99d7c2cc816ae5416b5cc6c47efaa807e",
+  "split_function": "c3.data.fineweb.document_split",
+  "halves": "0 = fit, 1 = report",
+  "provenance": {
+    "git_commit": "0f8abc7cf92ffff99bdf9fe31be25e737380eb31",
+    "git_dirty": true,
+    "python": "3.12.11",
+    "platform": "Linux-6.17.0-41-generic-x86_64-with-glibc2.42",
+    "host": "andaburger",
+    "slurm_job_id": null,
+    "packages": {
+      "numpy": "2.5.3",
+      "scipy": "1.18.1",
+      "pandas": "3.0.6",
+      "pyarrow": "25.0.1",
+      "torch": "2.14.0+cpu",
+      "transformers": "4.46.3",
+      "bitsandbytes": "0.50.2",
+      "accelerate": "1.15.0",
+      "matplotlib": "3.11.2"
+    }
+  }
+}

@@ -47,7 +47,7 @@ from c3.metrics import ece_equal_mass, smooth_ece
 from c3.power import required_documents_sd
 from c3.provenance import collect as provenance, sha256_file
 from c3.regression import fit_and_report
-from c3.stats import declare, doc_boot_counts, percentile_ci
+from c3.stats import boot_pvalue, declare, doc_boot_counts, percentile_ci
 
 _WORDS = {1: "One", 2: "Two", 4: "Four", 8: "Eight", 16: "Sixteen", 32: "ThirtyTwo",
           64: "SixtyFour", 128: "OneTwentyEight", 256: "TwoFiftySix"}
@@ -115,6 +115,8 @@ def regression_block(pools, report_docs, fit_docs, split, n_knots, n_boot, seed,
                                      fit_docs=fit_docs if cross else None,
                                      max_rank=RETAIN, ridge_beta=ridge_beta)
                 out[key] = {name: {"value": e.value, "ci": [e.ci_low, e.ci_high], "se": e.se,
+                                   "p_boot": (boot_pvalue(e.boot) if e.boot is not None
+                                              and e.boot.size else None),
                                    "n_failed_draws": int(n_boot - (e.boot.size if e.boot is not None else 0)),
                                    "point_converged": e.converged, "point_iters": e.n_iter}
                             for name, e in est.items()}
@@ -160,6 +162,7 @@ def analyze_kind(df_k, kind, codes, counts, args, fit_info):
     sigma_d = float(np.std(per_doc, ddof=1)) if per_doc.size > 1 else float("nan")
     slope, slope_draws = gap_slope_log2(delta)
     res["contrast"] = {"name": f"Delta({hi}) - Delta({lo})", "value": c_point, "ci": list(c_ci),
+                       "p_boot": boot_pvalue(c_draws),
                        "declared": declare(c_point, c_ci, args.floor), "floor": args.floor,
                        "slope_log2m": slope, "slope_ci": list(percentile_ci(slope_draws))}
     res["power_provisional"] = {
@@ -185,7 +188,8 @@ def analyze_kind(df_k, kind, codes, counts, args, fit_info):
     f_per_doc = dec.field.per_doc_contrast(hi, lo)
     sigma_f = float(np.std(f_per_doc, ddof=1)) if f_per_doc.size > 1 else float("nan")
     res["field_contrast"] = {"name": f"field({hi}) - field({lo})", "value": f_point,
-                             "ci": list(f_ci), "declared": declare(f_point, f_ci, args.floor),
+                             "ci": list(f_ci), "p_boot": boot_pvalue(f_draws),
+                             "declared": declare(f_point, f_ci, args.floor),
                              "sigma_d": sigma_f,
                              "n_required_provisional": (required_documents_sd(sigma_f, args.delta_min)
                                                         if np.isfinite(sigma_f) else None)}

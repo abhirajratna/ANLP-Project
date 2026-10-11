@@ -105,3 +105,37 @@ def test_frozen_config_reads_the_code(tmp_path):
 @pytest.mark.parametrize("path", ["prereg/analysis_commands.sh"])
 def test_prereg_script_parses(path):
     subprocess.run(["bash", "-n", str(ROOT / path)], check=True)
+
+
+def test_summarize_c1_applies_holm(tmp_path):
+    for name, sc in (("Ctx", "context"), ("Cal", "calibrated")):
+        _run("scripts/analyze_traces.py", "--traces", f"sim:{sc},n_docs=16", "--split", "kfold-doc",
+             "--n-boot", "100", "--eq-boot", "10", "--no-figures", "--no-smooth-ece",
+             "--out", tmp_path / name)
+    _run("scripts/summarize_c1.py", "--results", f"Ctx={tmp_path / 'Ctx'}",
+         f"Cal={tmp_path / 'Cal'}", "--out", tmp_path / "sum")
+    s = json.loads((tmp_path / "sum" / "c1_summary.json").read_text())
+    assert len(s["rows"]) == 2
+    for r in s["rows"]:
+        assert r["contrast"]["holm_family"] == "E1" and 0 <= r["contrast"]["p_holm"] <= 1
+        assert r["contrast"]["p_holm"] >= r["contrast"]["p_boot"]
+        assert r["gamma"]["gamma_2"] is None or "p_holm" in r["gamma"]["gamma_2"]
+    assert (tmp_path / "sum" / "table.tex").exists()
+
+
+def test_frozen_config_records_the_new_choices(tmp_path):
+    out = tmp_path / "frozen.json"
+    _run("scripts/freeze_prereg.py", "--out", out)
+    cfg = json.loads(out.read_text())
+    assert cfg["contamination"]["threshold"] == c3.CONTAM_THRESHOLD == 32
+    assert cfg["holm_families"]["primary_arms"] == ["uniform", "decoder:topk_conf:k4"]
+    assert all(v for v in cfg["split"]["manifests"].values())          # every manifest hashed
+    assert cfg["floors"]["llada"]["floor_delta"] == 0.0
+    assert cfg["analysis_commands"]["sha256"] and cfg["deviations"]["sha256"]
+    assert cfg["e3"]["rate_bin_centres"][0] == 0.1 and cfg["t8"]["position"]["covariates"]
+
+
+def test_the_frozen_commands_refuse_to_read_the_report_half_by_default():
+    r = subprocess.run(["bash", str(ROOT / "prereg/analysis_commands.sh")], capture_output=True,
+                       text=True, cwd=ROOT, env={"PATH": "/usr/bin:/bin"})
+    assert r.returncode != 0 and "refusing" in r.stderr

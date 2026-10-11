@@ -6,6 +6,7 @@
 #   bash slurm/submit_c1.sh main             # (a)-(d), in priority order
 #   bash slurm/submit_c1.sh timesplit        # (e), needs corpus/timesplit_docs.jsonl
 #   bash slurm/submit_c1.sh precision        # (f) T8: LLaDA-8B-Base 4-bit, 200 documents
+#   bash slurm/submit_c1.sh floor dream-7b-base   # the T1 floor for Dream (LLaDA's is in t2_pilot)
 #   bash slurm/submit_c1.sh merge <run> [gpus-per-task]
 #   DRY_RUN=1 bash slurm/submit_c1.sh main   # print the sbatch lines, submit nothing
 #
@@ -102,6 +103,20 @@ precision)
     echo "a6c4ddcfdff39f58ad24f2eadb3df6e0aba2e0b36af7f54370611d5c41a35590  $D" | sha256sum -c --quiet \
         || { echo "[c1] FATAL: precision_docs.jsonl hash mismatch"; exit 1; }
     trace c1t8-llada-base-4bit 1 gpu:1 "C3_PRECISION=4bit,C3_MODEL=llada-8b-base,C3_DOCS=$D,C3_EXTRA_ARGS=$EXTRA"
+    ;;
+floor)
+    # The non-determinism floor (plan v2 T1 step 4) for a model other than LLaDA-8B-Base,
+    # exactly as the T2 pilot measured it: t2-pilot design, the first 20 reserve
+    # documents, 5 repeats; then scripts/measure_floor.py on the five files.
+    MODEL="${2:?usage: submit_c1.sh floor <model>}"
+    D="$PERSIST/corpus/reserve_docs.jsonl"
+    need "$D"
+    echo "1ae28fab52f09a06380c0049b286d1acb5173b3282fa96cb3fefd9a74ce39628  $D" | sha256sum -c --quiet \
+        || { echo "[c1] FATAL: reserve_docs.jsonl hash mismatch"; exit 1; }
+    RUN="t2floor-$MODEL-fp16"
+    submit "$RUN" --gres=gpu:2 --job-name="c3-$RUN" \
+        --export="ALL,C3_RUN=$RUN,C3_PRESET=t2-pilot,C3_MODEL=$MODEL,C3_LIMIT=20,C3_DOCS=$D,C3_REPEAT=5,$FP16" \
+        slurm/collect_traces.sbatch
     ;;
 merge)
     RUN="${2:?usage: submit_c1.sh merge <run> [gpus-per-task]}"
