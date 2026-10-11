@@ -12,6 +12,7 @@ def test_clean_text_turns_section_markers_into_headings():
 def test_cutoff_is_after_both_weight_releases():
     assert ts.CUTOFF.startswith("2025-04-03")      # Dream weights; LLaDA's were 2025-02-20
     assert ts.TIMESPLIT_ID_OFFSET >= 2000          # disjoint from the main corpus ids
+    assert ts.TIMESPLIT_ID_OFFSET >= 100_500       # and from the reserve ids (100000..100499)
 
 
 def _fake_wiki(monkeypatch, pages, deleted=()):

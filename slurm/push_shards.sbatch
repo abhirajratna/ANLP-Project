@@ -40,6 +40,23 @@ if missing:
     sys.exit(f"[push] FATAL: index.json lists files missing on this node: {missing[:5]}")
 PY
 
+# C3_CHECK_MANIFEST: exclusion manifests that did not exist when the shards were
+# built (the time-split set); every shard document is checked against them by
+# first-256-token hash (scripts/check_shard_exclusion.py).  A match is reported in
+# the log and the JSON, and the push still happens: the result is evidence, and a
+# rebuild is the user's decision.
+if [ -n "${C3_CHECK_MANIFEST:-}" ]; then
+    if ! type module >/dev/null 2>&1; then
+        for f in /opt/Modules/*/init/bash; do [ -r "$f" ] && . "$f" && break; done
+    fi
+    module load u22/python/3.12.4
+    source slurm/activate_env.sh
+    read -r -a CHECK <<< "$C3_CHECK_MANIFEST"
+    "$C3_PY" scripts/check_shard_exclusion.py --index "$LOCAL/index.json" --manifest "${CHECK[@]}" \
+        --out "artifacts/shard_check_$(basename "${CHECK[0]}" .json).json" \
+        || echo "[push] WARNING: shard documents match ${CHECK[*]}; see the JSON above"
+fi
+
 echo "[push] hashing $(find "$LOCAL" -maxdepth 1 -type f ! -name SHA256SUMS | wc -l) files on $NODE"
 ( cd "$LOCAL" && find . -maxdepth 1 -type f ! -name SHA256SUMS -printf '%f\n' | sort \
     | xargs -P 4 -n 8 sha256sum | sort -k2 > SHA256SUMS )

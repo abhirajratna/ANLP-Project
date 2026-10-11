@@ -48,8 +48,11 @@ import numpy as np
 CUTOFF = "2025-04-03T23:59:59Z"
 """End of the later release day (Dream-7B weights, 2025-04-03)."""
 
-TIMESPLIT_ID_OFFSET = 100_000
-"""Time-split doc_ids are OFFSET + i, disjoint from the main corpus's 0..1999."""
+TIMESPLIT_ID_OFFSET = 200_000
+"""Time-split doc_ids are OFFSET + i, disjoint from the main corpus (0..1999) and the
+reserve set (100000..100499, scripts/sample_reserve_docs.py).  The committed set was
+built with 100_000 -- colliding with the reserve ids -- and relabelled to 200000 + i on
+2026-10-12 (scripts/relabel_timesplit.py); text, order and every other field unchanged."""
 
 API = "https://en.wikipedia.org/w/api.php"
 # Wikimedia's User-Agent policy asks for a way to reach the operator; the project
