@@ -136,7 +136,8 @@ def _sample_t(B: int, device, t_eps: float, antithetic: bool, generator=None) ->
 
 def mdlm_loss(model: nn.Module, x0: torch.Tensor, mask_token_id: int,
               valid: torch.Tensor | None = None, t_eps: float = 1e-3,
-              antithetic: bool = True) -> tuple[torch.Tensor, dict]:
+              antithetic: bool = True, keep: torch.Tensor | None = None
+              ) -> tuple[torch.Tensor, dict]:
     """Continuous-time masked-diffusion NELBO with the absorbing schedule.
 
     ``t ~ U(eps, 1)`` per sequence, each real token masked independently with
@@ -144,21 +145,26 @@ def mdlm_loss(model: nn.Module, x0: torch.Tensor, mask_token_id: int,
     ``1/t`` -- the linear-schedule weight, which is what makes the objective an
     ELBO on likelihood rather than plain masked-LM training.  The result is per
     real (non-pad) token.
+
+    ``keep`` (B, L) marks positions that are never masked -- context the model is
+    always given at evaluation, such as the T9 probe's rho marker.  They still
+    count as real tokens, with zero loss, as every unmasked token does.
     """
     B, L = x0.shape
     if valid is None:
         valid = torch.ones_like(x0, dtype=torch.bool)
+    maskable = valid if keep is None else valid & ~keep
     t = _sample_t(B, x0.device, t_eps, antithetic)
-    mask = (torch.rand(B, L, device=x0.device) < t) & valid
+    mask = (torch.rand(B, L, device=x0.device) < t) & maskable
     # A sequence with nothing masked contributes no gradient; force one real
     # position.  (Training heuristic only: the evaluation NELBO does not do this.)
-    empty = ~mask.any(dim=1) & valid.any(dim=1)
+    empty = ~mask.any(dim=1) & maskable.any(dim=1)
     if empty.any():
         rows = torch.nonzero(empty, as_tuple=False)[:, 0]
-        n_real = valid[rows].sum(dim=1)
+        n_real = maskable[rows].sum(dim=1)
         pick = (torch.rand(rows.numel(), device=x0.device) * n_real).long()
-        # the pick-th real position of each empty row
-        cum = valid[rows].long().cumsum(dim=1) - 1
+        # the pick-th maskable position of each empty row
+        cum = maskable[rows].long().cumsum(dim=1) - 1
         cols = (cum == pick[:, None]).long().argmax(dim=1)
         mask[rows, cols] = True
 

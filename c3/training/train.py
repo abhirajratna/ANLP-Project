@@ -40,6 +40,10 @@ from .model import (MaskedDiffusionLM, ModelConfig, ar_loss, ar_nll_eval, mdlm_l
 # resuming it without making it a different run.
 _RESUMABLE_FIELDS = {"out_dir", "log_every", "ckpt_every", "wandb_project", "wandb_entity", "eval_every",
                      "eval_batches", "index_path"}
+# Fields added after runs were already checkpointed: hashed only when they differ
+# from these defaults, so adding one does not change -- and orphan -- the hash of a
+# run in progress (train110m-v3 was running when visible_prefix was added).
+_LATER_FIELDS = {"visible_prefix": 0}
 
 
 @dataclass
@@ -64,6 +68,9 @@ class TrainConfig:
     objective: str = "mdlm"           # "mdlm" | "ar" (the autoregressive reference)
     seed: int = 20260917
     init_from: str | None = None      # weights-only start (fine-tuning, T9)
+    visible_prefix: int = 0           # first N tokens of every window are never masked
+                                      # (T9 fine-tuning: the probe's rho marker, always
+                                      # observed at evaluation)
     run_name: str | None = None       # W&B id; default: out_dir name + config hash
     wandb_project: str | None = None
     # The team (wandb "entity") the run belongs to. Left unset, runs land in the
@@ -74,7 +81,8 @@ class TrainConfig:
 
 def config_hash(cfg: TrainConfig, model_cfg: ModelConfig, index_path: str | None = None) -> str:
     """Hash of everything that defines the run (not where it is written)."""
-    d = {k: v for k, v in asdict(cfg).items() if k not in _RESUMABLE_FIELDS}
+    d = {k: v for k, v in asdict(cfg).items() if k not in _RESUMABLE_FIELDS
+         and not (k in _LATER_FIELDS and v == _LATER_FIELDS[k])}
     d["model"] = asdict(model_cfg)
     if index_path and Path(index_path).exists():
         idx = json.loads(Path(index_path).read_text())
@@ -296,6 +304,10 @@ def train(cfg: TrainConfig, model_cfg: ModelConfig | None = None) -> Path:
                                   "config_hash": chash}, **state)
         print(f"[train] checkpoint at step {step}", flush=True)
 
+    keep = None
+    if cfg.visible_prefix:
+        keep = torch.zeros(cfg.batch_size, cfg.seq_len, dtype=torch.bool, device=device)
+        keep[:, :cfg.visible_prefix] = True
     model.train()
     t0 = time.time()
     tokens_at_start = tokens_seen   # throughput must exclude tokens from a prior job
@@ -317,7 +329,7 @@ def train(cfg: TrainConfig, model_cfg: ModelConfig | None = None) -> Path:
                     if cfg.objective == "ar":
                         loss, stats = ar_loss(model, x, v)
                     else:
-                        loss, stats = mdlm_loss(model, x, model_cfg.mask_token_id, v)
+                        loss, stats = mdlm_loss(model, x, model_cfg.mask_token_id, v, keep=keep)
                 scaler.scale(loss / cfg.grad_accum).backward()
             agg_loss += float(loss.detach()) / cfg.grad_accum
             real += stats["real_tokens"]

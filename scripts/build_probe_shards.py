@@ -6,9 +6,10 @@
 One document per instance (GPT-2 tokens, at most 256), in the trainer's
 document-aligned format (``c3.training.data``), so fine-tuning reuses
 scripts/train_110m.py with ``--init-from`` and ``--window-mode prefix``: every
-training window is one whole instance.  The 200k training instances are
-regenerated from the spec and checked against the text digest in
-artifacts/probe/manifest.json before anything is written.
+training window is one whole instance.  ``index.json`` records how many leading
+tokens the rho marker takes (``visible_prefix_tokens``), for ``--visible-prefix``.
+The 200k training instances are regenerated from the spec and checked against the
+text digest in artifacts/probe/manifest.json before anything is written.
 """
 from __future__ import annotations
 
@@ -27,15 +28,24 @@ from c3.probe.instances import ProbeSpec, serialize, train_instances
 from c3.provenance import sha256_file
 from c3.training.data import _ShardWriter
 
+MARKER_CHARS = len('{"_rho":"0.25')
 
-def write(spec, label: str, n: int, tok, writer, batch: int = 4096) -> str:
+
+def write(spec, label: str, n: int, tok, writer, prefix: set, batch: int = 4096) -> str:
+    """Tokenise and shard; ``prefix`` collects how many tokens the rho marker takes."""
     h = hashlib.sha256()
     texts = []
 
     def flush():
-        for ids in tok(texts, add_special_tokens=False)["input_ids"]:
+        enc = tok(texts, add_special_tokens=False, return_offsets_mapping=True)
+        for ids, offs in zip(enc["input_ids"], enc["offset_mapping"]):
             if len(ids) > 256:
                 raise ValueError(f"an instance has {len(ids)} > 256 tokens")
+            # tokens wholly inside '{"_rho":"0.25' (13 characters); the next must start after it
+            k = sum(1 for a, b in offs if b <= MARKER_CHARS)
+            if offs[k][0] < MARKER_CHARS:
+                raise ValueError("a token straddles the end of the rho marker")
+            prefix.add(k)
             writer.add(np.asarray(ids, dtype=np.uint16))
         texts.clear()
 
@@ -66,8 +76,11 @@ def main() -> int:
     out.mkdir(parents=True, exist_ok=True)
     train_w = _ShardWriter(out, "train", 50_000_000)
     val_w = _ShardWriter(out, "val", 5_000_000)
-    train_sha = write(spec, "probe-train", N_TRAIN, tok, train_w)
-    val_sha = write(spec, "probe-val", N_VAL, tok, val_w)
+    prefix: set = set()
+    train_sha = write(spec, "probe-train", N_TRAIN, tok, train_w, prefix)
+    val_sha = write(spec, "probe-val", N_VAL, tok, val_w, prefix)
+    if len(prefix) != 1:
+        raise SystemExit(f"the rho marker takes {sorted(prefix)} tokens; expected one length")
     for name, got in (("train", train_sha), ("val", val_sha)):
         if got != manifest[name]["text_sha256"]:
             raise SystemExit(f"{name} texts do not match the manifest ({got} vs "
@@ -76,6 +89,7 @@ def main() -> int:
              "total_tokens": train_w.total, "documents": train_w.n_docs,
              "val_tokens": val_w.total, "val_documents": val_w.n_docs, "val_fraction": None,
              "calibration_documents_skipped": 0, "exclusion": {},
+             "visible_prefix_tokens": prefix.pop(),
              "spec_sha256": sha256_file(a.spec), "train_text_sha256": train_sha,
              "val_text_sha256": val_sha, "shards": train_w.shards, "val_shards": val_w.shards}
     (out / "index.json").write_text(json.dumps(index, indent=2))

@@ -1,0 +1,66 @@
+{
+ "tag": "ft110m-v1-dryrun",
+ "checkpoint_sha256": "884551f7c455f888eb09cb7b16384dea284598fd171406469a7bc50df6b7954f",
+ "spec_sha256": "e6d3326acfc913d9d2b9844cbe12d5dc5b6c9f0bb31ca5e240eee6040c050727",
+ "n_instances": 400,
+ "results": {
+  "rho=0/marker=own/follower_kl": {
+   "mean": 0.2147202470955771,
+   "n": 1181
+  },
+  "rho=0/marker=own/leader_marginal_kl": {
+   "mean": 0.027169969287347533,
+   "n": 1181
+  },
+  "rho=0/marker=own/q_copy": {
+   "mean": 0.41613788869336366,
+   "n": 1181
+  },
+  "rho=0/marker=swapped/follower_kl": {
+   "mean": 0.22173237618842945,
+   "n": 1181
+  },
+  "rho=0/marker=swapped/q_copy": {
+   "mean": 0.41827272007357746,
+   "n": 1181
+  },
+  "rho=1/marker=own/follower_kl": {
+   "mean": 1.0632426058830162,
+   "n": 1181
+  },
+  "rho=1/marker=own/leader_marginal_kl": {
+   "mean": 0.027180792647259817,
+   "n": 1181
+  },
+  "rho=1/marker=own/q_copy": {
+   "mean": 0.4120887450689281,
+   "n": 1181
+  },
+  "rho=1/marker=swapped/follower_kl": {
+   "mean": 1.0681066578076672,
+   "n": 1181
+  },
+  "rho=1/marker=swapped/q_copy": {
+   "mean": 0.40973180448862584,
+   "n": 1181
+  }
+ },
+ "marker_effect_on_q_copy_at_rho1": 0.0023569405803022803,
+ "provenance": {
+  "git_commit": "e85b52249f0338b0e3dc416e1d3b6a89a383793f",
+  "git_dirty": false,
+  "python": "3.12.12",
+  "platform": "Linux-7.2.8-arch1-2-x86_64-with-glibc2.44",
+  "host": "arch",
+  "slurm_job_id": null,
+  "packages": {
+   "numpy": "2.5.4",
+   "scipy": "1.18.1",
+   "pandas": "3.0.6",
+   "pyarrow": "26.0.0",
+   "torch": "2.14.1+cpu",
+   "transformers": "4.46.3",
+   "matplotlib": "3.11.2"
+  }
+ }
+}

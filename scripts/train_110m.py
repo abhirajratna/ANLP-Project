@@ -34,6 +34,8 @@ def main() -> int:
     ap.add_argument("--objective", choices=["mdlm", "ar"], default="mdlm",
                     help="mdlm: the diffusion model; ar: the same-size autoregressive reference")
     ap.add_argument("--init-from", default=None, help="weights-only start, for fine-tuning (T9)")
+    ap.add_argument("--visible-prefix", type=int, default=0,
+                    help="never mask the first N tokens of a window (T9: the rho marker)")
     ap.add_argument("--run-name", default=None)
     ap.add_argument("--seed", type=int, default=20260917)
     ap.add_argument("--wandb-project", default=None)
@@ -61,7 +63,8 @@ def main() -> int:
                       ckpt_every=a.ckpt_every, eval_every=a.eval_every,
                       eval_batches=a.eval_batches, ema_decay=a.ema_decay,
                       window_mode=a.window_mode, objective=a.objective,
-                      init_from=a.init_from, run_name=a.run_name,
+                      init_from=a.init_from, visible_prefix=a.visible_prefix,
+                      run_name=a.run_name,
                       seed=a.seed, wandb_project=a.wandb_project,
                       wandb_entity=a.wandb_entity)
     train(cfg, mcfg)

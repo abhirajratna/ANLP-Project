@@ -47,17 +47,24 @@ SHARDS="$C3_SCRATCH/probe-shards"
 rm -rf "$SHARDS"
 "$C3_PY" scripts/build_probe_shards.py --out-dir "$SHARDS"
 
+# C3_FT_VISIBLE=1: never mask the rho marker during fine-tuning (it is always observed
+# at evaluation); its token count comes from the shard index.
+VISIBLE=0
+if [ "${C3_FT_VISIBLE:-0}" = 1 ]; then
+    VISIBLE=$("$C3_PY" -c "import json,sys; print(json.load(open(sys.argv[1]))['visible_prefix_tokens'])" "$SHARDS/index.json")
+fi
+
 BASE="$C3_SCRATCH/probe-base-$RUN.pt"
 rsync -a --partial-dir=.rsync-partial -e "ssh $SSH_OPTS" "$USER@$C3_LOGIN_HOST:$BASE_REMOTE" "$BASE" \
     || { echo "[ft] FATAL: could not pull $BASE_REMOTE"; exit 1; }
 OUT="$C3_SCRATCH/$RUN"
 rm -rf "$OUT"                       # a fresh fine-tune each time; it takes about an hour
-echo "[ft] $RUN on $(hostname -s), $NGPU GPUs, base $BASE_REMOTE, commit $C3_GIT_COMMIT"
+echo "[ft] $RUN on $(hostname -s), $NGPU GPUs, base $BASE_REMOTE, visible prefix $VISIBLE, commit $C3_GIT_COMMIT"
 
 srun --kill-on-bad-exit=1 "$(dirname "$C3_PY")/torchrun" --nproc_per_node="$NGPU" --nnodes=1 \
     scripts/train_110m.py \
       --index "$SHARDS/index.json" --out-dir "$OUT" --init-from "$BASE" \
-      --window-mode prefix --max-tokens "${C3_FT_TOKENS:-100000000}" \
+      --window-mode prefix --visible-prefix "$VISIBLE" --max-tokens "${C3_FT_TOKENS:-100000000}" \
       --batch-size "${C3_BATCH:-16}" --grad-accum "${C3_ACCUM:-2}" \
       --lr "${C3_FT_LR:-1e-4}" --warmup-steps "${C3_FT_WARMUP:-300}" --ema-decay 0.999 \
       --eval-every 500 --ckpt-every 1000 --eval-batches 16 --n-gpus "$NGPU" \
@@ -75,5 +82,6 @@ echo "$(date +%F_%T) ftprobe=${SLURM_JOB_ID:-?} $RUN from $BASE_REMOTE -> $DEST"
 if [ "${C3_FT_GRID:-1}" = 1 ]; then
     "$C3_PY" scripts/run_probe.py --model local-110m --model-path "$OUT/final.pt" \
         --tag "$RUN" --out-dir artifacts/probe/results ${C3_PROBE_ARGS:-}
+    "$C3_PY" scripts/probe_rho_check.py --model-path "$OUT/final.pt" --tag "$RUN"
 fi
 echo "[ft] done -- commit artifacts/probe/results/*_$RUN.*"
