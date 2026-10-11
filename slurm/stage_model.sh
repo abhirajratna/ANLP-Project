@@ -16,7 +16,7 @@ if [ -n "${C3_MODEL_REMOTE:-}" ]; then
     mkdir -p "$(dirname "$LOCAL_COPY")"
     echo "[stage] pulling $C3_MODEL_REMOTE"
     rsync -a --partial-dir=.rsync-partial -e "ssh $SSH_OPTS" \
-        "$USER@ada:$C3_MODEL_REMOTE" "$LOCAL_COPY" \
+        "$USER@$C3_LOGIN_HOST:$C3_MODEL_REMOTE" "$LOCAL_COPY" \
         || { echo "[stage] FATAL: model transfer failed"; exit 1; }
     MODEL_PATH_ARG=(--model-path "$LOCAL_COPY")
 elif [ -n "${C3_MODEL_PATH:-}" ]; then
@@ -31,11 +31,11 @@ else
     esac
     if [ -n "$WANT_VARIANT" ]; then
         SHARED_VARIANT=absent
-        if ssh $SSH_OPTS "$USER@ada" "test -r $SHARED_LLADA/config.json" 2>/dev/null; then
+        if ssh $SSH_OPTS "$USER@$C3_LOGIN_HOST" "test -r $SHARED_LLADA/config.json" 2>/dev/null; then
             # Not the chat template (Base ships the same one, and it mentions
             # <|eot_id|>): Instruct's vocabulary has <|eot_id|> as an added-token
             # entry, Base's does not (c3.traces.models.detect_variant).
-            if ssh $SSH_OPTS "$USER@ada" "grep -qE '\"content\": *\"<\\|eot_id\\|>\"' $SHARED_LLADA/tokenizer_config.json" 2>/dev/null; then
+            if ssh $SSH_OPTS "$USER@$C3_LOGIN_HOST" "grep -qE '\"content\": *\"<\\|eot_id\\|>\"' $SHARED_LLADA/tokenizer_config.json" 2>/dev/null; then
                 SHARED_VARIANT=instruct
             else
                 SHARED_VARIANT=base
@@ -47,7 +47,7 @@ else
             if [ ! -r "$LOCAL_LLADA/config.json" ]; then
                 mkdir -p "$LOCAL_LLADA"
                 rsync -a --inplace --partial -e "ssh $SSH_OPTS" \
-                    "$USER@ada:$SHARED_LLADA/" "$LOCAL_LLADA/" \
+                    "$USER@$C3_LOGIN_HOST:$SHARED_LLADA/" "$LOCAL_LLADA/" \
                     || { echo "[stage] FATAL: LLaDA transfer failed"; exit 1; }
             fi
             MODEL_PATH_ARG=(--model-path "$LOCAL_LLADA")

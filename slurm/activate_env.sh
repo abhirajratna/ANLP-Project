@@ -15,6 +15,8 @@ C3_PERSIST="${C3_PERSIST:-/home2/$USER/c3-runs}"
 C3_SCRATCH="${C3_SCRATCH:-/ssd_scratch/$USER}"
 C3_SCRATCH_ENV="$C3_SCRATCH/c3-env"
 C3_SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+# The login host /share1 is reached through (not hard-coded: `ada` closed to SSH).
+source "$(dirname "${BASH_SOURCE[0]}")/login_host.sh"
 
 mkdir -p "$C3_SCRATCH"
 
@@ -38,7 +40,7 @@ if ! _c3_env_ok; then
             # C3_ENV_BLOBS: where the tarball lives when C3_BLOBS points elsewhere.
             echo "[env] pulling env tarball from ${C3_ENV_BLOBS:-$C3_BLOBS}"
             rsync -a --inplace --partial -e "ssh $C3_SSH_OPTS" \
-                "$USER@ada:${C3_ENV_BLOBS:-$C3_BLOBS}/c3-env.tar.gz" "$TARBALL" \
+                "$USER@$C3_LOGIN_HOST:${C3_ENV_BLOBS:-$C3_BLOBS}/c3-env.tar.gz" "$TARBALL" \
                 || { echo "[env] FATAL: could not fetch env tarball"; exit 1; }
         fi
         # Unpack to a private directory and rename into place, so no other job
@@ -68,12 +70,12 @@ c3_stage_fineweb() {
     mkdir -p "$dst"
     exec 8>"$C3_SCRATCH/.c3-fineweb.lock"
     flock 8
-    rsync -a -e "ssh $C3_SSH_OPTS" "$USER@ada:$src/MANIFEST.json" "$dst/MANIFEST.json" \
+    rsync -a -e "ssh $C3_SSH_OPTS" "$USER@$C3_LOGIN_HOST:$src/MANIFEST.json" "$dst/MANIFEST.json" \
         || { echo "[fineweb] FATAL: no complete copy at $src; run slurm/fetch_fineweb.sbatch"; return 1; }
     "$C3_PY" "$repo/scripts/fetch_fineweb.py" names --dir "$dst" --first "$first" > "$dst/.staging-list"
     echo "[fineweb] staging $(wc -l < "$dst/.staging-list") file(s) from $src to $dst"
     rsync -a --partial-dir=.rsync-partial --files-from="$dst/.staging-list" -e "ssh $C3_SSH_OPTS" \
-        "$USER@ada:$src/" "$dst/" || { echo "[fineweb] FATAL: staging from $src failed"; return 1; }
+        "$USER@$C3_LOGIN_HOST:$src/" "$dst/" || { echo "[fineweb] FATAL: staging from $src failed"; return 1; }
     "$C3_PY" "$repo/scripts/fetch_fineweb.py" check --dir "$dst" --first "$first" || return 1
     flock -u 8
     exec 8>&-
