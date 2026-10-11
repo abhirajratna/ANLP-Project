@@ -173,17 +173,21 @@ def summarise(rows: list[dict], n_boot: int = N_BOOT, seed: int = 0) -> dict:
             draws = counts @ v / len(ids)
             lo, hi = percentile_ci(draws)
             return {"mean": float(v.mean()), "ci95": [lo, hi]}
+        # Instances have 6-16 fields, so totals weight schemas by size; the per-field
+        # versions weight instances equally and are what the crossover is read from.
         cells.append({"rule": rule, "k": k, "rho": rho, "n_instances": len(ids),
                       "A": est(A), "B": est(B), "A_plus_B": est(A + B), "A_minus_B": est(A - B),
                       "A_per_field": est(A / n), "B_per_field": est(B / n),
-                      "share_A": float(A.sum() / max(1e-300, (A + B).sum()))})
+                      "A_minus_B_per_field": est((A - B) / n),
+                      "share_A": float((A / n).sum() / max(1e-300, ((A + B) / n).sum()))})
     crossover = {}
     for rule in sorted({c["rule"] for c in cells}):
         for rho in sorted({c["rho"] for c in cells}):
             mine = sorted((c for c in cells if c["rule"] == rule and c["rho"] == rho),
                           key=lambda c: c["k"])
-            first = next((c["k"] for c in mine if c["A"]["mean"] > c["B"]["mean"]), None)
-            sure = next((c["k"] for c in mine if c["A_minus_B"]["ci95"][0] > 0), None)
+            first = next((c["k"] for c in mine
+                          if c["A_per_field"]["mean"] > c["B_per_field"]["mean"]), None)
+            sure = next((c["k"] for c in mine if c["A_minus_B_per_field"]["ci95"][0] > 0), None)
             crossover[f"{rule}/rho={rho}"] = {"first_k_A_exceeds_B": first,
                                               "first_k_A_exceeds_B_ci": sure}
     checked = [r for r in rows if np.isfinite(r["direct_kl"])]

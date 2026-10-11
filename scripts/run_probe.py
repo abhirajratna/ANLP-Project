@@ -49,7 +49,12 @@ def main() -> int:
     ap.add_argument("--batch-size", type=int, default=32)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--n-boot", type=int, default=N_BOOT)
+    ap.add_argument("--summarise-only", action="store_true",
+                    help="recompute the summary of an existing grid_<tag>.json from its "
+                         "steps_<tag>.parquet (no model is loaded)")
     a = ap.parse_args()
+    if a.summarise_only:
+        return resummarise(a)
 
     from c3.traces.models import build_model
     spec = ProbeSpec.load(a.spec)
@@ -86,6 +91,20 @@ def main() -> int:
         print(f"[probe]   crossover {key}: A > B first at k = {v['first_k_A_exceeds_B']} "
               f"(interval excludes 0 at k = {v['first_k_A_exceeds_B_ci']})")
     return 0 if not ident["max_abs_err_nats"] > 1e-6 else 1
+
+
+def resummarise(a) -> int:
+    import pandas as pd
+    out = Path(a.out_dir)
+    path = out / f"grid_{a.tag}.json"
+    record = json.loads(path.read_text())
+    rows = pd.read_parquet(out / f"steps_{a.tag}.parquet").to_dict("records")
+    summary = summarise(rows, n_boot=record["n_boot"], seed=record["seed"])
+    record.update(summary)
+    record.setdefault("resummarised", []).append(provenance())
+    path.write_text(json.dumps(record, indent=1))
+    print(f"[probe] {a.tag}: summary recomputed from {len(rows)} steps -> {path}")
+    return 0
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@
 Per result: ``crossover_<tag>.{pdf,png}``, small multiples (rows: selection rule,
 columns: rho) of (A) dependency and (B) estimation per field against k, with
 their 95% document-bootstrap bands -- the crossover is where the lines cross.
-Across results: ``crossover_map.{pdf,png}``, the share of (A) in (A)+(B) for
+Across results: ``<map-name>.{pdf,png}`` (default crossover_map), the share of (A) in (A)+(B) for
 every rho x k cell, one panel per result and rule, on a diverging scale whose
 gray midpoint (50%) is the crossover.
 """
@@ -73,8 +73,9 @@ def lines(res: dict, out: Path) -> None:
                 ax.plot(ks, m, color=COLOR[term], linewidth=1.5, solid_capstyle="round",
                         marker="o", markersize=4.5, markeredgecolor=SURFACE, markeredgewidth=1.2)
             first = res["crossover"].get(f"{rule}/rho={rho}", {}).get("first_k_A_exceeds_B")
-            ax.text(0.04, 0.95, f"A > B from k = {first}" if first else "B dominates",
-                    transform=ax.transAxes, va="top", fontsize=6.5, color=INK2)
+            # top right: (B) falls with k, so that corner is the emptiest
+            ax.text(0.96, 0.95, f"A > B from k = {first}" if first else "B dominates",
+                    transform=ax.transAxes, va="top", ha="right", fontsize=6.5, color=INK2)
             ax.set_xscale("log", base=2)
             ax.set_xticks(ks, [str(k) for k in ks])
             ax.minorticks_off()
@@ -97,7 +98,7 @@ def lines(res: dict, out: Path) -> None:
     plt.close(fig)
 
 
-def share_map(results: list[dict], out: Path) -> None:
+def share_map(results: list[dict], out: Path, name: str = "crossover_map") -> None:
     cmap = LinearSegmentedColormap.from_list("b_to_a", [COLOR["B"], NEUTRAL, COLOR["A"]])
     panels = [(res, rule) for res in results for rule in ("random", "confidence")
               if rule in res["rules"]]
@@ -129,7 +130,7 @@ def share_map(results: list[dict], out: Path) -> None:
     cb.outline.set_visible(False)
     cb.ax.tick_params(length=0)
     for ext in ("pdf", "png"):
-        fig.savefig(out / f"crossover_map.{ext}", dpi=200, bbox_inches="tight")
+        fig.savefig(out / f"{name}.{ext}", dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -138,13 +139,14 @@ def main() -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("results", nargs="+", help="grid_<tag>.json files")
     ap.add_argument("--out-dir", default="artifacts/probe/figures")
+    ap.add_argument("--map-name", default="crossover_map")
     a = ap.parse_args()
     out = Path(a.out_dir)
     out.mkdir(parents=True, exist_ok=True)
     results = [json.loads(Path(p).read_text()) for p in a.results]
     for res in results:
         lines(res, out)
-    share_map(results, out)
+    share_map(results, out, a.map_name)
     print(f"[plot] {len(results)} result(s) -> {out}")
     return 0
 
