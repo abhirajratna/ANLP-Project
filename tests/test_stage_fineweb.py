@@ -1,7 +1,8 @@
 """c3_stage_fineweb (slurm/stage_fineweb.sh): node copy, then /share1, then the Hub.
 
 The real bash function runs against stub commands: `rsync` is the system rsync
-with `user@ada:` paths mapped to a local directory standing in for /share1, and
+and `ssh` runs its command locally, with `user@<login host>:` paths mapped to a
+local directory standing in for /share1 (SHIM_SSH_DOWN=1: the gateway refuses), and
 the Hub is a local directory served through scripts/fetch_fineweb.py with
 `hf_hub_download` and the repo listing patched.  Everything else -- the
 `check` that decides whether the node copy is usable, the sha256 verification
@@ -49,16 +50,26 @@ sys.exit(ff.main())
 
 RSYNC_SHIM = r'''#!/bin/bash
 echo "rsync $*" >> "$SHIM_LOG"
+[ "${SHIM_SSH_DOWN:-0}" = 1 ] && exit 255
 args=(); skip=0
 for a in "$@"; do
     if [ "$skip" = 1 ]; then skip=0; continue; fi
     case "$a" in
         -e) skip=1; continue ;;
-        *@ada:*) a="${a#*@ada:}" ;;
+        *@testlogin:*) a="${a#*@testlogin:}" ;;
     esac
     args+=("$a")
 done
 exec REAL_RSYNC "${args[@]}"
+'''
+
+SSH_SHIM = r'''#!/bin/bash
+echo "ssh $*" >> "$SHIM_LOG"
+[ "${SHIM_SSH_DOWN:-0}" = 1 ] && exit 255
+while [ "$1" = -o ]; do shift 2; done
+[ "$1" = tester@testlogin ] || exit 255
+shift
+exec bash -c "$*"
 '''
 
 
@@ -89,20 +100,22 @@ def stage(tmp_path):
     shims.mkdir()
     (shims / "rsync").write_text(RSYNC_SHIM.replace("REAL_RSYNC", RSYNC))
     (shims / "rsync").chmod(0o755)
+    (shims / "ssh").write_text(SSH_SHIM)
+    (shims / "ssh").chmod(0o755)
     log = tmp_path / "calls.log"
     env = {**os.environ, "C3_PY": sys.executable, "C3_SCRATCH": str(tmp_path / "scratch"),
-           "C3_BLOBS": str(tmp_path / "share1"), "C3_SSH_OPTS": "-o BatchMode=yes",
+           "C3_BLOBS": str(tmp_path / "share1"), "C3_SSH_OPTS": "-o BatchMode=yes", "C3_LOGIN_HOST": "testlogin",
            "C3_REPO": str(repo), "USER": "tester", "HF_HOME": str(tmp_path / "hf"),
            "PATH": f"{shims}:{os.environ['PATH']}", "SHIM_LOG": str(log),
            "REAL_FETCH": str(ROOT / "scripts" / "fetch_fineweb.py"), "FAKE_HUB": str(hub)}
     (tmp_path / "scratch").mkdir()
 
-    def run(first=0):
+    def run(first=0, **extra):
         log.write_text("")
         script = ('set -euo pipefail; source "$1"; c3_stage_fineweb "$2"; '
                   'echo "C3_FINEWEB_DIR=$C3_FINEWEB_DIR"')
         p = subprocess.run(["bash", "-c", script, "_", str(ROOT / "slurm" / "stage_fineweb.sh"),
-                            str(first)], env=env, capture_output=True, text=True, timeout=120)
+                            str(first)], env={**env, **extra}, capture_output=True, text=True, timeout=120)
         return p.returncode, p.stdout + p.stderr, log.read_text().splitlines()
 
     run.node = tmp_path / "scratch" / "fineweb-10BT"
@@ -122,7 +135,7 @@ def test_a_verified_node_copy_is_used_without_any_transfer(stage):
     rc, out, calls = stage()
     assert rc == 0, out
     assert "using the copy already on" in out
-    assert calls == []                                   # no rsync, no download
+    assert calls == []                                   # no ssh, rsync or download
     assert f"C3_FINEWEB_DIR={stage.node}" in out
 
 
@@ -141,6 +154,8 @@ def test_without_node_or_share1_copy_the_pinned_revision_is_downloaded(stage):
     rc, out, calls = stage()
     assert rc == 0, out
     assert "downloading the pinned revision from the Hub" in out
+    assert "(absent)" in out and "WARNING" not in out
+    assert not any(c.startswith("rsync") for c in calls)
     downloads = [c for c in calls if c.startswith("download")]
     assert downloads == [f"download sample/10BT/{n} 87f09149ef4734204d70ed1d046ddc9ca3f2b8f9"
                          for n in sorted(BLOBS)]
@@ -180,3 +195,14 @@ def test_a_hub_file_that_never_verifies_fails_the_job(stage):
     assert "FATAL: no verified FineWeb copy" in out
     assert "C3_FINEWEB_DIR=" not in out
     assert "001_00000.parquet" not in _files(stage.node)
+
+
+def test_an_unreachable_gateway_is_reported_not_taken_for_a_missing_copy(stage):
+    _manifest(stage.share1)
+    for n, b in BLOBS.items():
+        (stage.share1 / n).write_bytes(b)
+    rc, out, calls = stage(SHIM_SSH_DOWN="1")
+    assert rc == 0, out
+    assert "WARNING: cannot ssh to tester@testlogin" in out
+    assert "(unreachable)" in out
+    assert _files(stage.node) == BLOBS                   # from the Hub, verified

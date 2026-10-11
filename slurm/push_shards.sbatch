@@ -23,6 +23,7 @@ set -euo pipefail
 DEST="${C3_SHARDS_DEST:?set C3_SHARDS_DEST, e.g. /share1/$USER/v2/shards}"
 LOCAL="${C3_LOCAL_SHARDS:-/ssd_scratch/$USER/c3-shards}"
 SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+C3_LOGIN_HOST="${C3_LOGIN_HOST:-ada-gw1}"   # `ada` refuses ssh from compute nodes since Oct 2026
 NODE="$(hostname -s)"
 cd "${C3_REPO:-/home2/$USER/c3}"
 
@@ -43,20 +44,20 @@ echo "[push] hashing $(find "$LOCAL" -maxdepth 1 -type f ! -name SHA256SUMS | wc
 ( cd "$LOCAL" && find . -maxdepth 1 -type f ! -name SHA256SUMS -printf '%f\n' | sort \
     | xargs -P 4 -n 8 sha256sum | sort -k2 > SHA256SUMS )
 
-ssh $SSH_OPTS "$USER@ada" "set -e
+ssh $SSH_OPTS "$USER@$C3_LOGIN_HOST" "set -e
     if [ -d '$DEST' ] && [ -n \"\$(ls -A '$DEST')\" ]; then
         echo '[push] FATAL: $DEST is not empty; refusing to replace it'; exit 1
     fi
     mkdir -p '$DEST.new'"
-echo "[push] $NODE:$LOCAL ($(du -sh "$LOCAL" | cut -f1)) -> ada:$DEST.new"
+echo "[push] $NODE:$LOCAL ($(du -sh "$LOCAL" | cut -f1)) -> $C3_LOGIN_HOST:$DEST.new"
 t0=$(date +%s)
-rsync -a --partial-dir=.rsync-partial -e "ssh $SSH_OPTS" "$LOCAL/" "$USER@ada:$DEST.new/" \
+rsync -a --partial-dir=.rsync-partial -e "ssh $SSH_OPTS" "$LOCAL/" "$USER@$C3_LOGIN_HOST:$DEST.new/" \
     || { echo "[push] FATAL: rsync failed; resubmit to resume"; exit 1; }
 echo "[push] transferred in $(( $(date +%s) - t0 )) s"
 
 # The pushed copy must match the node copy: same file names, same sizes.
 LOCAL_LIST="$(cd "$LOCAL" && find . -maxdepth 1 -type f -printf '%f %s\n' | sort)"
-REMOTE_LIST="$(ssh $SSH_OPTS "$USER@ada" "cd '$DEST.new' && find . -maxdepth 1 -type f -printf '%f %s\n' | sort")"
+REMOTE_LIST="$(ssh $SSH_OPTS "$USER@$C3_LOGIN_HOST" "cd '$DEST.new' && find . -maxdepth 1 -type f -printf '%f %s\n' | sort")"
 if [ "$LOCAL_LIST" != "$REMOTE_LIST" ]; then
     echo "[push] FATAL: pushed copy differs from the node copy:"
     diff <(echo "$LOCAL_LIST") <(echo "$REMOTE_LIST") | head -20
@@ -69,10 +70,10 @@ echo "[push] verified: $NFILES files, $NBYTES bytes, names and sizes identical"
 # index.json and SHA256SUMS are small: compare their hashes as well.
 for f in index.json SHA256SUMS; do
     l=$(sha256sum "$LOCAL/$f" | cut -d' ' -f1)
-    r=$(ssh $SSH_OPTS "$USER@ada" "sha256sum '$DEST.new/$f'" | cut -d' ' -f1)
+    r=$(ssh $SSH_OPTS "$USER@$C3_LOGIN_HOST" "sha256sum '$DEST.new/$f'" | cut -d' ' -f1)
     [ "$l" = "$r" ] || { echo "[push] FATAL: $f differs after transfer"; exit 1; }
 done
 
-ssh $SSH_OPTS "$USER@ada" "set -e; if [ -d '$DEST' ]; then rmdir '$DEST'; fi; mv '$DEST.new' '$DEST'"
+ssh $SSH_OPTS "$USER@$C3_LOGIN_HOST" "set -e; if [ -d '$DEST' ]; then rmdir '$DEST'; fi; mv '$DEST.new' '$DEST'"
 echo "[push] done: $DEST ($NFILES files, $(( NBYTES / 1000000000 )) GB) from $NODE"
 echo "$(date +%F_%T) pushshards=${SLURM_JOB_ID:-?} $NODE:$LOCAL -> $DEST ($NFILES files, $NBYTES bytes, verified)" >> logs/t3_jobs.txt

@@ -81,10 +81,10 @@ if [ "${C3_SHARDS_PUSH:-1}" = 0 ]; then
 fi
 
 echo "[stage] pushing shards to $BLOBS/shards"
-ssh $SSH_OPTS "$USER@ada" "rm -rf '$BLOBS/shards.new' && mkdir -p '$BLOBS/shards.new'"
+ssh $SSH_OPTS "$USER@$C3_LOGIN_HOST" "rm -rf '$BLOBS/shards.new' && mkdir -p '$BLOBS/shards.new'"
 rsync -a --partial -e "ssh $SSH_OPTS" \
-    "$LOCAL_SHARDS/" "$USER@ada:$BLOBS/shards.new/" \
+    "$LOCAL_SHARDS/" "$USER@$C3_LOGIN_HOST:$BLOBS/shards.new/" \
     || { echo "[stage] FATAL: shard push failed"; exit 1; }
 # Swap in only once the whole set has arrived.
-ssh $SSH_OPTS "$USER@ada" "rm -rf '$BLOBS/shards.old'; [ -d '$BLOBS/shards' ] && mv '$BLOBS/shards' '$BLOBS/shards.old'; mv '$BLOBS/shards.new' '$BLOBS/shards'"
+ssh $SSH_OPTS "$USER@$C3_LOGIN_HOST" "rm -rf '$BLOBS/shards.old'; [ -d '$BLOBS/shards' ] && mv '$BLOBS/shards' '$BLOBS/shards.old'; mv '$BLOBS/shards.new' '$BLOBS/shards'"
 echo "[stage] done: $(du -sh "$LOCAL_SHARDS" | cut -f1) -> $BLOBS/shards"

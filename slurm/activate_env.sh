@@ -11,6 +11,10 @@
 #   ImportError: .../libcusparseLt.so.0: cannot read file data
 # and it persists, because the next job sees bin/python and skips re-extraction.
 C3_BLOBS="${C3_BLOBS:-/share1/$USER}"
+# Where jobs ssh/rsync to reach /share1.  Since the October 2026 cluster reset
+# `ada` refuses ssh from compute nodes ("no longer available for SSH access");
+# only the gateways ada-gw1 / ada-gw2 accept it.
+export C3_LOGIN_HOST="${C3_LOGIN_HOST:-ada-gw1}"
 C3_PERSIST="${C3_PERSIST:-/home2/$USER/c3-runs}"
 C3_SCRATCH="${C3_SCRATCH:-/ssd_scratch/$USER}"
 C3_SCRATCH_ENV="$C3_SCRATCH/c3-env"
@@ -38,7 +42,7 @@ if ! _c3_env_ok; then
             # C3_ENV_BLOBS: where the tarball lives when C3_BLOBS points elsewhere.
             echo "[env] pulling env tarball from ${C3_ENV_BLOBS:-$C3_BLOBS}"
             rsync -a --inplace --partial -e "ssh $C3_SSH_OPTS" \
-                "$USER@ada:${C3_ENV_BLOBS:-$C3_BLOBS}/c3-env.tar.gz" "$TARBALL" \
+                "$USER@$C3_LOGIN_HOST:${C3_ENV_BLOBS:-$C3_BLOBS}/c3-env.tar.gz" "$TARBALL" \
                 || { echo "[env] FATAL: could not fetch env tarball"; exit 1; }
         fi
         # Unpack to a private directory and rename into place, so no other job

@@ -32,6 +32,7 @@
 set -euo pipefail
 
 BLOBS="${C3_BLOBS:-/share1/$USER}"
+C3_LOGIN_HOST="${C3_LOGIN_HOST:-ada-gw1}"   # `ada` refuses ssh from compute nodes since Oct 2026
 SCRATCH_ENV="${C3_SCRATCH:-/ssd_scratch/$USER}/c3-env"
 TARBALL_LOCAL="${C3_SCRATCH:-/ssd_scratch/$USER}/c3-env.tar.gz"
 
@@ -111,6 +112,6 @@ echo "[env] files in env: $(find "$SCRATCH_ENV" | wc -l)  (this is why it ships 
 tar -czf "$TARBALL_LOCAL" -C "$(dirname "$SCRATCH_ENV")" "$(basename "$SCRATCH_ENV")"
 echo "[env] tarball $(du -h "$TARBALL_LOCAL" | cut -f1); pushing to $BLOBS"
 rsync -a --inplace --partial -e "ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new" \
-    "$TARBALL_LOCAL" "$USER@ada:$BLOBS/c3-env.tar.gz" \
+    "$TARBALL_LOCAL" "$USER@$C3_LOGIN_HOST:$BLOBS/c3-env.tar.gz" \
     || { echo "[env] FATAL: could not push tarball to $BLOBS"; exit 1; }
 echo "[env] shipped -> $BLOBS/c3-env.tar.gz (1 inode)"

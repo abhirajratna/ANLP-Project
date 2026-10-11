@@ -30,8 +30,8 @@ cd "$REPO_DIR"
 # Always pull: a final.pt left on this node by an earlier run would otherwise be
 # verified in place of the current one.
 CK="$C3_SCRATCH/$RUN-final.pt"
-rsync -a --partial-dir=.rsync-partial -e "ssh $SSH_OPTS" "$USER@ada:$BLOBS/$RUN/final.pt" "$CK"
-rsync -a -e "ssh $SSH_OPTS" "$USER@ada:$BLOBS/$RUN/history.jsonl" "$C3_SCRATCH/$RUN-history.jsonl"
+rsync -a --partial-dir=.rsync-partial -e "ssh $SSH_OPTS" "$USER@$C3_LOGIN_HOST:$BLOBS/$RUN/final.pt" "$CK"
+rsync -a -e "ssh $SSH_OPTS" "$USER@$C3_LOGIN_HOST:$BLOBS/$RUN/history.jsonl" "$C3_SCRATCH/$RUN-history.jsonl"
 
 C3_CKPT="$CK" C3_DOCS="$PERSIST/corpus/calibration_docs.jsonl" "$C3_PY" - <<'PY'
 import os, sys, numpy as np, torch

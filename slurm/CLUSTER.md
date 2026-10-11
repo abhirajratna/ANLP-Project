@@ -11,6 +11,7 @@ A100 assumptions, drive every budget decision in the repo.
 | Node-local scratch | `/scratch`, 1.8 TB | where token shards and HF caches belong |
 | **`/share1` is login-node-only** | not *mounted* on compute nodes, but reachable from them by `ssh`/`rsync` back to `ada` | job StdOut and anything opened by path must be on `/home2`; large blobs live on `/share1` and are **pulled to node-local SSD at job start** (the pattern in `run-llama.sh`) |
 | `/share1/$USER` free space | ~76 GB, 3,000-inode quota | the right home for tarballs, checkpoints and model weights — few large files, never many small ones |
+| **ssh from compute nodes (since the Oct 2026 reset)** | `ada` refuses it ("no longer available for SSH access"); the gateways `ada-gw1` / `ada-gw2` accept key auth and see `/share1` | every job reaches `/share1` through `$C3_LOGIN_HOST` (default `ada-gw1`, set in `activate_env.sh`); a job that still says `$USER@ada:` fails to stage or push |
 | Node-local SSD | `/ssd_scratch`, 880 GB | staging target; persists on a node between jobs, so only the first job on a node pays the transfer |
 | Compute-visible persistent | `/home2/$USER` (NFS), 30 GB quota, 25.7 GB used | **~5 GB free** — the binding storage constraint; `~/.cache` holds 5.3 GB of reclaimable pip/HF cache |
 | Inode quota on `/share1` | 3,000 files | the built env is **47,361 files**, so it ships as a single tarball |

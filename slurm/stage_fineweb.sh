@@ -15,7 +15,8 @@
 #      (`scripts/fetch_fineweb.py download`; compute nodes have internet access).
 #      Each file is checked against the Hub's sha256 before it is used.
 #
-# Sourced by activate_env.sh (needs C3_PY, C3_SCRATCH, C3_BLOBS, C3_SSH_OPTS);
+# Sourced by activate_env.sh (needs C3_PY, C3_SCRATCH, C3_BLOBS, C3_SSH_OPTS,
+# C3_LOGIN_HOST);
 # tests/test_stage_fineweb.py runs it with stub commands.  C3_FINEWEB_LOCAL
 # overrides the node-local directory (default $C3_SCRATCH/fineweb-10BT).
 c3_stage_fineweb() {
@@ -25,16 +26,32 @@ c3_stage_fineweb() {
     mkdir -p "$dst"
     exec 8>"$C3_SCRATCH/.c3-fineweb.lock"
     flock 8
+    local share1=absent
     if [ -f "$dst/MANIFEST.json" ] && "$C3_PY" "$fetch" check --dir "$dst" --first "$first"; then
+        share1=unused
+    else
+        # 0: a complete copy is there; 1: none; 255: the gateway is unreachable, which
+        # must not be mistaken for "no copy" (it was, on 2026-10-12, when `ada` stopped
+        # accepting ssh from compute nodes and a job fell through to a stalled download).
+        local probe=0
+        ssh $C3_SSH_OPTS "$USER@$C3_LOGIN_HOST" "test -f '$src/MANIFEST.json'" || probe=$?
+        case "$probe" in 0) share1=present ;; 255) share1=unreachable ;; esac
+        if [ "$share1" = unreachable ]; then
+            echo "[fineweb] WARNING: cannot ssh to $USER@$C3_LOGIN_HOST; /share1 not checked" \
+                 "(set C3_LOGIN_HOST to a reachable gateway)"
+        fi
+    fi
+    if [ "$share1" = unused ]; then
         echo "[fineweb] using the copy already on $(hostname -s):$dst"
-    elif rsync -a -e "ssh $C3_SSH_OPTS" "$USER@ada:$src/MANIFEST.json" "$dst/MANIFEST.json" 2>/dev/null; then
+    elif [ "$share1" = present ] \
+            && rsync -a -e "ssh $C3_SSH_OPTS" "$USER@$C3_LOGIN_HOST:$src/MANIFEST.json" "$dst/MANIFEST.json"; then
         "$C3_PY" "$fetch" names --dir "$dst" --first "$first" > "$dst/.staging-list" || rc=1
         echo "[fineweb] staging $(wc -l < "$dst/.staging-list") file(s) from $src to $dst"
         [ "$rc" = 0 ] && rsync -a --partial-dir=.rsync-partial --files-from="$dst/.staging-list" \
-            -e "ssh $C3_SSH_OPTS" "$USER@ada:$src/" "$dst/" \
+            -e "ssh $C3_SSH_OPTS" "$USER@$C3_LOGIN_HOST:$src/" "$dst/" \
             || { echo "[fineweb] staging from $src failed"; rc=1; }
     else
-        echo "[fineweb] no verified copy on $(hostname -s) and none at $src;" \
+        echo "[fineweb] no verified copy on $(hostname -s) and none at $src ($share1);" \
              "downloading the pinned revision from the Hub to $dst"
         HF_HOME="${HF_HOME:-$C3_SCRATCH/hf}" HF_HUB_DOWNLOAD_TIMEOUT=60 HF_HUB_ETAG_TIMEOUT=60 \
             HF_HUB_DISABLE_PROGRESS_BARS=1 \
