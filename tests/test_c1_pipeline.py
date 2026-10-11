@@ -137,3 +137,16 @@ def test_an_overflowing_document_is_skipped_flagged_and_fails_validation(tmp_pat
     res = json.loads(out.read_text())
     assert r.returncode == 1 and not res["checks"]["no_flagged_nonfinite_passes"]["ok"]
     assert res["checks"]["forward_passes"]["ok"]           # passes on doc 2 are not counted
+
+
+def test_single_shard_runs_can_merge_zero_copy_or_not_at_all(tmp_path):
+    common = [sys.executable, "scripts/collect_traces.py", "--model", "toy", "--device", "cpu",
+              "--limit", "2", "--max-tokens", "16", "--mask-rates", "0.5", "--decoder-k", "8",
+              "--resume"]
+    subprocess.run([*common, "--merge-as", "dataset", "--out", tmp_path / "a"], cwd=ROOT, check=True,
+                   capture_output=True)
+    assert (tmp_path / "a.dataset.json").exists() and not (tmp_path / "a.parquet").exists()
+    assert sorted(load_traces(tmp_path / "a.dataset.json").doc_id.unique()) == [0, 1]
+    subprocess.run([*common, "--merge-as", "none", "--out", tmp_path / "b"], cwd=ROOT, check=True,
+                   capture_output=True)
+    assert not (tmp_path / "b.dataset.json").exists() and not (tmp_path / "b.parquet").exists()

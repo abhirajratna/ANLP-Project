@@ -95,6 +95,9 @@ def main() -> int:
     ap.add_argument("--num-shards", type=int, default=1)
     ap.add_argument("--resume", action="store_true")
     ap.add_argument("--part-docs", type=int, default=50, help="documents per part file")
+    ap.add_argument("--merge-as", choices=["parquet", "dataset", "none"], default="parquet",
+                    help="how a complete single-shard run is merged: a parquet copy, a "
+                         "zero-copy <out>.dataset.json manifest, or not at all")
     ap.add_argument("--on-nonfinite", choices=["raise", "skip"], default="raise",
                     help="skip: leave out (and record) a document whose logits overflow, "
                          "instead of stopping the shard")
@@ -149,9 +152,11 @@ def main() -> int:
                              part_docs=a.part_docs, dataset=dataset, extra_meta=extra,
                              on_nonfinite=a.on_nonfinite)
         outputs.append(str(meta))
-        if a.num_shards == 1 and json.loads(Path(meta).read_text()).get("complete"):
-            from c3.traces.shards import merge
-            outputs.append(str(merge(stem, stem + ".parquet")))
+        if (a.num_shards == 1 and a.merge_as != "none"
+                and json.loads(Path(meta).read_text()).get("complete")):
+            from c3.traces.shards import DATASET_SUFFIX, merge
+            outputs.append(str(merge(stem, stem + (".parquet" if a.merge_as == "parquet"
+                                                   else DATASET_SUFFIX))))
     else:
         for rep in range(a.repeat):
             out = Path(a.out) if a.repeat == 1 else Path(a.out).with_name(
