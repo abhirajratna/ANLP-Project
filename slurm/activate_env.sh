@@ -15,6 +15,17 @@ C3_BLOBS="${C3_BLOBS:-/share1/$USER}"
 # `ada` refuses ssh from compute nodes ("no longer available for SSH access");
 # only the gateways ada-gw1 / ada-gw2 accept it.
 export C3_LOGIN_HOST="${C3_LOGIN_HOST:-ada-gw1}"
+# Since the same reset (Slurm 26.05), a job asking for more than ~3 GB per CPU has
+# its cpus-per-task raised to fit (--mem=32G with 8 CPUs -> 11; 48G/16 -> 17;
+# 64G/16 -> 22) after sbatch has exported SLURM_TRES_PER_TASK=cpu=<requested>, and
+# every `srun` inside the job then dies with
+#   srun: fatal: cpus-per-task set by two different environment variables
+# (job 17339; reproduced and fixed by this block in test job 17348).  Make the two
+# agree with what was actually allocated.
+if [ -n "${SLURM_CPUS_PER_TASK:-}" ] && [[ "${SLURM_TRES_PER_TASK:-}" =~ ^cpu=[0-9]+$ ]] \
+        && [ "${SLURM_TRES_PER_TASK#cpu=}" != "$SLURM_CPUS_PER_TASK" ]; then
+    export SLURM_TRES_PER_TASK="cpu=$SLURM_CPUS_PER_TASK"
+fi
 C3_PERSIST="${C3_PERSIST:-/home2/$USER/c3-runs}"
 C3_SCRATCH="${C3_SCRATCH:-/ssd_scratch/$USER}"
 C3_SCRATCH_ENV="$C3_SCRATCH/c3-env"
