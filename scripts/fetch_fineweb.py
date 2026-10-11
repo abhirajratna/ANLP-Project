@@ -6,10 +6,12 @@
 A stream that stalls kills a multi-hour job, and downloads from the compute
 nodes have stalled before.  So the 14 parquet files (28.5 GB) are fetched once:
 
-  download  fetch every file at a pinned revision into --dir, resuming partial
-            downloads and retrying, check each against the Hub's size and
-            sha256, and write --dir/MANIFEST.json last.  Files already present
-            and correct are kept, so a rerun only fetches what is missing.
+  download  fetch every file (--first N: the first N) at a pinned revision into
+            --dir, resuming partial downloads and retrying, check each against
+            the Hub's size and sha256, and write --dir/MANIFEST.json last.  The
+            manifest always lists all files; `check --first N` says how many are
+            there.  Files already present and correct are kept, so a rerun only
+            fetches what is missing.
   names     print the manifest's first N file names (for rsync --files-from).
   check     verify a copy against MANIFEST.json (sizes; --sha256 for hashes).
 
@@ -81,16 +83,17 @@ def download(a) -> int:
         man_path.unlink(missing_ok=True)
         files = remote_files(a.repo, a.prefix, a.revision, a.attempts)
     total = sum(f["size"] for f in files)
+    want = files[:a.first] if getattr(a, "first", 0) else files
     print(f"[fetch] {a.repo}/{a.prefix}@{a.revision[:12]}: {len(files)} files, "
-          f"{total / 1e9:.2f} GB -> {dest}", flush=True)
+          f"{total / 1e9:.2f} GB; fetching {len(want)} -> {dest}", flush=True)
 
     # Downloads land here and move into --dir only once verified, so --dir never
     # holds a partial or corrupt file.  hf_hub_download resumes from here too.
     work = dest.parent / f"{dest.name}.download"
-    for k, f in enumerate(files, 1):
+    for k, f in enumerate(want, 1):
         target = dest / f["name"]
         if is_ok(target, f):
-            print(f"[fetch] {k}/{len(files)} {f['name']}: present, verified", flush=True)
+            print(f"[fetch] {k}/{len(want)} {f['name']}: present, verified", flush=True)
             continue
         target.unlink(missing_ok=True)
         force = False
@@ -111,7 +114,7 @@ def download(a) -> int:
             if is_ok(got, f):
                 os.replace(got, target)
                 mins = (time.time() - t0) / 60
-                print(f"[fetch] {k}/{len(files)} {f['name']}: {f['size'] / 1e9:.2f} GB, "
+                print(f"[fetch] {k}/{len(want)} {f['name']}: {f['size'] / 1e9:.2f} GB, "
                       f"verified ({mins:.1f} min)", flush=True)
                 break
             print(f"[fetch] {f['name']}: size or sha256 mismatch; downloading it again", flush=True)
@@ -123,7 +126,8 @@ def download(a) -> int:
 
     man_path.write_text(json.dumps({"repo": a.repo, "prefix": a.prefix, "revision": a.revision,
                                     "total_bytes": total, "files": files}, indent=1))
-    print(f"[fetch] complete: {len(files)} files, {total / 1e9:.2f} GB verified in {dest}", flush=True)
+    got = sum(f["size"] for f in want)
+    print(f"[fetch] complete: {len(want)} files, {got / 1e9:.2f} GB verified in {dest}", flush=True)
     return 0
 
 
@@ -164,6 +168,7 @@ def main() -> int:
     p.add_argument("--prefix", default=PREFIX)
     p.add_argument("--revision", default=REVISION)
     p.add_argument("--attempts", type=int, default=20, help="per file")
+    p.add_argument("--first", type=int, default=0, help="only the first N files (0: all)")
     for name in ("names", "check"):
         p = sub.add_parser(name)
         p.add_argument("--dir", required=True)
