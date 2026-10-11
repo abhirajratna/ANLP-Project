@@ -70,13 +70,27 @@ def test_registry_is_variant_explicit_with_pinned_revisions():
     assert set(MODEL_ALIASES.values()) <= set(KNOWN_MODELS)
 
 
-def test_detect_variant_from_chat_template(tmp_path):
-    inst, base = tmp_path / "inst", tmp_path / "base"
-    inst.mkdir(); base.mkdir()
-    (inst / "tokenizer_config.json").write_text(json.dumps({"chat_template": "{{x}}"}))
-    (base / "tokenizer_config.json").write_text(json.dumps({"bos_token": "<s>"}))
-    assert detect_variant(str(inst)) == "instruct"
-    assert detect_variant(str(base)) == "base"
+def test_detect_variant_from_the_vocabulary_not_the_chat_template(tmp_path):
+    # Both LLaDA variants ship the same chat template; only Instruct adds <|eot_id|>.
+    tmpl = "{{x}}"
+    tok = lambda c: {"content": c, "special": True}
+    dirs = {
+        "llada_inst": {"chat_template": tmpl, "additional_special_tokens": ["<role>"],
+                       "added_tokens_decoder": {"126336": tok("<|mdm_mask|>"),
+                                                "126348": tok("<|eot_id|>")}},
+        "llada_base": {"chat_template": tmpl,
+                       "additional_special_tokens": ["<|mdm_mask|>", "<role>"],
+                       "added_tokens_decoder": {"126336": tok("<|mdm_mask|>")}},
+        "dream": {"chat_template": tmpl, "added_tokens_decoder": {"1": tok("<|im_end|>")}},
+        "plain": {"bos_token": "<s>"},
+    }
+    for name, cfg in dirs.items():
+        (tmp_path / name).mkdir()
+        (tmp_path / name / "tokenizer_config.json").write_text(json.dumps(cfg))
+    assert detect_variant(str(tmp_path / "llada_inst")) == "instruct"
+    assert detect_variant(str(tmp_path / "llada_base")) == "base"
+    assert detect_variant(str(tmp_path / "dream")) is None
+    assert detect_variant(str(tmp_path / "plain")) == "base"
     assert detect_variant("GSAI-ML/LLaDA-8B-Base") is None
 
 

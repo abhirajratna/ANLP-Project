@@ -35,9 +35,10 @@ if ! _c3_env_ok; then
         if [ -r "$C3_PERSIST/c3-env.tar.gz" ]; then
             TARBALL="$C3_PERSIST/c3-env.tar.gz"
         elif [ ! -r "$TARBALL" ]; then
-            echo "[env] pulling env tarball from $C3_BLOBS"
+            # C3_ENV_BLOBS: where the tarball lives when C3_BLOBS points elsewhere.
+            echo "[env] pulling env tarball from ${C3_ENV_BLOBS:-$C3_BLOBS}"
             rsync -a --inplace --partial -e "ssh $C3_SSH_OPTS" \
-                "$USER@ada:$C3_BLOBS/c3-env.tar.gz" "$TARBALL" \
+                "$USER@ada:${C3_ENV_BLOBS:-$C3_BLOBS}/c3-env.tar.gz" "$TARBALL" \
                 || { echo "[env] FATAL: could not fetch env tarball"; exit 1; }
         fi
         # Unpack to a private directory and rename into place, so no other job

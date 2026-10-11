@@ -7,7 +7,7 @@
 #
 # LLaDA-8B sits on /share1, but which variant it holds was never recorded, so it
 # is used only when it exists and its tokenizer config says it is the variant
-# requested (a chat template means Instruct).  Otherwise the pinned revision is
+# requested (<|eot_id|> in the vocabulary means Instruct).  Otherwise the pinned revision is
 # downloaded from the hub into HF_HOME on node-local SSD, never /home2.
 SHARED_LLADA="${C3_SHARED_LLADA:-/share1/ishita/llada_model}"
 MODEL_PATH_ARG=()
@@ -32,7 +32,10 @@ else
     if [ -n "$WANT_VARIANT" ]; then
         SHARED_VARIANT=absent
         if ssh $SSH_OPTS "$USER@ada" "test -r $SHARED_LLADA/config.json" 2>/dev/null; then
-            if ssh $SSH_OPTS "$USER@ada" "grep -q chat_template $SHARED_LLADA/tokenizer_config.json" 2>/dev/null; then
+            # Not the chat template (Base ships the same one, and it mentions
+            # <|eot_id|>): Instruct's vocabulary has <|eot_id|> as an added-token
+            # entry, Base's does not (c3.traces.models.detect_variant).
+            if ssh $SSH_OPTS "$USER@ada" "grep -qE '\"content\": *\"<\\|eot_id\\|>\"' $SHARED_LLADA/tokenizer_config.json" 2>/dev/null; then
                 SHARED_VARIANT=instruct
             else
                 SHARED_VARIANT=base

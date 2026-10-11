@@ -91,7 +91,11 @@ push_out() {
     rsync -a --exclude '*.tmp' --include "$PATTERN" --include "$RUN.parquet" \
         --include "$RUN.meta.json" --exclude '*' -e "ssh $SSH_OPTS" \
         "$OUT_DIR/" "$USER@ada:$BLOBS/traces/$RUN/" 2>/dev/null \
-        && echo "[stage] pushed to $BLOBS/traces/$RUN at $(date +%H:%M:%S)"
+        && echo "[stage] pushed to $BLOBS/traces/$RUN at $(date +%H:%M:%S)" \
+        || echo "[stage] WARNING: push to $BLOBS/traces/$RUN failed at $(date +%H:%M:%S)"
+    # Never fail: under set -e a failed push would kill the sync loop, or abort
+    # the USR1 trap before it requeues the job.
+    return 0
 }
 ( while true; do sleep 1800; push_out; done ) &
 SYNC_PID=$!

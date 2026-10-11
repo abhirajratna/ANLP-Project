@@ -62,14 +62,43 @@ def main() -> int:
         docs = tokenize_documents(a.docs, model.tokenizer, 256)
         docs = docs[:a.limit] if a.limit else docs
 
-    results, t0 = {}, time.time()
-    for i, (doc_id, ids) in enumerate(docs):
-        if hasattr(model, "set_reference"):      # the CPU toy model only
-            model.set_reference(ids[:need])
-        results[str(int(doc_id))] = screen_document(model, ids)
-        if (i + 1) % 100 == 0:
-            print(f"[contam] {i+1}/{len(docs)} docs, {(i+1)/(time.time()-t0)*3600:.0f} docs/hour",
-                  flush=True)
+    # Checkpointed so a killed job (walltime, node failure) resumes instead of
+    # starting over: per-document results are appended to <out>.partial.jsonl.
+    # A document whose logits overflow (fp16) is recorded and skipped rather than
+    # ending the run; it is listed in "errors" and is neither flagged nor cleared.
+    partial = Path(a.out).with_name(Path(a.out).name + ".partial.jsonl")
+    partial.parent.mkdir(parents=True, exist_ok=True)
+    results, errors = {}, {}
+    if partial.exists():
+        for line in partial.read_text().splitlines():
+            try:
+                rec = json.loads(line)
+            except ValueError:
+                continue                          # a line cut off by the kill
+            (errors if "error" in rec else results)[rec["doc_id"]] = rec.get("error", rec.get("result"))
+        print(f"[contam] resuming: {len(results)} done, {len(errors)} errors in {partial}", flush=True)
+    t0, n_new = time.time(), 0
+    with partial.open("a") as fh:
+        if partial.stat().st_size and not partial.read_bytes().endswith(b"\n"):
+            fh.write("\n")                          # end the cut-off line first
+        for i, (doc_id, ids) in enumerate(docs):
+            key = str(int(doc_id))
+            if key in results or key in errors:
+                continue
+            if hasattr(model, "set_reference"):      # the CPU toy model only
+                model.set_reference(ids[:need])
+            try:
+                results[key] = screen_document(model, ids)
+                fh.write(json.dumps({"doc_id": key, "result": results[key]}) + "\n")
+            except FloatingPointError as e:
+                errors[key] = str(e)
+                fh.write(json.dumps({"doc_id": key, "error": str(e)}) + "\n")
+                print(f"[contam] doc {key}: {e}", flush=True)
+            fh.flush()
+            n_new += 1
+            if (i + 1) % 100 == 0:
+                print(f"[contam] {i+1}/{len(docs)} docs, {n_new/(time.time()-t0)*3600:.0f} docs/hour",
+                      flush=True)
     flagged = flag(results, a.threshold)
     runs = sorted(r["run_length"] for r in results.values())
     out = {"model": a.model, "precision": a.precision,
@@ -77,9 +106,11 @@ def main() -> int:
            "prefix_tokens": PREFIX_TOKENS, "continuation_tokens": CONTINUATION_TOKENS,
            "decoder": "greedy argmax, one most-confident token per step",
            "threshold": a.threshold,
-           "threshold_source": ("c3.CONTAM_THRESHOLD" if hasattr(c3, "CONTAM_THRESHOLD")
+           "threshold_source": ("c3.CONTAM_THRESHOLD"
+                                if getattr(c3, "CONTAM_THRESHOLD", None) == a.threshold
                                 else "--threshold (not yet pre-registered)"),
            "n_docs": len(results), "n_flagged": sum(r["flagged"] for r in flagged.values()),
+           "errors": errors,
            "run_length_quantiles": {q: runs[min(len(runs) - 1, int(q * len(runs)))]
                                     for q in (0.5, 0.9, 0.99, 1.0)} if runs else {},
            "docs": flagged, "seconds": time.time() - t0, "source": a.docs,

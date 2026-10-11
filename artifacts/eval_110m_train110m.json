@@ -1,0 +1,58 @@
+{
+  "checkpoint": "/ssd_scratch/ojas.k/train110m-v1-final.pt",
+  "weights": "raw",
+  "objective": "mdlm",
+  "bound": "NELBO (upper bound on NLL)",
+  "documents": 2000,
+  "tokens": 511761,
+  "nelbo_per_token": 3.649232098031999,
+  "nelbo_ci": [
+    3.6302635710400217,
+    3.668660262453387
+  ],
+  "ppl_bound": 38.44513261809602,
+  "ppl_bound_ci": [
+    37.72275793354368,
+    39.19935381907918
+  ],
+  "n_t": 32,
+  "gpt2_reference": {
+    "model": "gpt2 (124M, pretrained on WebText)",
+    "nll_per_token": 3.3495587674179133,
+    "ppl": 28.49016008314141,
+    "ppl_ci": [
+      27.975826343718037,
+      29.0222204585122
+    ]
+  },
+  "samples": [
+    " is happening outdoors, as watering or washing with bacteria when cooling in the Erie Canal.\nWe make this action accordingly in order to prevent the breakdown from the system:\n-itis prepared inputs after traversal the living spaces. 2. Turn to green substrate and plants and debris removed.\n- Checking the \u2018s of air entered and remembering if getting upstairs is closer to the foundation\u2019s.\n- Maintain aeration while the protects food and bottom packaging wastes. Rather than utilizing potji aluminum at here\u2019, wear gloves, and remove all equipment.\n- Consider adding floating coverings to Cro infestation systems.\nIn poor, is put an end the waste reduction encouraged in this article. Commercial operations are being involving methane sensor in a boiler temperature as much as using a hose or the filtered canal-based canals to kill and consume the creature; these hot days have little more than 18 or 22 of water to impact its growth for Almighty Minister of Public Education. This is the plant\u2019s nourishment and fantasy\n- Remove fruits and vegetables\n- Rotate the facilities\nWith the flush of nutrients \u2013 especially because it is used in the year wind heat, bioplastic heat resistance is major compared to its applications. With delivering bio",
+    " and help you to save a newborn from the diseases of giraffi (pron) parks across Grand Rapids Park. \u2014 a couple of miracle places from human habitation survals!\njffrons4p A Fly In Post\nA is the mother sperm whale who \"seates to.\"design as tribe play andtaker. During the lengthy\ntimes, the watermaid makes a blessing. From a Hypoticasty Lask, 18 fish are purposely filled to draw whose sperm deposit a tiny Lists on and off. The Frog Shop Impact mission confines a foraging ride into an orphan town, reusable bottle in Facebook, which is magically running from to its largest home town. Relationship between mother and daughters are erroneous idea, they are conveyed logically here sometimes by the health and wellbeing of the filmanni-charged creatures. Kritos krao zebra brunle and jenny are captured in 2015 love science, environments, delicious seafood with a remarkably fulfilling and resourceful whole, although\nare brave broach duck zebra sad story tale a global warming tailhy, dam go\naware and star: clogging of art: think public\nlaptop Template: wars\noffering access at-risk: premature death, children's deceased parent: Don I entice (or",
+    " even legal deviation. In the sense of government purposes in which would be okay however this might include radioactive absorption which can incales a smaller population than lower Manhattan.\nRope is an example of the most misunderstood fact recently filled by Senator Warrrespi. Nuclear Awareness bears a reasonable threat to predict even if it is minimal about whether nuclear weapons have energy, power, and earth. The stigma connected with that of PaypeNaturally://equalsRN means that individuals as nuclear weapons have even their very own forms of perceived fear. This is bound for fear and even a hazard for those concerned with fear to understand that significance of TpTkHealth, advent software from this rate is hard to follow. Teacher casual club is required if the mQI has given one such long definition to the nuclear radiological bomb hole that was born earlier - points out., in reactor Planning.\nThe Idea of Nuclear\nLimiting and constructs the expression of future weapons that is deadly. Fold disposition allows to make nightmare possible -- and to succeed. In favor of weaponization In attitude of high evacuation stress and violence, it has been seen the people's primary role to play to provisionmet-services needs and of containment is appreciated -- that that's mankind and hence. Terror.Following to punitive",
+    " their own roadmen. The Russians think only the white killing wing and force killing animals present. Distribution of anti-animalaria. Loss of learned birds of Lub/Kasseran disease.There is much trash around the Hornal in Morocco. But the brutal and unbearable circumstances of Ramadan are people that have always been the archeofautorial town. New came are being found within grain chains that have been farmers north of Adoram seems to be that central to the historic organization they offered. The IMF that on the tip of Morocco could see Arabs as abug. In reflection, the Prophet of Rozo Restalevagent insisted in the names of the Muslims he is singing the ketujvil\u00f3te and remaining villages \u2014 there are people that have dreams of craved and the category of a goose to wash cattle can be seen from the perspective souls used by Christians\u2019 dysfunctional herdsmen.\nNow have more of the picture of what you will surely know about human philosophy. In Mecca they decided to Messenger Ibn Azar to turn the shrine into a sacred home of a living human. Because the Mosque of Omar had to pray inside this treasure and some to drink outside, it was so fantastic. Seeking pure spirituality they were with it realized. There is no way to remove"
+  ],
+  "provenance": {
+    "git_commit": "99a1439c8b55dc4f5a9fd557b38698ed2eec0361",
+    "git_dirty": false,
+    "python": "3.12.4",
+    "platform": "Linux-5.15.0-191-generic-x86_64-with-glibc2.35",
+    "host": "gnode059",
+    "slurm_job_id": "2722239",
+    "packages": {
+      "numpy": "2.5.3",
+      "scipy": "1.18.1",
+      "pandas": "3.0.5",
+      "pyarrow": "25.0.1",
+      "torch": "2.6.0+cu124",
+      "transformers": "4.46.3",
+      "bitsandbytes": "0.50.2",
+      "accelerate": "1.15.0"
+    },
+    "gpu": {
+      "cuda": true,
+      "gpu": "NVIDIA GeForce RTX 2080 Ti",
+      "capability": "7.5",
+      "n_gpus": 1
+    }
+  }
+}

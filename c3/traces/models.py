@@ -126,7 +126,15 @@ MODEL_ALIASES = {"llada-8b": "llada-8b-instruct", "dream-7b": "dream-7b-instruct
 
 
 def detect_variant(path: str) -> str | None:
-    """'instruct' if a local checkpoint ships a chat template, 'base' if not.
+    """'instruct' or 'base' for a local checkpoint directory, None if undecidable.
+
+    A chat template is NOT the tell: LLaDA-8B-Base ships one byte-identical to
+    Instruct's, and both Dream-v0 variants ship one. What differs for LLaDA is
+    the vocabulary: Instruct adds the chat special tokens (``<|eot_id|>``,
+    ``<|start_header_id|>``), Base does not (checked against both hub
+    tokenizer_config.json files, 51,165 vs 51,692 bytes). Without a template a
+    checkpoint cannot be chat-formatted, so it is base. Otherwise (e.g. Dream)
+    the result is None and the registry's variant stands.
 
     Returns None when ``path`` is not a local directory (a hub id), since then
     the registry's pinned revision already fixes the variant.
@@ -139,10 +147,17 @@ def detect_variant(path: str) -> str | None:
     if not d.is_dir() or not cfg.exists():
         return None
     try:
-        has_template = bool(json.loads(cfg.read_text()).get("chat_template"))
+        tc = json.loads(cfg.read_text())
     except (OSError, ValueError):
         return None
-    return "instruct" if has_template else "base"
+    added = {t.get("content") for t in (tc.get("added_tokens_decoder") or {}).values()
+             if isinstance(t, dict)}
+    added |= set(tc.get("additional_special_tokens") or [])
+    if "<|eot_id|>" in added:
+        return "instruct"
+    if "<|mdm_mask|>" in added or not tc.get("chat_template"):
+        return "base"
+    return None
 
 
 def verify_mask_token(model) -> None:

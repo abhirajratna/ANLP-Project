@@ -98,8 +98,16 @@ card is not enough:
 | fp32 + CPU offload | `C3_DEVICE_MAP=auto`, `C3_MAX_MEMORY=0=9GiB;cpu=60GiB`, `--mem=96G` | ~32 GB of weights, most streamed over PCIe every pass: far too slow for a sweep, usable for a 2-document spot check |
 | 4-bit (NF4) | one GPU | an ablation only in plan v2 |
 
-**Measured throughput:** not yet measured for schema v2. The log prints
-docs/hour every 25 documents; record it here after the pilot re-run.
+**Measured throughput (schema v2, 2026-09-29):**
+
+| job | model / placement | rate |
+|---|---|---|
+| T2 pilot, 2722140 | LLaDA-8B-Base fp16, `device_map=auto` over 2 x 2080 Ti (9 GiB each) | **7.6 forward passes/s** of 256 tokens; 74 passes/doc -> 370 docs/hour. The full plan v2 design (466 passes/doc) -> ~59 docs/hour, ~34 h per 2,000-doc arm |
+| contamination, 2722128 | same | 731 docs/hour (50 passes of ~100 tokens each) |
+| 110M training, 2722281 | 2 x 2080 Ti, batch 16 x accum 8 | 43.4k tok/s -> 10B tokens in ~2.7 days. Batch 32 x accum 4 OOMed on gnode047, whose GPU 1 carried ~670 MB of foreign processes |
+
+Five repeats of the pilot were bitwise identical under fp16 over two cards
+(`artifacts/t2_pilot/floor_llada_base_fp16.json`).
 
 **Model staging** lives in `slurm/stage_model.sh`, sourced by `collect_traces.sbatch`
 and `contamination.sbatch`. The shared LLaDA copy is used only if it exists and its

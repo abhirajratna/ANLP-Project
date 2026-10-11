@@ -1,0 +1,87 @@
+{
+  "n_repeats": 5,
+  "beta_z_per_run": [
+    -0.00031761664307317913,
+    -0.00031761664307317913,
+    -0.00031761664307317913,
+    -0.00031761664307317913,
+    -0.00031761664307317913
+  ],
+  "beta_z_sd": 0.0,
+  "beta_z_range": 0.0,
+  "effect_bar_2x_floor": 0.0,
+  "max_abs_delta_ell": 0.0,
+  "agree_flips_across_repeats": 0,
+  "agree_rate_per_run": [
+    0.5112988419377652,
+    0.5112988419377652,
+    0.5112988419377652,
+    0.5112988419377652,
+    0.5112988419377652
+  ],
+  "ell_mean_per_run": [
+    0.7292026031493635,
+    0.7292026031493635,
+    0.7292026031493635,
+    0.7292026031493635,
+    0.7292026031493635
+  ],
+  "bitwise_identical": true,
+  "plan_v2": {
+    "per_arm": {
+      "decoder": {
+        "max_abs_delta_ell": 0.0,
+        "rows_identical_shape": true,
+        "max_abs_change_delta_m": {
+          "1": 0.0,
+          "2": 0.0,
+          "4": 0.0,
+          "8": 0.0,
+          "16": 0.0,
+          "32": 0.0
+        },
+        "max_abs_change_delta": 0.0
+      },
+      "uniform": {
+        "max_abs_delta_ell": 0.0,
+        "rows_identical_shape": true,
+        "max_abs_change_delta_m": {
+          "1": 0.0,
+          "2": 0.0,
+          "4": 0.0,
+          "8": 0.0,
+          "16": 0.0,
+          "32": 0.0
+        },
+        "max_abs_change_delta": 0.0
+      }
+    },
+    "floor_delta": 0.0,
+    "effect_bar_2x_floor": 0.0,
+    "definition": "max over arms and m of |Delta_rep(m) - Delta_rep0(m)|"
+  },
+  "traces": [
+    "runs/traces/t2pilot/t2pilot-llada-base-fp16.rep0.parquet",
+    "runs/traces/t2pilot/t2pilot-llada-base-fp16.rep1.parquet",
+    "runs/traces/t2pilot/t2pilot-llada-base-fp16.rep2.parquet",
+    "runs/traces/t2pilot/t2pilot-llada-base-fp16.rep3.parquet",
+    "runs/traces/t2pilot/t2pilot-llada-base-fp16.rep4.parquet"
+  ],
+  "provenance": {
+    "git_commit": "99a1439c8b55dc4f5a9fd557b38698ed2eec0361",
+    "git_dirty": false,
+    "python": "3.12.12",
+    "platform": "Linux-7.2.6-arch2-1-x86_64-with-glibc2.44",
+    "host": "arch",
+    "slurm_job_id": null,
+    "packages": {
+      "numpy": "2.5.3",
+      "scipy": "1.18.1",
+      "pandas": "3.0.5",
+      "pyarrow": "25.0.1",
+      "torch": "2.14.0+cpu",
+      "transformers": "5.17.0",
+      "matplotlib": "3.11.2"
+    }
+  }
+}
