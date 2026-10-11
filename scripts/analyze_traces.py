@@ -37,7 +37,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import numpy as np
 
 from c3 import DEFAULT_KNOTS, DELTA_MIN, N_BOOT, N_POOLS, POOL_SIZES, RETAIN
-from c3.assemble import SCALAR_COLUMNS, arm_labels, load_traces, position_and_pool_frames
+from c3.assemble import (SCALAR_COLUMNS, arm_labels, load_traces, position_and_pool_frames,
+                         trace_meta)
 from c3.calibrators import crossfit_predictions, fit_on_half
 from c3.endpoints.e1 import delta_m, gap_slope_log2, native_gap
 from c3.endpoints.e2 import decompose, icc_residuals
@@ -63,9 +64,9 @@ def load_input(spec: str):
         return simulate_positions(parts[0], **kw), {"source": spec}
     df = load_traces(spec, columns=SCALAR_COLUMNS)
     meta = {"source": spec, "sha256": sha256_file(spec)}
-    meta_path = Path(spec).with_suffix(".meta.json")
-    if meta_path.exists():
-        meta["trace_meta"] = json.loads(meta_path.read_text())
+    tm = trace_meta(spec)          # a .dataset.json manifest is its own meta
+    if tm:
+        meta["trace_meta"] = tm
     return df, meta
 
 

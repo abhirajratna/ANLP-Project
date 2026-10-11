@@ -67,18 +67,15 @@ def load(spec: str, extra_cols=()):
         from c3.sim.trajectories import simulate_design
         name, kw = _sim_kw(spec)
         return simulate_design(name, **kw), {"source": spec}
-    import pyarrow.parquet as pq
+    from c3.assemble import read_trace_table, trace_meta
 
-    names = set(pq.read_schema(spec).names)
-    cols = [c for c in list(BASE_COLUMNS) + list(extra_cols) if c in names]
-    strings = [c for c in ("mask_kind", "policy", "model", "dataset") if c in cols]
-    df = pq.read_table(spec, columns=cols, read_dictionary=strings).to_pandas()
-    for c in strings:
-        df[c] = df[c].astype(str)
+    df = read_trace_table(spec, columns=list(BASE_COLUMNS) + list(extra_cols)).to_pandas()
+    for c in ("mask_kind", "policy", "model", "dataset"):
+        if c in df.columns:
+            df[c] = df[c].astype(str)
     meta = {"source": spec, "sha256": sha256_file(spec)}
-    mp = Path(spec).with_suffix(".meta.json")
-    if mp.exists():
-        m = json.loads(mp.read_text())
+    m = trace_meta(spec)
+    if m:
         meta["trace_meta"] = {k: m.get(k) for k in ("model", "variant", "precision", "dataset",
                                                      "git_commit", "n_docs", "path", "revision")}
     return df, meta

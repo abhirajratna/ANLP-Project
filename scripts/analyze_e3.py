@@ -62,20 +62,16 @@ def load_input(spec: str):
             kw[k] = tuple(int(x) for x in v.split("+")) if k == "ks" else (
                 int(v) if k in ("n_docs", "doc_len", "seed", "masks_per_rate") else float(v))
         return simulate_design(name, **kw), {"source": spec}
-    import pyarrow.parquet as pq
+    from c3.assemble import read_trace_table, trace_meta
 
-    names = set(pq.read_schema(spec).names)
-    cols = [c for c in COLUMNS if c in names]
-    table = pq.read_table(spec, columns=cols, filters=[("mask_kind", "in", list(KINDS))],
-                          read_dictionary=[c for c in ("mask_kind", "policy") if c in cols])
+    table = read_trace_table(spec, columns=COLUMNS, filters=[("mask_kind", "in", list(KINDS))])
     df = table.to_pandas()
     for c in ("mask_kind", "policy"):
         if c in df.columns:
             df[c] = df[c].astype(str)
     meta = {"source": spec, "sha256": sha256_file(spec)}
-    mp = Path(spec).with_suffix(".meta.json")
-    if mp.exists():
-        m = json.loads(mp.read_text())
+    m = trace_meta(spec)
+    if m:
         meta["trace_meta"] = {k: m.get(k) for k in ("model", "variant", "precision", "dataset",
                                                      "git_commit", "n_docs", "config")}
     return df, meta

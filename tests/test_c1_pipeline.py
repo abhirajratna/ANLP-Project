@@ -1,0 +1,96 @@
+"""C1 sweep plumbing: zero-copy merge, run validation, closed-form design counts."""
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+import numpy as np
+import pyarrow.parquet as pq
+import pytest
+
+from c3.assemble import load_traces, trace_meta
+from c3.traces.collect import CollectConfig, Document, collect_shard
+from c3.traces.models import ToyDiffusionLM
+from c3.traces.shards import MergeError, dataset_files, merge
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+import validate_run  # noqa: E402
+
+
+def _run_two_shards(tmp_path, n_docs=4, length=24):
+    rng = np.random.default_rng(0)
+    docs = [Document(i, rng.integers(0, 60, length)) for i in range(n_docs)]
+    cfg = CollectConfig(topk=5)
+    for s in range(2):
+        collect_shard(ToyDiffusionLM(), docs, cfg, tmp_path / "run", s, 2, part_docs=1,
+                      progress_every=0)
+    return tmp_path / "run"
+
+
+def test_zero_copy_merge_reads_back_the_same_trace(tmp_path):
+    stem = _run_two_shards(tmp_path)
+    copied = load_traces(merge(stem, tmp_path / "copy.parquet"))
+    man = merge(stem, tmp_path / "run.dataset.json")
+    viewed = load_traces(man)
+    key = ["state_id", "position"]
+    a = copied.sort_values(key).reset_index(drop=True)
+    b = viewed.sort_values(key).reset_index(drop=True)
+    assert a.equals(b)
+    meta = trace_meta(man)
+    assert meta["format"] == "c3-trace-dataset-v1" and meta["n_docs"] == 4
+    assert sum(f["n_rows"] for f in meta["files"]) == len(viewed) == meta["n_rows"]
+
+
+def test_a_manifest_notices_a_changed_or_missing_part(tmp_path):
+    stem = _run_two_shards(tmp_path)
+    man = merge(stem, tmp_path / "run.dataset.json")
+    files = dataset_files(man, verify=True)
+    t = pq.read_table(files[0])
+    pq.write_table(t.slice(0, t.num_rows - 1), files[0])          # a part rewritten later
+    with pytest.raises(MergeError, match="changed"):
+        dataset_files(man, verify=True)
+    files[0].unlink()
+    with pytest.raises(MergeError, match="missing"):
+        dataset_files(man)
+
+
+def test_closed_form_counts_for_the_plan_design():
+    e = validate_run.expected_rows(256, CollectConfig().to_dict())
+    assert e["decoder"] == e["uniform_matched"] == 16512 + 8320 + 4224
+    assert e["passes"] == 466                       # slurm/CLUSTER.md
+    assert e["uniform_mean"] == pytest.approx(2 * 256 * 4.5)
+    no_match = CollectConfig(include_uniform_matched=False).to_dict()
+    assert validate_run.expected_rows(256, no_match)["passes"] == 242
+
+
+def test_validate_run_passes_a_clean_run_and_fails_a_corrupted_one(tmp_path):
+    stem = _run_two_shards(tmp_path)
+    man = merge(stem, tmp_path / "run.dataset.json")
+    out = tmp_path / "c1" / "run.json"
+    r = subprocess.run([sys.executable, "scripts/validate_run.py", "--dataset", man, "--run", "run",
+                        "--out", out], cwd=ROOT, capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+    res = json.loads(out.read_text())
+    assert res["all_ok"] and res["summary"]["documents"] == 4
+    assert res["checks"]["forward_passes"]["recorded"] == 4 * 60
+    assert "not results" in res["note"]
+
+    # Drop one decoder row from a part, and re-point the manifest at the new hash.
+    f = dataset_files(man)[0]
+    t = pq.read_table(f)
+    kind = np.asarray(t.column("mask_kind").to_pylist())
+    keep = np.ones(t.num_rows, bool)
+    keep[np.flatnonzero(kind == "decoder")[0]] = False
+    pq.write_table(t.filter(keep), f)
+    m = json.loads(Path(man).read_text())
+    from c3.provenance import sha256_file
+    for e in m["files"]:
+        if (Path(man).parent / e["file"]).resolve() == f.resolve():
+            e["sha256"] = sha256_file(f)
+    Path(man).write_text(json.dumps(m))
+    r = subprocess.run([sys.executable, "scripts/validate_run.py", "--dataset", man, "--run", "run",
+                        "--out", out], cwd=ROOT, capture_output=True, text=True)
+    assert r.returncode == 1
+    bad = json.loads(out.read_text())["checks"]["rows_per_document"]
+    assert not bad["ok"] and "decoder" in bad["first_bad"][0]["problems"][0]
