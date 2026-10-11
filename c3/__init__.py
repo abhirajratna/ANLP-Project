@@ -28,6 +28,14 @@ DEFAULT_KNOTS = 9
 DELTA_MIN = 0.02
 """Smallest effect worth reporting on Delta(32) - Delta(1), fixed before looking (T2)."""
 
+CONTAM_THRESHOLD = 32
+"""Contamination flag: a greedy 50-token continuation of a 50-token prefix that
+matches the true text for a run of at least this many tokens (plan v2 T4, which
+suggests 32 of 50; adopted 25 Sep 2026).  Deviation, recorded in
+prereg/deviations.md: the screens on both base models ran on 29 Sep with
+``--threshold 32`` passed by hand, so their results (2/1,979 and 1/1,976 flagged)
+were seen before the value was written here."""
+
 LEGACY_POOL_SIZES = (2, 4, 8, 16, 32)
 """The proposal-era grid.  Only the scripts that produced the committed
 proposal-era artifacts use it, so re-running them reproduces those records."""
