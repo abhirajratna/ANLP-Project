@@ -150,8 +150,9 @@ def main() -> int:
         "uniform_count_z": {"mean": float(np.mean(z_uni)) if z_uni else None,
                             "sd": float(np.std(z_uni)) if z_uni else None}}
 
-    # forward passes
-    passes = int(meta.get("forward_passes", 0))
+    # forward passes (those spent on documents later skipped for overflow are not
+    # in the closed form of the documents present)
+    passes = int(meta.get("forward_passes", 0)) - int(meta.get("forward_passes_failed_docs", 0))
     exp_passes = int(sum(expected_rows(scanned["span"][d], cfg)["passes"] for d in docs))
     bs = int(cfg.get("batch_size", 1))
     checks["forward_passes"] = {"ok": passes == exp_passes if bs == 1 else True,
@@ -162,9 +163,14 @@ def main() -> int:
 
     # non-finite values
     nf = scanned["nonfinite_ell"] + scanned["nonfinite_conf"] + scanned["conf_outside_unit"]
+    failed = meta.get("doc_ids_failed", [])
     checks["no_nonfinite_values"] = {"ok": nf == 0, **{k: scanned[k] for k in
                                      ("nonfinite_ell", "nonfinite_conf", "conf_outside_unit")},
                                      "n_saturated": meta.get("n_saturated")}
+    checks["no_flagged_nonfinite_passes"] = {
+        "ok": not failed, "n_documents_skipped": len(failed), "doc_ids": failed,
+        "errors": meta.get("nonfinite_docs", [])[:10],
+        "note": "documents whose forward passes overflowed (inf/NaN logits) and were left out"}
 
     # identity and provenance across shards
     prov = [p or {} for p in meta.get("shard_provenance", [])]

@@ -94,3 +94,46 @@ def test_validate_run_passes_a_clean_run_and_fails_a_corrupted_one(tmp_path):
     assert r.returncode == 1
     bad = json.loads(out.read_text())["checks"]["rows_per_document"]
     assert not bad["ok"] and "decoder" in bad["first_bad"][0]["problems"][0]
+
+
+class _OverflowToy(ToyDiffusionLM):
+    """Overflows (inf logits) whenever document 2's first token is visible."""
+
+    bad_first: int = -1
+
+    def logits(self, input_ids):
+        lg = super().logits(input_ids)
+        ids = input_ids.detach().cpu().numpy()
+        for b in range(ids.shape[0]):
+            if ids[b, 0] == self.bad_first:
+                lg[b, 0, 0] = float("inf")
+        return lg
+
+
+def test_an_overflowing_document_is_skipped_flagged_and_fails_validation(tmp_path):
+    rng = np.random.default_rng(0)
+    docs = [Document(i, rng.integers(0, 60, 24)) for i in range(4)]
+    docs[2].ids[0] = 61                          # an id no other document starts with
+    model = _OverflowToy()
+    model.bad_first = 61
+    cfg = CollectConfig(topk=5)
+    with pytest.raises(FloatingPointError):
+        collect_shard(model, docs, cfg, tmp_path / "a" / "run", 0, 1, part_docs=1, progress_every=0)
+    meta = json.loads(collect_shard(model, docs, cfg, tmp_path / "b" / "run", 0, 1, part_docs=1,
+                                    progress_every=0, on_nonfinite="skip").read_text())
+    assert meta["complete"] and meta["doc_ids_failed"] == [2]
+    assert sorted(meta["doc_ids_done"]) == [0, 1, 3]
+    # A resume does not retry it.
+    again = json.loads(collect_shard(model, docs, cfg, tmp_path / "b" / "run", 0, 1, resume=True,
+                                     part_docs=1, progress_every=0,
+                                     on_nonfinite="skip").read_text())
+    assert again["doc_ids_failed"] == [2] and again["complete"]
+    man = merge(tmp_path / "b" / "run", tmp_path / "b" / "run.dataset.json")
+    m = trace_meta(man)
+    assert m["doc_ids_failed"] == [2] and m["doc_ids"] == [0, 1, 3]
+    out = tmp_path / "v.json"
+    r = subprocess.run([sys.executable, "scripts/validate_run.py", "--dataset", man, "--run", "b",
+                        "--out", out], cwd=ROOT, capture_output=True, text=True)
+    res = json.loads(out.read_text())
+    assert r.returncode == 1 and not res["checks"]["no_flagged_nonfinite_passes"]["ok"]
+    assert res["checks"]["forward_passes"]["ok"]           # passes on doc 2 are not counted

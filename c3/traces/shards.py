@@ -88,7 +88,8 @@ def check_shards(metas: list[dict], allow_mixed_commits: bool = False) -> dict:
                          f"pass allow_mixed_commits if that is intended")
     for m in metas:
         if not m.get("complete"):
-            missing = sorted(set(m["doc_ids_expected"]) - set(m.get("doc_ids_done", [])))
+            missing = sorted(set(m["doc_ids_expected"]) - set(m.get("doc_ids_done", []))
+                             - set(m.get("doc_ids_failed", [])))
             raise MergeError(f"shard {m['shard']} is incomplete: {len(missing)} documents "
                              f"missing (first: {missing[:5]}); resume it before merging")
     return {"num_shards": n, "commits": commits}
@@ -115,7 +116,10 @@ def merge(stem: str | Path, out: str | Path, allow_mixed_commits: bool = False) 
     summary = check_shards(metas, allow_mixed_commits)
 
     seen_docs: dict[int, str] = {}
-    expected = sorted(d for m in metas for d in m["doc_ids_expected"])
+    failed = sorted(d for m in metas for d in m.get("doc_ids_failed", []))
+    # Documents skipped for non-finite logits are not in any part; they are
+    # carried into the merged meta, and scripts/validate_run.py fails on them.
+    expected = sorted(set(d for m in metas for d in m["doc_ids_expected"]) - set(failed))
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp = out.with_name(out.name + ".tmp")
     writer = None
@@ -176,9 +180,13 @@ def merge(stem: str | Path, out: str | Path, allow_mixed_commits: bool = False) 
         "git_commit": summary["commits"][0] if len(summary["commits"]) == 1 else summary["commits"],
         "path": ref.get("path"), "device_map": ref.get("device_map"),
         "n_rows": n_rows, "n_docs": len(seen_docs), "doc_ids": sorted(seen_docs),
+        "doc_ids_failed": failed,
+        "nonfinite_docs": [x for m in metas for x in m.get("stats", {}).get("nonfinite_docs", [])],
         "num_shards": summary["num_shards"], "parts": parts_used,
         "n_saturated": int(sum(m.get("stats", {}).get("n_saturated", 0) for m in metas)),
         "forward_passes": int(sum(m.get("stats", {}).get("forward_passes", 0) for m in metas)),
+        "forward_passes_failed_docs": int(sum(m.get("stats", {}).get("forward_passes_failed_docs", 0)
+                                              for m in metas)),
         "gpu_seconds": float(sum(m.get("stats", {}).get("seconds", 0.0) for m in metas)),
         "shard_provenance": [m.get("provenance") for m in metas],
         "shard_stats": [{"shard": m["shard"], **m.get("stats", {})} for m in metas],

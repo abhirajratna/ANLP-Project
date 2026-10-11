@@ -95,6 +95,9 @@ def main() -> int:
     ap.add_argument("--num-shards", type=int, default=1)
     ap.add_argument("--resume", action="store_true")
     ap.add_argument("--part-docs", type=int, default=50, help="documents per part file")
+    ap.add_argument("--on-nonfinite", choices=["raise", "skip"], default="raise",
+                    help="skip: leave out (and record) a document whose logits overflow, "
+                         "instead of stopping the shard")
     ap.add_argument("--repeat", type=int, default=1,
                     help=">1 re-runs the same documents to measure the non-determinism floor")
     ap.add_argument("--out", required=True,
@@ -143,7 +146,8 @@ def main() -> int:
     if sharded:
         stem = a.out[:-len(".parquet")] if a.out.endswith(".parquet") else a.out
         meta = collect_shard(model, docs, cfg, stem, a.shard, a.num_shards, resume=a.resume,
-                             part_docs=a.part_docs, dataset=dataset, extra_meta=extra)
+                             part_docs=a.part_docs, dataset=dataset, extra_meta=extra,
+                             on_nonfinite=a.on_nonfinite)
         outputs.append(str(meta))
         if a.num_shards == 1 and json.loads(Path(meta).read_text()).get("complete"):
             from c3.traces.shards import merge
