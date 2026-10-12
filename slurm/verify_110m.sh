@@ -7,9 +7,10 @@
 #SBATCH --exclude=gnode066,gnode069
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
-#SBATCH --time=02:00:00
+#SBATCH --time=08:00:00
 #SBATCH --output=/home2/%u/c3/logs/verify-%j.out
 # Step 5 of T3 (slurm/T3_RUNBOOK.md); submit with sbatch or run in a 1-GPU allocation.
+# 8 h: the proposal-era eval of the same script timed out at 2 h (job 2722147).
 # Confirms the trained 110M checkpoint works as an audit instrument (infills
 # masked positions above chance), then writes the sanity checks into artifacts/:
 # the held-out perplexity bound with the GPT-2 reference and samples, and gate G2.
