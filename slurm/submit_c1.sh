@@ -3,7 +3,7 @@
 #
 #   bash slurm/submit_c1.sh env              # the Python env tarball, if it is missing
 #   bash slurm/submit_c1.sh smoke            # 6 runs x 5 documents, full design
-#   bash slurm/submit_c1.sh main             # (a)-(d), in priority order
+#   bash slurm/submit_c1.sh main [a b c d]   # (a)-(d), in priority order (default all)
 #   bash slurm/submit_c1.sh timesplit        # (e), needs corpus/timesplit_docs.jsonl
 #   bash slurm/submit_c1.sh precision        # (f) T8: LLaDA-8B-Base 4-bit, 200 documents
 #   bash slurm/submit_c1.sh floor dream-7b-base   # the T1 floor for Dream (LLaDA's is in t2_pilot)
@@ -78,18 +78,26 @@ smoke)
     trace c1smoke-dream-instruct-mbpp 1 gpu:2 "$FP16,C3_MODEL=dream-7b-instruct,C3_TASK=mbpp,C3_LIMIT=5,C3_EXTRA_ARGS=$DREAM_EXTRA --task-jsonl $T/mbpp_test.jsonl"
     ;;
 main)
+    # main [a] [b] [c] [d]: the runs to submit (default all four, in this order)
     check_corpus
     T="$PERSIST/corpus/tasks"
-    # (a) LLaDA-8B-Base, 2,000 FineWeb documents, full design: ~34 slot-hours
-    trace c1-llada-base 2 gpu:2 "$FP16,C3_MODEL=llada-8b-base,C3_EXTRA_ARGS=$EXTRA"
-    # (b) LLaDA-8B-Instruct on GSM8K (1,319) and MBPP (500)
-    trace c1-llada-instruct-gsm8k 1 gpu:2 "$FP16,C3_MODEL=llada-8b-instruct,C3_TASK=gsm8k,C3_EXTRA_ARGS=$EXTRA --task-jsonl $T/gsm8k_test.jsonl"
-    trace c1-llada-instruct-mbpp 1 gpu:2 "$FP16,C3_MODEL=llada-8b-instruct,C3_TASK=mbpp,C3_EXTRA_ARGS=$EXTRA --task-jsonl $T/mbpp_test.jsonl"
-    # (c) Dream-7B-Base, 2,000 documents
-    trace c1-dream-base 2 gpu:2 "$FP16,C3_MODEL=dream-7b-base,C3_EXTRA_ARGS=$DREAM_EXTRA"
-    # (d) Dream-7B-Instruct on GSM8K and MBPP
-    trace c1-dream-instruct-gsm8k 1 gpu:2 "$FP16,C3_MODEL=dream-7b-instruct,C3_TASK=gsm8k,C3_EXTRA_ARGS=$DREAM_EXTRA --task-jsonl $T/gsm8k_test.jsonl"
-    trace c1-dream-instruct-mbpp 1 gpu:2 "$FP16,C3_MODEL=dream-7b-instruct,C3_TASK=mbpp,C3_EXTRA_ARGS=$DREAM_EXTRA --task-jsonl $T/mbpp_test.jsonl"
+    shift
+    WANT="${*:-a b c d}"
+    for x in $WANT; do
+        case "$x" in
+        a)  # (a) LLaDA-8B-Base, 2,000 FineWeb documents, full design: ~34 slot-hours
+            trace c1-llada-base 2 gpu:2 "$FP16,C3_MODEL=llada-8b-base,C3_EXTRA_ARGS=$EXTRA" ;;
+        b)  # (b) LLaDA-8B-Instruct on GSM8K (1,319) and MBPP (500)
+            trace c1-llada-instruct-gsm8k 1 gpu:2 "$FP16,C3_MODEL=llada-8b-instruct,C3_TASK=gsm8k,C3_EXTRA_ARGS=$EXTRA --task-jsonl $T/gsm8k_test.jsonl"
+            trace c1-llada-instruct-mbpp 1 gpu:2 "$FP16,C3_MODEL=llada-8b-instruct,C3_TASK=mbpp,C3_EXTRA_ARGS=$EXTRA --task-jsonl $T/mbpp_test.jsonl" ;;
+        c)  # (c) Dream-7B-Base, 2,000 documents
+            trace c1-dream-base 2 gpu:2 "$FP16,C3_MODEL=dream-7b-base,C3_EXTRA_ARGS=$DREAM_EXTRA" ;;
+        d)  # (d) Dream-7B-Instruct on GSM8K and MBPP
+            trace c1-dream-instruct-gsm8k 1 gpu:2 "$FP16,C3_MODEL=dream-7b-instruct,C3_TASK=gsm8k,C3_EXTRA_ARGS=$DREAM_EXTRA --task-jsonl $T/gsm8k_test.jsonl"
+            trace c1-dream-instruct-mbpp 1 gpu:2 "$FP16,C3_MODEL=dream-7b-instruct,C3_TASK=mbpp,C3_EXTRA_ARGS=$DREAM_EXTRA --task-jsonl $T/mbpp_test.jsonl" ;;
+        *)  echo "[c1] unknown run '$x' (want a, b, c or d)"; exit 2 ;;
+        esac
+    done
     ;;
 timesplit)
     # (e) both base models on the 500-document time-split set (from branch t3-110m-probe)
