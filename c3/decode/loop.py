@@ -109,7 +109,7 @@ def decode(model, x_init, policy, block_length: int | None = None, max_steps: in
         with torch.no_grad():
             lg = model.logits(t)
             check_finite_logits(lg, getattr(model, "name", "model"),
-                                getattr(model, "precision", "na"))
+                                getattr(model, "precision", "na"), mask_token_id=mask_id)
             stats = position_stats(lg, eligible[None, :], mask_id,
                                    true_ids=None if ref is None else ref[None, :], topk=topk,
                                    chunk=256)
