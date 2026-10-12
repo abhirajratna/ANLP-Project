@@ -1,7 +1,7 @@
 # C1 sweep on the 8B models: status
 
 Branch `c1-sweep-8b` (from `origin/main` at `dc65f07`, which contains `f816d87`).
-Last updated Mon 12 Oct 2026, 13:55 IST.
+Last updated Mon 12 Oct 2026, 14:35 IST.
 
 ## Update, 12 Oct 10:50: unblocked
 
@@ -49,7 +49,12 @@ confidence tracking it), so Dream's logit shift is right. Submitted:
 
 Run (a) shard 0 started at 13:44. ETA at the measured rates is ~84 slot-hours, i.e.
 (a)-(d) done around **Wed 14 Oct, 10:00**, before Fri 16 Oct, so the full design stays
-for Dream. To be recomputed 2 h into (a). (Before submission, `sbatch --test-only`
+for Dream. To be recomputed 2 h into (a).
+
+**14:35.** Dream floor (job 17555, 8.41 passes/s): the 5 repeats are bitwise identical
+(same sha256), so the floor is 0, as for LLaDA
+(`artifacts/t2_pilot/floor_dream-7b-base_fp16.json`). Both shards of (a) are running,
+at 60 docs/hour each. (Before submission, `sbatch --test-only`
 estimated a 17:14 start for every job; the env build actually started at once.)
 
 ## Blocker (resolved 12 Oct 10:48): no GPU job could run
