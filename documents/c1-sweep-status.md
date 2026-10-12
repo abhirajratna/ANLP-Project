@@ -1,7 +1,7 @@
 # C1 sweep on the 8B models: status
 
 Branch `c1-sweep-8b` (from `origin/main` at `dc65f07`, which contains `f816d87`).
-Last updated Mon 12 Oct 2026, 10:55 IST.
+Last updated Mon 12 Oct 2026, 13:00 IST.
 
 ## Update, 12 Oct 10:50: unblocked
 
@@ -11,7 +11,27 @@ logged in `artifacts/c1/c1_jobs.txt`:
 - env build 17548 (running on gnode043);
 - smoke runs 17549-17554 and the Dream floor 17555, all `afterok:17548`.
 
-`main` follows once the smoke logs check out. (Before submission, `sbatch --test-only`
+`main` follows once the smoke logs check out.
+
+**13:00.** The env build took 55 min (PyPI ran at ~94 kB/s). Its tarball reached
+`/share1` from the compute node, so the login-host fix works. The LLaDA smoke runs all
+pass `validate_run.py` (`artifacts/c1/c1smoke-*.json`):
+
+| smoke run | passes/s | passes | rows | check |
+|---|---|---|---|---|
+| llada-base, 5 docs | 7.58 | 466 / doc | 60,391 / doc | all ok |
+| llada-instruct gsm8k | 8.15 | 682 | 29,539 | all ok |
+| llada-instruct mbpp | 7.47 | 492 | 15,671 | all ok |
+
+Fit-half spot checks:
+
+- Base uniform accuracy falls from 0.83 to 0.14 as the mask rate rises, and confidence
+  tracks it.
+- At step 0 the decoder and matched states are bitwise identical.
+- Every task row lies inside the answer span.
+
+Parts take ~7.9 MB per document, so a FineWeb arm is ~16 GB, not 22. Submitted (a)
+17716 and (b) 17745/17746. Dream smoke runs 17552/17553 are running. (Before submission, `sbatch --test-only`
 estimated a 17:14 start for every job; the env build actually started at once.)
 
 ## Blocker (resolved 12 Oct 10:48): no GPU job could run
