@@ -1,7 +1,7 @@
 # C1 sweep on the 8B models: status
 
 Branch `c1-sweep-8b` (from `origin/main` at `dc65f07`, which contains `f816d87`).
-Last updated Mon 12 Oct 2026, 13:00 IST.
+Last updated Mon 12 Oct 2026, 13:55 IST.
 
 ## Update, 12 Oct 10:50: unblocked
 
@@ -31,7 +31,25 @@ Fit-half spot checks:
 - Every task row lies inside the answer span.
 
 Parts take ~7.9 MB per document, so a FineWeb arm is ~16 GB, not 22. Submitted (a)
-17716 and (b) 17745/17746. Dream smoke runs 17552/17553 are running. (Before submission, `sbatch --test-only`
+17716 and (b) 17745/17746. Dream smoke runs 17552/17553 are running.
+
+**13:55.** All six smoke runs pass `validate_run.py`:
+
+| smoke run | passes/s |
+|---|---|
+| dream-base | 8.38 |
+| dream-instruct gsm8k | 9.54 |
+| dream-instruct mbpp | 9.07 |
+
+Dream-Base's fit-half accuracy profile matches LLaDA's (uniform 0.81 falling to 0.13,
+confidence tracking it), so Dream's logit shift is right. Submitted:
+
+- (c) 17766;
+- (d) 17898/17899.
+
+Run (a) shard 0 started at 13:44. ETA at the measured rates is ~84 slot-hours, i.e.
+(a)-(d) done around **Wed 14 Oct, 10:00**, before Fri 16 Oct, so the full design stays
+for Dream. To be recomputed 2 h into (a). (Before submission, `sbatch --test-only`
 estimated a 17:14 start for every job; the env build actually started at once.)
 
 ## Blocker (resolved 12 Oct 10:48): no GPU job could run
