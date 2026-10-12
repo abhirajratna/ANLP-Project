@@ -80,8 +80,8 @@ done
     --primary-arms "${PRIMARY_ARMS[@]}" --out "$OUT/c1/summary"
 
 # Time-split set (T4, guaranteed unseen): its own split manifest, written with
-#   python scripts/make_split_manifest.py --docs runs/corpus/timesplit_docs.jsonl \
-#       --pilot-docs runs/corpus/reserve_docs.jsonl --exclusion-manifest '' \
+#   python scripts/make_split_manifest.py --docs runs/corpus/t3/timesplit_docs.jsonl \
+#       --pilot-docs runs/corpus/reserve_docs.jsonl --exclusion-manifest '' --any-ids \
 #       --out artifacts/split_manifest_timesplit.json
 # before any of its traces is analysed.
 for row in "LladaBaseTimeSplit c1ts-llada-base $FLOOR_LLADA" "DreamBaseTimeSplit c1ts-dream-base $FLOOR_DREAM"; do

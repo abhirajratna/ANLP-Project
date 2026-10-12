@@ -139,3 +139,22 @@ def test_the_frozen_commands_refuse_to_read_the_report_half_by_default():
     r = subprocess.run(["bash", str(ROOT / "prereg/analysis_commands.sh")], capture_output=True,
                        text=True, cwd=ROOT, env={"PATH": "/usr/bin:/bin"})
     assert r.returncode != 0 and "refusing" in r.stderr
+
+
+def test_split_manifest_for_a_corpus_whose_ids_are_not_positions(tmp_path):
+    p = tmp_path / "ts.jsonl"
+    with p.open("w") as fh:
+        for i in range(30):
+            text = f"later document {i} " * 30
+            fh.write(json.dumps({"doc_id": 200000 + i, "id": f"<ts:{i}>", "text": text,
+                                 "hash": content_hash(text)}) + "\n")
+    out = tmp_path / "s.json"
+    r = _run("scripts/make_split_manifest.py", "--docs", p, "--pilot-docs", _corpus(tmp_path),
+             "--exclusion-manifest", "", "--out", out, check=False)
+    assert r.returncode != 0 and "--any-ids" in r.stderr
+    _run("scripts/make_split_manifest.py", "--docs", p, "--pilot-docs", _corpus(tmp_path),
+         "--exclusion-manifest", "", "--any-ids", "--out", out)
+    m = json.loads(out.read_text())
+    fit, report = document_split(30, seed=CorpusSpec().seed)
+    assert set(m) == {str(200000 + i) for i in range(30)}
+    assert all(m[str(200000 + i)] == 0 for i in fit) and all(m[str(200000 + i)] == 1 for i in report)

@@ -1,7 +1,7 @@
 # C1 sweep on the 8B models: status
 
 Branch `c1-sweep-8b` (from `origin/main` at `dc65f07`, which contains `f816d87`).
-Last updated Mon 12 Oct 2026, 14:35 IST.
+Last updated Mon 12 Oct 2026, 17:35 IST.
 
 ## Update, 12 Oct 10:50: unblocked
 
@@ -54,7 +54,35 @@ for Dream. To be recomputed 2 h into (a).
 **14:35.** Dream floor (job 17555, 8.41 passes/s): the 5 repeats are bitwise identical
 (same sha256), so the floor is 0, as for LLaDA
 (`artifacts/t2_pilot/floor_dream-7b-base_fp16.json`). Both shards of (a) are running,
-at 60 docs/hour each. (Before submission, `sbatch --test-only`
+at 60 docs/hour each.
+
+**17:30, ETA check (run late: the 15:45 check-ins did not fire while the laptop slept).**
+
+Measured on (a): shard 0 at 60.0 docs/h (7.8 passes/s), shard 1 at 56.9 docs/h (7.4
+passes/s), at 200/987 and 175/992 documents. The two slots then run:
+
+| when | slot 1 | slot 2 |
+|---|---|---|
+| Tue ~06:30 / ~07:45 | (a) ends | (a) ends |
+| next | (b) gsm8k, until ~15:30 Tue | (b) mbpp, until ~10:45 Tue |
+| then | (c) shard 1 | (c) shard 0, ~15 h |
+| last | (d) mbpp | (d) gsm8k |
+
+So **(a)-(d) are done around Wed 14 Oct, 10:15**, merges by ~11:30. That is before Fri
+16 Oct, so the full design stays for Dream (no matched-arm drop).
+
+**(e) submitted.** `artifacts/timesplit_docs.jsonl` appeared on `t3-110m-probe` (500
+documents, ids 200000-200499, sha256 `3374de4d…`, matching its manifest). It is copied to
+Ada and hash-checked; jobs 18196 (LLaDA) and 18197 (Dream) queue after (d), ~9 h each, so
+done ~Wed evening. Its split manifest is `artifacts/split_manifest_timesplit.json`
+(250/250, `make_split_manifest.py --any-ids`, new because these ids are not file
+positions). The laptop's 29 Sep `runs/corpus/timesplit_docs.jsonl` (`9902…`) was left
+untouched; the t3 file is at `runs/corpus/t3/timesplit_docs.jsonl`.
+
+(f) waits for a free slot. 8 jobs are queued, the brief's limit.
+
+The Ada checkout stays at `c072bc6` until every collection job has started, so all runs
+carry one commit. The later commits are analysis-side only. (Before submission, `sbatch --test-only`
 estimated a 17:14 start for every job; the env build actually started at once.)
 
 ## Blocker (resolved 12 Oct 10:48): no GPU job could run

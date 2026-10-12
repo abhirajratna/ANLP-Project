@@ -146,10 +146,11 @@ def frozen() -> dict:
                           "fit half; every reported number comes from the report half",
                   "manifests": {p: _sha(p) for p in (
                       "artifacts/split_manifest.json", "artifacts/split_manifest_gsm8k.json",
-                      "artifacts/split_manifest_mbpp.json")},
+                      "artifacts/split_manifest_mbpp.json",
+                      "artifacts/split_manifest_timesplit.json")},
                   "tasks": "scripts/make_task_split.py: the same document_split and seed",
-                  "time_split": "scripts/make_split_manifest.py on timesplit_docs.jsonl (same "
-                                "seed) before its traces are analysed"},
+                  "time_split": "scripts/make_split_manifest.py --any-ids on timesplit_docs.jsonl "
+                                "(same seed; doc_ids 200000-200499)"},
         "floors": floors(),
         "gates": {
             "G1": {"max_docs_full_plan": G1_MAX_DOCS, "corpus_docs": G1_CORPUS_DOCS,
@@ -201,8 +202,8 @@ def frozen() -> dict:
             "CONFIRM the GSM8K/MBPP split: the FineWeb rule applied to the task test sets",
             "CONFIRM softmax temperature for T8 (top-20 + even tail); log-odds is the exact "
             "alternative",
-            "the Dream floor (pending its measurement)",
-            "the time-split manifest (pending timesplit_docs.jsonl from branch t3-110m-probe)"],
+            "CONFIRM the time-split set (artifacts/timesplit_manifest.json on branch "
+            "t3-110m-probe, sha256 3374de4d...)"],
         "provenance": provenance(),
         "generated_at": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds"),
     }
