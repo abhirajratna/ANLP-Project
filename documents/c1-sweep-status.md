@@ -1,9 +1,20 @@
 # C1 sweep on the 8B models: status
 
 Branch `c1-sweep-8b` (from `origin/main` at `dc65f07`, which contains `f816d87`).
-Last updated Mon 12 Oct 2026, 02:30 IST.
+Last updated Mon 12 Oct 2026, 10:55 IST.
 
-## Blocker: no GPU job can run yet
+## Update, 12 Oct 10:50: unblocked
+
+The SLURM association now exists (`research`, QOS `medium`, checked 10:48). Submitted, all
+logged in `artifacts/c1/c1_jobs.txt`:
+
+- env build 17548 (running on gnode043);
+- smoke runs 17549-17554 and the Dream floor 17555, all `afterok:17548`.
+
+`main` follows once the smoke logs check out. (Before submission, `sbatch --test-only`
+estimated a 17:14 start for every job; the env build actually started at once.)
+
+## Blocker (resolved 12 Oct 10:48): no GPU job could run
 
 `abhiraj.ratna` has **no SLURM association** on Ada. `sacctmgr show assoc where
 user=abhiraj.ratna` returns nothing, the cluster enforces associations, and every
