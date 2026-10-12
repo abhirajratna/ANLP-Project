@@ -9,6 +9,7 @@
 #   bash slurm/submit_c1.sh floor dream-7b-base   # the T1 floor for Dream (LLaDA's is in t2_pilot)
 #   bash slurm/submit_c1.sh merge <run> [gpus-per-task]
 #   DRY_RUN=1 bash slurm/submit_c1.sh main   # print the sbatch lines, submit nothing
+#   C3_SBATCH_ARGS="--dependency=afterok:<env job>" bash slurm/submit_c1.sh smoke
 #
 # Every submission is appended to logs/c1_jobs.txt: date, job id, run name, commit,
 # and the full sbatch arguments.  QOS: 4 GPUs (two 2-GPU fp16 tasks at once),
@@ -33,8 +34,11 @@ FP16="C3_PRECISION=fp16,C3_DEVICE_MAP=auto,C3_MAX_MEMORY=0=9GiB;1=9GiB"
 EXTRA="--on-nonfinite skip --merge-as none"
 DREAM_EXTRA="$EXTRA${C3_DREAM_NO_MATCHED:+ --no-uniform-matched}"
 
-submit() {   # submit <run> <sbatch args...>
+submit() {   # submit <run> <sbatch args...>; C3_SBATCH_ARGS adds options, e.g. a dependency
     local run=$1; shift
+    # shellcheck disable=SC2206
+    local pre=(${C3_SBATCH_ARGS:-})
+    set -- "${pre[@]}" "$@"
     if [ -n "${DRY_RUN:-}" ]; then
         echo "DRY_RUN sbatch $*"
         return 0
