@@ -1,7 +1,7 @@
 # C1 sweep on the 8B models: status
 
 Branch `c1-sweep-8b` (from `origin/main` at `dc65f07`, which contains `f816d87`).
-Last updated Mon 12 Oct 2026, 17:35 IST.
+Last updated Tue 13 Oct 2026, 08:25 IST.
 
 ## Update, 12 Oct 10:50: unblocked
 
@@ -80,6 +80,19 @@ positions). The laptop's 29 Sep `runs/corpus/timesplit_docs.jsonl` (`9902…`) w
 untouched; the t3 file is at `runs/corpus/t3/timesplit_docs.jsonl`.
 
 (f) waits for a free slot. 8 jobs are queued, the brief's limit.
+
+**Tue 13 Oct, 08:25: (a) merged and validated** (merge job 18925, 8.5 min,
+`artifacts/c1/c1-llada-base.json`, all checks ok):
+
+- **Size:** 1,979 documents, 119,562,567 rows, 922,214 passes (466 per document), 40
+  parts, 15 GB at `/share1/abhiraj.ratna/traces/c1-llada-base/` (with
+  `c1-llada-base.dataset.json`).
+- **Cost:** 68.0 GPU-hours.
+- **Rate:** 7.54 passes/s mean; shard 0 7.73 on gnode043, shard 1 7.36 on gnode046.
+- **Checks:** uniform-count z = -0.01 +- 0.98, no overflowing document, one commit
+  (`c072bc6`), one GPU model.
+
+(b) GSM8K 17745 and MBPP 17746 started at 06:17 and 07:29.
 
 The Ada checkout stays at `c072bc6` until every collection job has started, so all runs
 carry one commit. The later commits are analysis-side only. (Before submission, `sbatch --test-only`
