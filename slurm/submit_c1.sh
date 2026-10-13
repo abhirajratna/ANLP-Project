@@ -27,12 +27,15 @@
 set -euo pipefail
 cd "${C3_REPO:-/home2/$USER/c3}"
 mkdir -p logs artifacts/c1
-LOG=logs/c1_jobs.txt
+LOG="${C3_JOBS_LOG:-logs/c1_jobs.txt}"   # one log for every checkout that submits
 PERSIST="${C3_PERSIST:-/home2/$USER/c3-runs}"
 COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
 FP16="C3_PRECISION=fp16,C3_DEVICE_MAP=auto,C3_MAX_MEMORY=0=9GiB;1=9GiB"
 EXTRA="--on-nonfinite skip --merge-as none"
 DREAM_EXTRA="$EXTRA${C3_DREAM_NO_MATCHED:+ --no-uniform-matched}"
+# Task documents longer than 1,024 tokens (prompt + answer) are excluded and listed:
+# only MBPP test 482 (3,986 tokens), whose logits do not fit a 2080 Ti (job 17746).
+TASK_CAP="--max-doc-tokens 1024"
 
 submit() {   # submit <run> <sbatch args...>; C3_SBATCH_ARGS adds options, e.g. a dependency
     local run=$1; shift
@@ -88,14 +91,19 @@ main)
         a)  # (a) LLaDA-8B-Base, 2,000 FineWeb documents, full design: ~34 slot-hours
             trace c1-llada-base 2 gpu:2 "$FP16,C3_MODEL=llada-8b-base,C3_EXTRA_ARGS=$EXTRA" ;;
         b)  # (b) LLaDA-8B-Instruct on GSM8K (1,319) and MBPP (500)
-            trace c1-llada-instruct-gsm8k 1 gpu:2 "$FP16,C3_MODEL=llada-8b-instruct,C3_TASK=gsm8k,C3_EXTRA_ARGS=$EXTRA --task-jsonl $T/gsm8k_test.jsonl"
-            trace c1-llada-instruct-mbpp 1 gpu:2 "$FP16,C3_MODEL=llada-8b-instruct,C3_TASK=mbpp,C3_EXTRA_ARGS=$EXTRA --task-jsonl $T/mbpp_test.jsonl" ;;
+            trace c1-llada-instruct-gsm8k 1 gpu:2 "$FP16,C3_MODEL=llada-8b-instruct,C3_TASK=gsm8k,C3_EXTRA_ARGS=$EXTRA $TASK_CAP --task-jsonl $T/gsm8k_test.jsonl"
+            trace c1-llada-instruct-mbpp-v2 1 gpu:2 "$FP16,C3_MODEL=llada-8b-instruct,C3_TASK=mbpp,C3_EXTRA_ARGS=$EXTRA $TASK_CAP --task-jsonl $T/mbpp_test.jsonl" ;;
+        bm) # (b) MBPP alone, rerun with the length cap (the first run, c1-llada-instruct-mbpp,
+            # crashed on test 482 and is kept, partial, on /share1)
+            trace c1-llada-instruct-mbpp-v2 1 gpu:2 "$FP16,C3_MODEL=llada-8b-instruct,C3_TASK=mbpp,C3_EXTRA_ARGS=$EXTRA $TASK_CAP --task-jsonl $T/mbpp_test.jsonl" ;;
         c)  # (c) Dream-7B-Base, 2,000 documents
             trace c1-dream-base 2 gpu:2 "$FP16,C3_MODEL=dream-7b-base,C3_EXTRA_ARGS=$DREAM_EXTRA" ;;
         d)  # (d) Dream-7B-Instruct on GSM8K and MBPP
-            trace c1-dream-instruct-gsm8k 1 gpu:2 "$FP16,C3_MODEL=dream-7b-instruct,C3_TASK=gsm8k,C3_EXTRA_ARGS=$DREAM_EXTRA --task-jsonl $T/gsm8k_test.jsonl"
-            trace c1-dream-instruct-mbpp 1 gpu:2 "$FP16,C3_MODEL=dream-7b-instruct,C3_TASK=mbpp,C3_EXTRA_ARGS=$DREAM_EXTRA --task-jsonl $T/mbpp_test.jsonl" ;;
-        *)  echo "[c1] unknown run '$x' (want a, b, c or d)"; exit 2 ;;
+            trace c1-dream-instruct-gsm8k 1 gpu:2 "$FP16,C3_MODEL=dream-7b-instruct,C3_TASK=gsm8k,C3_EXTRA_ARGS=$DREAM_EXTRA $TASK_CAP --task-jsonl $T/gsm8k_test.jsonl"
+            trace c1-dream-instruct-mbpp 1 gpu:2 "$FP16,C3_MODEL=dream-7b-instruct,C3_TASK=mbpp,C3_EXTRA_ARGS=$DREAM_EXTRA $TASK_CAP --task-jsonl $T/mbpp_test.jsonl" ;;
+        dm) # (d) MBPP alone, with the length cap
+            trace c1-dream-instruct-mbpp 1 gpu:2 "$FP16,C3_MODEL=dream-7b-instruct,C3_TASK=mbpp,C3_EXTRA_ARGS=$DREAM_EXTRA $TASK_CAP --task-jsonl $T/mbpp_test.jsonl" ;;
+        *)  echo "[c1] unknown run '$x' (want a, b, bm, c, d or dm)"; exit 2 ;;
         esac
     done
     ;;

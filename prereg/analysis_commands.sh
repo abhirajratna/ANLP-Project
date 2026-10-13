@@ -39,7 +39,7 @@ ARMS=(
   "LladaBase           c1-llada-base             artifacts/split_manifest.json          $FLOOR_LLADA  fineweb"
   "DreamBase           c1-dream-base             artifacts/split_manifest.json          $FLOOR_DREAM  fineweb"
   "LladaInstructGsm    c1-llada-instruct-gsm8k   artifacts/split_manifest_gsm8k.json    $FLOOR_LLADA  gsm8k"
-  "LladaInstructMbpp   c1-llada-instruct-mbpp    artifacts/split_manifest_mbpp.json     $FLOOR_LLADA  mbpp"
+  "LladaInstructMbpp   c1-llada-instruct-mbpp-v2 artifacts/split_manifest_mbpp.json     $FLOOR_LLADA  mbpp"
   "DreamInstructGsm    c1-dream-instruct-gsm8k   artifacts/split_manifest_gsm8k.json    $FLOOR_DREAM  gsm8k"
   "DreamInstructMbpp   c1-dream-instruct-mbpp    artifacts/split_manifest_mbpp.json     $FLOOR_DREAM  mbpp"
 )

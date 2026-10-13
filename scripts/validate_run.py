@@ -119,7 +119,9 @@ def main() -> int:
     docs = sorted(counts)
     want = sorted(meta.get("doc_ids", []))
     checks["every_document_present"] = {"ok": docs == want and len(docs) > 0,
-                                        "n_docs": len(docs), "n_expected": len(want)}
+                                        "n_docs": len(docs), "n_expected": len(want),
+                                        "excluded_too_long": meta.get("excluded_too_long") or [],
+                                        "max_doc_tokens": meta.get("max_doc_tokens")}
     if a.corpus:
         n_corpus = sum(1 for line in open(a.corpus, encoding="utf-8") if line.strip())
         checks["every_document_present"]["n_corpus"] = n_corpus

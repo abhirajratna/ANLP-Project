@@ -37,6 +37,18 @@ above them is edited.
    fixed seed") is applied to the task test sets with the same function and seed as
    FineWeb (`scripts/make_task_split.py`; `artifacts/split_manifest_{gsm8k,mbpp}.json`).
 
+6. **One MBPP document excluded for length.** Task documents longer than 1,024 tokens
+   (prompt plus answer) are excluded and listed in each run's metadata
+   (`collect_traces.py --max-doc-tokens 1024`). Only MBPP test 482 is affected: 3,986
+   tokens, 3,730 of them a prompt of test asserts holding a long literal. Every other
+   task document is at most 943 tokens. The whole sequence goes through each forward
+   pass, and 482's float32 logits (~1.9 GiB at LLaDA's vocabulary) do not fit a 2080 Ti
+   beside the weights. The first LLaDA-Instruct MBPP run (job 17746) crashed with CUDA
+   OOM on it after 450 documents. That run is kept, partial, at
+   `/share1/abhiraj.ratna/traces/c1-llada-instruct-mbpp/` and is not used. MBPP is
+   re-collected from scratch at one commit as `c1-llada-instruct-mbpp-v2`. Dream-Instruct
+   MBPP carries the cap from the start.
+
 ## Choices the plan leaves open, fixed here (for sign-off)
 
 - E1/E2 Holm families: arms `uniform` and `decoder:topk_conf:k4` across models x datasets.

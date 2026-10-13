@@ -49,8 +49,15 @@ mkdir -p "$SRC" "$OUT"
 cd "$REPO_DIR"
 echo "[dev] node=$(hostname) run=$RUN docs=$N boot=$BOOT commit=$C3_GIT_COMMIT"
 
-rsync -a --exclude '*.tmp' -e "ssh $SSH_OPTS" "$USER@$C3_LOGIN_HOST:$BLOBS/traces/$RUN/" "$SRC/"
-echo "[dev] pulled $(du -sh "$SRC" | cut -f1)"
+want() { [[ "$STEPS" == *" $1 "* ]]; }
+if want subset || [ ! -s "$OUT/trace.parquet" ]; then
+    # The whole run comes to this node (~15 GB for a FineWeb arm); a node whose
+    # /ssd_scratch is full fails here (job 18970, gnode042), so say so plainly.
+    echo "[dev] /ssd_scratch free: $(df -h --output=avail "$C3_SCRATCH" | tail -1)"
+    rsync -a --exclude '*.tmp' -e "ssh $SSH_OPTS" "$USER@$C3_LOGIN_HOST:$BLOBS/traces/$RUN/" "$SRC/"
+    echo "[dev] pulled $(du -sh "$SRC" | cut -f1)"
+    STEPS="$STEPS subset "
+fi
 
 step() {   # step <name> <command...>: run, recording peak RSS and wall time
     local name=$1; shift
@@ -66,8 +73,7 @@ step() {   # step <name> <command...>: run, recording peak RSS and wall time
     echo "[dev] $name exit $rc"
 }
 
-want() { [[ "$STEPS" == *" $1 "* ]]; }
-[ -s "$OUT/trace.parquet" ] && ! want subset && echo "[dev] reusing $OUT/trace.parquet"
+want subset || echo "[dev] reusing $OUT/trace.parquet"
 want subset && step subset "$C3_PY" scripts/make_dev_subset.py --dataset "$SRC/$RUN.dataset.json" \
     --manifest "$MANIFEST" --n-docs "$N" --out-trace "$OUT/trace.parquet" \
     --out-manifest "$OUT/dev_manifest.json"

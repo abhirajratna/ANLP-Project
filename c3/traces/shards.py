@@ -181,6 +181,8 @@ def merge(stem: str | Path, out: str | Path, allow_mixed_commits: bool = False) 
         "path": ref.get("path"), "device_map": ref.get("device_map"),
         "n_rows": n_rows, "n_docs": len(seen_docs), "doc_ids": sorted(seen_docs),
         "doc_ids_failed": failed,
+        "excluded_too_long": [x for m in metas for x in (m.get("excluded_too_long") or [])],
+        "max_doc_tokens": ref.get("max_doc_tokens"),
         "nonfinite_docs": [x for m in metas for x in m.get("stats", {}).get("nonfinite_docs", [])],
         "num_shards": summary["num_shards"], "parts": parts_used,
         "n_saturated": int(sum(m.get("stats", {}).get("n_saturated", 0) for m in metas)),

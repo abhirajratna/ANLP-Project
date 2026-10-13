@@ -167,3 +167,18 @@ def test_dev_subset_holds_only_fit_half_documents(tmp_path):
     dev = json.loads((tmp_path / "dev" / "m.json").read_text())
     assert set(dev) == {"0", "2", "4"} and set(dev.values()) <= {0, 1}
     assert "DEVELOPMENT" in json.loads(out.with_suffix(".meta.json").read_text())["note"]
+
+
+def test_max_doc_tokens_excludes_and_records_long_documents(tmp_path):
+    common = [sys.executable, "scripts/collect_traces.py", "--model", "toy", "--device", "cpu",
+              "--limit", "2", "--max-tokens", "16", "--mask-rates", "0.5", "--decoder-k", "8",
+              "--resume", "--merge-as", "none"]
+    subprocess.run([*common, "--max-doc-tokens", "15", "--out", tmp_path / "a"], cwd=ROOT,
+                   check=True, capture_output=True)
+    meta = json.loads((tmp_path / "a.shard0of1.meta.json").read_text())
+    assert meta["excluded_too_long"] == [{"doc_id": 0, "tokens": 16}, {"doc_id": 1, "tokens": 16}]
+    assert meta["doc_ids_expected"] == [] and meta["max_doc_tokens"] == 15
+    subprocess.run([*common, "--max-doc-tokens", "16", "--out", tmp_path / "b"], cwd=ROOT,
+                   check=True, capture_output=True)
+    meta = json.loads((tmp_path / "b.shard0of1.meta.json").read_text())
+    assert meta["excluded_too_long"] == [] and meta["doc_ids_expected"] == [0, 1]
