@@ -1,7 +1,7 @@
 # C1 sweep on the 8B models: status
 
 Branch `c1-sweep-8b` (from `origin/main` at `dc65f07`, which contains `f816d87`).
-Last updated Tue 13 Oct 2026, 10:30 IST.
+Last updated Tue 13 Oct 2026, 15:25 IST.
 
 ## Update, 12 Oct 10:50: unblocked
 
@@ -127,6 +127,11 @@ Revised ETA:
   log-odds temperature is now the primary row (deviations).
 - Memory buys CPUs on u22 (`MaxMemPerCPU=3000`), so a CPU job gets at most ~40 GB
   while two GPU tasks run.
+
+**15:25: (b) GSM8K merged and validated.** Merge job 19432, all checks ok
+(`artifacts/c1/c1-llada-instruct-gsm8k.json`). 1,319 documents, 13,821,447 rows,
+245,152 passes (186 per document), 17.6 GPU-hours, 7.74 passes/s. (c) shard 1 started
+at 15:05.
 
 The Ada checkout stays at `c072bc6` until every collection job has started, so all runs
 carry one commit. The later commits are analysis-side only. (Before submission, `sbatch --test-only`
