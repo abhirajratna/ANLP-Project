@@ -150,3 +150,20 @@ def test_single_shard_runs_can_merge_zero_copy_or_not_at_all(tmp_path):
     subprocess.run([*common, "--merge-as", "none", "--out", tmp_path / "b"], cwd=ROOT, check=True,
                    capture_output=True)
     assert not (tmp_path / "b.dataset.json").exists() and not (tmp_path / "b.parquet").exists()
+
+
+def test_dev_subset_holds_only_fit_half_documents(tmp_path):
+    stem = _run_two_shards(tmp_path, n_docs=6)
+    man = merge(stem, tmp_path / "run.dataset.json")
+    split = tmp_path / "split.json"
+    split.write_text(json.dumps({str(i): i % 2 for i in range(6)}))     # 0, 2, 4 are fit
+    out = tmp_path / "dev" / "trace.parquet"
+    subprocess.run([sys.executable, "scripts/make_dev_subset.py", "--dataset", man,
+                    "--manifest", split, "--out-trace", out,
+                    "--out-manifest", tmp_path / "dev" / "m.json"], cwd=ROOT, check=True,
+                   capture_output=True)
+    docs = sorted(set(pq.read_table(out, columns=["doc_id"]).column("doc_id").to_pylist()))
+    assert docs == [0, 2, 4]
+    dev = json.loads((tmp_path / "dev" / "m.json").read_text())
+    assert set(dev) == {"0", "2", "4"} and set(dev.values()) <= {0, 1}
+    assert "DEVELOPMENT" in json.loads(out.with_suffix(".meta.json").read_text())["note"]
