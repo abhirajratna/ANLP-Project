@@ -46,8 +46,17 @@ above them is edited.
 - E3 joint test of the type terms: a sup-t test that the difference curve is zero, with
   the document bootstrap. A Wald test on the spline coefficients over-rejected on
   simulated nulls.
-- T8 temperature: softmax temperature rebuilt from the stored top-20 probabilities plus
-  an even tail, fitted by true-token NLL per mask-rate bin.
+- T8 temperature: one temperature per mask-rate bin on the top-1 log-odds,
+  c = sigma(ell / T), fitted by the NLL of correctness on the fit half. This is the
+  primary row: it is exact from the trace and acts on the confidence Delta(m) uses. The
+  softmax temperature (logits / T, rebuilt from the stored top-20 probabilities plus an
+  even tail, fitted by true-token NLL) is a sensitivity row. The order was changed after
+  a development run on 150 fit-half LLaDA-Base documents (job 18932, 13 Oct; no
+  report-half document). There the softmax fit gave T = 0.86-0.95 in every bin and arm,
+  sharpening confidences the model already reports nearly calibrated. The suspected
+  cause is that the even tail makes sharpening look cheap: it spreads the residual mass
+  over ~126k tokens, so raising it to 1/T > 1 makes it vanish. This could not be checked
+  without the full logits.
 
 ## After the freeze
 

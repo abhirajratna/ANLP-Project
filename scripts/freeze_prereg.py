@@ -110,7 +110,10 @@ def t8_config() -> dict:
             "token_type": {"classes": list(controls.TOKEN_CLASSES), "of": "the slot's true token",
                            "stop_words": len(controls.STOP_WORDS),
                            "rows": "covariates, per-class split, class-standardised contrast"},
-            "temperature": {"kind": "softmax (top-20 + even tail), fitted by true-token NLL",
+            "temperature": {"primary": "logodds: c = sigma(ell / T_bin), fitted by the NLL of "
+                                       "correctness (exact from the trace)",
+                            "sensitivity": "softmax: logits / T rebuilt from the top-20 and an "
+                                           "even tail, fitted by true-token NLL",
                             "bins": controls.TEMPERATURE_EDGES.tolist(),
                             "pools": "re-ranked on the tempered confidence"},
             "precision": {"documents": "artifacts/t8_precision_docs.json",
@@ -200,8 +203,8 @@ def frozen() -> dict:
             "CONFIRM the interacted context calibrator (code default) over plan v2 T6(2)'s "
             "additive form; the additive fit is the sensitivity check",
             "CONFIRM the GSM8K/MBPP split: the FineWeb rule applied to the task test sets",
-            "CONFIRM softmax temperature for T8 (top-20 + even tail); log-odds is the exact "
-            "alternative",
+            "CONFIRM log-odds temperature as the T8 primary (softmax with the even-tail "
+            "approximation is a sensitivity row; prereg/deviations.md)",
             "CONFIRM the time-split set (artifacts/timesplit_manifest.json on branch "
             "t3-110m-probe, sha256 3374de4d...)"],
         "provenance": provenance(),

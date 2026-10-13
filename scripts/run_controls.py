@@ -17,7 +17,8 @@
 Controls (``c3.controls``): ``position`` (absolute position, distance to the
 nearest unmasked token, PC-Sampler's weight as covariates), ``token_type``
 (punctuation / stop-word / content: covariates, and the split by type),
-``temperature`` (one per mask-rate bin, fitted on the fit half), ``precision``
+``temperature`` (one per mask-rate bin, fitted on the fit half; log-odds and
+softmax, one row each), ``precision``
 (fp16 vs 4-bit on the same documents).  Every row gives the main effect -- E1
 Delta(32) - Delta(1), E2 field(32) - field(1) -- without and with the control,
 and the paired difference, on one resample matrix per document set.
@@ -212,40 +213,41 @@ def control_rows(arm, df, fit_docs, est_docs, codes, counts, args, classes=None)
             extra["token_type_shares"] = shares
 
     if "temperature" in args.controls:
-        kind = args.temperature
-        if kind == "softmax" and not {"topk_p", "p_true"} <= set(df.columns):
-            kind = "logodds"
-            extra["temperature_note"] = "no top-k probabilities in this trace: log-odds temperature"
         tr = pos.select(fit_mask)
         from c3.calibrators import pool_weights
         w = pool_weights(tr)
-        kw = {}
-        if kind == "softmax":
-            topk = np.stack(df["topk_p"].to_numpy())
-            pt = df["p_true"].to_numpy(np.float64)
-            vocab = int(args.vocab or _vocab_of(df))
-            T = C.fit_temperatures("softmax", tr.mask_rate, w, topk_p=topk[fit_mask],
-                                   p_true=pt[fit_mask], vocab=vocab)
-            conf_t, ell_t = C.apply_temperatures("softmax", T, pos.mask_rate, topk_p=topk,
-                                                 p_true=pt, vocab=vocab)
-            kw["vocab"] = vocab
-        else:
-            T = C.fit_temperatures("logodds", tr.mask_rate, w, ell=tr.ell, agree=tr.agree)
-            conf_t, ell_t = C.apply_temperatures("logodds", T, pos.mask_rate, ell=pos.ell)
-        # Same pool memberships (they never look at ell), re-ranked on the tempered ell.
-        pools_t = frame_from_arrays(pos.doc_id, pos.state_id, pos.position, ell_t, pos.agree,
-                                    pool_sizes=POOL_SIZES, n_pools_per_size=N_POOLS,
-                                    seed=args.seed, retain=1, min_state_size=max(POOL_SIZES))
-        delta_t = winner_gap(pools_t, pos, conf_t, pos.agree, codes, counts, rep_mask)
-        note = f"{kind} temperature per mask-rate bin, fitted on the fit half"
-        rows.append(C.ablation_row("temperature", "E1_contrast", arm, delta.contrast(HI, LO),
-                                   delta_t.contrast(HI, LO), n_docs, note))
+        extra["temperature"] = {"bins": C.TEMPERATURE_EDGES.tolist()}
         i = int(np.flatnonzero(delta.levels == HI)[0])
-        rows.append(C.ablation_row("temperature", f"Delta({HI})", arm,
-                                   (float(delta.point[i]), delta.draws[:, i]),
-                                   (float(delta_t.point[i]), delta_t.draws[:, i]), n_docs, note))
-        extra["temperature"] = {"kind": kind, "bins": C.TEMPERATURE_EDGES.tolist(),
-                                "T": T.tolist(), **kw}
+        for kind in args.temperature:
+            if kind == "softmax" and not {"topk_p", "p_true"} <= set(df.columns):
+                extra["temperature"]["softmax"] = {"skipped": "no top-k probabilities in this trace"}
+                continue
+            kw = {}
+            if kind == "softmax":
+                topk = np.stack(df["topk_p"].to_numpy())
+                pt = df["p_true"].to_numpy(np.float64)
+                vocab = int(args.vocab or _vocab_of(df))
+                T = C.fit_temperatures("softmax", tr.mask_rate, w, topk_p=topk[fit_mask],
+                                       p_true=pt[fit_mask], vocab=vocab)
+                conf_t, ell_t = C.apply_temperatures("softmax", T, pos.mask_rate, topk_p=topk,
+                                                     p_true=pt, vocab=vocab)
+                kw["vocab"] = vocab
+            else:
+                T = C.fit_temperatures("logodds", tr.mask_rate, w, ell=tr.ell, agree=tr.agree)
+                conf_t, ell_t = C.apply_temperatures("logodds", T, pos.mask_rate, ell=pos.ell)
+            # Same pool memberships (they never look at ell), re-ranked on the tempered ell.
+            pools_t = frame_from_arrays(pos.doc_id, pos.state_id, pos.position, ell_t, pos.agree,
+                                        pool_sizes=POOL_SIZES, n_pools_per_size=N_POOLS,
+                                        seed=args.seed, retain=1, min_state_size=max(POOL_SIZES))
+            delta_t = winner_gap(pools_t, pos, conf_t, pos.agree, codes, counts, rep_mask)
+            name = f"temperature_{kind}"
+            note = f"{kind} temperature per mask-rate bin, fitted on the fit half"
+            rows.append(C.ablation_row(name, "E1_contrast", arm, delta.contrast(HI, LO),
+                                       delta_t.contrast(HI, LO), n_docs, note))
+            rows.append(C.ablation_row(name, f"Delta({HI})", arm,
+                                       (float(delta.point[i]), delta.draws[:, i]),
+                                       (float(delta_t.point[i]), delta_t.draws[:, i]), n_docs, note))
+            extra["temperature"][kind] = {"T": T.tolist(), **kw}
     return rows, extra
 
 
@@ -390,7 +392,10 @@ def main() -> int:
     ap.add_argument("--manifest", default=None)
     ap.add_argument("--exclude-docs", default=None)
     ap.add_argument("--arms", nargs="+", default=None, help="arm labels (default: all)")
-    ap.add_argument("--temperature", choices=["softmax", "logodds"], default="softmax")
+    ap.add_argument("--temperature", nargs="+", choices=["logodds", "softmax"],
+                    default=["logodds", "softmax"],
+                    help="temperature kinds, each its own row: logodds (exact, sigma(ell/T), the "
+                         "primary) and softmax (top-20 + an even tail; a sensitivity row)")
     ap.add_argument("--vocab", type=int, default=None, help="vocabulary size for softmax temperature")
     ap.add_argument("--docs", default=None, help="the corpus, for the true tokens (token type)")
     ap.add_argument("--task", choices=["gsm8k", "mbpp"], default=None)
@@ -408,7 +413,8 @@ def main() -> int:
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
 
-    extra_cols = ["topk_p", "p_true"] if "temperature" in a.controls and a.temperature == "softmax" else []
+    extra_cols = (["topk_p", "p_true"] if "temperature" in a.controls and "softmax" in a.temperature
+                  else [])
     df, meta = load(a.traces, extra_cols)
     if a.exclude_docs:
         from c3.data.contamination import excluded_doc_ids

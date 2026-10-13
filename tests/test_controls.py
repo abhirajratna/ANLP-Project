@@ -157,7 +157,7 @@ def test_cli_writes_one_table_with_every_control(tmp_path):
          "--half", "report", "--n-boot", "50", "--temperature", "logodds", "--out", tmp_path)
     res = json.loads((tmp_path / "ablation.json").read_text())
     controls = {r["control"] for r in res["rows"]}
-    assert {"position", "token_type", "token_type_standardised", "temperature"} <= controls
+    assert {"position", "token_type", "token_type_standardised", "temperature_logodds"} <= controls
     for r in res["rows"]:
         assert np.isclose(r["difference"]["value"], r["with"]["value"] - r["without"]["value"])
     assert "\\begin{tabular}" in (tmp_path / "ablation.tex").read_text()

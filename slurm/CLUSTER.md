@@ -155,3 +155,10 @@ every run, so the merge is zero-copy: `<run>.dataset.json` lists the validated p
 (path, sha256, rows), and `c3.assemble.load_traces` reads it. Single-shard runs are
 collected with `--merge-as none`, and `merge_validate.sbatch` merges every run the same
 way.
+
+**Memory buys CPUs.** `u22` sets `MaxMemPerCPU=3000` MB, so SLURM raises a job's CPU
+count to its memory / 3000 MB. A 2-GPU trace task asking for 8 CPUs and 32 GB is
+allocated 12 CPUs. With the 40-CPU QOS cap and two such tasks running, a CPU job can
+have at most ~40 GB (14 CPUs). A larger request pends with `QOSMaxCpuPerUserLimit` even
+though few CPUs are visibly in use (dev job 18932: 56 GB -> 20 CPUs; lowered with
+`scontrol update JobId=... MinMemoryNode=40960 NumCPUs=14`).

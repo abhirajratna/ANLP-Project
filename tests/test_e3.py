@@ -148,3 +148,21 @@ def test_development_mode_never_reads_the_report_half(tmp_path):
     assert set(nu) == set(codes[codes % 2 == 0]) and set(est) == set(codes[codes % 2 == 1])
     with pytest.raises(SystemExit):
         analyze_e3.halves(codes, "half", None, str(man), 0)
+
+
+def test_figures_are_skipped_not_fatal_without_matplotlib(tmp_path):
+    """Ada's environment has no matplotlib (dev job 18932): the numbers must still be written."""
+    block = tmp_path / "block"
+    block.mkdir()
+    (block / "matplotlib.py").write_text("raise ImportError('blocked for the test')\n")
+    env = {"PYTHONPATH": str(block), "PATH": "/usr/bin:/bin"}
+    for script, extra in (("scripts/analyze_e3.py", ["--traces", "sim-design:decoder_shift,n_docs=20",
+                                                    "--half", "report", "--no-by-rate"]),
+                          ("scripts/analyze_traces.py", ["--traces", "sim:uniform,n_docs=12",
+                                                         "--skip-regression", "--no-smooth-ece"])):
+        out = tmp_path / Path(script).stem
+        r = subprocess.run([sys.executable, script, *extra, "--split", "half", "--n-boot", "30",
+                            "--out", str(out)], cwd=ROOT, capture_output=True, text=True, env=env)
+        assert r.returncode == 0, r.stderr[-500:]
+        res = json.loads((out / "results.json").read_text())
+        assert res["figures"] == [] and "matplotlib unavailable" in res["figures_skipped"]

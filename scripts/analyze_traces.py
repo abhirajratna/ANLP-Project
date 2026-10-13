@@ -428,7 +428,14 @@ def main() -> int:
 
     results["provenance"] = provenance()
     if not args.no_figures:
-        results["figures"] = make_figures(out, objs, results)
+        try:
+            results["figures"] = make_figures(out, objs, results)
+        except ImportError as exc:
+            # The cluster environment has no matplotlib; every number is in
+            # results.json, and the figures can be drawn from it elsewhere.
+            results["figures"] = []
+            results["figures_skipped"] = f"matplotlib unavailable: {exc}"
+            print(f"[figures] skipped: {exc}", flush=True)
     results["generated_at"] = _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds")
     (out / "results.json").write_text(json.dumps(results, indent=2, default=float), encoding="utf-8")
     write_macros(out / "macros.tex", args.macro_prefix, results)

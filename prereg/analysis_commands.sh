@@ -115,7 +115,7 @@ for row in "${ARMS[@]}"; do
     fi
     "$PY" scripts/run_controls.py --traces "$TRACES/$RUN/$RUN.dataset.json" --split half \
         --half report --manifest "$MANIFEST" "${BOOT[@]}" --knots 9 \
-        --controls position token_type temperature --temperature softmax "${SRC[@]}" \
+        --controls position token_type temperature --temperature logodds softmax "${SRC[@]}" \
         --out "$OUT/t8/$LABEL" --macro-prefix "TEight$LABEL"
 done
 # Precision: LLaDA-8B-Base fp16 against 4-bit on the 200 documents of
