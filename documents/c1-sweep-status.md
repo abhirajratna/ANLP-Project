@@ -1,7 +1,7 @@
 # C1 sweep on the 8B models: status
 
 Branch `c1-sweep-8b` (from `origin/main` at `dc65f07`, which contains `f816d87`).
-Last updated Tue 13 Oct 2026, 08:25 IST.
+Last updated Tue 13 Oct 2026, 10:30 IST.
 
 ## Update, 12 Oct 10:50: unblocked
 
@@ -93,6 +93,40 @@ untouched; the t3 file is at `runs/corpus/t3/timesplit_docs.jsonl`.
   (`c072bc6`), one GPU model.
 
 (b) GSM8K 17745 and MBPP 17746 started at 06:17 and 07:29.
+
+**10:30. Two failures, both understood.**
+
+- **LLaDA-Instruct MBPP (17746)** died with CUDA OOM after 450 documents. MBPP test
+  482 is 3,986 tokens (a 3,730-token prompt of test asserts), and its float32 logits
+  are ~1.9 GiB. Fix: task documents over 1,024 tokens are excluded and listed
+  (`--max-doc-tokens 1024`, only test 482; deviations item 6).
+  - MBPP is re-collected from scratch as `c1-llada-instruct-mbpp-v2` (18972).
+  - Dream MBPP, queued without the cap as 17899, was cancelled before it started and
+    resubmitted as 18973.
+  - The partial first run is kept and not used.
+  - Both run from `~/c3-r2` at `d7965e0`, so each run still has one commit.
+- **Time-split jobs (18196, 18197)** are held so the MBPP reruns go before (e); release
+  them once 18972/18973 start.
+- **Dev run 2 (18970)** died on a full `/ssd_scratch` while pulling parts it did not
+  need. Fixed, and rerun as 18974.
+
+Revised ETA:
+
+- (b) GSM8K ends ~15:30 Tue, then (c) shard 1 runs until ~07:00 Wed.
+- (c) shard 0 started 10:04 Tue and ends ~01:35 Wed, then (d) GSM8K until ~09:15 Wed.
+- Then the two MBPP runs, ending ~11:35 Wed.
+- **(a)-(d) done ~Wed 14 Oct, 11:35**, still before Fri 16 Oct.
+
+**Dev run 1 (18932, 150 fit-half LLaDA-Base documents; development only):**
+
+- E1/E2 took 30 min at 7.4 GB.
+- T8 took 12 min at 8.1 GB.
+- E3 crashed on missing matplotlib. Now skipped with a note; the frozen commands
+  would have crashed the same way.
+- Softmax temperature fitted T = 0.86-0.95 everywhere and sharpened confidences, so
+  log-odds temperature is now the primary row (deviations).
+- Memory buys CPUs on u22 (`MaxMemPerCPU=3000`), so a CPU job gets at most ~40 GB
+  while two GPU tasks run.
 
 The Ada checkout stays at `c072bc6` until every collection job has started, so all runs
 carry one commit. The later commits are analysis-side only. (Before submission, `sbatch --test-only`
