@@ -141,10 +141,10 @@ floor)
 merge)
     RUN="${2:?usage: submit_c1.sh merge <run> [gpus-per-task]}"
     CORPUS=""
-    case "$RUN" in
-        *-base) CORPUS="$PERSIST/corpus/calibration_docs.jsonl" ;;
+    case "$RUN" in      # specific prefixes first: c1ts-dream-base also ends in -base
         c1ts-*) CORPUS="$PERSIST/corpus/timesplit_docs.jsonl" ;;
         c1t8-*) CORPUS="$PERSIST/corpus/precision_docs.jsonl" ;;
+        *-base) CORPUS="$PERSIST/corpus/calibration_docs.jsonl" ;;
     esac
     submit "merge:$RUN" --job-name="c3-merge-$RUN" \
         --export="ALL,C3_RUN=$RUN,C3_GPUS=${3:-2}${CORPUS:+,C3_CORPUS=$CORPUS}" slurm/merge_validate.sbatch

@@ -182,3 +182,23 @@ def test_max_doc_tokens_excludes_and_records_long_documents(tmp_path):
                    check=True, capture_output=True)
     meta = json.loads((tmp_path / "b.shard0of1.meta.json").read_text())
     assert meta["excluded_too_long"] == [] and meta["doc_ids_expected"] == [0, 1]
+
+
+@pytest.mark.parametrize("run,corpus", [("c1ts-dream-base", "timesplit_docs.jsonl"),
+                                        ("c1t8-llada-base-4bit", "precision_docs.jsonl"),
+                                        ("c1-llada-base", "calibration_docs.jsonl"),
+                                        ("c1-dream-instruct-gsm8k", None)])
+def test_merge_validates_each_run_against_its_own_corpus(tmp_path, run, corpus):
+    """c1ts-dream-base also ends in -base; it was once checked against the FineWeb corpus."""
+    import shutil
+    repo = tmp_path / "repo"
+    (repo / "slurm").mkdir(parents=True)
+    shutil.copy(ROOT / "slurm" / "submit_c1.sh", repo / "slurm")
+    env = {"PATH": "/usr/bin:/bin", "DRY_RUN": "1", "C3_REPO": str(repo),
+           "C3_PERSIST": str(tmp_path / "runs"), "HOME": str(tmp_path)}
+    r = subprocess.run(["bash", "slurm/submit_c1.sh", "merge", run], cwd=repo, env=env,
+                       capture_output=True, text=True, check=True)
+    if corpus is None:
+        assert "C3_CORPUS" not in r.stdout
+    else:
+        assert f"C3_CORPUS={tmp_path / 'runs' / 'corpus' / corpus}" in r.stdout
