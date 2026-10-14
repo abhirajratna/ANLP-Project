@@ -1,7 +1,7 @@
 # C1 sweep on the 8B models: status
 
 Branch `c1-sweep-8b` (from `origin/main` at `dc65f07`, which contains `f816d87`).
-Last updated Tue 13 Oct 2026, 15:25 IST.
+Last updated Wed 14 Oct 2026, 11:00 IST.
 
 ## Update, 12 Oct 10:50: unblocked
 
@@ -132,6 +132,42 @@ Revised ETA:
 (`artifacts/c1/c1-llada-instruct-gsm8k.json`). 1,319 documents, 13,821,447 rows,
 245,152 passes (186 per document), 17.6 GPU-hours, 7.74 passes/s. (c) shard 1 started
 at 15:05.
+
+**Wed 14 Oct, 10:50.** The check-ins did not fire between Tue ~16:00 and Wed 10:40
+(laptop asleep). Meanwhile:
+
+| run | job | finished | docs | passes/s |
+|---|---|---|---|---|
+| (c) shard 0 | 17766_0 | 01:17 | 985 | 8.59 |
+| (c) shard 1 | 17766_1 | 07:00 | 991 | 8.50 |
+| (d) GSM8K | 17898 | 08:56 | 1,319 | 9.79 |
+| (b) MBPP-v2 | 18972 | 09:30 | 499 (test 482 excluded) | 7.42 |
+| (d) MBPP | 18973 | running, 450/499 at 10:41 | | |
+
+All exited 0. **One lost slot:** (e) was held until the MBPP reruns started, and that
+release needed a check-in, so a 2-GPU slot idled from 09:30 to 10:42. (e) is now
+released (18196 running, 18197 queued). Also submitted:
+
+- (f) precision, 20470 (1 GPU, queued);
+- merges for (c), (d) GSM8K and (b) MBPP-v2 (20471-20473, from `~/c3-r2`, whose merge
+  code carries the excluded document).
+
+**11:00: (a)-(d) all collected, merged and validated** (summaries in `artifacts/c1/`;
+merges 18925, 19432, 20471-20473, 20486):
+
+| run | docs | rows | passes | GPU-h | passes/s | checks |
+|---|---|---|---|---|---|---|
+| c1-llada-base | 1,979 | 119,562,567 | 922,214 | 68.0 | 7.54 | ok |
+| c1-llada-instruct-gsm8k | 1,319 | 13,821,447 | 245,152 | 17.6 | 7.74 | ok |
+| c1-llada-instruct-mbpp-v2 | 499 | 3,148,663 | 66,658 | 5.0 | 7.42 | ok (excl. 482) |
+| c1-dream-base | 1,976 | 119,381,308 | 920,816 | 59.9 | 8.54 | ok |
+| c1-dream-instruct-gsm8k | 1,319 | 13,399,445 | 241,162 | 13.7 | 9.79 | ok |
+| c1-dream-instruct-mbpp | 499 | 2,523,455 | 60,680 | 3.8 | 8.87 | ok (excl. 482) |
+
+Total for (a)-(d): 167.9 GPU-hours (2 GPUs per task). Every run is at one
+commit: `c072bc6`, except the two MBPP runs at `d7965e0` (the length cap). Done on Wed
+14 Oct, ahead of the Fri 16 Oct target. Still running: (e) 18196 (LLaDA time-split);
+queued: (e) 18197 and (f) 20470.
 
 The Ada checkout stays at `c072bc6` until every collection job has started, so all runs
 carry one commit. The later commits are analysis-side only. (Before submission, `sbatch --test-only`
