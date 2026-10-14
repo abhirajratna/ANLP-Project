@@ -36,7 +36,10 @@ mkdir -p "$WORK/merged"
 rsync -a --exclude '*.tmp' -e "ssh $SSH_OPTS" "$USER@$C3_LOGIN_HOST:$BLOBS/traces/$RUN/" "$WORK/" \
     || { echo "[merge] FATAL: could not pull $BLOBS/traces/$RUN"; exit 1; }
 echo "[merge] $RUN: $(ls "$WORK" | grep -c '\.parquet$') part files, $(du -sh "$WORK" | cut -f1) on $(hostname -s)"
-"$C3_PY" scripts/merge_traces.py --stem "$WORK/$RUN" --out "$WORK/merged/$RUN.parquet"
+# C3_MERGE_ARGS=--allow-mixed-commits only after checking that nothing the collection
+# runs changed between the commits (main-110m-v3: shards 0-1 at 56eb0b9, 2-3 at 26fbe8c,
+# which differ only in result files and this merge tooling).
+"$C3_PY" scripts/merge_traces.py --stem "$WORK/$RUN" --out "$WORK/merged/$RUN.parquet" ${C3_MERGE_ARGS:-}
 mkdir -p artifacts/traces_110m
 cp "$WORK/merged/$RUN.meta.json" "artifacts/traces_110m/$RUN.meta.json"
 "$C3_PY" scripts/validate_traces.py --traces "$WORK/merged/$RUN.parquet" \
