@@ -8,6 +8,12 @@
 #
 #   C3_REPORT_HALF_OK=1 TRACES=<dir with <run>/<run>.dataset.json> bash prereg/analysis_commands.sh
 #
+# Sizing, measured on the whole fit half of LLaDA-Base (993 documents, 60M rows; job
+# 21625, development only; the report half is the same size): E1/E2 without Eq. 2/3,
+# 21 min and 38 GB; E3, 3 min and 21 GB; T8, 80 min and 52 GB (all at 200 resamples).
+# Run each on a CPU job with >= 64 GB (u22 gives one CPU per 3 GB: slurm/CLUSTER.md).
+# The Eq. 2/3 bootstrap refits per resample, ~3.7 s each on 150 documents with 8 CPUs.
+#
 # Nothing here is fitted on the report half: calibrators, splines, knots, ell bins
 # and temperatures come from the fit half (manifest value 0); every number comes
 # from the report half (value 1).  Intervals: 10,000 document-bootstrap resamples,

@@ -1,7 +1,7 @@
 # C1 sweep on the 8B models: status
 
 Branch `c1-sweep-8b` (from `origin/main` at `dc65f07`, which contains `f816d87`).
-Last updated Wed 14 Oct 2026, 23:30 IST.
+Last updated Thu 15 Oct 2026, 01:25 IST.
 
 ## Update, 12 Oct 10:50: unblocked
 
@@ -201,6 +201,26 @@ passes/s. (e) is complete. (f) precision 20470 started at 18:22 (4-bit, one GPU,
 Total: 204.3 GPU-hours. Traces: `/share1/abhiraj.ratna/traces/<run>/`, each with
 `<run>.dataset.json`. (f) ran at 5.36 passes/s in 4-bit on one GPU, against 7.5-7.8 for
 fp16 over two.
+
+**Full-scale sizing (dev job 21625, the whole LLaDA-Base fit half, 993 docs, 60M rows,
+200 resamples; development only):**
+
+| step | time | peak memory |
+|---|---|---|
+| subset | 3.5 min | 33 GB |
+| E1/E2 without Eq. 2/3 | 21 min | 38 GB |
+| E3 | 3 min | 21 GB |
+| T8 | 80 min | 52 GB |
+
+The report half is the same size, so the frozen commands fit a 64-96 GB CPU job, except
+the Eq. 2/3 bootstrap. That needs the resample decision (A: 1,000, recommended).
+
+Ada checkouts `~/c3`, `~/c3-r2` and `~/c3-dev` are at `e14f6d3` since 23:21 Wed. Moved
+aside, byte-identical to the committed copies, deletable on request:
+
+- `~/c3-untracked-20261014-2321`
+- `~/c3-r2-untracked-20261014-2321`
+- `~/c3-r2-untracked-20261014-1853`
 
 The Ada checkout stays at `c072bc6` until every collection job has started, so all runs
 carry one commit. The later commits are analysis-side only. (Before submission, `sbatch --test-only`
