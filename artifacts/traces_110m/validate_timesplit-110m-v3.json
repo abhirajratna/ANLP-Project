@@ -1,0 +1,54 @@
+{
+ "traces": "/ssd_scratch/ojas.k/traces-merge/timesplit-110m-v3/merged/timesplit-110m-v3.parquet",
+ "bytes": 3492348345,
+ "rows": 30208673,
+ "documents": 500,
+ "doc_id_range": [
+  200000,
+  200499
+ ],
+ "span_len": {
+  "min": 256,
+  "max": 256,
+  "n_256": 500
+ },
+ "decoder_and_matched_rows_exact": true,
+ "mismatches": [],
+ "uniform_rows_z": {
+  "min": -2.821219648136299,
+  "max": 2.7180042951557026,
+  "n_beyond": 0,
+  "limit": 5.0
+ },
+ "rows_per_document": {
+  "mean": 60417.346,
+  "min": 60334,
+  "max": 60495,
+  "mean_256_token_docs": 60417.346
+ },
+ "estimate_per_256_token_doc": {
+  "rows": 60389.5,
+  "forward_passes": 466.0,
+  "closed_form_rows": 60416.0,
+  "closed_form_passes": 466
+ },
+ "pass": true,
+ "provenance": {
+  "git_commit": "26fbe8c9a8beebc152d226aa48b89aad88cb65b0",
+  "git_dirty": false,
+  "python": "3.12.4",
+  "platform": "Linux-5.15.0-194-generic-x86_64-with-glibc2.35",
+  "host": "gnode012",
+  "slurm_job_id": "21260",
+  "packages": {
+   "numpy": "2.5.3",
+   "scipy": "1.18.1",
+   "pandas": "3.0.5",
+   "pyarrow": "25.0.1",
+   "torch": "2.6.0+cu124",
+   "transformers": "4.46.3",
+   "bitsandbytes": "0.50.2",
+   "accelerate": "1.15.0"
+  }
+ }
+}
