@@ -169,7 +169,8 @@ def _score_masks(model, x0: np.ndarray, masks: list, cfg: CollectConfig,
             t = t.to(dev)
         with torch.no_grad():
             lg = model.logits(t)
-            check_finite_logits(lg, model.name, getattr(model, "precision", "na"))
+            check_finite_logits(lg, model.name, getattr(model, "precision", "na"),
+                                mask_token_id=model.mask_token_id)
             # 256 rows at a time: at a 126k vocabulary each float32 temporary is
             # ~130 MB, which fits beside 9 GiB of weights on an 11 GB card.
             st = position_stats(lg, batch, model.mask_token_id, true_ids=truth, topk=cfg.topk,

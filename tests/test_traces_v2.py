@@ -210,6 +210,14 @@ def test_batching_does_not_change_the_rows(tmp_path):
 def test_nonfinite_logits_are_refused(tmp_path):
     with pytest.raises(FloatingPointError, match="fp16"):
         check_finite_logits(torch.tensor([1.0, float("inf")]), "m", "fp16")
+    # the [MASK] column is -inf by design (SUBS) and exempt; anything else is not
+    sub = torch.tensor([[[0.5, 1.0, float("-inf")]]])
+    check_finite_logits(sub, "m", "fp32", mask_token_id=2)
+    with pytest.raises(FloatingPointError):
+        check_finite_logits(sub, "m", "fp32", mask_token_id=1)
+    with pytest.raises(FloatingPointError):
+        check_finite_logits(torch.tensor([[[float("nan"), 1.0, float("-inf")]]]), "m", "fp32",
+                            mask_token_id=2)
 
     class NaNToy(ToyDiffusionLM):
         def logits(self, input_ids):

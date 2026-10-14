@@ -34,14 +34,14 @@ DURABLE="$C3_BLOBS/fineweb-10BT"
 mkdir -p "$HF_HOME" "$DATA"
 
 # Start from whatever an earlier run stored: a LAN copy, not an internet one.
-ssh $C3_SSH_OPTS "$USER@ada" "mkdir -p '$DURABLE'"
-rsync -a --partial-dir=.rsync-partial -e "ssh $C3_SSH_OPTS" "$USER@ada:$DURABLE/" "$DATA/"
+ssh $C3_SSH_OPTS "$USER@$C3_LOGIN_HOST" "mkdir -p '$DURABLE'"
+rsync -a --partial-dir=.rsync-partial -e "ssh $C3_SSH_OPTS" "$USER@$C3_LOGIN_HOST:$DURABLE/" "$DATA/"
 
 # $DATA only ever holds verified files, so push them even when the download
 # fails partway: a rerun on another node then resumes from them.
 push_files() {
     rsync -a --partial-dir=.rsync-partial --exclude MANIFEST.json --exclude .rsync-partial \
-        -e "ssh $C3_SSH_OPTS" "$DATA/" "$USER@ada:$DURABLE/"
+        -e "ssh $C3_SSH_OPTS" "$DATA/" "$USER@$C3_LOGIN_HOST:$DURABLE/"
 }
 trap 'push_files || echo "[fetch] WARNING: could not push files to $DURABLE"' EXIT
 
@@ -50,5 +50,5 @@ trap 'push_files || echo "[fetch] WARNING: could not push files to $DURABLE"' EX
 push_files
 trap - EXIT
 # The manifest goes last: its presence on /share1 means every file arrived.
-rsync -a -e "ssh $C3_SSH_OPTS" "$DATA/MANIFEST.json" "$USER@ada:$DURABLE/MANIFEST.json"
-echo "[fetch] stored $(ssh $C3_SSH_OPTS "$USER@ada" "du -sh '$DURABLE' | cut -f1") at $DURABLE"
+rsync -a -e "ssh $C3_SSH_OPTS" "$DATA/MANIFEST.json" "$USER@$C3_LOGIN_HOST:$DURABLE/MANIFEST.json"
+echo "[fetch] stored $(ssh $C3_SSH_OPTS "$USER@$C3_LOGIN_HOST" "du -sh '$DURABLE' | cut -f1") at $DURABLE"

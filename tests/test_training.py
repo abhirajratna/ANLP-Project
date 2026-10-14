@@ -359,3 +359,89 @@ def test_check_corpus_detects_a_mismatch(tmp_path):
                                     "--docs", str(p), "--manifest", str(man)],
                                    capture_output=True, text=True, cwd=ROOT).returncode
     assert run(good) == 0 and run(bad) == 1
+
+
+def test_visible_prefix_is_never_masked_and_off_by_default_changes_nothing():
+    torch.manual_seed(0)
+    m = MaskedDiffusionLM(ModelConfig(**TINY))
+    seen = []
+    real_forward = m.forward
+    m.forward = lambda ids, valid=None: (seen.append(ids.clone()), real_forward(ids, valid))[1]
+    x0 = torch.randint(0, 50000, (8, 32))
+    keep = torch.zeros(8, 32, dtype=torch.bool)
+    keep[:, :5] = True
+    for _ in range(20):
+        mdlm_loss(m, x0, 50257, keep=keep)
+    assert all(bool((ids[:, :5] == x0[:, :5]).all()) for ids in seen)
+    assert any(bool((ids[:, 5:] == 50257).any()) for ids in seen)
+    # keep=None draws the same random numbers as before the option existed
+    torch.manual_seed(1)
+    a, _ = mdlm_loss(m, x0, 50257)
+    torch.manual_seed(1)
+    b, _ = mdlm_loss(m, x0, 50257, keep=None)
+    assert float(a) == float(b)
+
+
+def test_adding_visible_prefix_left_existing_config_hashes_unchanged(tmp_path):
+    import hashlib
+    from dataclasses import asdict
+    from c3.training.train import _RESUMABLE_FIELDS, TrainConfig, config_hash
+    cfg = TrainConfig(index_path=str(tmp_path / "none.json"), out_dir=str(tmp_path))
+    mcfg = ModelConfig()
+    # the hash as computed before the field was added
+    old = {k: v for k, v in asdict(cfg).items() if k not in _RESUMABLE_FIELDS | {"visible_prefix"}}
+    old["model"] = asdict(mcfg)
+    expect = hashlib.blake2b(json.dumps(old, sort_keys=True).encode(), digest_size=8).hexdigest()
+    assert config_hash(cfg, mcfg) == expect
+    cfg.visible_prefix = 8
+    assert config_hash(cfg, mcfg) != expect
+
+
+class _FakeWandb:
+    """Stands in for the wandb module: the online start can be made to fail."""
+
+    def __init__(self, online_ok=True, offline_ok=True):
+        self.calls, self.online_ok, self.offline_ok, self.teardowns = [], online_ok, offline_ok, 0
+
+    def init(self, **kw):
+        self.calls.append(kw)
+        ok = self.offline_ok if kw.get("mode") == "offline" else self.online_ok
+        if not ok:
+            raise RuntimeError("returned error 403: permission denied")
+        return {"mode": kw.get("mode", "online"), "id": kw["id"]}
+
+    def teardown(self):
+        self.teardowns += 1
+
+
+def test_wandb_falls_back_to_offline_with_the_same_id():
+    from c3.training.train import start_wandb
+    logs = []
+    ok = _FakeWandb()
+    assert start_wandb("p", "e", {"a": 1}, "run-x", wandb=ok, log=logs.append)["mode"] == "online"
+    assert ok.calls[0]["resume"] == "allow" and not logs
+    denied = _FakeWandb(online_ok=False)
+    run = start_wandb("p", "e", {"a": 1}, "run-x", wandb=denied, log=logs.append)
+    assert run == {"mode": "offline", "id": "run-x"}
+    assert denied.teardowns == 1 and "logging offline" in logs[-1]
+    both = _FakeWandb(online_ok=False, offline_ok=False)
+    assert start_wandb("p", "e", {}, "run-x", wandb=both, log=logs.append) is None
+    assert "wandb disabled" in logs[-1]
+
+
+def test_backfill_merges_rows_by_step_with_the_later_value_winning(tmp_path):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("wb", ROOT / "scripts" / "wandb_backfill.py")
+    wb = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(wb)
+    h = tmp_path / "history.jsonl"
+    h.write_text("\n".join(json.dumps(r) for r in [
+        {"step": 50, "loss": 3.0}, {"step": 100, "loss": 2.0},
+        {"step": 100, "val_nelbo": 4.0},                 # validation row at the same step
+        {"step": 50, "loss": 2.9},                       # re-logged after a requeue
+        {"step": 150, "loss": 1.5}]) + "\n")
+    assert wb.rows_by_step(h) == [(50, {"loss": 2.9}), (100, {"loss": 2.0, "val_nelbo": 4.0}),
+                                  (150, {"loss": 1.5})]
+    assert wb.flat_scalars({"a": {"b": 1, "c": [1]}, "d": "x"}, "g/") == {"g/a/b": 1, "g/d": "x"}
+    assert wb.summary_prefix("gate_g2_train110m-v3") == "gate_g2"
+    assert wb.summary_prefix("train_summary_ft110m-v3") == "train_summary"

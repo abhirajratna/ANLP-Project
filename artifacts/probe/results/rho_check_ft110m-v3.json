@@ -1,0 +1,67 @@
+{
+ "tag": "ft110m-v3",
+ "checkpoint_sha256": "2597c13ad77936525f5c971083d9c57fde1283f02986f3f1f33da78aef7ec0a8",
+ "spec_sha256": "e6d3326acfc913d9d2b9844cbe12d5dc5b6c9f0bb31ca5e240eee6040c050727",
+ "n_instances": 400,
+ "results": {
+  "rho=0/marker=own/follower_kl": {
+   "mean": 0.20590882376273678,
+   "n": 1181
+  },
+  "rho=0/marker=own/leader_marginal_kl": {
+   "mean": 0.027076849715572993,
+   "n": 1181
+  },
+  "rho=0/marker=own/q_copy": {
+   "mean": 0.4082351611639248,
+   "n": 1181
+  },
+  "rho=0/marker=swapped/follower_kl": {
+   "mean": 0.23540272252583702,
+   "n": 1181
+  },
+  "rho=0/marker=swapped/q_copy": {
+   "mean": 0.4217708839316092,
+   "n": 1181
+  },
+  "rho=1/marker=own/follower_kl": {
+   "mean": 1.0478673353322028,
+   "n": 1181
+  },
+  "rho=1/marker=own/leader_marginal_kl": {
+   "mean": 0.02728370490611191,
+   "n": 1181
+  },
+  "rho=1/marker=own/q_copy": {
+   "mean": 0.41964415545819783,
+   "n": 1181
+  },
+  "rho=1/marker=swapped/follower_kl": {
+   "mean": 1.0725596627278866,
+   "n": 1181
+  },
+  "rho=1/marker=swapped/q_copy": {
+   "mean": 0.4057861664405823,
+   "n": 1181
+  }
+ },
+ "marker_effect_on_q_copy_at_rho1": 0.013857989017615535,
+ "provenance": {
+  "git_commit": "9e93aad71e3c47329476f7b1d48a15f21e303b3a",
+  "git_dirty": false,
+  "python": "3.12.4",
+  "platform": "Linux-5.15.0-194-generic-x86_64-with-glibc2.35",
+  "host": "gnode061",
+  "slurm_job_id": "20751",
+  "packages": {
+   "numpy": "2.5.3",
+   "scipy": "1.18.1",
+   "pandas": "3.0.5",
+   "pyarrow": "25.0.1",
+   "torch": "2.6.0+cu124",
+   "transformers": "4.46.3",
+   "bitsandbytes": "0.50.2",
+   "accelerate": "1.15.0"
+  }
+ }
+}

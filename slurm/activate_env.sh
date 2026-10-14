@@ -11,6 +11,20 @@
 #   ImportError: .../libcusparseLt.so.0: cannot read file data
 # and it persists, because the next job sees bin/python and skips re-extraction.
 C3_BLOBS="${C3_BLOBS:-/share1/$USER}"
+# Where jobs ssh/rsync to reach /share1: since the October 2026 cluster reset `ada`
+# refuses ssh from compute nodes, so login_host.sh (sourced below) picks the first
+# gateway that answers (ada-gw1, then ada-gw2) unless C3_LOGIN_HOST is already set.
+# Since the same reset (Slurm 26.05), a job asking for more than ~3 GB per CPU has
+# its cpus-per-task raised to fit (--mem=32G with 8 CPUs -> 11; 48G/16 -> 17;
+# 64G/16 -> 22) after sbatch has exported SLURM_TRES_PER_TASK=cpu=<requested>, and
+# every `srun` inside the job then dies with
+#   srun: fatal: cpus-per-task set by two different environment variables
+# (job 17339; reproduced and fixed by this block in test job 17348).  Make the two
+# agree with what was actually allocated.
+if [ -n "${SLURM_CPUS_PER_TASK:-}" ] && [[ "${SLURM_TRES_PER_TASK:-}" =~ ^cpu=[0-9]+$ ]] \
+        && [ "${SLURM_TRES_PER_TASK#cpu=}" != "$SLURM_CPUS_PER_TASK" ]; then
+    export SLURM_TRES_PER_TASK="cpu=$SLURM_CPUS_PER_TASK"
+fi
 C3_PERSIST="${C3_PERSIST:-/home2/$USER/c3-runs}"
 C3_SCRATCH="${C3_SCRATCH:-/ssd_scratch/$USER}"
 C3_SCRATCH_ENV="$C3_SCRATCH/c3-env"
@@ -59,25 +73,5 @@ fi
 export C3_PY="$C3_SCRATCH_ENV/bin/python"
 echo "[env] $("$C3_PY" -V 2>&1) ready on $(hostname)"
 
-# c3_stage_fineweb [N]: copy the verified FineWeb parquet files that
-# slurm/fetch_fineweb.sbatch stored on /share1 to node-local SSD, and point
-# C3_FINEWEB_DIR at them so the job reads that copy instead of streaming from the
-# Hub.  N > 0 stages only the first N files, for jobs that read just the start
-# of the stream; the samplers fail loudly if the stream ends before their pool.
-c3_stage_fineweb() {
-    local first="${1:-0}" repo="${C3_REPO:-/home2/$USER/c3}"
-    local src="$C3_BLOBS/fineweb-10BT" dst="$C3_SCRATCH/fineweb-10BT"
-    mkdir -p "$dst"
-    exec 8>"$C3_SCRATCH/.c3-fineweb.lock"
-    flock 8
-    rsync -a -e "ssh $C3_SSH_OPTS" "$USER@$C3_LOGIN_HOST:$src/MANIFEST.json" "$dst/MANIFEST.json" \
-        || { echo "[fineweb] FATAL: no complete copy at $src; run slurm/fetch_fineweb.sbatch"; return 1; }
-    "$C3_PY" "$repo/scripts/fetch_fineweb.py" names --dir "$dst" --first "$first" > "$dst/.staging-list"
-    echo "[fineweb] staging $(wc -l < "$dst/.staging-list") file(s) from $src to $dst"
-    rsync -a --partial-dir=.rsync-partial --files-from="$dst/.staging-list" -e "ssh $C3_SSH_OPTS" \
-        "$USER@$C3_LOGIN_HOST:$src/" "$dst/" || { echo "[fineweb] FATAL: staging from $src failed"; return 1; }
-    "$C3_PY" "$repo/scripts/fetch_fineweb.py" check --dir "$dst" --first "$first" || return 1
-    flock -u 8
-    exec 8>&-
-    export C3_FINEWEB_DIR="$dst"
-}
+# c3_stage_fineweb [N]: node-local FineWeb copy -> C3_FINEWEB_DIR (slurm/stage_fineweb.sh).
+source "$(dirname "${BASH_SOURCE[0]}")/stage_fineweb.sh"

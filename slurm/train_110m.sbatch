@@ -80,7 +80,7 @@ cd "$REPO_DIR"
 
 echo "[stage] node=$(hostname) run=$RUN gpus=$NGPU commit=$C3_GIT_COMMIT"
 rsync -a --partial -e "ssh $SSH_OPTS" \
-    "$USER@ada:$BLOBS/shards/" "$LOCAL_SHARDS/" \
+    "$USER@$C3_LOGIN_HOST:$BLOBS/shards/" "$LOCAL_SHARDS/" \
     || { echo "[stage] FATAL: shard pull failed"; exit 1; }
 
 # Shard paths in index.json are absolute and were written on another node.
@@ -105,15 +105,15 @@ PY
 step_of() { "$C3_PY" -c "import json,sys; print(json.load(open(sys.argv[1]))['step'])" "$1" 2>/dev/null || echo -1; }
 REMOTE_SIDE="$C3_SCRATCH/.remote-$RUN.json"
 rm -f "$REMOTE_SIDE"
-rsync -a -e "ssh $SSH_OPTS" "$USER@ada:$BLOBS/$RUN/checkpoint.json" "$REMOTE_SIDE" 2>/dev/null || true
+rsync -a -e "ssh $SSH_OPTS" "$USER@$C3_LOGIN_HOST:$BLOBS/$RUN/checkpoint.json" "$REMOTE_SIDE" 2>/dev/null || true
 LOCAL_STEP=$( [ -f "$CKPT_DIR/checkpoint.json" ] && step_of "$CKPT_DIR/checkpoint.json" || echo -1 )
 REMOTE_STEP=$( [ -f "$REMOTE_SIDE" ] && step_of "$REMOTE_SIDE" || echo -1 )
 echo "[stage] checkpoint steps: local=$LOCAL_STEP durable=$REMOTE_STEP"
 if [ "$REMOTE_STEP" -gt "$LOCAL_STEP" ]; then
     rm -f "$CKPT_DIR/checkpoint.pt" "$CKPT_DIR/checkpoint.json"
     rsync -a --partial-dir=.rsync-partial -e "ssh $SSH_OPTS" \
-        "$USER@ada:$BLOBS/$RUN/checkpoint.pt" "$USER@ada:$BLOBS/$RUN/checkpoint.json" \
-        "$USER@ada:$BLOBS/$RUN/history.jsonl" "$CKPT_DIR/" 2>/dev/null \
+        "$USER@$C3_LOGIN_HOST:$BLOBS/$RUN/checkpoint.pt" "$USER@$C3_LOGIN_HOST:$BLOBS/$RUN/checkpoint.json" \
+        "$USER@$C3_LOGIN_HOST:$BLOBS/$RUN/history.jsonl" "$CKPT_DIR/" 2>/dev/null \
         && echo "[stage] resuming from durable checkpoint at step $REMOTE_STEP" \
         || echo "[stage] WARNING: durable checkpoint pull failed"
 elif [ "$LOCAL_STEP" -ge 0 ]; then
@@ -129,15 +129,16 @@ push_ckpt() {
     # over a newer durable one.
     local lstep rstep
     lstep=$( [ -f "$CKPT_DIR/checkpoint.json" ] && step_of "$CKPT_DIR/checkpoint.json" || echo -1 )
-    rsync -a -e "ssh $SSH_OPTS" "$USER@ada:$BLOBS/$RUN/checkpoint.json" "$REMOTE_SIDE" 2>/dev/null || true
+    rsync -a -e "ssh $SSH_OPTS" "$USER@$C3_LOGIN_HOST:$BLOBS/$RUN/checkpoint.json" "$REMOTE_SIDE" 2>/dev/null || true
     rstep=$( [ -f "$REMOTE_SIDE" ] && step_of "$REMOTE_SIDE" || echo -1 )
     if [ "$lstep" -lt "$rstep" ]; then
         echo "[stage] not pushing: local step $lstep < durable step $rstep"; return 0
     fi
-    ssh $SSH_OPTS "$USER@ada" "mkdir -p '$BLOBS/$RUN'" 2>/dev/null || true
+    ssh $SSH_OPTS "$USER@$C3_LOGIN_HOST" "mkdir -p '$BLOBS/$RUN'" 2>/dev/null || true
     rsync -a --partial-dir=.rsync-partial --exclude '*.tmp' -e "ssh $SSH_OPTS" \
-        "$CKPT_DIR/" "$USER@ada:$BLOBS/$RUN/" 2>/dev/null \
-        && echo "[stage] checkpoint (step $lstep) pushed to $BLOBS/$RUN at $(date +%H:%M:%S)"
+        "$CKPT_DIR/" "$USER@$C3_LOGIN_HOST:$BLOBS/$RUN/" 2>/dev/null \
+        && echo "[stage] checkpoint (step $lstep) pushed to $BLOBS/$RUN at $(date +%H:%M:%S)" \
+        || echo "[stage] WARNING: checkpoint push to $C3_LOGIN_HOST:$BLOBS/$RUN failed at $(date +%H:%M:%S)"
 }
 
 ( while true; do sleep 1800; push_ckpt; done ) &

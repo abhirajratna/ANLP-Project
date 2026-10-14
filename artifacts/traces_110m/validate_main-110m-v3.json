@@ -1,0 +1,54 @@
+{
+ "traces": "/ssd_scratch/ojas.k/traces-merge/main-110m-v3/merged/main-110m-v3.parquet",
+ "bytes": 13802149485,
+ "rows": 119562570,
+ "documents": 1979,
+ "doc_id_range": [
+  0,
+  1999
+ ],
+ "span_len": {
+  "min": 256,
+  "max": 256,
+  "n_256": 1979
+ },
+ "decoder_and_matched_rows_exact": true,
+ "mismatches": [],
+ "uniform_rows_z": {
+  "min": -3.337296413039281,
+  "max": 3.578132236660672,
+  "n_beyond": 0,
+  "limit": 5.0
+ },
+ "rows_per_document": {
+  "mean": 60415.64931783729,
+  "min": 60319,
+  "max": 60520,
+  "mean_256_token_docs": 60415.64931783729
+ },
+ "estimate_per_256_token_doc": {
+  "rows": 60389.5,
+  "forward_passes": 466.0,
+  "closed_form_rows": 60416.0,
+  "closed_form_passes": 466
+ },
+ "pass": true,
+ "provenance": {
+  "git_commit": "9e93aad71e3c47329476f7b1d48a15f21e303b3a",
+  "git_dirty": false,
+  "python": "3.12.4",
+  "platform": "Linux-5.15.0-194-generic-x86_64-with-glibc2.35",
+  "host": "gnode012",
+  "slurm_job_id": "21271",
+  "packages": {
+   "numpy": "2.5.3",
+   "scipy": "1.18.1",
+   "pandas": "3.0.5",
+   "pyarrow": "25.0.1",
+   "torch": "2.6.0+cu124",
+   "transformers": "4.46.3",
+   "bitsandbytes": "0.50.2",
+   "accelerate": "1.15.0"
+  }
+ }
+}

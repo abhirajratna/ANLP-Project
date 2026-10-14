@@ -40,6 +40,10 @@ from .model import (MaskedDiffusionLM, ModelConfig, ar_loss, ar_nll_eval, mdlm_l
 # resuming it without making it a different run.
 _RESUMABLE_FIELDS = {"out_dir", "log_every", "ckpt_every", "wandb_project", "wandb_entity", "eval_every",
                      "eval_batches", "index_path"}
+# Fields added after runs were already checkpointed: hashed only when they differ
+# from these defaults, so adding one does not change -- and orphan -- the hash of a
+# run in progress (train110m-v3 was running when visible_prefix was added).
+_LATER_FIELDS = {"visible_prefix": 0}
 
 
 @dataclass
@@ -64,6 +68,9 @@ class TrainConfig:
     objective: str = "mdlm"           # "mdlm" | "ar" (the autoregressive reference)
     seed: int = 20260917
     init_from: str | None = None      # weights-only start (fine-tuning, T9)
+    visible_prefix: int = 0           # first N tokens of every window are never masked
+                                      # (T9 fine-tuning: the probe's rho marker, always
+                                      # observed at evaluation)
     run_name: str | None = None       # W&B id; default: out_dir name + config hash
     wandb_project: str | None = None
     # The team (wandb "entity") the run belongs to. Left unset, runs land in the
@@ -74,7 +81,8 @@ class TrainConfig:
 
 def config_hash(cfg: TrainConfig, model_cfg: ModelConfig, index_path: str | None = None) -> str:
     """Hash of everything that defines the run (not where it is written)."""
-    d = {k: v for k, v in asdict(cfg).items() if k not in _RESUMABLE_FIELDS}
+    d = {k: v for k, v in asdict(cfg).items() if k not in _RESUMABLE_FIELDS
+         and not (k in _LATER_FIELDS and v == _LATER_FIELDS[k])}
     d["model"] = asdict(model_cfg)
     if index_path and Path(index_path).exists():
         idx = json.loads(Path(index_path).read_text())
@@ -126,6 +134,39 @@ class EMA:
 
     def copy_to(self, model: torch.nn.Module) -> None:
         model.load_state_dict({k: v.to(model.state_dict()[k].dtype) for k, v in self.shadow.items()})
+
+
+def start_wandb(project: str, entity: str | None, config: dict, run_id: str, wandb=None,
+                log=print):
+    """Start the W&B run; if that fails, log offline instead of not at all.
+
+    W&B must never kill a run.  Until 2026-10 a failed ``wandb.init`` (e.g. HTTP 403,
+    a key without write access to the team) turned logging off for the whole run,
+    leaving nothing to upload later.  Now the run falls back to offline mode: the
+    rows go to ./wandb/offline-run-*, synced afterwards (slurm/wandb_backfill.sbatch,
+    C3_SYNC_OFFLINE=1).  history.jsonl is written either way.
+    """
+    if wandb is None:
+        try:
+            import wandb
+        except ImportError as exc:
+            log(f"[train] wandb disabled: {exc}")
+            return None
+    kw = dict(project=project, entity=entity, config=config, id=run_id)
+    try:
+        return wandb.init(resume="allow", **kw)
+    except Exception as exc:
+        log(f"[train] wandb online start failed ({exc}); logging offline to ./wandb -- "
+            f"sync it later (slurm/wandb_backfill.sbatch, C3_SYNC_OFFLINE=1)")
+    try:
+        # The failed start leaves its run id registered in this process ("run ID ... is
+        # in use", wandb 0.30); teardown clears it so the offline run keeps the same id.
+        if hasattr(wandb, "teardown"):
+            wandb.teardown()
+        return wandb.init(mode="offline", **kw)
+    except Exception as exc:
+        log(f"[train] wandb disabled: offline start failed too ({exc})")
+        return None
 
 
 def evaluate(model: torch.nn.Module, batches, mask_token_id: int, device,
@@ -267,16 +308,11 @@ def train(cfg: TrainConfig, model_cfg: ModelConfig | None = None) -> Path:
 
     run = None
     if is_main and cfg.wandb_project:
-        try:
-            import wandb
-
-            from ..provenance import git_commit
-            run = wandb.init(project=cfg.wandb_project, entity=cfg.wandb_entity,
-                             config={**asdict(cfg), **asdict(model_cfg), "config_hash": chash,
-                                     "git_commit": git_commit()[0]},
-                             resume="allow", id=cfg.run_name or f"{out_dir.name}-{chash}")
-        except Exception as exc:                      # wandb must never kill a run
-            print(f"[train] wandb disabled: {exc}", flush=True)
+        from ..provenance import git_commit
+        run = start_wandb(cfg.wandb_project, cfg.wandb_entity,
+                          {**asdict(cfg), **asdict(model_cfg), "config_hash": chash,
+                           "git_commit": git_commit()[0]},
+                          cfg.run_name or f"{out_dir.name}-{chash}")
 
     history = out_dir / "history.jsonl"
 
@@ -296,6 +332,10 @@ def train(cfg: TrainConfig, model_cfg: ModelConfig | None = None) -> Path:
                                   "config_hash": chash}, **state)
         print(f"[train] checkpoint at step {step}", flush=True)
 
+    keep = None
+    if cfg.visible_prefix:
+        keep = torch.zeros(cfg.batch_size, cfg.seq_len, dtype=torch.bool, device=device)
+        keep[:, :cfg.visible_prefix] = True
     model.train()
     t0 = time.time()
     tokens_at_start = tokens_seen   # throughput must exclude tokens from a prior job
@@ -317,7 +357,7 @@ def train(cfg: TrainConfig, model_cfg: ModelConfig | None = None) -> Path:
                     if cfg.objective == "ar":
                         loss, stats = ar_loss(model, x, v)
                     else:
-                        loss, stats = mdlm_loss(model, x, model_cfg.mask_token_id, v)
+                        loss, stats = mdlm_loss(model, x, model_cfg.mask_token_id, v, keep=keep)
                 scaler.scale(loss / cfg.grad_accum).backward()
             agg_loss += float(loss.detach()) / cfg.grad_accum
             real += stats["real_tokens"]
