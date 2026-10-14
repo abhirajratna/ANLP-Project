@@ -1,7 +1,7 @@
 # C1 sweep on the 8B models: status
 
 Branch `c1-sweep-8b` (from `origin/main` at `dc65f07`, which contains `f816d87`).
-Last updated Wed 14 Oct 2026, 19:00 IST.
+Last updated Wed 14 Oct 2026, 19:35 IST.
 
 ## Update, 12 Oct 10:50: unblocked
 
@@ -179,7 +179,10 @@ passes/s.
 - Updating `~/c3-r2` hit four untracked merge summaries. They were moved, not deleted, to
   `~/c3-r2-untracked-20261014-1853/` and are byte-identical to the committed copies.
 
-(f) precision 20470 started at 18:22 (4-bit, one GPU); (e) LLaDA 18196 is at 475/500.
+**19:35: (e) LLaDA-Base time-split merged and validated** (18196, then merge 21370; all
+checks ok): 500/500 documents, 30,208,673 rows, 233,000 passes, 16.6 GPU-hours, 7.82
+passes/s. (e) is complete. (f) precision 20470 started at 18:22 (4-bit, one GPU,
+41 docs/h) and is due ~23:00.
 
 The Ada checkout stays at `c072bc6` until every collection job has started, so all runs
 carry one commit. The later commits are analysis-side only. (Before submission, `sbatch --test-only`
