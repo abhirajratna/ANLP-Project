@@ -70,11 +70,34 @@ SCALAR_COLUMNS = (
 
 
 def trace_meta(path: str | Path) -> dict:
-    """The ``.meta.json`` written next to a trace, or {} if there is none."""
+    """The ``.meta.json`` written next to a trace (a dataset manifest is its own
+    meta), or {} if there is none."""
     import json
 
+    from .traces.shards import is_dataset
+
+    if is_dataset(path):
+        return json.loads(Path(path).read_text())
     p = Path(path).with_suffix(".meta.json")
     return json.loads(p.read_text()) if p.exists() else {}
+
+
+def read_trace_table(path: str | Path, columns=None, filters=None):
+    """A pyarrow Table from a parquet trace or a ``*.dataset.json`` manifest of parts.
+
+    ``columns`` names a file lacks are skipped; ``filters`` are pyarrow DNF filters
+    (e.g. ``[("mask_kind", "in", ["decoder"])]``), applied while reading.
+    """
+    import pyarrow.parquet as pq
+
+    from .traces.shards import dataset_files, is_dataset
+
+    sources = [str(f) for f in dataset_files(path)] if is_dataset(path) else str(path)
+    first = sources[0] if isinstance(sources, list) else sources
+    if columns is not None:
+        names = set(pq.read_schema(first).names)
+        columns = [c for c in columns if c in names]
+    return pq.read_table(sources, columns=columns, filters=filters)
 
 
 def upgrade_v1(df, meta: dict | None = None):
@@ -97,18 +120,14 @@ def upgrade_v1(df, meta: dict | None = None):
 def load_traces(path: str | Path, mask_kind: str | None = None,
                 model: str | None = None, precision: str | None = None,
                 columns=None):
-    """Read a parquet trace, optionally filtered to one arm of the design.
+    """Read a parquet trace (or a ``*.dataset.json`` manifest of its parts),
+    optionally filtered to one arm of the design.
 
     ``columns`` limits what is read (names a file lacks are skipped), which
     matters for v2 files whose top-k lists dominate their size.  v1 files are
     upgraded with :func:`upgrade_v1`.
     """
-    import pyarrow.parquet as pq
-
-    if columns is not None:
-        names = set(pq.read_schema(path).names)
-        columns = [c for c in columns if c in names]
-    df = pq.read_table(path, columns=columns).to_pandas()
+    df = read_trace_table(path, columns=columns).to_pandas()
     df = upgrade_v1(df, trace_meta(path))
     if mask_kind is not None:
         df = df[df["mask_kind"] == mask_kind]

@@ -117,3 +117,48 @@ otherwise the pinned hub revision is downloaded to `/ssd_scratch/$USER/hf`.
 **Contamination screen** (`slurm/contamination.sbatch`): ~50 forward passes of
 ~100 tokens per document, one job per model; needs `C3_THRESHOLD` until
 `c3.CONTAM_THRESHOLD` is fixed, and writes `$PERSIST/contamination_<model>.json`.
+
+## October 2026: login gateways, accounts, and the C1 sweep
+
+**`ada.iiit.ac.in` no longer accepts SSH.** Its banner points at `ada-gw1` / `ada-gw2`,
+and from the gateway `ssh ada` is refused. Jobs reach `/share1` through
+`slurm/login_host.sh` (sourced by `activate_env.sh` and `build_env.sbatch`): `C3_LOGIN_HOST`
+if set, otherwise the first of `ada-gw1 ada-gw2 ada` that accepts a batch-mode login. The
+110M scripts (`train_110m`, `build_shards`, `fetch_fineweb`, `verify_110m`) still say
+`$USER@ada` and belong to the T3 branch. The gateway has git 2.52 and python 3.9 (no
+project environment). A fresh account had a 50 GB `/home2` quota, and `/share1` allowed
+100,000 MB and 3,000 inodes.
+
+**Every user needs a SLURM association.** `AccountingStorageEnforce=associations`, so a
+user with none (`sacctmgr show assoc where user=$USER` prints nothing) gets
+`Invalid account or account/partition combination specified` from every `sbatch` and
+`srun`. On 12 Oct only `ojas.k` had one (`research`, QOS `medium`). Only the Ada admins
+can add it.
+
+**The C1 sweep** (`slurm/submit_c1.sh`, every submission logged to `logs/c1_jobs.txt`):
+
+```bash
+bash slurm/submit_c1.sh env                  # once: the env tarball (~30 min)
+bash slurm/submit_c1.sh smoke                # 6 runs x 5 documents, full design
+bash slurm/submit_c1.sh floor dream-7b-base  # the T1 floor for Dream
+bash slurm/submit_c1.sh main                 # (a)-(d) in priority order
+bash slurm/submit_c1.sh precision            # (f) 4-bit, 200 documents, 1 GPU
+bash slurm/submit_c1.sh merge c1-llada-base  # per finished run: zero-copy merge + validation
+```
+
+Expected documents after the 256-token filter: LLaDA-8B 1,979 of 2,000 and Dream-7B
+1,976 (the same counts as the contamination screens), 198 / 197 of the 200 precision
+documents, and all 1,319 / 500 task documents (a few answers are truncated at 256). At
+186 B/row the full design writes ~11 MB per FineWeb document, so ~22 GB per FineWeb arm
+and ~64 GB for the whole sweep. That leaves no room on `/share1` for a second copy of
+every run, so the merge is zero-copy: `<run>.dataset.json` lists the validated parts
+(path, sha256, rows), and `c3.assemble.load_traces` reads it. Single-shard runs are
+collected with `--merge-as none`, and `merge_validate.sbatch` merges every run the same
+way.
+
+**Memory buys CPUs.** `u22` sets `MaxMemPerCPU=3000` MB, so SLURM raises a job's CPU
+count to its memory / 3000 MB. A 2-GPU trace task asking for 8 CPUs and 32 GB is
+allocated 12 CPUs. With the 40-CPU QOS cap and two such tasks running, a CPU job can
+have at most ~40 GB (14 CPUs). A larger request pends with `QOSMaxCpuPerUserLimit` even
+though few CPUs are visibly in use (dev job 18932: 56 GB -> 20 CPUs; lowered with
+`scontrol update JobId=... MinMemoryNode=40960 NumCPUs=14`).

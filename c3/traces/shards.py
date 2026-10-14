@@ -7,6 +7,13 @@ enter: a shard collected at another precision, a revision that moved, a
 document written twice after a resume.  So it refuses rather than repairs --
 every shard meta must agree on the run's identity, every expected document must
 be present exactly once, and no (state_id, position) pair may repeat.
+
+A merge can also be **zero-copy**: with an output named ``*.dataset.json`` the
+same checks run, but instead of a second parquet copy it writes a manifest of
+the validated parts (relative path, sha256, rows) with the merged meta, and
+``c3.assemble.load_traces`` reads the parts through it.  A full-design 8B arm is
+~22 GB; copying every run would need twice the space, which /share1's quota
+does not have.
 """
 
 from __future__ import annotations
@@ -20,6 +27,33 @@ import numpy as np
 from .collect import IDENTITY_KEYS, SCHEMA_VERSION
 
 _SHARD_META = re.compile(r"\.shard(\d+)of(\d+)\.meta\.json$")
+
+DATASET_SUFFIX = ".dataset.json"
+DATASET_FORMAT = "c3-trace-dataset-v1"
+
+
+def is_dataset(path) -> bool:
+    return str(path).endswith(DATASET_SUFFIX)
+
+
+def dataset_files(manifest_path, verify: bool = False) -> list[Path]:
+    """The part files a dataset manifest lists, checked to exist (and, with
+    ``verify``, to still have the sha256 recorded at merge time)."""
+    from ..provenance import sha256_file
+
+    mp = Path(manifest_path)
+    man = json.loads(mp.read_text())
+    if man.get("format") != DATASET_FORMAT:
+        raise MergeError(f"{mp}: not a {DATASET_FORMAT} manifest")
+    files = []
+    for f in man["files"]:
+        path = (mp.parent / f["file"]).resolve()
+        if not path.exists():
+            raise MergeError(f"{mp}: part {f['file']} is missing")
+        if verify and sha256_file(path) != f["sha256"]:
+            raise MergeError(f"{mp}: part {f['file']} changed since the merge")
+        files.append(path)
+    return files
 
 
 class MergeError(ValueError):
@@ -54,25 +88,38 @@ def check_shards(metas: list[dict], allow_mixed_commits: bool = False) -> dict:
                          f"pass allow_mixed_commits if that is intended")
     for m in metas:
         if not m.get("complete"):
-            missing = sorted(set(m["doc_ids_expected"]) - set(m.get("doc_ids_done", [])))
+            missing = sorted(set(m["doc_ids_expected"]) - set(m.get("doc_ids_done", []))
+                             - set(m.get("doc_ids_failed", [])))
             raise MergeError(f"shard {m['shard']} is incomplete: {len(missing)} documents "
                              f"missing (first: {missing[:5]}); resume it before merging")
     return {"num_shards": n, "commits": commits}
 
 
 def merge(stem: str | Path, out: str | Path, allow_mixed_commits: bool = False) -> Path:
-    """Merge every shard of ``stem`` into ``out`` (+ ``.meta.json``)."""
+    """Merge every shard of ``stem`` into ``out`` (+ ``.meta.json``).
+
+    With ``out`` named ``*.dataset.json`` the merge is zero-copy: the parts are
+    validated exactly as for a copy, and ``out`` becomes a manifest of them.
+    """
+    import os
+
     import pyarrow.parquet as pq
 
     from ..provenance import collect as provenance, sha256_file
 
     stem, out = Path(stem), Path(out)
+    copy = not is_dataset(out)
+    files: list[dict] = []
+    schema = None
     meta_paths = find_shard_metas(stem)
     metas = [json.loads(p.read_text()) for p in meta_paths]
     summary = check_shards(metas, allow_mixed_commits)
 
     seen_docs: dict[int, str] = {}
-    expected = sorted(d for m in metas for d in m["doc_ids_expected"])
+    failed = sorted(d for m in metas for d in m.get("doc_ids_failed", []))
+    # Documents skipped for non-finite logits are not in any part; they are
+    # carried into the merged meta, and scripts/validate_run.py fails on them.
+    expected = sorted(set(d for m in metas for d in m["doc_ids_expected"]) - set(failed))
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp = out.with_name(out.name + ".tmp")
     writer = None
@@ -97,21 +144,30 @@ def merge(stem: str | Path, out: str | Path, allow_mixed_commits: bool = False) 
                 if table.num_rows != part["n_rows"]:
                     raise MergeError(f"{part['file']}: {table.num_rows} rows, meta says "
                                      f"{part['n_rows']}")
-                if writer is None:
-                    writer = pq.ParquetWriter(tmp, table.schema, compression="zstd")
-                elif table.schema != writer.schema:
+                if schema is None:
+                    schema = table.schema
+                elif table.schema != schema:
                     raise MergeError(f"{part['file']}: schema differs from the first part")
-                writer.write_table(table)
+                if copy:
+                    if writer is None:
+                        writer = pq.ParquetWriter(tmp, table.schema, compression="zstd")
+                    writer.write_table(table)
+                else:
+                    files.append({"file": os.path.relpath(path, out.parent),
+                                  "sha256": sha256_file(path), "n_rows": int(table.num_rows)})
                 n_rows += table.num_rows
                 parts_used.append(part["file"])
-        if writer is None:
+                del table
+        if schema is None:
             raise MergeError("the shards contain no parts")
-        writer.close()
-        writer = None
+        if writer is not None:
+            writer.close()
+            writer = None
         if sorted(seen_docs) != expected:
             missing = sorted(set(expected) - set(seen_docs))
             raise MergeError(f"{len(missing)} expected documents missing (first: {missing[:5]})")
-        tmp.replace(out)
+        if copy:
+            tmp.replace(out)
     finally:
         if writer is not None:
             writer.close()
@@ -124,14 +180,28 @@ def merge(stem: str | Path, out: str | Path, allow_mixed_commits: bool = False) 
         "git_commit": summary["commits"][0] if len(summary["commits"]) == 1 else summary["commits"],
         "path": ref.get("path"), "device_map": ref.get("device_map"),
         "n_rows": n_rows, "n_docs": len(seen_docs), "doc_ids": sorted(seen_docs),
+        "doc_ids_failed": failed,
+        "excluded_too_long": [x for m in metas for x in (m.get("excluded_too_long") or [])],
+        "max_doc_tokens": ref.get("max_doc_tokens"),
+        "nonfinite_docs": [x for m in metas for x in m.get("stats", {}).get("nonfinite_docs", [])],
         "num_shards": summary["num_shards"], "parts": parts_used,
         "n_saturated": int(sum(m.get("stats", {}).get("n_saturated", 0) for m in metas)),
         "forward_passes": int(sum(m.get("stats", {}).get("forward_passes", 0) for m in metas)),
+        "forward_passes_failed_docs": int(sum(m.get("stats", {}).get("forward_passes_failed_docs", 0)
+                                              for m in metas)),
         "gpu_seconds": float(sum(m.get("stats", {}).get("seconds", 0.0) for m in metas)),
         "shard_provenance": [m.get("provenance") for m in metas],
-        "sha256": sha256_file(out),
+        "shard_stats": [{"shard": m["shard"], **m.get("stats", {})} for m in metas],
         "provenance": provenance(),
     })
-    out.with_suffix(".meta.json").write_text(json.dumps(merged, indent=2))
-    print(f"[merge] {n_rows} rows, {len(seen_docs)} documents, {len(parts_used)} parts -> {out}")
+    if copy:
+        merged["sha256"] = sha256_file(out)
+        out.with_suffix(".meta.json").write_text(json.dumps(merged, indent=2))
+    else:
+        merged.update({"format": DATASET_FORMAT, "files": files})
+        tmp = out.with_name(out.name + ".tmp")
+        tmp.write_text(json.dumps(merged, indent=2))
+        tmp.replace(out)
+    print(f"[merge] {n_rows} rows, {len(seen_docs)} documents, {len(parts_used)} parts -> {out}"
+          f"{'' if copy else ' (zero-copy manifest)'}")
     return out
