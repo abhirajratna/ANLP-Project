@@ -23,6 +23,13 @@ model's reported log-odds depart from the truth by one mechanism per scenario:
                  ``shift`` more than the truth: positional miscalibration (T8).
 ``noisy``        reported = true + N(0, ``noise``): regression to the mean, so
                  the calibration curve depends on the state's prior (shift).
+
+``err_corr`` (any scenario) couples the *errors* of position pairs (2t, 2t+1)
+through a Gaussian copula with latent correlation ``err_corr`` (negative:
+anticorrelated), leaving every position's marginal probability of being right
+unchanged.  Per-token calibration is then exactly as before, but the chance that a
+committed set is right jointly departs from the product of its members -- the case
+set-level calibration (``c3.setcal``) is for; :func:`set_truth` gives it exactly.
 """
 
 from __future__ import annotations
@@ -67,7 +74,7 @@ def simulate_design(scenario: str = "calibrated", n_docs: int = 40, doc_len: int
                     masks_per_rate: int = 2, matched: bool = True, seed: int = 0,
                     mu: float = 0.5, sd: float = 2.0, context_gain: float = 2.0,
                     shift: float = 1.0, temp_slope: float = 0.8, noise: float = 1.0,
-                    vocab: int = 40, n_trivial: int = 10):
+                    vocab: int = 40, n_trivial: int = 10, err_corr: float = 0.0):
     """Return a trace-schema DataFrame for ``n_docs`` documents of ``doc_len`` tokens.
 
     Token ids below ``n_trivial`` stand for punctuation / stop-words (T8 token
@@ -108,7 +115,11 @@ def simulate_design(scenario: str = "calibrated", n_docs: int = 40, doc_len: int
                 nb[ok] += vis[src[ok]]
             true = ell_star[pos] + context_gain * (nb[pos] / 4.0 - 0.5)
             r = generator(seed, "sim-design-state", str(d), key)
-            agree = (r.random(pos.size) < _sigmoid(true)).astype(np.int64)
+            if err_corr:
+                agree = _copula_agree(pos, _sigmoid(true), err_corr,
+                                      generator(seed, "sim-design-copula", str(d), key))
+            else:
+                agree = (r.random(pos.size) < _sigmoid(true)).astype(np.int64)
             rate = pos.size / doc_len
             rep = true.copy()
             if scenario == "decoder_shift" and kind == "decoder":
@@ -184,6 +195,44 @@ def simulate_design(scenario: str = "calibrated", n_docs: int = 40, doc_len: int
     df["precision"] = "na"
     df["dataset"] = "sim"
     return df
+
+
+def _copula_agree(pos: np.ndarray, p: np.ndarray, r: float, rng) -> np.ndarray:
+    """Correct/incorrect draws with marginals ``p`` and latent correlation ``r`` within
+    each pair block (2t, 2t+1); blocks are independent."""
+    from scipy.special import ndtr
+
+    block = pos // 2
+    _, b_idx = np.unique(block, return_inverse=True)
+    w = rng.normal(size=b_idx.max() + 1)[b_idx]
+    sign = np.where((pos % 2 == 1) & (r < 0), -1.0, 1.0)
+    z = np.sqrt(abs(r)) * sign * w + np.sqrt(1.0 - abs(r)) * rng.normal(size=pos.size)
+    return (ndtr(z) < p).astype(np.int64)
+
+
+def set_truth(positions: np.ndarray, truth_p: np.ndarray, err_corr: float = 0.0) -> float:
+    """Exact probability that every position of a set is right, under ``err_corr``.
+
+    A pair block whose two members are both in the set contributes their bivariate
+    normal orthant probability; every other member contributes its own ``truth_p``.
+    """
+    from scipy.special import ndtri
+    from scipy.stats import multivariate_normal
+
+    positions = np.asarray(positions, dtype=np.int64)
+    p = np.asarray(truth_p, dtype=np.float64)
+    if err_corr == 0 or positions.size < 2:
+        return float(np.prod(p))
+    total = 1.0
+    blocks = positions // 2
+    for b in np.unique(blocks):
+        idx = np.flatnonzero(blocks == b)
+        if idx.size == 1:
+            total *= p[idx[0]]
+            continue
+        cov = [[1.0, err_corr], [err_corr, 1.0]]
+        total *= float(multivariate_normal(mean=[0, 0], cov=cov).cdf(ndtri(p[idx])))
+    return total
 
 
 def true_token_ids(n_docs: int, doc_len: int = 64, seed: int = 0, vocab: int = 40) -> dict:
