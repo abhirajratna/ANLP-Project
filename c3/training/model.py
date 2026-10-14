@@ -98,7 +98,16 @@ class MaskedDiffusionLM(nn.Module):
         elif isinstance(m, nn.Embedding):
             nn.init.normal_(m.weight, std=0.02)
 
-    def forward(self, ids: torch.Tensor, valid: torch.Tensor | None = None) -> torch.Tensor:
+    def forward(self, ids: torch.Tensor, valid: torch.Tensor | None = None,
+                select: torch.Tensor | None = None) -> torch.Tensor:
+        """Logits ``(B, L, V)``; with a bool ``select`` (B, L), only ``(N, V)`` for
+        the N selected positions, in row-major order.
+
+        The MDLM loss reads only masked positions, so training passes them as
+        ``select``: the output head (a 768 x 50,258 matmul) and the fp32
+        cross-entropy buffer then cover about half the batch, which is ~15% less
+        compute and half the memory that ran batch 32 out of memory.
+        """
         L = ids.shape[1]
         x = self.tok(ids) + self.pos(torch.arange(L, device=ids.device))[None]
         attn_mask = None
@@ -112,6 +121,8 @@ class MaskedDiffusionLM(nn.Module):
                     L, dtype=torch.bool, device=ids.device)[None, None]
         for blk in self.blocks:
             x = blk(x, attn_mask)
+        if select is not None:
+            x = x[select]
         logits = self.head(self.ln_f(x))
         # SUBS: [MASK] is never a prediction.
         never = torch.zeros(logits.shape[-1], dtype=torch.bool, device=logits.device)
@@ -169,14 +180,13 @@ def mdlm_loss(model: nn.Module, x0: torch.Tensor, mask_token_id: int,
         mask[rows, cols] = True
 
     xt = torch.where(mask, torch.full_like(x0, mask_token_id), x0)
-    logits = model(xt, valid)
-    ce = F.cross_entropy(logits.view(-1, logits.size(-1)).float(), x0.view(-1),
-                         reduction="none").view(B, L)
-    per_seq = (ce * mask).sum(dim=1) / t.squeeze(1)
-    loss = per_seq.sum() / valid.sum().clamp(min=1)
+    # Logits only at masked positions: the only ones the loss reads.
+    logits = model(xt, valid, select=mask)
+    ce = F.cross_entropy(logits.float(), x0[mask], reduction="none")
+    w = (1.0 / t).expand(B, L)[mask]               # each position's 1/t weight
+    loss = (ce * w).sum() / valid.sum().clamp(min=1)
     with torch.no_grad():
-        n_masked = mask.sum().clamp(min=1)
-        stats = {"ce_per_masked_token": float(((ce * mask).sum() / n_masked).detach()),
+        stats = {"ce_per_masked_token": float(ce.sum().detach() / max(ce.numel(), 1)),
                  "mask_rate": float(mask.sum() / valid.sum().clamp(min=1)),
                  "real_tokens": int(valid.sum())}
     return loss, stats

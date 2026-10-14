@@ -1,12 +1,13 @@
 #!/bin/bash
 #SBATCH --job-name=c3-train110m
 #SBATCH --partition=u22
+#SBATCH --account=research
 #SBATCH --qos=medium
 #SBATCH --gres=gpu:2
 #SBATCH --constraint=2080ti
-#SBATCH --exclude=gnode066,gnode069
-#SBATCH --cpus-per-task=16
-#SBATCH --mem=64G
+#SBATCH --exclude=gnode066,gnode069,gnode076
+#SBATCH --cpus-per-task=20
+#SBATCH --mem=60000M
 # medium QOS caps this account's *aggregate* usage at cpu=40, gres/gpu=4,
 # mem=125000M. A 32-CPU request is fine on its own but is rejected outright --
 # "CPU count per node can not be satisfied" -- whenever another of this
@@ -36,14 +37,15 @@
 # The AR reference is the same job with C3_OBJECTIVE=ar and its own run name:
 #     sbatch --export=ALL,C3_OBJECTIVE=ar,C3_RUN_NAME=ar110m-v2 slurm/train_110m.sbatch
 #
-# Each run has its own directory, C3_RUN_NAME (default train110m-v2).  The
+# Each run has its own directory, C3_RUN_NAME (default train110m-v4: v2 died at step 0; v3 reached step 46,250
+# before the October 2026 cluster update cancelled it, checkpoint kept at 44,000).  The
 # trainer refuses to resume a checkpoint written with a different configuration,
 # or one from the proposal-era trainer, so a new run cannot silently continue
 # trial weights.
 set -euo pipefail
 REPO_DIR="${C3_REPO:-/home2/$USER/c3}"
 BLOBS="${C3_BLOBS:-/share1/$USER}"
-RUN="${C3_RUN_NAME:-train110m-v2}"
+RUN="${C3_RUN_NAME:-train110m-v4}"
 NGPU="${C3_NGPU:-2}"
 SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=accept-new"
 
@@ -69,7 +71,10 @@ if [ -z "${WANDB_MODE:-}" ]; then
 fi
 echo "[wandb] mode=$WANDB_MODE"
 
-# The 2080 Ti has ~10.6 GiB usable and this run peaks near 9.4 GiB, so
+# The 2080 Ti has ~10.6 GiB usable.  At batch 32, rank 0 -- which alone also
+# holds the EMA weights -- needed 9.2 GiB plus a 1.5 GiB fp32 logits buffer and
+# ran out of memory at step 0 (job 2721011); batch 16 x accumulation 8 keeps the
+# same 256 sequences per step with ample headroom.  Beyond that, the
 # allocator fragmentation is the difference between fitting and an OOM.
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
@@ -156,8 +161,8 @@ srun --kill-on-bad-exit=1 "$(dirname "$C3_PY")/torchrun" \
        --index "$LOCAL_SHARDS/index.json" \
        --out-dir "$CKPT_DIR" \
        --max-tokens "${C3_MAX_TOKENS:-10000000000}" \
-       --batch-size "${C3_BATCH:-32}" \
-       --grad-accum "${C3_ACCUM:-4}" \
+       --batch-size "${C3_BATCH:-16}" \
+       --grad-accum "${C3_ACCUM:-8}" \
        --window-mode "${C3_WINDOWS:-chunks}" \
        --objective "${C3_OBJECTIVE:-mdlm}" \
        --n-gpus "$NGPU" \

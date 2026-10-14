@@ -1,8 +1,14 @@
 # Sourced by every job: makes $C3_PY point at a usable interpreter.
 #
 # /share1 is not mounted on compute nodes, but it IS reachable from them by ssh
-# back to the login node -- the same pattern as run-llama.sh. Large blobs live
-# there (~73 GB free, 3,000-inode quota) and are staged to node-local SSD.
+# to a login gateway. Since the October 2026 update that is ada-gw1 (or ada-gw2;
+# picked by login_host.sh): the old `ada` host refuses SSH. Large blobs live there
+# (100 GB quota, 3,000 inodes) and are staged to node-local SSD.
+#
+# /ssd_scratch deletes files 7 days after they were created, so an environment
+# unpacked days ago can lose files in the middle of a multi-day job. It is
+# reused only if unpacked within C3_ENV_MAX_AGE_H hours (default 48): with the
+# 4-day job limit, no file a job uses is ever older than 6 days.
 #
 # Extraction is locked, atomic and validated. Several jobs can land on the same
 # node at once, and an unlocked extract lets the second one see bin/python appear
@@ -31,11 +37,15 @@ C3_SCRATCH_ENV="$C3_SCRATCH/c3-env"
 C3_SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=accept-new"
 # The login host /share1 is reached through (not hard-coded: `ada` closed to SSH).
 source "$(dirname "${BASH_SOURCE[0]}")/login_host.sh"
+C3_ENV_MAX_AGE_H="${C3_ENV_MAX_AGE_H:-48}"
 
 mkdir -p "$C3_SCRATCH"
 
 _c3_env_ok() {
     [ -x "$C3_SCRATCH_ENV/bin/python" ] || return 1
+    local fresh
+    fresh=$(find "$C3_SCRATCH_ENV/.c3-unpacked" -mmin -$((C3_ENV_MAX_AGE_H * 60)) 2>/dev/null)
+    [ -n "$fresh" ] || return 1
     # A working interpreter is not enough: the failure mode is a truncated
     # shared library, which only shows up on import.
     "$C3_SCRATCH_ENV/bin/python" -c "import torch, numpy" >/dev/null 2>&1
@@ -50,9 +60,10 @@ if ! _c3_env_ok; then
         TARBALL="$C3_SCRATCH/c3-env.tar.gz"
         if [ -r "$C3_PERSIST/c3-env.tar.gz" ]; then
             TARBALL="$C3_PERSIST/c3-env.tar.gz"
-        elif [ ! -r "$TARBALL" ]; then
+        else
+            # Always sync: a tarball left on this node may predate an env rebuild.
             # C3_ENV_BLOBS: where the tarball lives when C3_BLOBS points elsewhere.
-            echo "[env] pulling env tarball from ${C3_ENV_BLOBS:-$C3_BLOBS}"
+            echo "[env] syncing env tarball from ${C3_ENV_BLOBS:-$C3_BLOBS}"
             rsync -a --inplace --partial -e "ssh $C3_SSH_OPTS" \
                 "$USER@$C3_LOGIN_HOST:${C3_ENV_BLOBS:-$C3_BLOBS}/c3-env.tar.gz" "$TARBALL" \
                 || { echo "[env] FATAL: could not fetch env tarball"; exit 1; }
@@ -64,6 +75,7 @@ if ! _c3_env_ok; then
         tar -xzf "$TARBALL" -C "$TMPD" || { echo "[env] FATAL: extract failed"; exit 1; }
         mv "$TMPD/c3-env" "$C3_SCRATCH_ENV"
         rm -rf "$TMPD"
+        touch "$C3_SCRATCH_ENV/.c3-unpacked"
         _c3_env_ok || { echo "[env] FATAL: extracted environment fails to import torch"; exit 1; }
     fi
     flock -u 9

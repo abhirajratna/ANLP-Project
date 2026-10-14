@@ -1,6 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=c3-wandb
 #SBATCH --partition=u22
+#SBATCH --account=research
 #SBATCH --qos=medium
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=4G

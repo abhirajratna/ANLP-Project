@@ -9,7 +9,7 @@
 #
 #   bash slurm/submit_t3.sh              # the whole pipeline
 #   bash slurm/submit_t3.sh exclusion    # from a step on; earlier outputs must exist
-#   C3_NGPU=4 C3_ACCUM=2 bash slurm/submit_t3.sh   # train on 4 GPUs, same batch
+#   C3_NGPU=4 C3_ACCUM=4 bash slurm/submit_t3.sh   # train on 4 GPUs, same batch
 #
 # A job whose prerequisite fails never starts (DependencyNeverSatisfied): fix the
 # cause, `scancel` the stuck jobs, and resubmit from the failed step.

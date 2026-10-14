@@ -1,15 +1,16 @@
 #!/bin/bash
 #SBATCH --job-name=c3-traces
 #SBATCH --partition=u22
+#SBATCH --account=research
 #SBATCH --qos=medium
 #SBATCH --gres=gpu:1
 # Pin the GPU model: the audit reports results per precision, and a run that
 # silently landed on different silicon would not be comparable. gnode066/069 are
 # excluded as known-bad (same exclusion as run-llama.sh).
 #SBATCH --constraint=2080ti
-#SBATCH --exclude=gnode066,gnode069
-#SBATCH --cpus-per-task=8
-#SBATCH --mem=32G
+#SBATCH --exclude=gnode066,gnode069,gnode076
+#SBATCH --cpus-per-task=10
+#SBATCH --mem=30000M
 #SBATCH --time=2-00:00:00
 #SBATCH --requeue
 #SBATCH --signal=B:USR1@600

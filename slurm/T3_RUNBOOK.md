@@ -15,7 +15,7 @@ they start with `srun`.
 Connect the IIIT VPN, then from the laptop:
 
 ```powershell
-ssh parth.sharma@ada.iiit.ac.in
+ssh parth.sharma@ada-gw1.iiit.ac.in      # or ada-gw2; ada.iiit.ac.in no longer accepts SSH
 ```
 
 On Ada:
@@ -26,7 +26,7 @@ On Ada:
 grep -qf ~/.ssh/id_ed25519.pub ~/.ssh/authorized_keys 2>/dev/null \
   || cat ~/.ssh/id_ed25519.pub >> ~/.ssh/authorized_keys
 chmod 600 ~/.ssh/authorized_keys
-ssh -o BatchMode=yes parth.sharma@ada true && echo "ssh to ada works"
+ssh -o BatchMode=yes parth.sharma@ada-gw1 true && echo "ssh to ada-gw1 works"   # jobs reach /share1 this way
 
 mkdir -p /home2/parth.sharma/c3/logs /home2/parth.sharma/c3-runs/corpus /share1/parth.sharma
 df -h /home2/parth.sharma /share1/parth.sharma      # /share1 needs about 60 GB free
@@ -36,11 +36,11 @@ df -h /home2/parth.sharma /share1/parth.sharma      # /share1 needs about 60 GB 
 
 Repeat this whenever the code changes on the laptop. The first block runs in a
 PowerShell window on the laptop, **not** in the ssh session (a prompt reading
-`[parth.sharma@ada ~]$` means you are on Ada). `scp` asks for your Ada password.
+`[parth.sharma@ada-gw1 ~]$` means you are on Ada). `scp` asks for your Ada password.
 
 ```powershell
 cd "C:\Users\parth\OneDrive\Documents\College Stuff\Sem5\ANLP\ANLP-Project"
-$ADA = "parth.sharma@ada.iiit.ac.in"
+$ADA = "parth.sharma@ada-gw1.iiit.ac.in"
 tar -czf "$env:TEMP\c3.tgz" --no-fflags --exclude=__pycache__ --exclude=*.pyc .git .gitattributes pyproject.toml README.md c3 scripts slurm artifacts tests
 scp "$env:TEMP\c3.tgz" "${ADA}:c3.tgz"
 ```
@@ -63,7 +63,7 @@ squeue -u parth.sharma -h -o "%i %j" \
 
 bash slurm/submit_t3.sh                  # 2 GPUs for training, about 1.6 days
 # or, with nothing else of yours on GPUs: 4 GPUs, same batch, about 19 h
-# C3_NGPU=4 C3_ACCUM=2 bash slurm/submit_t3.sh
+# C3_NGPU=4 C3_ACCUM=4 bash slurm/submit_t3.sh
 
 squeue -u parth.sharma -o "%.10i %.14j %.9T %.25R"
 ```
@@ -100,7 +100,7 @@ Once `c3-buildenv` has finished, log in to W&B and run the tests. Do this before
 `wandb sync wandb/offline-run-*`.
 
 ```bash
-srun -p u22 --qos=medium -c 4 --mem=8G -t 00:30:00 --pty bash
+srun -p u22 -A research --qos=medium -c 4 --mem=8G -t 00:30:00 --pty bash
 type module >/dev/null 2>&1 || . /opt/Modules/*/init/bash   # srun shells lack `module`
 cd /home2/parth.sharma/c3 && module load u22/python/3.12.4 && source slurm/activate_env.sh
 "$(dirname "$C3_PY")/wandb" login        # your W&B user must be in the ANLP-project team
@@ -112,26 +112,26 @@ exit
 
 ```powershell
 cd "C:\Users\parth\OneDrive\Documents\College Stuff\Sem5\ANLP\ANLP-Project"
-$ADA = "parth.sharma@ada.iiit.ac.in"
+$ADA = "parth.sharma@ada-gw1.iiit.ac.in"
 scp "${ADA}:/home2/parth.sharma/c3/artifacts/exclusion_v2.json" artifacts/
-scp "${ADA}:/home2/parth.sharma/c3/artifacts/*_train110m-v2.*" artifacts/
+scp "${ADA}:/home2/parth.sharma/c3/artifacts/*_train110m-v4.*" artifacts/
 ```
 
-That brings `exclusion_v2.json`, `eval_110m_train110m-v2.json`,
-`gate_g2_train110m-v2.json` and `history_train110m-v2.jsonl`. Commit them.
+That brings `exclusion_v2.json`, `eval_110m_train110m-v4.json`,
+`gate_g2_train110m-v4.json` and `history_train110m-v4.jsonl`. Commit them.
 
 ## 6. Publish to HuggingFace
 
 ```bash
-srun -p u22 --qos=medium -c 4 --mem=16G -t 01:00:00 --pty bash
+srun -p u22 -A research --qos=medium -c 4 --mem=12000M -t 01:00:00 --pty bash
 type module >/dev/null 2>&1 || . /opt/Modules/*/init/bash   # srun shells lack `module`
 cd /home2/parth.sharma/c3 && module load u22/python/3.12.4 && source slurm/activate_env.sh
 mkdir -p "$C3_SCRATCH/publish"
-rsync -a -e ssh "parth.sharma@ada:/share1/parth.sharma/train110m-v2/final.pt" \
-    "parth.sharma@ada:/share1/parth.sharma/train110m-v2/train_summary.json" "$C3_SCRATCH/publish/"
+rsync -a -e ssh "parth.sharma@ada-gw1:/share1/parth.sharma/train110m-v4/final.pt" \
+    "parth.sharma@ada-gw1:/share1/parth.sharma/train110m-v4/train_summary.json" "$C3_SCRATCH/publish/"
 "$(dirname "$C3_PY")/huggingface-cli" login   # once; a token with write access to the org
 "$C3_PY" scripts/upload_hf.py --ckpt "$C3_SCRATCH/publish/final.pt" \
-    --repo ANLP-project/c3-mdlm-110m --eval artifacts/eval_110m_train110m-v2.json
+    --repo ANLP-project/c3-mdlm-110m --eval artifacts/eval_110m_train110m-v4.json
 exit
 ```
 
@@ -153,10 +153,10 @@ bash slurm/submit_t3.sh <step>     # env | fineweb | corpus | exclusion | shards
 | `c3-buildenv` or `c3-fineweb` network errors | resubmit from that step; both resume where they stopped |
 | `c3-corpus` prints `MISMATCH` | the data no longer reproduces the committed corpus. Ask Ojas to copy `/home2/ojas.k/c3-runs/corpus/calibration_docs.jsonl` to `/home2/parth.sharma/c3-runs/corpus/`, then `bash slurm/submit_t3.sh exclusion` |
 | `c3-shards`: `never matched` | a held-out document's keys don't line up; the build refuses on purpose. Don't bypass it |
-| `c3-train110m`: `belongs to a different run` | `C3_RUN_NAME=train110m-v3 bash slurm/submit_t3.sh train` |
-| `c3-train110m`: CUDA out of memory | `C3_RUN_NAME=train110m-v3 C3_BATCH=16 C3_ACCUM=8 bash slurm/submit_t3.sh train` |
+| `c3-train110m`: `belongs to a different run` | `C3_RUN_NAME=train110m-v5 bash slurm/submit_t3.sh train` |
+| `c3-train110m`: CUDA out of memory | `C3_RUN_NAME=train110m-v5 C3_BATCH=8 C3_ACCUM=16 bash slurm/submit_t3.sh train` |
 
-With a new run name, replace `train110m-v2` with it in steps 5 and 6.
+With a new run name, replace `train110m-v4` with it in steps 5 and 6.
 
 ## Optional: the autoregressive reference
 
@@ -173,7 +173,7 @@ C3_OBJECTIVE=ar C3_RUN_NAME=ar110m-v2 bash slurm/submit_t3.sh train
 | `/home2/parth.sharma/c3-runs/corpus/` | `calibration_docs.jsonl` (2,000 held-out docs), `reserve_docs.jsonl` (500 spares; T2 pilot documents), `exclusion_v2.json` |
 | `/share1/parth.sharma/fineweb-10BT/` | the verified FineWeb copy, 28.5 GB |
 | `/share1/parth.sharma/shards/` | tokenised training and validation shards, ~20 GB |
-| `/share1/parth.sharma/train110m-v2/final.pt` | the trained model: traces use `--model local-110m --model-path ...`, and T9 uses `--init-from ...` |
+| `/share1/parth.sharma/train110m-v4/final.pt` | the trained model: traces use `--model local-110m --model-path ...`, and T9 uses `--init-from ...` |
 
 Once training has finished, free about 28.5 GB with
 `rm -rf /share1/parth.sharma/fineweb-10BT /share1/parth.sharma/shards.old`. Resubmitting

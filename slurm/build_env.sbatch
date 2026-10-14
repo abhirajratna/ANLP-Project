@@ -1,6 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=c3-buildenv
 #SBATCH --partition=u22
+#SBATCH --account=research
 #SBATCH --qos=medium
 #SBATCH --gres=gpu:1
 # u22 is HETEROGENEOUS: nodes advertising no feature are GTX 1080 Ti (compute
@@ -9,9 +10,9 @@
 # throughput budget assumes a 2080 Ti. Without this constraint the scheduler will
 # happily hand you a 1080 Ti.
 #SBATCH --constraint=2080ti
-#SBATCH --exclude=gnode066,gnode069
+#SBATCH --exclude=gnode066,gnode069,gnode076
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=24G
+#SBATCH --mem=24000M
 #SBATCH --time=04:00:00
 #SBATCH --output=logs/buildenv-%j.out
 #
@@ -106,6 +107,7 @@ from transformers.quantizers.base import HfQuantizer
 print("bitsandbytes", bitsandbytes.__version__, "- 4bit quantizer importable")
 PY
 
+touch "$SCRATCH_ENV/.c3-unpacked"   # activate_env.sh reuses envs younger than 48 h
 echo "[env] files in env: $(find "$SCRATCH_ENV" | wc -l)  (this is why it ships as a tarball, not unpacked)"
 # Ship to /share1: it has ~76 GB free against /home2's ~5 GB, and a tarball costs
 # one of its 3,000 inodes. /share1 is not mounted here, so push it over ssh.

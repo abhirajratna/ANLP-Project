@@ -1,12 +1,13 @@
 #!/bin/bash
 #SBATCH --job-name=c3-verify
 #SBATCH --partition=u22
+#SBATCH --account=research
 #SBATCH --qos=medium
 #SBATCH --gres=gpu:1
 #SBATCH --constraint=2080ti
-#SBATCH --exclude=gnode066,gnode069
+#SBATCH --exclude=gnode066,gnode069,gnode076
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=32G
+#SBATCH --mem=24000M
 #SBATCH --time=08:00:00
 #SBATCH --output=/home2/%u/c3/logs/verify-%j.out
 # Step 5 of T3 (slurm/T3_RUNBOOK.md); submit with sbatch or run in a 1-GPU allocation.
@@ -18,13 +19,15 @@ set -euo pipefail
 REPO_DIR="${C3_REPO:-/home2/$USER/c3}"
 PERSIST="${C3_PERSIST:-/home2/$USER/c3-runs}"
 BLOBS="${C3_BLOBS:-/share1/$USER}"
-RUN="${C3_RUN_NAME:-train110m-v2}"
+RUN="${C3_RUN_NAME:-train110m-v4}"
 SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=accept-new"
 if ! type module >/dev/null 2>&1; then
     for f in /opt/Modules/*/init/bash; do [ -r "$f" ] && . "$f" && break; done
 fi
 module load u22/python/3.12.4 u22/cuda/12.4
 source "$REPO_DIR/slurm/activate_env.sh"
+"$C3_PY" "$REPO_DIR/scripts/probe_gpus.py" 1 \
+    || { echo "[probe] FATAL: GPU on $(hostname) is unusable; resubmit with --exclude=$(hostname -s)"; exit 1; }
 export HF_HOME="$C3_SCRATCH/hf"   # GPT-2 reference download stays off /home2
 cd "$REPO_DIR"
 

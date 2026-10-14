@@ -42,5 +42,5 @@ rm -rf "$SM/ckpt"
 "$(dirname "$C3_PY")/torchrun" --nproc_per_node="$NGPU" --nnodes=1 scripts/train_110m.py \
   --index "$SM/index.json" --out-dir "$SM/ckpt" \
   --max-tokens "${BENCH_TOKENS:-13000000}" \
-  --batch-size "${C3_BATCH:-32}" --grad-accum "${C3_ACCUM:-4}" \
+  --batch-size "${C3_BATCH:-16}" --grad-accum "${C3_ACCUM:-8}" \
   --ckpt-every 1000000 --eval-every 0 2>&1 | grep -E "step |fresh start|no bf16|GPU-hours|days" | tail -12

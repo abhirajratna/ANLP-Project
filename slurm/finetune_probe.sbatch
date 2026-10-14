@@ -1,12 +1,13 @@
 #!/bin/bash
 #SBATCH --job-name=c3-ftprobe
 #SBATCH --partition=u22
+#SBATCH --account=research
 #SBATCH --qos=medium
 #SBATCH --gres=gpu:2
 #SBATCH --constraint=2080ti
-#SBATCH --exclude=gnode066,gnode069
-#SBATCH --cpus-per-task=8
-#SBATCH --mem=32G
+#SBATCH --exclude=gnode066,gnode069,gnode076
+#SBATCH --cpus-per-task=10
+#SBATCH --mem=30000M
 #SBATCH --time=12:00:00
 #SBATCH --output=/home2/%u/c3/logs/ftprobe-%j.out
 #

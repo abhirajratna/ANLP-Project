@@ -1,12 +1,13 @@
 #!/bin/bash
 #SBATCH --job-name=c3-probegrid
 #SBATCH --partition=u22
+#SBATCH --account=research
 #SBATCH --qos=medium
 #SBATCH --gres=gpu:1
 #SBATCH --constraint=2080ti
-#SBATCH --exclude=gnode066,gnode069
+#SBATCH --exclude=gnode066,gnode069,gnode076
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=32G
+#SBATCH --mem=24000M
 #SBATCH --time=08:00:00
 #SBATCH --output=/home2/%u/c3/logs/probegrid-%j.out
 #

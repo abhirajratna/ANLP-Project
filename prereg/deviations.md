@@ -73,3 +73,55 @@ above them is edited.
 ## After the freeze
 
 (none yet)
+
+## Exploratory: set-level C3 on train110m-v4 (recorded 15 Oct 2026, before any number below was computed)
+
+Exploratory work outside the pre-registered families (E1/E2 primaries are unchanged).
+Everything is developed on the fit half only; the report half is read once, for the
+final run, and only after the team's freeze tag or written sign-off (recorded at the
+freeze in item 13).
+
+7. **A second 110M checkpoint.** Plan v2 T3 trains one 110M model. `train110m-v4` is a
+   second run of the same recipe (10B tokens, batch 16 x accum 4 x 4 GPUs, EMA 0.9999),
+   trained on 4 GPUs with logits computed only at masked positions (the loss and
+   gradients equal the full computation; `tests/test_training.py`). EMA perplexity bound
+   37.22 [36.51, 37.96] against `train110m-v3`'s 37.25; G2 passes (0.35%). This work uses
+   v4 so it is self-contained on one account; the team's v3 results are unaffected.
+8. **A proper-score field test (B) as a development gate.** Plan v2 T6 tests the field
+   term through winner gaps only. B compares held-out log-loss and Brier of correctness
+   over all masked positions between a spline-only own-confidence logistic and the same
+   model with field features (same family), paired per document with the 10,000-resample
+   document bootstrap. It is exploratory, outside the E2 Holm family. Gate rule, fixed
+   now: if the log-loss gain is declared (interval excludes 0 and exceeds twice the
+   floor) on `uniform` or `decoder:topk_conf:k4` using the decode-time features
+   (median_ell, mask_rate, log_n_masked), C3a and C3-set use field features; otherwise
+   they use own confidence only.
+9. **C3-set and C3-indep added to T11; C3b not run.** C3a cannot reorder positions within
+   a step (all positions share the field features), so at matched speed it is a
+   relabelled threshold rule. C3-set commits the largest confidence-ordered prefix whose
+   calibrated probability that every token in it is correct is at least 1 - alpha, using
+   set features (product of token confidences, weakest member, sum of entropies minus
+   the largest, set size, adjacent-pair share, field features). C3-indep uses the
+   independence product only, which isolates the learned set model. Within one step the
+   expected number of correct tokens does not depend on their correlation, so a token-
+   accuracy gain can only come from errors carried into later steps or from set features
+   that inform single tokens; the per-step all-correct rate is reported alongside.
+10. **T12 for the 110M is whole-span FineWeb infilling.** The 110M cannot do GSM8K/MBPP.
+    Each 256-token document has positions 64-191 masked and is decoded greedily over the
+    whole span (no blocks, no seeds; greedy decoding is deterministic). Accuracy is the
+    share of the 128 tokens matching the original; speed is 128 / forward passes. Every
+    policy (top-k, margin, PC-Sampler, threshold, entropy-bounded, KLASS, C3a, C3-indep,
+    C3-set) gets a knob grid of equal density tuned on development documents. Primary
+    statistic: at 2, 4 and 8 tokens per step, C3-set's interpolated accuracy minus the
+    best of the six existing decoders, the maximum taken inside each bootstrap draw,
+    Holm over the three speeds.
+11. **The fit half is re-split for development.** Calibrators and knob grids are chosen
+    on `hash_halves(fit_docs, 1)`: dev-fit (0) to dev-eval (1). The frozen calibrators are
+    then refitted on the whole fit half before the single report-half run.
+12. **Probe rules and exact joint correctness.** Plan v2 T9 compares random and
+    confidence selection by the exact (A) and (B). The probe grid adds threshold,
+    entropy-bounded, C3a, C3-indep and C3-set, fine-tuned from v4 with the team's
+    settings (`ft110m-v4`). C3-set targets greedy joint correctness, so its calibration is
+    checked against the exact J(S) = p*(x_S = argmax | x_obs), with (A) and (B) reported as
+    diagnostics. Probe calibrators are fitted on 2,000 new instances (label
+    `probe-c3calib`), disjoint from the training, validation and evaluation sets.

@@ -1,9 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name=c3-devfit
 #SBATCH --partition=u22
+#SBATCH --account=research
 #SBATCH --qos=medium
-#SBATCH --cpus-per-task=8
-#SBATCH --mem=40G
+#SBATCH --cpus-per-task=14
+#SBATCH --mem=42000M
 #SBATCH --time=12:00:00
 #SBATCH --output=/home2/%u/c3-dev/logs/devfit-%j.out
 #

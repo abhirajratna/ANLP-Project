@@ -1,5 +1,21 @@
 # Ada: what this project actually has
 
+## Changed in the October 2026 update (checked 2026-10-09)
+
+The wiki's user guide mixes current and outdated facts; these were checked on
+the cluster itself.
+
+| Fact | Value | Consequence |
+|---|---|---|
+| Login | `ssh <user>@ada-gw1.iiit.ac.in` (or `ada-gw2`), Rocky Linux 9 gateways | `ada.iiit.ac.in` / `ada` refuse SSH (GSSAPI only), so jobs reach `/share1` via `$USER@$C3_LOGIN_HOST`, picked by `slurm/login_host.sh` (first of ada-gw1, ada-gw2 that answers; set `C3_LOGIN_HOST` to override) |
+| Partition | still `u22` (not the wiki's `short`/`long`); `2080ti` feature unchanged | no change to `--partition` / `--constraint` |
+| Memory cap | `u22` has `MaxMemPerCPU=3000` (MB) | every job asks for at most CPUs x 3000 MB, written in `M`: `G` means 1024 MB, so `24G` on 8 CPUs is over |
+| QoS `medium` | 4 days, 4 GPUs, 40 CPUs, 125,000 MB, 20 jobs per user | the wiki's "4 running / 8 submitted" is outdated |
+| Account | jobs name `--account=research`; associations were rebuilt in the update | a user missing from the new database gets `Invalid account or account/partition combination` on every partition, and only `hpc.admin@iiit.ac.in` can restore it |
+| `/ssd_scratch`, `/scratch` | files deleted 7 days after creation (ctime) | `activate_env.sh` re-unpacks an env older than 48 h, so nothing a 4-day job uses is older than 6 days |
+| `/share1` quota | 100 GB, 3,000 files | T3 uses ~51 GB (env 3.3, FineWeb 28.5, shards ~20) plus ~2 GB per run |
+| Job history | `sacct` lost everything before the update | old job IDs exist only in `logs/` and `logs/t3_jobs.txt` |
+
 Measured on 2026-09-18 from the `ojas.k` account. These numbers, not generic
 A100 assumptions, drive every budget decision in the repo.
 
@@ -11,7 +27,7 @@ A100 assumptions, drive every budget decision in the repo.
 | Node-local scratch | `/scratch`, 1.8 TB | where token shards and HF caches belong |
 | **`/share1` is login-node-only** | not *mounted* on compute nodes, but reachable from them by `ssh`/`rsync` back to `ada` | job StdOut and anything opened by path must be on `/home2`; large blobs live on `/share1` and are **pulled to node-local SSD at job start** (the pattern in `run-llama.sh`) |
 | `/share1/$USER` free space | ~76 GB, 3,000-inode quota | the right home for tarballs, checkpoints and model weights — few large files, never many small ones |
-| **ssh from compute nodes (since the Oct 2026 reset)** | `ada` refuses it ("no longer available for SSH access"); the gateways `ada-gw1` / `ada-gw2` accept key auth and see `/share1` | every job reaches `/share1` through `$C3_LOGIN_HOST` (default `ada-gw1`, set in `activate_env.sh`); a job that still says `$USER@ada:` fails to stage or push |
+| **ssh from compute nodes (since the Oct 2026 reset)** | `ada` refuses it ("no longer available for SSH access"); the gateways `ada-gw1` / `ada-gw2` accept key auth and see `/share1` | every job reaches `/share1` through `$C3_LOGIN_HOST` (probed by `login_host.sh`, sourced from `activate_env.sh`); a job that still says `$USER@ada:` fails to stage or push |
 | **CPUs raised to fit memory (since the Oct 2026 reset, Slurm 26.05)** | more than ~3 GB per CPU raises cpus-per-task (64G with 16 CPUs -> 22), and `srun` inside the job then fails: `cpus-per-task set by two different environment variables` | `activate_env.sh` re-exports `SLURM_TRES_PER_TASK` to match; count the raised CPUs against the 40-CPU QOS cap |
 | Node-local SSD | `/ssd_scratch`, 880 GB | staging target; persists on a node between jobs, so only the first job on a node pays the transfer |
 | Compute-visible persistent | `/home2/$USER` (NFS), 30 GB quota, 25.7 GB used | **~5 GB free** — the binding storage constraint; `~/.cache` holds 5.3 GB of reclaimable pip/HF cache |

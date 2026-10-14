@@ -1,6 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=c3-merge
 #SBATCH --partition=u22
+#SBATCH --account=research
 #SBATCH --qos=medium
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=22G

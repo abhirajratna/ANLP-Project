@@ -1,12 +1,13 @@
 #!/bin/bash
 #SBATCH --job-name=c3-smoke
 #SBATCH --partition=u22
+#SBATCH --account=research
 #SBATCH --qos=medium
 #SBATCH --gres=gpu:2
 #SBATCH --constraint=2080ti
-#SBATCH --exclude=gnode066,gnode069
+#SBATCH --exclude=gnode066,gnode069,gnode076
 #SBATCH --cpus-per-task=16
-#SBATCH --mem=48G
+#SBATCH --mem=48000M
 #SBATCH --time=01:30:00
 #SBATCH --output=/home2/%u/c3/logs/smoke-%j.out
 # Smoke test for the 110M training loop: exercises the model, MDLM loss, AMP,

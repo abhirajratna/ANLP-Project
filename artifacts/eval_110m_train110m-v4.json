@@ -1,0 +1,58 @@
+{
+  "checkpoint": "/ssd_scratch/parth.sharma/train110m-v4-final.pt",
+  "weights": "ema",
+  "objective": "mdlm",
+  "bound": "NELBO (upper bound on NLL)",
+  "documents": 2000,
+  "tokens": 511761,
+  "nelbo_per_token": 3.616809582393182,
+  "nelbo_ci": [
+    3.5976975936484927,
+    3.636408901285319
+  ],
+  "ppl_bound": 37.21863521150801,
+  "ppl_bound_ci": [
+    36.51406736682841,
+    37.955290501720306
+  ],
+  "n_t": 32,
+  "gpt2_reference": {
+    "model": "gpt2 (124M, pretrained on WebText)",
+    "nll_per_token": 3.3495587674179133,
+    "ppl": 28.49016008314141,
+    "ppl_ci": [
+      27.975826343718037,
+      29.0222204585122
+    ]
+  },
+  "samples": [
+    " the same manner, as contaminated or contaminated with bacteria when possible in No Erieuni can permit the species to depart local shores (x). On this issue, avoid:\n- Warrants are have to be subject to contamination by bacteria. Sea or seas discharged bacteria can also be removed.\n- Harvest cartmicrograms of plastic waste and nutrients in d Ediz, if they ignite for forPl.\n- Maintain aerobics to protects food and bottom packaging wastes and nutrients by utilizing Kanji aluminum at 25\u2019 plastic into a Long Lesbian container (attention at 33) between floating with MetAH Cro inf ESC (h10 content poor).\nSince Tomorrow alone the waste reduction can continue in business. Commercial operations are being involving FitHyd plants at room temperature.\n- Choose a paper bag of filtered canal-based can trees to kill and kill any creature; these canch have toxins more factories feces or on the maleulate Brassica growth. The Minister of Nature will control scats and plant animals, as well as possible.\n- Remove fruits and vegetables\n- Rotate the facilities to save the waste or nutrients by composting. Pain used throughout the year to bring delicate bio Balance to the transport of greenhouse gases by creating greenhouse gases or delivering bio",
+    " to help promote the nutrition of newborns against diseases, otherwise sensitive to orthopedic parks near Grand Rapids, Michigan \u2014 to promote ruminal positioning from human menstruation, and a synthesis of ovarian tissue4 that dysfunctional regulation of ovaries from the heart (mild conception), dilates mature proximal ovarian cells, and to improve cure presentation atHealthtimes. Another study indicated that a childhood aneurysanlasty only accurately (reported age and survival) for babies whose parent aorticoblasts leveled off with the normalregnated mission index. For example when compared to other aorticoblastic recipients, it is consistent earlier studies had the largest home births profiles at between 19% and 54 percent in after numerous experimentation, seen here sometimes as the most positive outcome of the Tanni Pedanishia. At the Pittsville Hospital, New New York University Hospital and Einstein captured in 2015 as science, nurturing a delicious part with milk and drops now sent to whole baby by Dr. International Today, Buffalo School of Surgeons, a group of Ottawa's, New York University Surgery Center, from the list of a million think of new clinically-targeted therapies for bolstering access to the reduction of premature death of children's deceased offspring. Don Ioane (University",
+    " even by deviation away from the wonderful of government purposes in which they reside.Multiple indirect dangers include spiders beingmill can bales a smaller animals making it easier to escape to one individual for example, the most vulnerable of beings filled by humans Warrrespi and Orthophobia bears attractions directly connected to the mental illness range that includes polycanviousigma and chopression. Anti evaluate exist on mental stigma connected with some individuals depression Anxiety https://wikipedia.org explores that security attacks those may have even their very own forms of perceived fear. This is important for us to be a hazard for those who are struggling to understand that one of the others.\nHealth an advent software for helping a number that can follow and lead enhance healthier self-control ensure mQ banking strategies can be such long and lasting inside your mind that you have now consumed Covers are deemed taboo aspect in k k science probably when extra movement is taken every day and constructs an expression of future values that is deadly and Fold leading us to concerns of idab and personal organization. In favor of hospitalization In attitude of highbood and Gusigh have been seen not as their primary role but as the provision of microservices needs and of containment thus stabilizing long impact of mankind and hence analyze Terror.Following to punitive",
+    " The use of health animals. To think only the disease was not monitored in keeping animals cadre Distribution of anti- dietaryaria herd embroidered learned farmers of medicinal/cultural / animal disease use. Not much trash in the workplace here in Morocco. But the brutal and perilous circumstances of the DDM war have increased the risk of conflicts with infected animals. New diseases are being found within supply chains is increasing feeding insecurity and indeed has considerable virulence with humans that central to problem.\nHe offered rubs the livestock on the tip of trying could increase healthcare risk and disability. His message I could definitely have been educating ( hindsight), COU.1% of the slaughter welfare pro342-muj (\u201caware remaining appreciative\u201d). I have hundreds of disved and healthy category have I fear to wash cattle since is seen from cows perspective souls are better targetov and dysfunctional herds contaminationaria\nNow realized. Loving the ?assClub body will not know their human services are on a decline up to anytime.A large working. 12-acre farm will been so affected that human feedback livestock/animal health barn had infected the bison arrows imports some nutrient drink donors red Monitoring animals have died. Seeking care should be gotten with it realized. There is no scientific crisis representing"
+  ],
+  "provenance": {
+    "git_commit": "dc65f075f4bab2c93e343937c6a4959fdf73a411",
+    "git_dirty": true,
+    "python": "3.12.4",
+    "platform": "Linux-5.15.0-194-generic-x86_64-with-glibc2.35",
+    "host": "gnode048",
+    "slurm_job_id": "18999",
+    "packages": {
+      "numpy": "2.5.3",
+      "scipy": "1.18.1",
+      "pandas": "3.0.6",
+      "pyarrow": "25.0.1",
+      "torch": "2.6.0+cu124",
+      "transformers": "4.46.3",
+      "bitsandbytes": "0.50.2",
+      "accelerate": "1.15.0"
+    },
+    "gpu": {
+      "cuda": true,
+      "gpu": "NVIDIA GeForce RTX 2080 Ti",
+      "capability": "7.5",
+      "n_gpus": 1
+    }
+  }
+}

@@ -1,6 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=c3-probe
 #SBATCH --partition=u22
+#SBATCH --account=research
 #SBATCH --qos=medium
 #SBATCH --gres=gpu:2
 #SBATCH --constraint=2080ti
@@ -21,7 +22,7 @@
 #
 # If the probe fails, the node is added to C3_EXCLUDE and this job resubmits
 # itself, up to C3_PROBE_MAX attempts.  For 4-GPU training submit with
-#     sbatch --gres=gpu:4 --export=ALL,C3_NGPU=4,C3_ACCUM=2 slurm/launch_train.sbatch
+#     sbatch --gres=gpu:4 --export=ALL,C3_NGPU=4,C3_ACCUM=4 slurm/launch_train.sbatch
 set -euo pipefail
 REPO_DIR="${C3_REPO:-/home2/$USER/c3}"
 NGPU="${C3_NGPU:-2}"
@@ -63,6 +64,6 @@ fi
 GRES=()
 if [ -n "${C3_NGPU:-}" ]; then GRES=(--gres="gpu:$NGPU"); fi
 TRAIN=$(sbatch --parsable --nodelist="$NODE" "${GRES[@]}" slurm/train_110m.sbatch)
-VERIFY=$(sbatch --parsable --dependency=afterok:"$TRAIN" slurm/verify_110m.sh)
+VERIFY=$(sbatch --parsable --dependency=afterok:"$TRAIN" --exclude="$EXCLUDE" slurm/verify_110m.sh)
 echo "[probe] $NODE passed; submitted train=$TRAIN verify=$VERIFY"
 echo "$(date +%F_%T) probe=$SLURM_JOB_ID ok on $NODE -> train=$TRAIN verify=$VERIFY" >> logs/t3_jobs.txt

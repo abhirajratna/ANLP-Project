@@ -25,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import numpy as np
 
-from c3.assemble import read_trace_table, trace_meta
+from c3.assemble import SCALAR_COLUMNS, read_trace_table, trace_meta
 from c3.frame import hash_halves
 from c3.provenance import collect as provenance, sha256_file
 
@@ -39,6 +39,9 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out-trace", required=True)
     ap.add_argument("--out-manifest", required=True)
+    ap.add_argument("--columns", choices=["all", "scalar"], default="all",
+                    help="scalar: drop the top-k lists (c3.assemble.SCALAR_COLUMNS), most of a "
+                         "trace's size, which the calibration analyses do not read")
     a = ap.parse_args()
 
     split = {int(k): int(v) for k, v in json.loads(Path(a.manifest).read_text()).items()}
@@ -49,7 +52,9 @@ def main() -> int:
         fit = np.sort(rng.choice(fit, size=a.n_docs, replace=False))
     if any(split[int(d)] != 0 for d in fit):
         raise SystemExit("a report-half document was selected; refusing")
-    table = read_trace_table(a.dataset, filters=[("doc_id", "in", fit.tolist())])
+    columns = list(SCALAR_COLUMNS) if a.columns == "scalar" else None
+    table = read_trace_table(a.dataset, columns=columns,
+                             filters=[("doc_id", "in", fit.tolist())])
     got = np.unique(table.column("doc_id").to_numpy())
     if not set(got.tolist()) <= set(fit.tolist()):
         raise SystemExit("the filtered trace holds documents outside the selection; refusing")
@@ -61,7 +66,7 @@ def main() -> int:
     meta = {k: v for k, v in trace_meta(a.dataset).items() if k not in ("files", "doc_ids", "parts")}
     meta.update({"note": "DEVELOPMENT subset: fit-half documents only, not a result",
                  "source": str(a.dataset), "source_sha256": sha256_file(a.dataset),
-                 "manifest": a.manifest, "doc_ids": got.tolist(), "n_docs": int(got.size),
+                 "manifest": a.manifest, "columns": a.columns, "doc_ids": got.tolist(), "n_docs": int(got.size),
                  "n_rows": int(table.num_rows), "provenance": provenance()})
     out.with_suffix(".meta.json").write_text(json.dumps(meta, indent=2))
     h = hash_halves(got, 1)

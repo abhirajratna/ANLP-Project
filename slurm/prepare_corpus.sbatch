@@ -1,9 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name=c3-corpus
 #SBATCH --partition=u22
+#SBATCH --account=research
 #SBATCH --qos=medium
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=16G
+#SBATCH --mem=12000M
 #SBATCH --time=06:00:00
 #SBATCH --output=/home2/%u/c3/logs/corpus-%j.out
 #

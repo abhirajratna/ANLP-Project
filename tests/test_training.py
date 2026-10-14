@@ -53,6 +53,59 @@ def _build(tmp_path, recs, entries, **kw):
                               content_hash_fn=_hash, **kw)
 
 
+def test_masked_only_logits_match_the_full_computation():
+    """The training loss computes logits only at masked positions; it must give
+    the loss and gradients of the head-on-every-position computation."""
+    from c3.training.model import mdlm_loss
+
+    torch.manual_seed(0)
+    cfg = ModelConfig(max_len=32, **TINY)
+    m = MaskedDiffusionLM(cfg).eval()
+    x0 = torch.randint(0, 1000, (6, 32))
+    valid = torch.ones_like(x0, dtype=torch.bool)
+    valid[0, 20:] = False
+
+    class Full(torch.nn.Module):          # head over all positions, then select
+        def __init__(self, inner):
+            super().__init__()
+            self.inner = inner
+
+        def forward(self, ids, valid=None, select=None):
+            out = self.inner(ids, valid)
+            return out if select is None else out[select]
+
+    params = list(m.parameters())
+    torch.manual_seed(1)
+    loss_a, st_a = mdlm_loss(m, x0, cfg.mask_token_id, valid)
+    grad_a = torch.autograd.grad(loss_a, params)
+    torch.manual_seed(1)
+    loss_b, st_b = mdlm_loss(Full(m), x0, cfg.mask_token_id, valid)
+    grad_b = torch.autograd.grad(loss_b, params)
+    assert torch.allclose(loss_a, loss_b, atol=1e-6)
+    assert st_a == st_b
+    assert all(torch.allclose(a, b, atol=1e-6) for a, b in zip(grad_a, grad_b))
+
+    # The same holds with never-masked context (the T9 probe's rho marker): kept
+    # positions are excluded from the mask, so they never reach the head either.
+    keep = torch.zeros_like(valid)
+    keep[:, :4] = True
+    torch.manual_seed(2)
+    loss_c, _ = mdlm_loss(m, x0, cfg.mask_token_id, valid, keep=keep)
+    grad_c = torch.autograd.grad(loss_c, params)
+    torch.manual_seed(2)
+    loss_d, _ = mdlm_loss(Full(m), x0, cfg.mask_token_id, valid, keep=keep)
+    grad_d = torch.autograd.grad(loss_d, params)
+    assert torch.allclose(loss_c, loss_d, atol=1e-6)
+    assert all(torch.allclose(a, b, atol=1e-6) for a, b in zip(grad_c, grad_d))
+
+    # The per-position 1/t weighting equals the old per-sequence sum.
+    ce, t = torch.rand(6, 32), torch.rand(6, 1) + 0.01
+    mask = torch.rand(6, 32) < 0.5
+    old = ((ce * mask).sum(dim=1) / t.squeeze(1)).sum()
+    new = (ce[mask] * (1.0 / t).expand(6, 32)[mask]).sum()
+    assert torch.allclose(old, new)
+
+
 def test_param_constant_matches_model():
     assert ModelConfig().n_params == N_PARAMS_DEFAULT
 
@@ -366,7 +419,8 @@ def test_visible_prefix_is_never_masked_and_off_by_default_changes_nothing():
     m = MaskedDiffusionLM(ModelConfig(**TINY))
     seen = []
     real_forward = m.forward
-    m.forward = lambda ids, valid=None: (seen.append(ids.clone()), real_forward(ids, valid))[1]
+    m.forward = lambda ids, valid=None, **kw: (seen.append(ids.clone()),
+                                               real_forward(ids, valid, **kw))[1]
     x0 = torch.randint(0, 50000, (8, 32))
     keep = torch.zeros(8, 32, dtype=torch.bool)
     keep[:, :5] = True
