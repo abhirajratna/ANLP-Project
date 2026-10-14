@@ -41,3 +41,4 @@
 2026-10-14T18:53:20+05:30	job=21345	run=merge:c1ts-dream-base	CANCELLED: submitted from a stale checkout (old corpus case order)
 2026-10-14T18:53:33+05:30	job=21346	run=merge:c1ts-dream-base	commit=0d697d5	sbatch --job-name=c3-merge-c1ts-dream-base --export=ALL,C3_RUN=c1ts-dream-base,C3_GPUS=2,C3_CORPUS=/home2/abhiraj.ratna/c3-runs/corpus/timesplit_docs.jsonl slurm/merge_validate.sbatch
 2026-10-14T19:19:17+05:30	job=21370	run=merge:c1ts-llada-base	commit=0d697d5	sbatch --job-name=c3-merge-c1ts-llada-base --export=ALL,C3_RUN=c1ts-llada-base,C3_GPUS=2,C3_CORPUS=/home2/abhiraj.ratna/c3-runs/corpus/timesplit_docs.jsonl slurm/merge_validate.sbatch
+2026-10-14T23:19:38+05:30	job=21618	run=merge:c1t8-llada-base-4bit	commit=0d697d5	sbatch --job-name=c3-merge-c1t8-llada-base-4bit --export=ALL,C3_RUN=c1t8-llada-base-4bit,C3_GPUS=1,C3_CORPUS=/home2/abhiraj.ratna/c3-runs/corpus/precision_docs.jsonl slurm/merge_validate.sbatch

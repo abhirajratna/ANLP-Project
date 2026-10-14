@@ -1,7 +1,7 @@
 # C1 sweep on the 8B models: status
 
 Branch `c1-sweep-8b` (from `origin/main` at `dc65f07`, which contains `f816d87`).
-Last updated Wed 14 Oct 2026, 19:35 IST.
+Last updated Wed 14 Oct 2026, 23:30 IST.
 
 ## Update, 12 Oct 10:50: unblocked
 
@@ -183,6 +183,24 @@ passes/s.
 checks ok): 500/500 documents, 30,208,673 rows, 233,000 passes, 16.6 GPU-hours, 7.82
 passes/s. (e) is complete. (f) precision 20470 started at 18:22 (4-bit, one GPU,
 41 docs/h) and is due ~23:00.
+
+**23:30: every C1 run collected, merged and validated, (a)-(f).**
+
+| run | precision | docs | rows | passes | GPU-h | passes/s | checks |
+|---|---|---|---|---|---|---|---|
+| c1-llada-base | fp16 | 1,979 | 119,562,567 | 922,214 | 68.0 | 7.54 | ok |
+| c1-llada-instruct-gsm8k | fp16 | 1,319 | 13,821,447 | 245,152 | 17.6 | 7.74 | ok |
+| c1-llada-instruct-mbpp-v2 | fp16 | 499 | 3,148,663 | 66,658 | 5.0 | 7.42 | ok (excl. 482) |
+| c1-dream-base | fp16 | 1,976 | 119,381,308 | 920,816 | 59.9 | 8.54 | ok |
+| c1-dream-instruct-gsm8k | fp16 | 1,319 | 13,399,445 | 241,162 | 13.7 | 9.79 | ok |
+| c1-dream-instruct-mbpp | fp16 | 499 | 2,523,455 | 60,680 | 3.8 | 8.87 | ok (excl. 482) |
+| c1ts-llada-base | fp16 | 500 | 30,208,673 | 233,000 | 16.6 | 7.82 | ok |
+| c1ts-dream-base | fp16 | 500 | 30,208,673 | 233,000 | 15.0 | 8.63 | ok |
+| c1t8-llada-base-4bit | 4bit | 198 | 11,962,128 | 92,268 | 4.8 | 5.36 | ok |
+
+Total: 204.3 GPU-hours. Traces: `/share1/abhiraj.ratna/traces/<run>/`, each with
+`<run>.dataset.json`. (f) ran at 5.36 passes/s in 4-bit on one GPU, against 7.5-7.8 for
+fp16 over two.
 
 The Ada checkout stays at `c072bc6` until every collection job has started, so all runs
 carry one commit. The later commits are analysis-side only. (Before submission, `sbatch --test-only`
