@@ -70,6 +70,8 @@ def main() -> int:
                     help="split an fp16/fp32 model across GPUs, or offload to CPU")
     ap.add_argument("--max-memory", default=None, help="e.g. 0=10GiB,1=10GiB,cpu=60GiB")
     ap.add_argument("--docs", default=None, help="calibration_docs.jsonl (raw text)")
+    ap.add_argument("--dataset", default=None,
+                    help="dataset label for --docs rows (default fineweb; e.g. timesplit)")
     ap.add_argument("--task", default=None, choices=["gsm8k", "mbpp"],
                     help="teacher-forced task documents instead of raw text")
     ap.add_argument("--task-jsonl", default=None,
@@ -118,7 +120,7 @@ def main() -> int:
     det = set_deterministic(a.seed)
     model = build_model(a.model, precision=a.precision, path=a.model_path, device=a.device,
                         device_map=a.device_map, max_memory=parse_max_memory(a.max_memory))
-    dataset = a.task or ("toy" if a.model == "toy" else "fineweb")
+    dataset = a.task or ("toy" if a.model == "toy" else (a.dataset or "fineweb"))
     if a.model == "toy":
         rng = np.random.default_rng(0)
         docs = [Document(i, rng.integers(0, 60, a.max_tokens), dataset="toy")
@@ -131,7 +133,7 @@ def main() -> int:
     else:
         # Each model is evaluated under its own tokeniser, so token counts per
         # document differ slightly across arms; the state fixed effects absorb it.
-        docs = [Document(i, x, dataset="fineweb")
+        docs = [Document(i, x, dataset=dataset)
                 for i, x in load_docs(a.docs, model.tokenizer, a.max_tokens, a.limit)]
     cfg = build_config(a)
     print(f"[collect] {len(docs)} documents, model={a.model}, precision={a.precision}, "

@@ -20,6 +20,9 @@ lives on Ada — see the inventory at the bottom.
 | `contamination_llada-8b-base.json` | T4 screen, LLaDA-8B-Base fp16: 2 / 1,979 flagged at a run of >= 32 of 50 tokens (threshold from plan v2 T4, **not yet pre-registered**); median run 1, max 39 | `scripts/contamination_screen.py` (job 2722128) |
 | `contamination_dream-7b-base.json` | T4 screen, Dream-v0-7B-Base fp16: 1 / 1,976 flagged at >= 32 (same threshold, not yet pre-registered); median run 1, max 43 | `scripts/contamination_screen.py` (job 2722129) |
 | `t2_pilot/` | T2 pilot, LLaDA-8B-Base fp16 over 2 GPUs, reserve docs 100000-100020 (20 with >= 256 tokens): `floor_llada_base_fp16.json` (5 repeats bitwise identical, floor 0), `gate_g1.json` (N = 20 -> full plan), `analysis/` (kfold-doc, prefix `TTwoPilot`). Traces: `/share1/ojas.k/traces/t2pilot-llada-base-fp16/` | `slurm/collect_traces.sbatch` (job 2722140), `scripts/measure_floor.py`, `scripts/gate_g1.py`, `scripts/analyze_traces.py` |
+| `gate_g2_train110m-v3.json` | **Gate G2 PASS** for the plan-v2 110M (`train110m-v3`): EMA validation NELBO changes 0.37% over the last 10% of steps (threshold 0.5%, 18 points); final 3.612 nats/token, bound 37.0 | `scripts/check_g2.py` in `slurm/verify_110m.sh` (job 17434) |
+| `eval_110m_train110m-v3.json` | the same model on the 2,000 held-out docs (EMA weights): perplexity bound 37.25 [36.54, 37.99] vs GPT-2 small 28.49 [27.98, 29.02]; 4 samples | `scripts/eval_110m.py` (job 17434) |
+| `history_train110m-v3.jsonl`, `train_summary_train110m-v3.json` | its training curve and provenance: 169,055 steps, 9.995B tokens, config 53f70713a312b3b2; fresh start on 4 GPUs x batch 16 x accum 4 (the v2 global batch), document-aligned shards, no packing | `scripts/train_110m.py` (job 17431, 36.6 h) |
 | `timesplit_docs.jsonl`, `timesplit_manifest.json` | T4 step 2: 500 English Wikipedia articles created 2025-04-04 .. 2026-08-29 (after both 8B releases), current-revision text with revision ids; every doc reaches 256 tokens under GPT-2, LLaDA-8B and Dream-7B. doc_ids 200000-200499 (relabelled from 100000+i, which collided with the reserve set; `scripts/relabel_timesplit.py`, both hashes in the manifest) | `scripts/build_timesplit.py` (run locally 2026-10-12, 567 probes) |
 | `exclusion_timesplit.json` | v2 exclusion record of the time-split set (`external`: not required to match the FineWeb stream) | `scripts/build_exclusion.py` |
 | `shard_check_exclusion_timesplit.json` | the rebuilt v2 shards (built before the time-split set existed) checked against it: 0 of 9,669,362 train+val documents match by first-256-token hash | `scripts/check_shard_exclusion.py` in `slurm/push_shards.sbatch` (job 17430) |
@@ -39,9 +42,13 @@ them over ssh — see `slurm/CLUSTER.md`.
 | artefact | location | size |
 |---|---|---|
 | calibration corpus (2,000 docs) | `/home2/ojas.k/c3-runs/corpus/calibration_docs.jsonl` | 11 MB |
-| tokenised training shards (9.94B tokens, 50 shards) | `/share1/ojas.k/shards/` | 19 GB |
-| **110M model** — `final.pt`, `checkpoint.pt`, summary | `/share1/ojas.k/train110m/` | 1.9 GB |
+| v2 training shards (document-aligned, 9.94B tokens, 50 + 1 val shards, `SHA256SUMS`) | `/share1/ojas.k/v2/shards/` | 20 GB |
+| **plan-v2 110M model** `train110m-v3` — `final.pt` (with EMA), `checkpoint.pt`, history, summary | `/share1/ojas.k/v2/train110m-v3/` | 3.3 GB |
+| abandoned v2 run (cancelled 29 Sep at step 11,500; checkpoint at step 10,000) | `/share1/ojas.k/v2/train110m-v2/` | 2.1 GB |
+| proposal-era 110M (v1, packed sequences; fallback only) — `final.pt`, `checkpoint.pt`, summary | `/share1/ojas.k/train110m/` | 1.9 GB |
+| T9 fine-tuned 110M checkpoints | `/share1/ojas.k/probe/<run>/` | 1.1 GB each |
 | prebuilt Python environment (tarball) | `/share1/ojas.k/c3-env.tar.gz` | 3.1 GB |
+| deleted 2026-10-12/14: the FineWeb-Edu copy (27 GB; jobs now stage it per node, `slurm/stage_fineweb.sh`) and the v1 packed shards (19 GB) | — | — |
 | job logs | `/home2/ojas.k/c3/logs/` | small |
 
 The corpus is regenerable from a fixed seed (`CorpusSpec(seed=20260917)`), but

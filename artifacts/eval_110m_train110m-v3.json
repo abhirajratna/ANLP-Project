@@ -1,0 +1,58 @@
+{
+  "checkpoint": "/ssd_scratch/ojas.k/train110m-v3-final.pt",
+  "weights": "ema",
+  "objective": "mdlm",
+  "bound": "NELBO (upper bound on NLL)",
+  "documents": 2000,
+  "tokens": 511761,
+  "nelbo_per_token": 3.617532553182356,
+  "nelbo_ci": [
+    3.598377936041589,
+    3.6371999593453936
+  ],
+  "ppl_bound": 37.24555292676731,
+  "ppl_bound_ci": [
+    36.53891788727516,
+    37.98532721902147
+  ],
+  "n_t": 32,
+  "gpt2_reference": {
+    "model": "gpt2 (124M, pretrained on WebText)",
+    "nll_per_token": 3.3495587674179133,
+    "ppl": 28.49016008314141,
+    "ppl_ci": [
+      27.975826343718037,
+      29.0222204585122
+    ]
+  },
+  "samples": [
+    " objects containing food, as contaminated or contaminated with bacteria when food is cooked or cooked.\nWe make an action accordingly in order to prevent the breakdown. For example:\n- A safety angler may be used to remove the food.\n- Wash the kitchen plants and examine food.\n- Knowing the micrograms of food buy and remembering how it will reveal if if they ignite need for foods.\n- Clean plastic beverage cans while the protects food, such as wool, cotton, coffee, or aluminum meal shapes, not be cleaned without water to remove the food.\n- Clean vegetation floating cover to hide from inf ESCations.\nIn sum, Back a Tomorrow does the waste reduction encouraged in this article. Commercial plants are being prepared by consumers plants at room temperature; species, which are to plow after canallines, canallines, and other smaller creature; or species that have ingested more flowers and damaged by the maleulate Brassica growth. The Minister of Nature recommends control measures on the plant show and recoverable as needed.\n- Remove water pots more than 10 feet above the ground to save the site trees; additional water capacity may be used throughout the year to repots. The best heat resistance is usually found in water applications used for delivering water",
+    " and help predict and affect natural preservation.\nThe newNMIS permits for fragile national parks \u2014 Grand Rapids National Park \u2014 vary from week to sunset from limits to allowable declvals. The 2012 BLM report concluded that adequate regulation under the Act of the Interior (115 nationalism) is meant to promote\ndesign for both Americans and the environment; the preservation of the availability of water is but a blessing. From pollutionont Fairfield Lask, and Brown University Publishing, America\u2019s \u201c AAP Lists: Endemic Resilient Health Impact, 1999\ufffd\ufffd:\nThe Northeast is country\u2019s wildlife refuge, and is the home of America's largest homeac. Herbs predominantly in a vast variety of tastes, while they vary in grain and texture with a touch of Potovanni (gummy poultry). Nestled with embarrassment \ufffd, New brunets, according to examples captured in 2015 (bad, delicious, delicious puffiness, reusable and now popular in whole, although in fact, occasionally, New York is sad). In a global population tailoring, New York\naware women, about 92% of the population think New York, and the state\u2019s population includes about 400,000 premature infants and children around the globe. Don\u2019t boil it",
+    " even legal deviation streaming into the realms of government oppression in military contexts.\nMultiple stories might include spiders being a spotted bales a stripped animals studying their sexuality usually freeuit of life is one of the most misunderstood of beings filled by. Warr hints inaplexophobia bears aaus Dist to the mental and physical symptoms called polyacviousigma andDepression. Anti evaluateation on mental stigma connected with that of its symptoms by://aplexophobia means that the attacks appear to have even their own own forms of perceived fear. This is great for fear and even physical hazard for those who are hard to understand that beliefs of the poor are immoral for pregnancy,or failure to rate inflexus vipel shoulder enhanceand self worth if the mQIx expression live such long and lasting inside of 1980s and have drastically consumed Coon - the worst crisis in k Planning yoia where traumatic information is taken every day and constructs an expression of future values that is deadly. Fold rumors presented to you as possible -- and personal matters. In favor of victimization In attitude of high in stress and violence nigh same duration of the state's primary role but the unprecedented provision of microservices needs and of containment to stabilizing populations that. The CIA's on Terror.Following to punitive",
+    " keep own road to Mercedes. To think only the money was not monitored in solidarity these day. Distribution of anti-drug substances. Losses learned about how HIV/AIDS / HIV disease brought justice and much suffering in the workplace here in Morocco. But on brutal scale in circumstances of politics have been war and tribulation that is inaut Exposed to many countries are attempt to chart supply chains with increasing resources. Insufficient and considerable cost seems to basically compel central agencies the price immediately they offered. The IMF that under control pattern of opioids could increase healthcare risk in continuing crisis funds. Throughout the bottom of Rozo Brutalevagent there is a case ofakespeare about indigenous proton-muj and \u201cthe remaining patient situation\u201d on border fronts. Allevedin drug category is more expensive to wash than since is seen from other perspective souls are better target.\u201d Carlbenaria\nNow have our Loving children ? an innovative body will deliver then, decisively and vividly delivered\n7 Years to the social struggle and to the un-alysed efforts of those worst affected that had contracted HIV/AIDS These drugs had taken something to this, and some smile decision was red Monitoring help in government. Seeking price should they deal with it realized. There is no way to remove"
+  ],
+  "provenance": {
+    "git_commit": "4dff8b10f2d88f0212068cce6ec1857b7d40b882",
+    "git_dirty": false,
+    "python": "3.12.4",
+    "platform": "Linux-5.15.0-194-generic-x86_64-with-glibc2.35",
+    "host": "gnode060",
+    "slurm_job_id": "17434",
+    "packages": {
+      "numpy": "2.5.3",
+      "scipy": "1.18.1",
+      "pandas": "3.0.5",
+      "pyarrow": "25.0.1",
+      "torch": "2.6.0+cu124",
+      "transformers": "4.46.3",
+      "bitsandbytes": "0.50.2",
+      "accelerate": "1.15.0"
+    },
+    "gpu": {
+      "cuda": true,
+      "gpu": "NVIDIA GeForce RTX 2080 Ti",
+      "capability": "7.5",
+      "n_gpus": 1
+    }
+  }
+}
