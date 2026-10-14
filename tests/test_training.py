@@ -443,3 +443,5 @@ def test_backfill_merges_rows_by_step_with_the_later_value_winning(tmp_path):
     assert wb.rows_by_step(h) == [(50, {"loss": 2.9}), (100, {"loss": 2.0, "val_nelbo": 4.0}),
                                   (150, {"loss": 1.5})]
     assert wb.flat_scalars({"a": {"b": 1, "c": [1]}, "d": "x"}, "g/") == {"g/a/b": 1, "g/d": "x"}
+    assert wb.summary_prefix("gate_g2_train110m-v3") == "gate_g2"
+    assert wb.summary_prefix("train_summary_ft110m-v3") == "train_summary"

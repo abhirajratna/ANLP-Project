@@ -11,8 +11,10 @@ same rows are in each run's history.jsonl, which this script replays.
 
 * Rows with the same step (a training row and a validation row; or a step re-logged
   after a requeue) are merged, the later value winning -- the rule check_g2.py uses.
-* The run is created under the trainer's id (its run name) and **never resumed**:
-  if the id already exists the upload is refused, so nothing is logged twice.
+* The run is created under ``--run-id`` and **never resumed**: if the id already
+  exists the upload is refused, so nothing is logged twice.  The trainer's run
+  name can already be taken by a teammate's run in the shared project
+  (``train110m-v3`` was, from 28 Sep), so pass a distinct id in that case.
 * ``--summary`` JSON files (train summary, G2 record, eval) go into the run summary
   (scalars, flattened); the train summary's ``config`` and ``model_config`` become
   the run config.  The run is tagged ``backfilled``.
@@ -40,6 +42,15 @@ def rows_by_step(path: str | Path) -> list[tuple[int, dict]]:
         step = int(row.pop("step"))
         merged.setdefault(step, {}).update(row)
     return sorted(merged.items())
+
+
+KINDS = ("train_summary", "gate_g2", "eval_110m")
+
+
+def summary_prefix(stem: str) -> str:
+    """'gate_g2_train110m-v3' -> 'gate_g2': the file's kind, not the run it came from
+    (the W&B id can differ from the run name, e.g. train110m-v3-oct12)."""
+    return next((k for k in KINDS if stem == k or stem.startswith(k + "_")), stem)
 
 
 def flat_scalars(d: dict, prefix: str = "") -> dict:
@@ -75,7 +86,7 @@ def main() -> int:
         for key in ("config", "model_config"):
             if isinstance(d.get(key), dict):
                 config.update(d[key] if key == "config" else {"model": d[key]})
-        stem = Path(path).stem.replace(f"_{a.run_id}", "")
+        stem = summary_prefix(Path(path).stem)
         summary.update(flat_scalars({k: v for k, v in d.items()
                                      if k not in ("config", "model_config", "provenance",
                                                   "samples")}, stem + "/"))

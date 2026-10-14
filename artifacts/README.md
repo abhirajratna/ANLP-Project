@@ -72,4 +72,4 @@ and content hashes), so the stream order had not changed.
 | 110M training | 2700435 | 19 h, reached step 76,000 then crashed in NCCL teardown |
 | 110M training (resumed) | 2704812 | completed 76,293 steps / 10.0B tokens |
 
-**Weights & Biases:** https://wandb.ai/ANLP-project/c3-dllm-calibration
+**Weights & Biases:** https://wandb.ai/ANLP-project/c3-dllm-calibration. From 12 Oct the live runs were rejected (HTTP 403: the key on `ojas.k` had lost write access), so these were uploaded afterwards from `history.jsonl` (`scripts/wandb_backfill.py`, tag `backfilled`): `train110m-v3-oct12` (the plan-v2 110M; the id `train110m-v3` belongs to a teammate's 28 Sep run), `ft110m-v1-dryrun`, `ft110m-v3`, `ft110m-v3-visible`. The W&B run `train110m-v2` mixes a teammate's 28 Sep run and our 29 Sep run, which resumed into it under the same id.
