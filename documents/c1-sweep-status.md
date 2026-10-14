@@ -1,7 +1,7 @@
 # C1 sweep on the 8B models: status
 
 Branch `c1-sweep-8b` (from `origin/main` at `dc65f07`, which contains `f816d87`).
-Last updated Wed 14 Oct 2026, 11:00 IST.
+Last updated Wed 14 Oct 2026, 19:00 IST.
 
 ## Update, 12 Oct 10:50: unblocked
 
@@ -168,6 +168,18 @@ Total for (a)-(d): 167.9 GPU-hours (2 GPUs per task). Every run is at one
 commit: `c072bc6`, except the two MBPP runs at `d7965e0` (the length cap). Done on Wed
 14 Oct, ahead of the Fri 16 Oct target. Still running: (e) 18196 (LLaDA time-split);
 queued: (e) 18197 and (f) 20470.
+
+**19:00: (e) Dream-Base time-split merged and validated** (18197, then merge 21346; all
+checks ok): 500/500 documents, 30,208,673 rows, 233,000 passes, 15.0 GPU-hours, 8.63
+passes/s.
+
+- The first merge (21330) compared the run with the FineWeb corpus in its informational
+  corpus count, because `*-base` matched before `c1ts-*`. Fixed in `0d697d5` with a test
+  and re-validated.
+- Updating `~/c3-r2` hit four untracked merge summaries. They were moved, not deleted, to
+  `~/c3-r2-untracked-20261014-1853/` and are byte-identical to the committed copies.
+
+(f) precision 20470 started at 18:22 (4-bit, one GPU); (e) LLaDA 18196 is at 475/500.
 
 The Ada checkout stays at `c072bc6` until every collection job has started, so all runs
 carry one commit. The later commits are analysis-side only. (Before submission, `sbatch --test-only`

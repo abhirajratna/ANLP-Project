@@ -36,3 +36,7 @@
 2026-10-14T10:41:42+05:30	job=20472	run=merge:c1-dream-instruct-gsm8k	commit=d7965e0	sbatch --job-name=c3-merge-c1-dream-instruct-gsm8k --export=ALL,C3_RUN=c1-dream-instruct-gsm8k,C3_GPUS=2 slurm/merge_validate.sbatch
 2026-10-14T10:41:42+05:30	job=20473	run=merge:c1-llada-instruct-mbpp-v2	commit=d7965e0	sbatch --job-name=c3-merge-c1-llada-instruct-mbpp-v2 --export=ALL,C3_RUN=c1-llada-instruct-mbpp-v2,C3_GPUS=2 slurm/merge_validate.sbatch
 2026-10-14T10:51:40+05:30	job=20486	run=merge:c1-dream-instruct-mbpp	commit=d7965e0	sbatch --job-name=c3-merge-c1-dream-instruct-mbpp --export=ALL,C3_RUN=c1-dream-instruct-mbpp,C3_GPUS=2 slurm/merge_validate.sbatch
+2026-10-14T18:49:26+05:30	job=21330	run=merge:c1ts-dream-base	commit=d7965e0	sbatch --job-name=c3-merge-c1ts-dream-base --export=ALL,C3_RUN=c1ts-dream-base,C3_GPUS=2,C3_CORPUS=/home2/abhiraj.ratna/c3-runs/corpus/calibration_docs.jsonl slurm/merge_validate.sbatch
+2026-10-14T18:52:48+05:30	job=21345	run=merge:c1ts-dream-base	commit=d7965e0	sbatch --job-name=c3-merge-c1ts-dream-base --export=ALL,C3_RUN=c1ts-dream-base,C3_GPUS=2,C3_CORPUS=/home2/abhiraj.ratna/c3-runs/corpus/calibration_docs.jsonl slurm/merge_validate.sbatch
+2026-10-14T18:53:20+05:30	job=21345	run=merge:c1ts-dream-base	CANCELLED: submitted from a stale checkout (old corpus case order)
+2026-10-14T18:53:33+05:30	job=21346	run=merge:c1ts-dream-base	commit=0d697d5	sbatch --job-name=c3-merge-c1ts-dream-base --export=ALL,C3_RUN=c1ts-dream-base,C3_GPUS=2,C3_CORPUS=/home2/abhiraj.ratna/c3-runs/corpus/timesplit_docs.jsonl slurm/merge_validate.sbatch
