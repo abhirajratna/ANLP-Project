@@ -136,6 +136,39 @@ class EMA:
         model.load_state_dict({k: v.to(model.state_dict()[k].dtype) for k, v in self.shadow.items()})
 
 
+def start_wandb(project: str, entity: str | None, config: dict, run_id: str, wandb=None,
+                log=print):
+    """Start the W&B run; if that fails, log offline instead of not at all.
+
+    W&B must never kill a run.  Until 2026-10 a failed ``wandb.init`` (e.g. HTTP 403,
+    a key without write access to the team) turned logging off for the whole run,
+    leaving nothing to upload later.  Now the run falls back to offline mode: the
+    rows go to ./wandb/offline-run-*, synced afterwards (slurm/wandb_backfill.sbatch,
+    C3_SYNC_OFFLINE=1).  history.jsonl is written either way.
+    """
+    if wandb is None:
+        try:
+            import wandb
+        except ImportError as exc:
+            log(f"[train] wandb disabled: {exc}")
+            return None
+    kw = dict(project=project, entity=entity, config=config, id=run_id)
+    try:
+        return wandb.init(resume="allow", **kw)
+    except Exception as exc:
+        log(f"[train] wandb online start failed ({exc}); logging offline to ./wandb -- "
+            f"sync it later (slurm/wandb_backfill.sbatch, C3_SYNC_OFFLINE=1)")
+    try:
+        # The failed start leaves its run id registered in this process ("run ID ... is
+        # in use", wandb 0.30); teardown clears it so the offline run keeps the same id.
+        if hasattr(wandb, "teardown"):
+            wandb.teardown()
+        return wandb.init(mode="offline", **kw)
+    except Exception as exc:
+        log(f"[train] wandb disabled: offline start failed too ({exc})")
+        return None
+
+
 def evaluate(model: torch.nn.Module, batches, mask_token_id: int, device,
              objective: str = "mdlm") -> dict:
     """Validation NELBO per real token and the perplexity bound exp(NELBO).
@@ -275,16 +308,11 @@ def train(cfg: TrainConfig, model_cfg: ModelConfig | None = None) -> Path:
 
     run = None
     if is_main and cfg.wandb_project:
-        try:
-            import wandb
-
-            from ..provenance import git_commit
-            run = wandb.init(project=cfg.wandb_project, entity=cfg.wandb_entity,
-                             config={**asdict(cfg), **asdict(model_cfg), "config_hash": chash,
-                                     "git_commit": git_commit()[0]},
-                             resume="allow", id=cfg.run_name or f"{out_dir.name}-{chash}")
-        except Exception as exc:                      # wandb must never kill a run
-            print(f"[train] wandb disabled: {exc}", flush=True)
+        from ..provenance import git_commit
+        run = start_wandb(cfg.wandb_project, cfg.wandb_entity,
+                          {**asdict(cfg), **asdict(model_cfg), "config_hash": chash,
+                           "git_commit": git_commit()[0]},
+                          cfg.run_name or f"{out_dir.name}-{chash}")
 
     history = out_dir / "history.jsonl"
 
