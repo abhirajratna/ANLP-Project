@@ -33,6 +33,7 @@ from pathlib import Path
 
 import numpy as np
 
+from . import DEFAULT_KNOTS
 from .logit import _sigmoid, fit_fe_logit
 from .splines import Spline
 
@@ -136,8 +137,8 @@ def build_set_table(df, c_hat: np.ndarray, js=SET_GRID):
     s2, p2 = state[by_pos], position[by_pos]
     adjacent = np.flatnonzero((np.diff(p2) == 1) & (s2[1:] == s2[:-1]))
     entry = np.maximum(rank_of_row[by_pos[adjacent]], rank_of_row[by_pos[adjacent + 1]])
-    state_start = dict(zip(st[starts].tolist(), starts.tolist()))
-    slot = np.array([state_start[s] for s in s2[adjacent].tolist()], dtype=np.int64) + entry
+    # st[starts] holds each state once, ascending (``order`` sorts by state first).
+    slot = starts[np.searchsorted(st[starts], s2[adjacent])] + entry
     pair_at = np.bincount(slot, minlength=n).astype(np.float64)
     adj_cum = pd.Series(pair_at).groupby(st).cumsum().to_numpy()
 
@@ -230,3 +231,37 @@ class SetCalibrator:
     @classmethod
     def load(cls, path) -> "SetCalibrator":
         return cls.from_dict(json.loads(Path(path).read_text()))
+
+
+def fit_token_calibrator(df, features=FIELD_SET_FEATURES, n_knots: int = DEFAULT_KNOTS,
+                         ridge: float = 1e-4, interactions: bool = True):
+    """The decode-time token calibrator pi_hat(ell, s), fitted with pool weights."""
+    from .calibrators import ContextLogistic, pool_weights
+    from .frame import PositionFrame
+
+    pos = PositionFrame.from_frame(df)
+    return ContextLogistic(features=tuple(features), n_knots=n_knots, ridge=ridge,
+                           interactions=interactions).fit(pos, pool_weights(pos))
+
+
+def crossfit_token_probs(df, fit: np.ndarray, **kw):
+    """c_hat for every row of ``df``: out of fold (two folds of the documents, by
+    ``hash_halves(doc_id, 2)``) on the ``fit`` rows, and from a calibrator fitted on all
+    ``fit`` rows elsewhere.  The set table must be built from out-of-fold c_hat, or the
+    set model learns the token calibrator's in-sample optimism.  Returns (c_hat, full)."""
+    from .frame import PositionFrame, hash_halves
+
+    fit = np.asarray(fit, dtype=bool)
+    c_hat = np.full(len(df), np.nan)
+    fold = hash_halves(df["doc_id"].to_numpy(), 2)
+    for f in (0, 1):
+        tr, te = fit & (fold != f), fit & (fold == f)
+        if not te.any():
+            continue
+        if not tr.any():
+            raise ValueError("cross-fitting needs fit documents in both folds")
+        c_hat[te] = fit_token_calibrator(df[tr], **kw).predict(PositionFrame.from_frame(df[te]))
+    full = fit_token_calibrator(df[fit], **kw)
+    if (~fit).any():
+        c_hat[~fit] = full.predict(PositionFrame.from_frame(df[~fit]))
+    return c_hat, full

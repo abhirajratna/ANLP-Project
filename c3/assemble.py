@@ -100,6 +100,39 @@ def read_trace_table(path: str | Path, columns=None, filters=None):
     return pq.read_table(sources, columns=columns, filters=filters)
 
 
+def arm_filters(arm: str) -> list:
+    """pyarrow filters for an arm label: ``kind`` or ``kind:policy:k<k>``."""
+    parts = arm.split(":")
+    f = [("mask_kind", "=", parts[0])]
+    if len(parts) == 3:
+        f += [("policy", "=", parts[1]), ("k", "=", int(parts[2].lstrip("k")))]
+    elif len(parts) != 1:
+        raise ValueError(f"arm must be 'kind' or 'kind:policy:k<k>', got {arm!r}")
+    return f
+
+
+def read_arm(path: str | Path, arm: str, columns, doc_ids=None):
+    """One design arm of a trace as a DataFrame (strings categorical), read with
+    filters so a 120M-row trace never has to fit in memory at once."""
+    filters = arm_filters(arm)
+    if doc_ids is not None:
+        filters = filters + [("doc_id", "in", [int(d) for d in doc_ids])]
+    table = read_trace_table(path, columns=list(columns), filters=filters)
+    if table.num_rows == 0:
+        raise SystemExit(f"arm {arm!r} has no rows in {path}")
+    return table.to_pandas(strings_to_categorical=True)
+
+
+def trace_doc_ids(path: str | Path):
+    """The documents in a trace: from its meta when recorded, else by reading doc_id."""
+    import numpy as np
+
+    ids = trace_meta(path).get("doc_ids")
+    if ids:
+        return np.unique(np.asarray(ids, dtype=np.int64))
+    return np.unique(read_trace_table(path, columns=["doc_id"]).column("doc_id").to_numpy())
+
+
 def upgrade_v1(df, meta: dict | None = None):
     """Give a schema-v1 trace the v2 design columns, where v1 implies them.
 

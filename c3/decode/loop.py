@@ -74,8 +74,12 @@ def _blocks(region: np.ndarray, block_length: int | None) -> list[np.ndarray]:
 
 def decode(model, x_init, policy, block_length: int | None = None, max_steps: int | None = None,
            teacher=None, sample: bool = False, temperature: float = 1.0, seed: int = 0,
-           record: bool = True, topk: int = 20) -> DecodeResult:
-    """Decode every masked slot of ``x_init`` (one sequence) with ``policy``."""
+           record: bool = True, topk: int = 20, on_step=None) -> DecodeResult:
+    """Decode every masked slot of ``x_init`` (one sequence) with ``policy``.
+
+    ``on_step(step, stats, ctx, chosen)``, if given, sees every step's full
+    statistics (all eligible rows) before the commit -- on-policy logging.
+    """
     import torch
 
     from ..traces.models import check_finite_logits
@@ -133,10 +137,13 @@ def decode(model, x_init, policy, block_length: int | None = None, max_steps: in
         res.n_forward += 1
 
         ctx = StepContext(step=step, positions=positions, gen_start=gen_start,
-                          kl_history=kl_history)
+                          kl_history=kl_history, n_masked_total=int(masked.sum()),
+                          seq_len=int(x.size))
         order, n_commit = policy.select(stats, ctx)
         n_commit = max(1, min(int(n_commit), positions.size))
         chosen = np.asarray(order[:n_commit], dtype=np.int64)
+        if on_step is not None:
+            on_step(step, stats, ctx, chosen)
         commit = positions[chosen]
         if ref is not None:
             tokens = ref[commit]

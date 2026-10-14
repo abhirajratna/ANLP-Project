@@ -38,6 +38,22 @@ Definitions follow the papers (checked against the arXiv versions, Sep 2026):
   subset in the paper), lambda = 0.25 and alpha = 10; top-k by score.  Without
   ``log_freq`` the frequency factor is 1 and only the positional weight remains,
   which is recorded as ``variant = "position-only"``.
+
+Calibrated policies (this project; ``prereg/deviations.md`` items 9-10).  Each
+takes a token calibrator c_hat = pi_hat(ell, s) (``c3.calibrators.ContextLogistic``,
+fitted on fit-half traces) and orders positions by c_hat, ties to the lower
+position (``c3.setcal.order_by_confidence``):
+
+* ``C3a``      commit every position with c_hat >= 1 - alpha; at least one.  All
+  positions of a state share its field features, so this reorders nothing within
+  a step: it is a relabelled confidence threshold whose cut moves with the state.
+* ``C3Indep``  the largest prefix whose product of c_hat is >= 1 - alpha: the
+  set rule with errors assumed independent.
+* ``C3Set``    the largest prefix whose learned P(all right) (``c3.setcal.
+  SetCalibrator``), running-minimum over the prefix, is >= 1 - alpha.
+
+C3Indep and C3Set bound the chance that a step commits any error, not each
+token's; the gap between them is what the set model's dependence features add.
 """
 
 from __future__ import annotations
@@ -55,6 +71,8 @@ class StepContext:
     positions: np.ndarray                 # the rows' sequence positions, ascending
     gen_start: int = 0                    # first position of the generated region
     kl_history: dict = field(default_factory=dict)   # position -> recent KLs, newest last
+    n_masked_total: int | None = None     # |M_t| over the whole sequence
+    seq_len: int | None = None            # L, for the mask rate |M_t| / L
 
 
 def _stable_order(key: np.ndarray) -> np.ndarray:
@@ -155,8 +173,81 @@ class PCSampler:
         return order, min(self.k, order.size)
 
 
+def _state_features(stats, ctx) -> dict:
+    """The state's field features, as the traces define them (``c3.frame``)."""
+    from ..calibrators import state_field_features
+
+    if ctx.seq_len is None:
+        raise ValueError("calibrated policies need StepContext.seq_len")
+    ell = np.asarray(stats["ell"], dtype=np.float64)
+    n = ell.size if ctx.n_masked_total is None else int(ctx.n_masked_total)
+    return state_field_features(ell, n, int(ctx.seq_len))
+
+
+def calibrated_confidence(calibrator, stats, ctx) -> tuple[np.ndarray, dict]:
+    """(c_hat per row, the state's field features)."""
+    feats = _state_features(stats, ctx)
+    ell = np.asarray(stats["ell"], dtype=np.float64)
+    return calibrator.predict_arrays(ell, feats), feats
+
+
+@dataclass
+class C3a:
+    alpha: float
+    calibrator: object = field(default=None, repr=False)
+    name: str = "c3a"
+
+    def select(self, stats, ctx):
+        from ..setcal import order_by_confidence
+
+        c, _ = calibrated_confidence(self.calibrator, stats, ctx)
+        order = order_by_confidence(c, ctx.positions)
+        return order, max(1, int(np.sum(c >= 1.0 - self.alpha)))
+
+
+@dataclass
+class C3Indep:
+    alpha: float
+    calibrator: object = field(default=None, repr=False)
+    name: str = "c3indep"
+
+    def select(self, stats, ctx):
+        from ..setcal import order_by_confidence
+
+        c, _ = calibrated_confidence(self.calibrator, stats, ctx)
+        order = order_by_confidence(c, ctx.positions)
+        log_p = np.cumsum(np.log(np.clip(c[order], 1e-300, 1.0)))     # non-increasing
+        with np.errstate(divide="ignore"):                              # alpha = 1: -inf
+            floor = np.log1p(-min(self.alpha, 1.0))
+        return order, max(1, int(np.sum(log_p >= floor)))
+
+
+@dataclass
+class C3Set:
+    alpha: float
+    calibrator: object = field(default=None, repr=False)
+    set_calibrator: object = field(default=None, repr=False)
+    name: str = "c3set"
+
+    def set_probs(self, stats, ctx) -> tuple[np.ndarray, np.ndarray]:
+        """(commit order, P_set(S_j) for j = 1..|rows|)."""
+        from ..setcal import prefix_features
+
+        c, f = calibrated_confidence(self.calibrator, stats, ctx)
+        order, feats = prefix_features(stats["ell"], stats["entropy"], ctx.positions, c,
+                                       f["median_ell"], f["mask_rate"], f["log_n_masked"])
+        return order, self.set_calibrator.predict(feats)
+
+    def select(self, stats, ctx):
+        order, p = self.set_probs(stats, ctx)
+        run = np.minimum.accumulate(p)
+        return order, max(1, int(np.sum(run >= 1.0 - self.alpha)))
+
+
 POLICIES = {"topk_conf": TopKConfidence, "margin": Margin, "threshold": Threshold,
-            "entropy_bounded": EntropyBounded, "klass": KLASS, "pc_sampler": PCSampler}
+            "entropy_bounded": EntropyBounded, "klass": KLASS, "pc_sampler": PCSampler,
+            "c3a": C3a, "c3indep": C3Indep, "c3set": C3Set}
+CALIBRATED = ("c3a", "c3indep", "c3set")
 
 
 def unigram_log_freq(token_arrays, vocab_size: int, smoothing: float = 1.0) -> np.ndarray:

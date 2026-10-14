@@ -183,3 +183,25 @@ allocated 12 CPUs. With the 40-CPU QOS cap and two such tasks running, a CPU job
 have at most ~40 GB (14 CPUs). A larger request pends with `QOSMaxCpuPerUserLimit` even
 though few CPUs are visibly in use (dev job 18932: 56 GB -> 20 CPUs; lowered with
 `scontrol update JobId=... MinMemoryNode=40960 NumCPUs=14`).
+
+## Set-level C3 on train110m-v4 (October 2026; `prereg/deviations.md` items 7-13)
+
+Development runs from a second checkout, `/home2/$USER/c3-dev` (pass `C3_REPO=/home2/$USER/c3-dev`
+and submit its copy of the script), so the runner checkout `/home2/$USER/c3` stays fixed while
+its jobs are queued. Results land in `/home2/$USER/c3-runs/c3set/{dev,report}/`; the fit-half
+dev copy of the trace and the on-policy step logs live on `/share1/$USER/c3set/`.
+
+| Job | Resources | What |
+|---|---|---|
+| `c3set_analysis.sbatch` | CPU 14 / 42000M | `C3_STEPS` from `floor subset fieldtest setcal onpolicy fitcal infill`; `C3_MODE=dev` reads the fit half only |
+| `infill_eval.sbatch` | 1 GPU, 6 / 18000M, array 0-3 | FineWeb infilling over a knob grid (`C3_GRID`), batched 32 documents per forward pass; resumable |
+| `probe_c3set.sbatch` | 1 GPU, 8 / 24000M | C on the JSON probe with `ft110m-v4`; exit 1 if G6 fails |
+| `wandb_log.sbatch` | CPU 2 / 4000M | result JSONs to W&B group `c3-setlevel-110m-v4`; never fails the job |
+| `run_tests.sbatch` | CPU 4 / 12000M | the test suite on Linux (the bash-driven tests only run here) |
+
+Batched infilling is the same algorithm as `c3.decode.loop.decode` on each document alone
+(`tests/test_infill.py` holds tokens and step counts equal on the CPU toy, whose rows do not
+depend on the batch). On a GPU, matrix kernels can round differently with batch shape, so
+batches are fixed chunks of the sorted documents and a rerun reproduces them exactly; the dev
+smoke run checks that two runs agree token for token.
+The final report-half run is `prereg/c3set_commands.sh`, from the freeze tag only.

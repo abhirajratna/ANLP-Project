@@ -1,0 +1,33 @@
+{
+ "note": "Decoders whose free-running states (eval_infill.py --record-steps) refit the calibrators: confidence top-k at the four speeds and three Fast-dLLM thresholds, on fit-half documents only.",
+ "configs": [
+  {
+   "policy": "topk_conf",
+   "k": 1
+  },
+  {
+   "policy": "topk_conf",
+   "k": 2
+  },
+  {
+   "policy": "topk_conf",
+   "k": 4
+  },
+  {
+   "policy": "topk_conf",
+   "k": 8
+  },
+  {
+   "policy": "threshold",
+   "tau": 0.2
+  },
+  {
+   "policy": "threshold",
+   "tau": 0.5
+  },
+  {
+   "policy": "threshold",
+   "tau": 0.8
+  }
+ ]
+}

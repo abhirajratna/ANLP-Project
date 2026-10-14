@@ -1,5 +1,6 @@
 """Phase C: the split manifest, gate G1, and the frozen pre-registration config."""
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -102,7 +103,7 @@ def test_frozen_config_reads_the_code(tmp_path):
     assert cfg["provenance"]["git_commit"]
 
 
-@pytest.mark.parametrize("path", ["prereg/analysis_commands.sh"])
+@pytest.mark.parametrize("path", ["prereg/analysis_commands.sh", "prereg/c3set_commands.sh"])
 def test_prereg_script_parses(path):
     subprocess.run(["bash", "-n", str(ROOT / path)], check=True)
 
@@ -158,3 +159,14 @@ def test_split_manifest_for_a_corpus_whose_ids_are_not_positions(tmp_path):
     fit, report = document_split(30, seed=CorpusSpec().seed)
     assert set(m) == {str(200000 + i) for i in range(30)}
     assert all(m[str(200000 + i)] == 0 for i in fit) and all(m[str(200000 + i)] == 1 for i in report)
+
+
+def test_the_set_level_final_run_refuses_without_sign_off_and_the_freeze_tag():
+    env = {k: v for k, v in os.environ.items() if k != "C3_REPORT_HALF_OK"}
+    r = subprocess.run(["bash", str(ROOT / "prereg/c3set_commands.sh")], capture_output=True,
+                       text=True, env=env)
+    assert r.returncode != 0 and "refusing" in r.stdout + r.stderr
+    r = subprocess.run(["bash", str(ROOT / "prereg/c3set_commands.sh")], capture_output=True,
+                       text=True, env={**env, "C3_REPORT_HALF_OK": "1",
+                                       "C3_FREEZE_TAG": "no-such-tag-c3set"})
+    assert r.returncode != 0 and "HEAD is not" in r.stdout + r.stderr

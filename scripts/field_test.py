@@ -27,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import numpy as np
 
 from c3 import DEFAULT_KNOTS, N_BOOT
-from c3.assemble import read_trace_table, trace_meta
+from c3.assemble import read_arm, trace_doc_ids
 from c3.endpoints.fieldtest import DECODE_FEATURES, EPS, field_effect_test
 from c3.frame import FIELD_FEATURES, PositionFrame
 from c3.provenance import collect as provenance
@@ -41,29 +41,8 @@ COLUMNS = ["doc_id", "state_id", "position", "ell", "conf", "agree", "mask_kind"
            "mask_rate", "n_masked", "step", "policy", "k"]
 
 
-def arm_filters(arm: str) -> list:
-    """pyarrow filters for an arm label: ``kind`` or ``kind:policy:k<k>``."""
-    parts = arm.split(":")
-    f = [("mask_kind", "=", parts[0])]
-    if len(parts) == 3:
-        f += [("policy", "=", parts[1]), ("k", "=", int(parts[2].lstrip("k")))]
-    elif len(parts) != 1:
-        raise ValueError(f"arm must be 'kind' or 'kind:policy:k<k>', got {arm!r}")
-    return f
-
-
 def load_arm(path: str, arm: str) -> PositionFrame:
-    table = read_trace_table(path, columns=COLUMNS, filters=arm_filters(arm))
-    if table.num_rows == 0:
-        raise SystemExit(f"arm {arm!r} has no rows in {path}")
-    return PositionFrame.from_frame(table.to_pandas(strings_to_categorical=True))
-
-
-def trace_doc_ids(path: str) -> np.ndarray:
-    ids = trace_meta(path).get("doc_ids")
-    if ids:
-        return np.unique(np.asarray(ids, dtype=np.int64))
-    return np.unique(read_trace_table(path, columns=["doc_id"]).column("doc_id").to_numpy())
+    return PositionFrame.from_frame(read_arm(path, arm, COLUMNS))
 
 
 def main() -> int:

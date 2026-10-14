@@ -124,6 +124,21 @@ def joint_over(schema: Schema, rho: float, obs, S) -> np.ndarray:
     return full
 
 
+def exact_joint_correct(schema: Schema, rho: float, obs, S, values) -> float:
+    """J(S) = p*(x_S = values | x_obs): the exact chance that committing ``values`` (one per
+    field of S, -1 where the decoder's top token is not a value of the field) is all right."""
+    S = [int(i) for i in S]
+    val = {i: int(v) for i, v in zip(S, values)}
+    if any(v < 0 for v in val.values()):
+        return 0.0
+    groups = schema.group_of()
+    J = 1.0
+    for g in sorted({int(groups[i]) for i in S}):
+        table, axes = group_table(schema, schema.groups[g], rho, obs, set(S))
+        J *= float(table[tuple(val[a] for a in axes)])
+    return J
+
+
 def direct_kl(schema: Schema, rho: float, obs, S, logq: dict, max_cells: int = 2_000_000
               ) -> float | None:
     """KL(p*_S || prod_i q_i) by enumerating every joint value of S (None if too large)."""
