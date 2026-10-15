@@ -90,7 +90,8 @@ def main() -> int:
     for key, v in summary["crossover"].items():
         print(f"[probe]   crossover {key}: A > B first at k = {v['first_k_A_exceeds_B']} "
               f"(interval excludes 0 at k = {v['first_k_A_exceeds_B_ci']})")
-    return 0 if not ident["max_abs_err_nats"] > 1e-6 else 1
+    # NaN (no step small enough to check) is a failure too, not a pass.
+    return 0 if ident["max_abs_err_nats"] <= 1e-6 else 1
 
 
 def resummarise(a) -> int:

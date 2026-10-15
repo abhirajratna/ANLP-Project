@@ -60,12 +60,13 @@ def check_finite_logits(logits, name: str = "model", precision: str = "na",
     """
     import torch
 
+    # One bool tensor the size of the logits, no copy of the logits themselves:
+    # boolean-indexing the vocab axis would copy (B, L, V), ~1 GB on LLaDA-8B.
+    finite = torch.isfinite(logits)
     if mask_token_id is not None and 0 <= int(mask_token_id) < logits.shape[-1]:
-        keep = torch.ones(logits.shape[-1], dtype=torch.bool, device=logits.device)
-        keep[int(mask_token_id)] = False
-        logits = logits[..., keep]
-    if not bool(torch.isfinite(logits).all()):
-        n_bad = int((~torch.isfinite(logits)).sum())
+        finite[..., int(mask_token_id)] = True
+    if not bool(finite.all()):
+        n_bad = int((~finite).sum())
         hint = (" fp16 overflows above 65504; use fp32 (with CPU offload if needed)"
                 if precision == "fp16" else "")
         raise FloatingPointError(f"{name} ({precision}): {n_bad} non-finite logits.{hint}")
