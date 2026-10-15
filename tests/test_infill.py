@@ -206,3 +206,24 @@ def test_configs_load_and_refuse_duplicates(tmp_path):
     p.write_text(json.dumps([CONFIGS[0], CONFIGS[0]]))
     with pytest.raises(ValueError, match="duplicate"):
         load_configs(p)
+
+
+@pytest.mark.parametrize("cfg", [CONFIGS[0], CONFIGS[5], CONFIGS[8]], ids=config_key)
+def test_scattered_masks_decode_as_the_single_sequence_and_score_only_masked(cfg, calibrators):
+    from c3.infill import scatter_masks
+
+    model, docs = _docs()
+    tok, setcal = calibrators
+    masks = scatter_masks([d for d, _ in docs], L, SPAN, rate=0.5)
+    assert (masks.sum(1) == 16).all() and not masks[:, :SPAN[0]].any() and not masks[:, SPAN[1]:].any()
+    again = scatter_masks([d for d, _ in docs][::-1], L, SPAN, rate=0.5)[::-1]
+    assert np.array_equal(masks, again)                        # fixed per document
+    got = infill_batch(model, docs, build_policy(cfg, tok, setcal), span=SPAN, masks=masks)
+    for (doc_id, ids), m, res in zip(docs, masks, got):
+        x = ids.copy()
+        x[m] = model.mask_token_id
+        model.reference = model.refs[ids[:8].tobytes()]
+        single = decode(_Single(model, ids), x, build_policy(cfg, tok, setcal), record=False)
+        assert np.array_equal(single.tokens[SPAN[0]:SPAN[1]], res["tokens"])
+        assert single.n_forward == res["n_forward"] and res["n_committed"] == 16
+        assert res["acc"] == pytest.approx(np.mean(single.tokens[m] == ids[m]))

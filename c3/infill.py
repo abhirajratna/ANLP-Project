@@ -121,9 +121,25 @@ class StepLog:
         return pd.DataFrame({k: np.concatenate(v) for k, v in self.columns.items()})
 
 
+def scatter_masks(doc_ids, length: int, span=SPAN, rate: float = 0.5, seed: int = 0) -> np.ndarray:
+    """(n_docs, length) masks hiding round(rate x |span|) positions of ``span`` per document,
+    drawn uniformly by a generator keyed by (seed, doc_id): fixed per document, independent
+    of which other documents are decoded with it."""
+    from .rng import generator
+
+    a, b = span
+    n = int(round(rate * (b - a)))
+    out = np.zeros((len(doc_ids), length), dtype=bool)
+    for r, d in enumerate(doc_ids):
+        pick = generator(seed, "infill-scatter", int(d)).choice(b - a, size=n, replace=False)
+        out[r, a + pick] = True
+    return out
+
+
 def infill_batch(model, docs, policy, span=SPAN, topk: int = 1, log: StepLog | None = None,
-                 state_base: int = 0) -> list[dict]:
-    """Infill ``span`` of every document in ``docs`` (a list of (doc_id, ids)) with ``policy``."""
+                 state_base: int = 0, masks: np.ndarray | None = None) -> list[dict]:
+    """Infill every document in ``docs`` (a list of (doc_id, ids)) with ``policy``: the whole
+    ``span``, or with ``masks`` ((n_docs, L) bool, inside ``span``) only those positions."""
     import time
 
     import torch
@@ -140,7 +156,13 @@ def infill_batch(model, docs, policy, span=SPAN, topk: int = 1, log: StepLog | N
     if not (0 <= a < b <= L):
         raise ValueError(f"span {span} does not fit length {L}")
     X = ref.copy()
-    X[:, a:b] = mask_id
+    if masks is None:
+        masks = np.zeros((B, L), dtype=bool)
+        masks[:, a:b] = True
+    masks = np.asarray(masks, dtype=bool)
+    if masks.shape != (B, L) or masks[:, :a].any() or masks[:, b:].any() or not masks.any(1).all():
+        raise ValueError("masks must be (n_docs, L), inside the span, at least one per document")
+    X[masks] = mask_id
     region = np.arange(a, b)
     dev = getattr(model, "input_device", None)
     needs_kl = bool(getattr(policy, "needs_kl", False))
@@ -192,9 +214,10 @@ def infill_batch(model, docs, policy, span=SPAN, topk: int = 1, log: StepLog | N
     secs = (time.perf_counter() - t0) / B
     out = []
     for r, (doc_id, _) in enumerate(docs):
-        out.append({"doc_id": int(doc_id), "acc": float(np.mean(X[r, a:b] == ref[r, a:b])),
-                    "n_forward": int(n_forward[r]), "n_committed": int(b - a),
-                    "tokens_per_step": float((b - a) / n_forward[r]),
+        m = masks[r]
+        out.append({"doc_id": int(doc_id), "acc": float(np.mean(X[r, m] == ref[r, m])),
+                    "n_forward": int(n_forward[r]), "n_committed": int(m.sum()),
+                    "tokens_per_step": float(m.sum() / n_forward[r]),
                     "step_all_right": float(all_right[r] / n_forward[r]),
                     "seconds": float(secs), "tokens": X[r, a:b].copy()})
     return out

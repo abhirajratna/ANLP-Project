@@ -125,3 +125,20 @@ freeze in item 13).
     checked against the exact J(S) = p*(x_S = argmax | x_obs), with (A) and (B) reported as
     diagnostics. Probe calibrators are fitted on 2,000 new instances (label
     `probe-c3calib`), disjoint from the training, validation and evaluation sets.
+14. **Scattered-mask infilling replaces whole-span infilling as the primary T12 task
+    (recorded 15 Oct 2026, after dev sweep 1 on dev-eval documents, before any report-half
+    number and before any scattered-mask number).** Dev sweep 1 (item 10's whole-span task,
+    498 dev-eval documents, 82 configurations) put every decoder at 3-6% token accuracy,
+    with accuracy *rising* with speed (top-k k=1 2.8%, k=8 4.0%, one-shot 5.8%). The
+    on-policy logs show why: the first commit is right 50% of the time and tokens next to
+    the visible context 23-33%, but after a few steps the decoder continues its own text
+    (committed-token accuracy 1-2% while its confidence rises to 0.67), so matching the
+    original 128-token gap measures drift, not decoding quality. The task is changed to
+    mask a fixed random 50% of positions 64-191 per document (`c3.infill.scatter_masks`,
+    keyed by document id; 64 masked tokens, speed = 64 / forward passes); everything else
+    in item 10 (greedy, no blocks, the six decoders, the primary statistic at 2, 4 and 8
+    tokens per step, Holm over speeds) is unchanged. The whole-span sweep is kept and
+    reported as a secondary development result. C3-indep and C3-set get alpha up to 0.997
+    (`prereg/c3set_policies_dev2.json`) because in sweep 1 they never passed 2.6 tokens per
+    step.
+

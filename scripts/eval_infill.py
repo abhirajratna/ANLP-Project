@@ -37,7 +37,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import numpy as np
 
 from c3.infill import (HALVES, SPAN, StepLog, build_policy, config_id, config_key, infill_batch,
-                       load_configs, select_docs, summarise_tokens)
+                       load_configs, scatter_masks, select_docs, summarise_tokens)
 from c3.provenance import collect as provenance, sha256_file
 from c3.util import require_report_ok
 
@@ -102,6 +102,9 @@ def main() -> int:
                     help="background text for PC-Sampler's p_D (reserve docs; never scored)")
     ap.add_argument("--max-tokens", type=int, default=256)
     ap.add_argument("--span", type=int, nargs=2, default=list(SPAN))
+    ap.add_argument("--mask-rate", type=float, default=None,
+                    help="mask this share of the span's positions (fixed per document, "
+                         "c3.infill.scatter_masks) instead of the whole span")
     ap.add_argument("--shard", type=int, default=0)
     ap.add_argument("--num-shards", type=int, default=1)
     ap.add_argument("--limit", type=int, default=0, help="first N documents of the half (0 = all)")
@@ -152,7 +155,8 @@ def main() -> int:
     stem = f"infill.shard{a.shard}of{a.num_shards}"
     rec_path = out / f"{stem}.jsonl"
     done = done_pairs(rec_path)
-    meta = {"label": a.label, "half": a.half, "span": list(span), "shard": a.shard,
+    meta = {"label": a.label, "half": a.half, "span": list(span), "mask_rate": a.mask_rate,
+            "shard": a.shard,
             "num_shards": a.num_shards, "n_docs": len(docs), "docs_missing_or_short": missing,
             "doc_ids": [d for d, _ in docs], "model": a.model, "precision": a.precision,
             "model_revision": getattr(model, "revision", None),
@@ -188,11 +192,13 @@ def main() -> int:
                 if hasattr(model, "set_reference"):
                     model.set_reference(batch[0][1])
                 log = StepLog.empty() if a.record_steps else None
-                rows = infill_batch(model, batch, policy, span=span, log=log,
+                masks = (None if a.mask_rate is None else
+                         scatter_masks([d for d, _ in batch], len(batch[0][1]), span, a.mask_rate))
+                rows = infill_batch(model, batch, policy, span=span, log=log, masks=masks,
                                     state_base=config_id(cfg) * 10_000_000)
                 if scorer is not None:
                     seqs = np.stack([ids for _, ids in batch])
-                    seqs[:, span[0]:span[1]] = np.stack([r["tokens"] for r in rows])
+                    seqs[:, span[0]:span[1]] = np.stack([r["tokens"] for r in rows])  # span slice
                     for r, v in zip(rows, scorer(seqs, span).tolist()):
                         r["gpt2_nll"], r["gpt2_nll_ref"] = float(v), float(ref_nll[r["doc_id"]])
                 if log is not None:

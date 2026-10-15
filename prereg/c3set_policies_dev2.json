@@ -1,0 +1,345 @@
+{
+ "note": "Development grid 2 (scattered-mask infilling, deviations.md item 14). As grid 1, except that C3-indep and C3-set, whose alpha bounds the chance that a whole step has any error, get alpha up to 0.997: in sweep 1 their fastest setting reached only 2.6 tokens/step. Still 12 values each.",
+ "configs": [
+  {
+   "policy": "topk_conf",
+   "k": 1
+  },
+  {
+   "policy": "topk_conf",
+   "k": 2
+  },
+  {
+   "policy": "topk_conf",
+   "k": 4
+  },
+  {
+   "policy": "topk_conf",
+   "k": 8
+  },
+  {
+   "policy": "margin",
+   "k": 2
+  },
+  {
+   "policy": "margin",
+   "k": 4
+  },
+  {
+   "policy": "margin",
+   "k": 8
+  },
+  {
+   "policy": "pc_sampler",
+   "k": 2
+  },
+  {
+   "policy": "pc_sampler",
+   "k": 4
+  },
+  {
+   "policy": "pc_sampler",
+   "k": 8
+  },
+  {
+   "policy": "threshold",
+   "tau": 0.05
+  },
+  {
+   "policy": "threshold",
+   "tau": 0.1
+  },
+  {
+   "policy": "threshold",
+   "tau": 0.15
+  },
+  {
+   "policy": "threshold",
+   "tau": 0.2
+  },
+  {
+   "policy": "threshold",
+   "tau": 0.3
+  },
+  {
+   "policy": "threshold",
+   "tau": 0.4
+  },
+  {
+   "policy": "threshold",
+   "tau": 0.5
+  },
+  {
+   "policy": "threshold",
+   "tau": 0.6
+  },
+  {
+   "policy": "threshold",
+   "tau": 0.7
+  },
+  {
+   "policy": "threshold",
+   "tau": 0.8
+  },
+  {
+   "policy": "threshold",
+   "tau": 0.9
+  },
+  {
+   "policy": "threshold",
+   "tau": 0.95
+  },
+  {
+   "policy": "entropy_bounded",
+   "gamma": 0.01
+  },
+  {
+   "policy": "entropy_bounded",
+   "gamma": 0.03
+  },
+  {
+   "policy": "entropy_bounded",
+   "gamma": 0.1
+  },
+  {
+   "policy": "entropy_bounded",
+   "gamma": 0.25
+  },
+  {
+   "policy": "entropy_bounded",
+   "gamma": 0.5
+  },
+  {
+   "policy": "entropy_bounded",
+   "gamma": 1
+  },
+  {
+   "policy": "entropy_bounded",
+   "gamma": 2
+  },
+  {
+   "policy": "entropy_bounded",
+   "gamma": 4
+  },
+  {
+   "policy": "entropy_bounded",
+   "gamma": 8
+  },
+  {
+   "policy": "entropy_bounded",
+   "gamma": 16
+  },
+  {
+   "policy": "entropy_bounded",
+   "gamma": 32
+  },
+  {
+   "policy": "entropy_bounded",
+   "gamma": 64
+  },
+  {
+   "policy": "klass",
+   "tau": 0.2,
+   "eps_kl": 0.01
+  },
+  {
+   "policy": "klass",
+   "tau": 0.2,
+   "eps_kl": 0.1
+  },
+  {
+   "policy": "klass",
+   "tau": 0.2,
+   "eps_kl": 1.0
+  },
+  {
+   "policy": "klass",
+   "tau": 0.4,
+   "eps_kl": 0.01
+  },
+  {
+   "policy": "klass",
+   "tau": 0.4,
+   "eps_kl": 0.1
+  },
+  {
+   "policy": "klass",
+   "tau": 0.4,
+   "eps_kl": 1.0
+  },
+  {
+   "policy": "klass",
+   "tau": 0.6,
+   "eps_kl": 0.01
+  },
+  {
+   "policy": "klass",
+   "tau": 0.6,
+   "eps_kl": 0.1
+  },
+  {
+   "policy": "klass",
+   "tau": 0.6,
+   "eps_kl": 1.0
+  },
+  {
+   "policy": "klass",
+   "tau": 0.8,
+   "eps_kl": 0.01
+  },
+  {
+   "policy": "klass",
+   "tau": 0.8,
+   "eps_kl": 0.1
+  },
+  {
+   "policy": "klass",
+   "tau": 0.8,
+   "eps_kl": 1.0
+  },
+  {
+   "policy": "c3a",
+   "alpha": 0.02
+  },
+  {
+   "policy": "c3a",
+   "alpha": 0.05
+  },
+  {
+   "policy": "c3a",
+   "alpha": 0.1
+  },
+  {
+   "policy": "c3a",
+   "alpha": 0.2
+  },
+  {
+   "policy": "c3a",
+   "alpha": 0.3
+  },
+  {
+   "policy": "c3a",
+   "alpha": 0.4
+  },
+  {
+   "policy": "c3a",
+   "alpha": 0.5
+  },
+  {
+   "policy": "c3a",
+   "alpha": 0.6
+  },
+  {
+   "policy": "c3a",
+   "alpha": 0.7
+  },
+  {
+   "policy": "c3a",
+   "alpha": 0.8
+  },
+  {
+   "policy": "c3a",
+   "alpha": 0.9
+  },
+  {
+   "policy": "c3a",
+   "alpha": 0.97
+  },
+  {
+   "policy": "c3indep",
+   "alpha": 0.05
+  },
+  {
+   "policy": "c3indep",
+   "alpha": 0.1
+  },
+  {
+   "policy": "c3indep",
+   "alpha": 0.2
+  },
+  {
+   "policy": "c3indep",
+   "alpha": 0.3
+  },
+  {
+   "policy": "c3indep",
+   "alpha": 0.5
+  },
+  {
+   "policy": "c3indep",
+   "alpha": 0.7
+  },
+  {
+   "policy": "c3indep",
+   "alpha": 0.8
+  },
+  {
+   "policy": "c3indep",
+   "alpha": 0.9
+  },
+  {
+   "policy": "c3indep",
+   "alpha": 0.95
+  },
+  {
+   "policy": "c3indep",
+   "alpha": 0.98
+  },
+  {
+   "policy": "c3indep",
+   "alpha": 0.99
+  },
+  {
+   "policy": "c3indep",
+   "alpha": 0.997
+  },
+  {
+   "policy": "c3set",
+   "alpha": 0.05
+  },
+  {
+   "policy": "c3set",
+   "alpha": 0.1
+  },
+  {
+   "policy": "c3set",
+   "alpha": 0.2
+  },
+  {
+   "policy": "c3set",
+   "alpha": 0.3
+  },
+  {
+   "policy": "c3set",
+   "alpha": 0.5
+  },
+  {
+   "policy": "c3set",
+   "alpha": 0.7
+  },
+  {
+   "policy": "c3set",
+   "alpha": 0.8
+  },
+  {
+   "policy": "c3set",
+   "alpha": 0.9
+  },
+  {
+   "policy": "c3set",
+   "alpha": 0.95
+  },
+  {
+   "policy": "c3set",
+   "alpha": 0.98
+  },
+  {
+   "policy": "c3set",
+   "alpha": 0.99
+  },
+  {
+   "policy": "c3set",
+   "alpha": 0.997
+  }
+ ]
+}
