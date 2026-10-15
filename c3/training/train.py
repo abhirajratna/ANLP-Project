@@ -170,8 +170,11 @@ def start_wandb(project: str, entity: str | None, config: dict, run_id: str, wan
 
 
 def evaluate(model: torch.nn.Module, batches, mask_token_id: int, device,
-             objective: str = "mdlm") -> dict:
+             objective: str = "mdlm", visible_prefix: int = 0) -> dict:
     """Validation NELBO per real token and the perplexity bound exp(NELBO).
+
+    ``visible_prefix``: as in training, the first N tokens of each window are never
+    masked, so they are context and not scored.
 
     For the AR reference the same keys hold its exact NLL and perplexity.
     """
@@ -183,7 +186,11 @@ def evaluate(model: torch.nn.Module, batches, mask_token_id: int, device,
         if objective == "ar":
             s, n = ar_nll_eval(model, x, v)
         else:
-            s, n = nelbo_eval(model, x, mask_token_id, v, seed=i)
+            keep = None
+            if visible_prefix:
+                keep = torch.zeros_like(v)
+                keep[:, :visible_prefix] = True
+            s, n = nelbo_eval(model, x, mask_token_id, v, seed=i, keep=keep)
         tot += s
         tok += n
     model.train()
@@ -384,11 +391,13 @@ def train(cfg: TrainConfig, model_cfg: ModelConfig | None = None) -> Path:
                      "tokens": tokens_seen, "tokens_per_s": tps})
 
         if is_main and val_batches and (step % cfg.eval_every == 0 or step == total_steps):
-            ev = evaluate(raw, val_batches, model_cfg.mask_token_id, device, cfg.objective)
+            ev = evaluate(raw, val_batches, model_cfg.mask_token_id, device, cfg.objective,
+                          cfg.visible_prefix)
             if ema is not None:
                 live = copy.deepcopy(raw.state_dict())
                 ema.copy_to(raw)
-                ev_ema = evaluate(raw, val_batches, model_cfg.mask_token_id, device, cfg.objective)
+                ev_ema = evaluate(raw, val_batches, model_cfg.mask_token_id, device, cfg.objective,
+                                  cfg.visible_prefix)
                 raw.load_state_dict(live)
                 ev.update({f"ema_{k}": v for k, v in ev_ema.items() if k != "val_tokens"})
             print(f"[train] step {step} val NELBO {ev['val_nelbo']:.4f} "

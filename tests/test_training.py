@@ -382,6 +382,30 @@ def test_visible_prefix_is_never_masked_and_off_by_default_changes_nothing():
     assert float(a) == float(b)
 
 
+def test_validation_with_visible_prefix_neither_masks_nor_scores_it():
+    """ft110m-v3-visible trained with the rho marker always observed, but its validation
+    masked and scored the marker: a NELBO not comparable with the other fine-tune."""
+    from c3.training.train import evaluate
+    torch.manual_seed(0)
+    m = MaskedDiffusionLM(ModelConfig(**TINY))
+    seen = []
+    real_forward = m.forward
+    m.forward = lambda ids, valid=None: (seen.append(ids.clone()), real_forward(ids, valid))[1]
+    x0 = torch.randint(0, 50000, (8, 32))
+    keep = torch.zeros(8, 32, dtype=torch.bool)
+    keep[:, :5] = True
+    s, n = nelbo_eval(m, x0, 50257, keep=keep, n_t=32, seed=0)
+    assert n == 8 * 27
+    assert all(bool((ids[:, :5] == x0[:, :5]).all()) for ids in seen)
+    assert any(bool((ids[:, 5:] == 50257).any()) for ids in seen)
+    # keep=None is the protocol every earlier validation number used
+    assert nelbo_eval(m, x0, 50257, seed=3) == nelbo_eval(m, x0, 50257, keep=None, seed=3)
+    batches = [(x0.numpy(), np.ones((8, 32), dtype=bool))]
+    ev = evaluate(m, batches, 50257, "cpu", visible_prefix=5)
+    assert ev["val_tokens"] == 8 * 27
+    assert evaluate(m, batches, 50257, "cpu") == evaluate(m, batches, 50257, "cpu", visible_prefix=0)
+
+
 def test_adding_visible_prefix_left_existing_config_hashes_unchanged(tmp_path):
     import hashlib
     from dataclasses import asdict

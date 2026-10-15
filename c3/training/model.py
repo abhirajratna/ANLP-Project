@@ -185,23 +185,27 @@ def mdlm_loss(model: nn.Module, x0: torch.Tensor, mask_token_id: int,
 @torch.no_grad()
 def nelbo_eval(model: nn.Module, x0: torch.Tensor, mask_token_id: int,
                valid: torch.Tensor | None = None, n_t: int = 16, seed: int = 0,
-               t_eps: float = 1e-3) -> tuple[float, float]:
+               t_eps: float = 1e-3, keep: torch.Tensor | None = None) -> tuple[float, float]:
     """(summed NELBO in nats, real tokens) for a batch: the likelihood bound.
 
     NELBO = integral_0^1 (1/t) E[sum over masked of -log p(x0_i | x_t)] dt, by the
     midpoint rule over ``n_t`` strata of t with one mask draw each.  Seeded, so
     the same batch always gives the same number (the G2 curve must not be noisy
     for reasons unrelated to training).  No position is forced to be masked.
+
+    ``keep`` (B, L) marks context that is never masked and so never scored, as in
+    ``mdlm_loss``: a model trained with a visible prefix is validated the same way.
     """
     B, L = x0.shape
     if valid is None:
         valid = torch.ones_like(x0, dtype=torch.bool)
+    maskable = valid if keep is None else valid & ~keep
     g = torch.Generator(device=x0.device).manual_seed(int(seed))
     total = torch.zeros((), device=x0.device, dtype=torch.float64)
     grid = (torch.arange(n_t, device=x0.device, dtype=torch.float64) + 0.5) / n_t
     grid = grid * (1.0 - t_eps) + t_eps
     for t in grid:
-        mask = (torch.rand(B, L, device=x0.device, generator=g) < float(t)) & valid
+        mask = (torch.rand(B, L, device=x0.device, generator=g) < float(t)) & maskable
         if not mask.any():
             continue
         xt = torch.where(mask, torch.full_like(x0, mask_token_id), x0)
@@ -209,7 +213,7 @@ def nelbo_eval(model: nn.Module, x0: torch.Tensor, mask_token_id: int,
         ce = F.cross_entropy(logits.view(-1, logits.size(-1)).float(), x0.view(-1),
                              reduction="none").view(B, L)
         total += (ce * mask).sum().double() / float(t)
-    return float(total / n_t), float(valid.sum())
+    return float(total / n_t), float(maskable.sum())
 
 
 def ar_loss(model: nn.Module, x0: torch.Tensor, valid: torch.Tensor | None = None
