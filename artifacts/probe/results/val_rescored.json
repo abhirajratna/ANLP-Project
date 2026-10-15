@@ -1,0 +1,110 @@
+{
+ "index": "/ssd_scratch/ojas.k/probe-shards/index.json",
+ "visible_prefix_tokens": 8,
+ "runs": {
+  "ft110m-v3": {
+   "checkpoint": "/ssd_scratch/ojas.k/rescore/ft110m-v3.pt",
+   "trained_visible_prefix": 0,
+   "eval_batches": 16,
+   "batch_size": 16,
+   "seed": 20260917,
+   "history_last_val": {
+    "step": 18393,
+    "tokens": 99984228,
+    "val_nelbo": 0.19331152801692028,
+    "val_ppl_bound": 1.2132606993516122,
+    "val_tokens": 21596.0,
+    "ema_val_nelbo": 0.18939095551381188,
+    "ema_val_ppl_bound": 1.208513335088461
+   },
+   "raw": {
+    "marker_masked": {
+     "val_nelbo": 0.19331152801692028,
+     "val_ppl_bound": 1.2132606993516122,
+     "val_tokens": 21596.0
+    },
+    "marker_visible": {
+     "val_nelbo": 0.19340894126410216,
+     "val_ppl_bound": 1.2133788927727231,
+     "val_tokens": 19548.0
+    }
+   },
+   "ema": {
+    "marker_masked": {
+     "val_nelbo": 0.18939095551381188,
+     "val_ppl_bound": 1.208513335088461,
+     "val_tokens": 21596.0
+    },
+    "marker_visible": {
+     "val_nelbo": 0.1891769887359402,
+     "val_ppl_bound": 1.208254781046111,
+     "val_tokens": 19548.0
+    }
+   }
+  },
+  "ft110m-v3-visible": {
+   "checkpoint": "/ssd_scratch/ojas.k/rescore/ft110m-v3-visible.pt",
+   "trained_visible_prefix": 8,
+   "eval_batches": 16,
+   "batch_size": 16,
+   "seed": 20260917,
+   "history_last_val": {
+    "step": 55179,
+    "tokens": 299923840,
+    "val_nelbo": 2.263256768008891,
+    "val_ppl_bound": 9.614349941904537,
+    "val_tokens": 21596.0,
+    "ema_val_nelbo": 2.2087467298723578,
+    "ema_val_ppl_bound": 9.1042990939672
+   },
+   "raw": {
+    "marker_masked": {
+     "val_nelbo": 2.263256768008891,
+     "val_ppl_bound": 9.614349941904537,
+     "val_tokens": 21596.0
+    },
+    "marker_visible": {
+     "val_nelbo": 0.17817202348463032,
+     "val_ppl_bound": 1.1950308769297806,
+     "val_tokens": 19548.0
+    }
+   },
+   "ema": {
+    "marker_masked": {
+     "val_nelbo": 2.2087467298723578,
+     "val_ppl_bound": 9.1042990939672,
+     "val_tokens": 21596.0
+    },
+    "marker_visible": {
+     "val_nelbo": 0.17514635360312877,
+     "val_ppl_bound": 1.1914205725468712,
+     "val_tokens": 19548.0
+    }
+   }
+  }
+ },
+ "provenance": {
+  "git_commit": "48b91892d4f5200361b28f80f816f38f1c148218",
+  "git_dirty": false,
+  "python": "3.12.4",
+  "platform": "Linux-5.15.0-194-generic-x86_64-with-glibc2.35",
+  "host": "gnode043",
+  "slurm_job_id": "22480",
+  "packages": {
+   "numpy": "2.5.3",
+   "scipy": "1.18.1",
+   "pandas": "3.0.5",
+   "pyarrow": "25.0.1",
+   "torch": "2.6.0+cu124",
+   "transformers": "4.46.3",
+   "bitsandbytes": "0.50.2",
+   "accelerate": "1.15.0"
+  },
+  "gpu": {
+   "cuda": true,
+   "gpu": "NVIDIA GeForce RTX 2080 Ti",
+   "capability": "7.5",
+   "n_gpus": 1
+  }
+ }
+}
