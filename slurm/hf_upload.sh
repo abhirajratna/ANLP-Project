@@ -1,21 +1,28 @@
 #!/bin/bash
+#SBATCH --job-name=c3-hf
+#SBATCH --partition=u22
+#SBATCH --qos=medium
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=12G
+#SBATCH --time=2-00:00:00
+#SBATCH --output=/home2/%u/c3/logs/hf-%j.out
+#
 # Publish the 110M models and the C1 traces to the HuggingFace Hub (no GPU), private.
 #
-#     ssh ada 'cd ~/c3 && srun --partition=u22 --qos=medium --cpus-per-task=8 --mem=16G \
-#         --time=06:00:00 bash slurm/hf_upload.sh' < ~/.cache/huggingface/token
+#     sbatch --export=ALL,C3_HF_ONLY=models slurm/hf_upload.sh
+#     sbatch --export=ALL,C3_HF_ONLY=traces --dependency=afterany:<models job> slurm/hf_upload.sh
 #
-# The token arrives on stdin, so it is never written to the cluster nor kept in the
-# Slurm job record (`sbatch --export=HF_TOKEN=...` would store it there); Ada's
-# accounts carry no HF token of their own.  /share1 is not mounted on compute nodes,
-# so every file is pulled to node SSD first, as in the other jobs.  Re-running is
-# safe: model uploads replace the same files, and upload_large_folder resumes.
+# Auth: the token in ~/.cache/huggingface/token on Ada (the user's own, mode 600).
+# /share1 is not mounted on compute nodes, so every file is pulled to node SSD first,
+# as in the other jobs.  Re-running is safe: model uploads replace the same files, and
+# upload_large_folder resumes.  Ada's uplink to the Hub is slow (~50 kB/s measured on
+# 15 Oct 2026) and Xet uploads died on a network error there (job 22429), so the
+# job uses plain LFS unless C3_HF_XET=1.
 #
 # C3_HF_ONLY=models|traces runs one half.  Repos are created private; flip them in
 # the org settings (or `HfApi().update_repo_settings(repo, private=False)`).
 set -euo pipefail
-IFS= read -r HF_TOKEN || true
-[ -n "${HF_TOKEN:-}" ] || { echo "[hf] FATAL: no token on stdin"; exit 1; }
-export HF_TOKEN
+[ "${C3_HF_XET:-0}" = 1 ] || export HF_HUB_DISABLE_XET=1
 REPO_DIR="${C3_REPO:-/home2/$USER/c3}"
 BLOBS="${C3_BLOBS:-/share1/$USER}"
 ORG="${C3_HF_ORG:-ANLP-project}"
