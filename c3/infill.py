@@ -136,6 +136,39 @@ def scatter_masks(doc_ids, length: int, span=SPAN, rate: float = 0.5, seed: int 
     return out
 
 
+def gap_masks(doc_ids, length: int, span=SPAN, gap: int = 8, rate: float = 0.5,
+              seed: int = 0) -> np.ndarray:
+    """(n_docs, length) masks of round(rate x |span|) / ``gap`` contiguous gaps of ``gap``
+    tokens inside ``span``, separated by at least one visible token, placed uniformly at
+    random per document (keyed by (seed, gap, doc_id)).
+
+    The visible tokens are split into the n + 1 stretches around the gaps by a uniform
+    composition with every interior stretch >= 1, so gaps never merge.
+    """
+    from .rng import generator
+
+    a, b = span
+    width = b - a
+    n_masked = int(round(rate * width))
+    if gap < 1 or n_masked % gap:
+        raise ValueError(f"{n_masked} masked tokens do not split into gaps of {gap}")
+    n = n_masked // gap
+    free = width - n_masked - (n - 1)               # visible tokens beyond the separators
+    if free < 0:
+        raise ValueError(f"{n} gaps of {gap} do not fit in {width} positions")
+    out = np.zeros((len(doc_ids), length), dtype=bool)
+    for r, d in enumerate(doc_ids):
+        rng = generator(seed, "infill-gaps", int(gap), int(d))
+        # Stars and bars: n bars among free + n slots give the n + 1 stretch lengths.
+        bars = np.sort(rng.choice(free + n, size=n, replace=False))
+        stretch = np.diff(np.r_[-1, bars, free + n]) - 1     # n + 1 lengths summing to free
+        pos = a + stretch[0]
+        for j in range(n):
+            out[r, pos:pos + gap] = True
+            pos += gap + stretch[j + 1] + 1
+    return out
+
+
 def infill_batch(model, docs, policy, span=SPAN, topk: int = 1, log: StepLog | None = None,
                  state_base: int = 0, masks: np.ndarray | None = None) -> list[dict]:
     """Infill every document in ``docs`` (a list of (doc_id, ids)) with ``policy``: the whole

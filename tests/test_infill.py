@@ -227,3 +227,26 @@ def test_scattered_masks_decode_as_the_single_sequence_and_score_only_masked(cfg
         assert np.array_equal(single.tokens[SPAN[0]:SPAN[1]], res["tokens"])
         assert single.n_forward == res["n_forward"] and res["n_committed"] == 16
         assert res["acc"] == pytest.approx(np.mean(single.tokens[m] == ids[m]))
+
+
+@pytest.mark.parametrize("gap", [1, 2, 4, 8, 16, 32, 64])
+def test_gap_masks_hide_contiguous_gaps_that_never_merge(gap):
+    from c3.infill import SPAN as FULL, gap_masks
+
+    ids = list(range(40))
+    m = gap_masks(ids, 256, FULL, gap=gap, rate=0.5)
+    assert np.array_equal(m, gap_masks(ids[::-1], 256, FULL, gap=gap, rate=0.5)[::-1])
+    for row in m:
+        assert row.sum() == 64 and not row[:FULL[0]].any() and not row[FULL[1]:].any()
+        edges = np.diff(np.r_[0, row[FULL[0]:FULL[1]].astype(int), 0])
+        starts, ends = np.flatnonzero(edges == 1), np.flatnonzero(edges == -1)
+        assert (ends - starts == gap).all() and starts.size == 64 // gap
+    starts = [int(np.flatnonzero(r)[0]) for r in m]
+    assert len(set(starts)) > 1 or gap == 64 and len(set(starts)) >= 1   # placement varies
+
+
+def test_gap_masks_refuse_gaps_that_do_not_divide_or_fit():
+    from c3.infill import gap_masks
+
+    with pytest.raises(ValueError):
+        gap_masks([0], 256, gap=5)

@@ -37,7 +37,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import numpy as np
 
 from c3.infill import (HALVES, SPAN, StepLog, build_policy, config_id, config_key, infill_batch,
-                       load_configs, scatter_masks, select_docs, summarise_tokens)
+                       gap_masks, load_configs, scatter_masks, select_docs, summarise_tokens)
 from c3.provenance import collect as provenance, sha256_file
 from c3.util import require_report_ok
 
@@ -105,6 +105,9 @@ def main() -> int:
     ap.add_argument("--mask-rate", type=float, default=None,
                     help="mask this share of the span's positions (fixed per document, "
                          "c3.infill.scatter_masks) instead of the whole span")
+    ap.add_argument("--gap-len", type=int, default=None,
+                    help="with --mask-rate: hide contiguous gaps of this many tokens "
+                         "(c3.infill.gap_masks) instead of scattered positions")
     ap.add_argument("--shard", type=int, default=0)
     ap.add_argument("--num-shards", type=int, default=1)
     ap.add_argument("--limit", type=int, default=0, help="first N documents of the half (0 = all)")
@@ -155,7 +158,7 @@ def main() -> int:
     stem = f"infill.shard{a.shard}of{a.num_shards}"
     rec_path = out / f"{stem}.jsonl"
     done = done_pairs(rec_path)
-    meta = {"label": a.label, "half": a.half, "span": list(span), "mask_rate": a.mask_rate,
+    meta = {"label": a.label, "half": a.half, "span": list(span), "mask_rate": a.mask_rate, "gap_len": a.gap_len,
             "shard": a.shard,
             "num_shards": a.num_shards, "n_docs": len(docs), "docs_missing_or_short": missing,
             "doc_ids": [d for d, _ in docs], "model": a.model, "precision": a.precision,
@@ -192,8 +195,13 @@ def main() -> int:
                 if hasattr(model, "set_reference"):
                     model.set_reference(batch[0][1])
                 log = StepLog.empty() if a.record_steps else None
-                masks = (None if a.mask_rate is None else
-                         scatter_masks([d for d, _ in batch], len(batch[0][1]), span, a.mask_rate))
+                ids_b, L_b = [d for d, _ in batch], len(batch[0][1])
+                if a.mask_rate is None:
+                    masks = None
+                elif a.gap_len:
+                    masks = gap_masks(ids_b, L_b, span, a.gap_len, a.mask_rate)
+                else:
+                    masks = scatter_masks(ids_b, L_b, span, a.mask_rate)
                 rows = infill_batch(model, batch, policy, span=span, log=log, masks=masks,
                                     state_base=config_id(cfg) * 10_000_000)
                 if scorer is not None:

@@ -1,0 +1,33 @@
+{
+ "note": "Headroom check (development): how much accuracy confidence top-k and Fast-dLLM threshold lose with speed, per gap length, before a full sweep is spent on a task.",
+ "configs": [
+  {
+   "policy": "topk_conf",
+   "k": 1
+  },
+  {
+   "policy": "topk_conf",
+   "k": 2
+  },
+  {
+   "policy": "topk_conf",
+   "k": 4
+  },
+  {
+   "policy": "topk_conf",
+   "k": 8
+  },
+  {
+   "policy": "threshold",
+   "tau": 0.3
+  },
+  {
+   "policy": "threshold",
+   "tau": 0.6
+  },
+  {
+   "policy": "threshold",
+   "tau": 0.9
+  }
+ ]
+}
