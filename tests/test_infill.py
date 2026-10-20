@@ -241,8 +241,9 @@ def test_gap_masks_hide_contiguous_gaps_that_never_merge(gap):
         edges = np.diff(np.r_[0, row[FULL[0]:FULL[1]].astype(int), 0])
         starts, ends = np.flatnonzero(edges == 1), np.flatnonzero(edges == -1)
         assert (ends - starts == gap).all() and starts.size == 64 // gap
-    starts = [int(np.flatnonzero(r)[0]) for r in m]
-    assert len(set(starts)) > 1 or gap == 64 and len(set(starts)) >= 1   # placement varies
+    # Placement varies across documents (one 64-token gap has 65 places; 1-token gaps,
+    # with a single spare position, still have 65 patterns).
+    assert len({r.tobytes() for r in m}) > 1
 
 
 def test_gap_masks_refuse_gaps_that_do_not_divide_or_fit():
