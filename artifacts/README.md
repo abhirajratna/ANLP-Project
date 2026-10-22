@@ -17,9 +17,13 @@ lives on Ada — see the inventory at the bottom.
 | `trace_size_estimate.json` | rows, forward passes and parquet bytes per document for schema v2, and the disk the plan needs per variant (top-20, top-10, top-20 with fp16 probabilities) | `scripts/estimate_trace_size.py` |
 | `exclusion_v2.json` | v2 held-out record: FineWeb id + text hash + first-256-token hash for the 2,000 main and 500 reserve documents (job 2722135); the v2 110M shards matched all 2,500 | `slurm/prepare_exclusion.sbatch` |
 | `eval_110m_train110m.json` | proposal-era 110M (`/share1/ojas.k/train110m`): perplexity bound 38.4 [37.7, 39.2] on the 2,000 held-out docs vs GPT-2 small 28.5, plus 4 samples; no G2 (its history.jsonl was not kept) | `scripts/eval_110m.py` (job 2722239) |
-| `contamination_llada-8b-base.json` | T4 screen, LLaDA-8B-Base fp16: 2 / 1,979 flagged at a run of >= 32 of 50 tokens (threshold from plan v2 T4, **not yet pre-registered**); median run 1, max 39 | `scripts/contamination_screen.py` (job 2722128) |
-| `contamination_dream-7b-base.json` | T4 screen, Dream-v0-7B-Base fp16: 1 / 1,976 flagged at >= 32 (same threshold, not yet pre-registered); median run 1, max 43 | `scripts/contamination_screen.py` (job 2722129) |
-| `t2_pilot/` | T2 pilot, LLaDA-8B-Base fp16 over 2 GPUs, reserve docs 100000-100020 (20 with >= 256 tokens): `floor_llada_base_fp16.json` (5 repeats bitwise identical, floor 0), `gate_g1.json` (N = 20 -> full plan), `analysis/` (kfold-doc, prefix `TTwoPilot`). Traces: `/share1/ojas.k/traces/t2pilot-llada-base-fp16/` | `slurm/collect_traces.sbatch` (job 2722140), `scripts/measure_floor.py`, `scripts/gate_g1.py`, `scripts/analyze_traces.py` |
+| `contamination_llada-8b-base.json` | T4 screen, LLaDA-8B-Base fp16: 2 / 1,979 flagged at a run of >= 32 of 50 tokens (`c3.CONTAM_THRESHOLD`; fixed in code after this screen ran, see `prereg/deviations.md`); median run 1, max 39 | `scripts/contamination_screen.py` (job 2722128) |
+| `contamination_dream-7b-base.json` | T4 screen, Dream-v0-7B-Base fp16: 1 / 1,976 flagged at >= 32 (same threshold and caveat); median run 1, max 43 | `scripts/contamination_screen.py` (job 2722129) |
+| `t2_pilot/` | T2 pilot, LLaDA-8B-Base fp16 over 2 GPUs, reserve docs 100000-100020 (20 with >= 256 tokens): `floor_llada_base_fp16.json` (5 repeats bitwise identical, floor 0), `floor_dream-7b-base_fp16.json` (same design, Dream-7B-Base, job 17555, 12 Oct: bitwise identical, floor 0; traces `/share1/abhiraj.ratna/traces/t2floor-dream-7b-base-fp16/`), `gate_g1.json` (N = 20 -> full plan), `analysis/` (kfold-doc, prefix `TTwoPilot`). Traces: `/share1/ojas.k/traces/t2pilot-llada-base-fp16/` | `slurm/collect_traces.sbatch` (job 2722140), `scripts/measure_floor.py`, `scripts/gate_g1.py`, `scripts/analyze_traces.py` |
+| `split_manifest.json` (+ `.meta.json`) | the frozen fit/report split of the 2,000 FineWeb documents: `{doc_id: 0 fit, 1 report}`, 1,000 / 1,000, seed 20260917; the 500 reserve documents are the separate pilot file | `scripts/make_split_manifest.py` |
+| `split_manifest_gsm8k.json`, `split_manifest_mbpp.json` | the same rule on the task test sets (660 / 659 and 250 / 250) | `scripts/make_task_split.py` |
+| `t8_precision_docs.json` | the 200 T8 precision documents (100 fit, 100 report; fixed seed) and the subset file's sha256 | `scripts/make_precision_subset.py` |
+| `c1/<run>.json` | per-run validation and summary of the C1 sweep (documents, rows, passes, wall time, GPU-hours): run diagnostics, **not results** | `scripts/validate_run.py` via `slurm/merge_validate.sbatch` |
 | `gate_g2_train110m-v3.json` | **Gate G2 PASS** for the plan-v2 110M (`train110m-v3`): EMA validation NELBO changes 0.37% over the last 10% of steps (threshold 0.5%, 18 points); final 3.612 nats/token, bound 37.0 | `scripts/check_g2.py` in `slurm/verify_110m.sh` (job 17434) |
 | `eval_110m_train110m-v3.json` | the same model on the 2,000 held-out docs (EMA weights): perplexity bound 37.25 [36.54, 37.99] vs GPT-2 small 28.49 [27.98, 29.02]; 4 samples | `scripts/eval_110m.py` (job 17434) |
 | `history_train110m-v3.jsonl`, `train_summary_train110m-v3.json` | its training curve and provenance: 169,055 steps, 9.995B tokens, config 53f70713a312b3b2; fresh start on 4 GPUs x batch 16 x accum 4 (the v2 global batch), document-aligned shards, no packing | `scripts/train_110m.py` (job 17431, 36.6 h) |
@@ -53,6 +57,15 @@ them over ssh — see `slurm/CLUSTER.md`.
 | **110M C1 traces** (parts; merge with `slurm/merge_traces.sbatch`, ~6 min, onto node SSD: merged next to the parts they exceed the quota) | `/share1/ojas.k/traces/main-110m-v3/`, `/share1/ojas.k/traces/timesplit-110m-v3/` (also merged: `timesplit-110m-v3.parquet`) | 15 GB, 7 GB |
 | deleted 2026-10-12/14: the FineWeb-Edu copy (27 GB; jobs now stage it per node, `slurm/stage_fineweb.sh`) and the v1 packed shards (19 GB) | — | — |
 | job logs | `/home2/ojas.k/c3/logs/` | small |
+
+`abhiraj.ratna@ada-gw1` (the C1 sweep on the 8B models; `slurm/submit_c1.sh`):
+
+| artefact | location | size |
+|---|---|---|
+| corpus copy (hashes checked) | `/home2/abhiraj.ratna/c3-runs/corpus/{calibration,reserve,precision}_docs.jsonl`, `tasks/*_test.jsonl` | 15 MB |
+| C1 traces, one directory per run: shard parts, shard metas, and the zero-copy `<run>.dataset.json` that `load_traces` reads | `/share1/abhiraj.ratna/traces/<run>/` (`c1-llada-base`, `c1-llada-instruct-{gsm8k,mbpp}`, `c1-dream-base`, `c1-dream-instruct-{gsm8k,mbpp}`, `c1ts-*`, `c1t8-llada-base-4bit`) | ~22 GB per FineWeb arm, ~3 GB per Instruct model; ~64 GB in all |
+| Python environment (tarball) | `/share1/abhiraj.ratna/c3-env.tar.gz` | 3.1 GB |
+| submission log | `/home2/abhiraj.ratna/c3/logs/c1_jobs.txt` (a copy is committed as `artifacts/c1/c1_jobs.txt`; `logs/` is gitignored) | small |
 
 The corpus is regenerable from a fixed seed (`CorpusSpec(seed=20260917)`), but
 only while the upstream FineWeb-Edu stream order is stable — treat

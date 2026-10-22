@@ -11,10 +11,6 @@
 #   ImportError: .../libcusparseLt.so.0: cannot read file data
 # and it persists, because the next job sees bin/python and skips re-extraction.
 C3_BLOBS="${C3_BLOBS:-/share1/$USER}"
-# Where jobs ssh/rsync to reach /share1.  Since the October 2026 cluster reset
-# `ada` refuses ssh from compute nodes ("no longer available for SSH access");
-# only the gateways ada-gw1 / ada-gw2 accept it.
-export C3_LOGIN_HOST="${C3_LOGIN_HOST:-ada-gw1}"
 # Since the same reset (Slurm 26.05), a job asking for more than ~3 GB per CPU has
 # its cpus-per-task raised to fit (--mem=32G with 8 CPUs -> 11; 48G/16 -> 17;
 # 64G/16 -> 22) after sbatch has exported SLURM_TRES_PER_TASK=cpu=<requested>, and
@@ -30,6 +26,8 @@ C3_PERSIST="${C3_PERSIST:-/home2/$USER/c3-runs}"
 C3_SCRATCH="${C3_SCRATCH:-/ssd_scratch/$USER}"
 C3_SCRATCH_ENV="$C3_SCRATCH/c3-env"
 C3_SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+# The login host /share1 is reached through (not hard-coded: `ada` closed to SSH).
+source "$(dirname "${BASH_SOURCE[0]}")/login_host.sh"
 
 mkdir -p "$C3_SCRATCH"
 

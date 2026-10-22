@@ -32,7 +32,7 @@
 set -euo pipefail
 
 BLOBS="${C3_BLOBS:-/share1/$USER}"
-C3_LOGIN_HOST="${C3_LOGIN_HOST:-ada-gw1}"   # `ada` refuses ssh from compute nodes since Oct 2026
+source "${C3_REPO:-/home2/$USER/c3}/slurm/login_host.sh"
 SCRATCH_ENV="${C3_SCRATCH:-/ssd_scratch/$USER}/c3-env"
 TARBALL_LOCAL="${C3_SCRATCH:-/ssd_scratch/$USER}/c3-env.tar.gz"
 

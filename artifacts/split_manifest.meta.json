@@ -1,0 +1,36 @@
+{
+  "seed": 20260917,
+  "n_corpus": 2000,
+  "n_fit": 1000,
+  "n_report": 1000,
+  "excluded": {},
+  "pilot": {
+    "mode": "separate file",
+    "path": "runs/corpus/reserve_docs.jsonl",
+    "n": 500,
+    "sha256": "1ae28fab52f09a06380c0049b286d1acb5173b3282fa96cb3fefd9a74ce39628"
+  },
+  "corpus": "runs/corpus/calibration_docs.jsonl",
+  "corpus_sha256": "af8898577a91687c221dba64308504a427c8cfa75a27d00a5ebabf71d5f18b07",
+  "split_function": "c3.data.fineweb.document_split",
+  "halves": "0 = fit, 1 = report",
+  "provenance": {
+    "git_commit": "f71f9f69dd403ecf0064c75542b7fade96b69b81",
+    "git_dirty": true,
+    "python": "3.12.11",
+    "platform": "Linux-6.17.0-41-generic-x86_64-with-glibc2.42",
+    "host": "andaburger",
+    "slurm_job_id": null,
+    "packages": {
+      "numpy": "2.5.3",
+      "scipy": "1.18.1",
+      "pandas": "3.0.6",
+      "pyarrow": "25.0.1",
+      "torch": "2.14.0+cpu",
+      "transformers": "4.46.3",
+      "bitsandbytes": "0.50.2",
+      "accelerate": "1.15.0",
+      "matplotlib": "3.11.2"
+    }
+  }
+}
