@@ -39,9 +39,14 @@ You mostly don't run anything; your agent does. Useful things to tell it:
 
 To see the state yourself at any time:
 ```bash
-python3 tools/coord.py board      # everyone's status + all claims
-python3 tools/coord.py inbox      # your open messages
+python3 tools/coord.py board        # everyone's status, workstream owners, all claims
+python3 tools/coord.py inbox        # your open messages
+python3 tools/coord.py workstreams  # areas of the repo (tools/workstreams.json) and owners
 ```
+
+When the team splits the work, each person takes their area with
+`python3 tools/coord.py own <workstream>`. The split in `tools/workstreams.json`
+is only a starting point; change it by PR.
 
 For a long unattended run, have the agent poll with `/loop 15m check the team inbox and act on it`.
 

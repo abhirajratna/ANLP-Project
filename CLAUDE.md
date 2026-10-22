@@ -58,16 +58,24 @@ steps yourself.
 
 ## Who owns what
 
-Anyone may read anything. To write in an area you don't own, send its owner a
-`request` or claim the paths.
+The repo is split into workstreams, defined in `tools/workstreams.json`. Change
+the split by PR. Ownership is kept on the bus, so taking or handing over a
+workstream needs no PR:
 
-| area | paths | owner |
-|---|---|---|
-| C1 sweep: traces + analysis | `c3/traces/`, `c3/decode/`, `scripts/collect_traces.py`, `scripts/analyze_traces.py`, `slurm/collect_traces.sbatch` | _unassigned_ |
-| C2: probe + term separation | `c3/endpoints/e2.py`, `c3/sim/` | _unassigned_ |
-| 110M arm, contamination, ablations | `c3/training/`, `c3/data/`, `slurm/train*`, `scripts/contamination_screen.py` | _unassigned_ |
-| Integration: CI, releases, figures | `.github/`, `artifacts/`, `README.md`, `scripts/upload_hf.py`, `tools/` | _unassigned_ |
-| **Shared core**: PR + one other member's approval | `c3/regression.py`, `stats.py`, `frame.py`, `design.py`, `logit.py`, `pyproject.toml`, `CLAUDE.md` | everyone |
+| command | use |
+|---|---|
+| `coord.py workstreams [--paths]` | list areas and their owners |
+| `coord.py own <workstream>` / `own <workstream> --release` | take / give up an area |
+| `coord.py owner <path> ...` | who owns these paths, and is anyone holding a claim on them? |
+
+Anyone may read anything. **Before editing a file, run `coord.py owner <file>`:**
+- **Yours, or unowned:** go ahead. For an unowned area you will keep working
+  in, `own` it.
+- **Someone else's:** send them a `request`, or agree a `claim` on the exact
+  paths with them first.
+- **`shared-core`** (statistical core, `pyproject.toml`, `CLAUDE.md`,
+  `.claude/`): no owner. Claim the path while editing, and the PR needs one
+  other member's approval.
 
 ## Git workflow
 - Work on `<member>/<topic>` branches. **Agents never push to `main`.** A hook

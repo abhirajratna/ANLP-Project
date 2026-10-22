@@ -102,6 +102,26 @@ def test_stale_claim_needs_takeover_and_tells_the_old_owner(team):
     assert "took over stale claim run:c1-llada" in coord(c["alice"], "inbox").stdout
 
 
+def test_workstream_ownership_and_path_lookup(team):
+    _, c = team
+    assert "c1-sweep" in coord(c["alice"], "workstreams").stdout
+    assert coord(c["alice"], "own", "c1-sweep").returncode == 0
+    r = coord(c["bob"], "own", "c1-sweep")
+    assert r.returncode == 3 and "owned by alice" in r.stderr
+    assert coord(c["bob"], "own", "shared-core").returncode == 1
+
+    coord(c["bob"], "claim", "path:c3/regression.py")
+    out = coord(c["bob"], "owner", "c3/traces/masks.py", "./c3/regression.py", "notes.txt").stdout
+    assert "c3/traces/masks.py: c1-sweep owned by alice" in out
+    assert "shared" in out and "CLAIMED by bob" in out
+    assert "notes.txt: no workstream" in out
+    assert "(you)" in coord(c["alice"], "owner", "c3/decode/loop.py").stdout
+
+    assert coord(c["alice"], "own", "c1-sweep", "--release").returncode == 0
+    assert coord(c["bob"], "own", "c1-sweep").returncode == 0
+    assert "c1-sweep: bob" in coord(c["alice"], "board").stdout
+
+
 def test_session_start_hook_shows_inbox_board_and_claims(team):
     _, c = team
     coord(c["alice"], "send", "bob", "blocker", "shards missing")

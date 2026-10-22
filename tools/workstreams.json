@@ -1,0 +1,27 @@
+{
+  "_comment": "Areas of the repo and the paths each covers. A starting split: change it by PR. Owners are not stored here; take one with `python3 tools/coord.py own <name>`. 'shared' areas cannot be owned: changes need a PR approved by another member.",
+  "c1-sweep": {
+    "title": "C1 sweep: trace collection + analysis on the three models",
+    "paths": ["c3/traces/", "c3/decode/", "c3/assemble.py", "scripts/collect_traces.py",
+              "scripts/merge_traces.py", "scripts/analyze_traces.py", "slurm/collect_traces.sbatch"]
+  },
+  "c2-probe": {
+    "title": "C2: synthetic probe + field-term separation",
+    "paths": ["c3/endpoints/e2.py", "c3/sim/", "scripts/t0_scenarios.py"]
+  },
+  "arm-110m": {
+    "title": "110M arm, contamination, ablations",
+    "paths": ["c3/training/", "c3/data/", "slurm/train_110m.sbatch", "slurm/launch_train.sbatch",
+              "scripts/train_110m.py", "scripts/eval_110m.py", "scripts/contamination_screen.py"]
+  },
+  "integration": {
+    "title": "Integration: CI, coordination tooling, releases, figures",
+    "paths": [".github/", "tools/", "artifacts/README.md", "README.md", "scripts/upload_hf.py"]
+  },
+  "shared-core": {
+    "title": "Shared statistical core and project config",
+    "shared": true,
+    "paths": ["c3/regression.py", "c3/stats.py", "c3/frame.py", "c3/design.py", "c3/logit.py",
+              "pyproject.toml", "CLAUDE.md", ".claude/"]
+  }
+}

@@ -504,10 +504,100 @@ def board_text(name) -> str:
         n = len([x for x in messages(m) if x[1].get("status") == "open"])
         if n:
             lines[-1] += f"  [{n} open message(s)]"
+    try:
+        wss = load_workstreams()
+    except CoordError:
+        wss = {}
+    owned = [f"{n}: {ws_owner(n) or 'unowned'}" for n, ws in wss.items() if not ws.get("shared")]
+    if owned:
+        lines.append("## Workstreams")
+        lines.append("- " + "; ".join(owned))
     cl = claims()
     lines.append("## Claims")
     lines += [f"- {fmt_claim(m)}" for _, m, _ in cl] or ["- none"]
     return "\n".join(lines)
+
+
+def load_workstreams() -> dict:
+    p = Path(__file__).resolve().parent / "workstreams.json"
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        raise CoordError(f"cannot read {p}: {e}")
+    return {k: v for k, v in data.items() if not k.startswith("_")}
+
+
+def ws_owner(ws: str):
+    p = worktree() / "owners" / f"{ws}.md"
+    return read_doc(p)[0].get("owner") if p.exists() else None
+
+
+def norm(path: str) -> str:
+    return path[2:] if path.startswith("./") else path
+
+
+def matches(path: str, pattern: str) -> bool:
+    path = norm(path)
+    return path.startswith(pattern) if pattern.endswith("/") else path == pattern
+
+
+def cmd_workstreams(a):
+    sync()
+    for name, ws in load_workstreams().items():
+        who = "shared (PR + one approval)" if ws.get("shared") else (ws_owner(name) or "unowned")
+        print(f"{name}: {ws['title']}  [{who}]")
+        if a.paths:
+            print("    " + "  ".join(ws["paths"]))
+
+
+def cmd_own(a):
+    name = me()
+    wss = load_workstreams()
+    if a.workstream not in wss:
+        raise CoordError(f"no workstream {a.workstream}; have: {', '.join(wss)}")
+    if wss[a.workstream].get("shared"):
+        raise CoordError(f"{a.workstream} is shared and cannot be owned")
+    sync()
+    p = worktree() / "owners" / f"{a.workstream}.md"
+    if a.release:
+        if ws_owner(a.workstream) != name:
+            raise CoordError(f"you do not own {a.workstream}")
+        p.unlink()
+        publish([p], f"coord: {name} gives up {a.workstream}")
+        print(f"{a.workstream} is unowned now")
+        return
+    current = ws_owner(a.workstream)
+    if current and current != name:
+        raise Conflict(f"{a.workstream} is owned by {current}; ask them to run "
+                       f"`coord.py own {a.workstream} --release` first")
+    write_doc(p, {"workstream": a.workstream, "owner": name, "since": iso(now())})
+    publish([p], f"coord: {name} owns {a.workstream}")
+    print(f"you own {a.workstream}: {', '.join(wss[a.workstream]['paths'])}")
+
+
+def cmd_owner(a):
+    name = me(required=False)
+    sync()
+    held = {m["resource"]: m for _, m, _ in claims()}
+    for path in a.paths:
+        hits = [(n, ws) for n, ws in load_workstreams().items()
+                if any(matches(path, pat) for pat in ws["paths"])]
+        if not hits:
+            line = f"{path}: no workstream (free to edit)"
+        else:
+            parts = []
+            for n, ws in hits:
+                if ws.get("shared"):
+                    parts.append(f"{n} (shared: PR + one other member's approval)")
+                else:
+                    o = ws_owner(n)
+                    parts.append(f"{n} owned by {o}" + (" (you)" if o and o == name else "")
+                                 if o else f"{n} (unowned)")
+            line = f"{path}: " + "; ".join(parts)
+        c = held.get(f"path:{norm(path)}")
+        if c:
+            line += f"; CLAIMED by {c['owner']} until {c['expires']}"
+        print(line)
 
 
 def cmd_board(a):
@@ -697,6 +787,19 @@ def main(argv=None) -> int:
     s.add_argument("text")
     s.set_defaults(fn=cmd_status)
     sub.add_parser("board", help="everyone's status and all claims").set_defaults(fn=cmd_board)
+
+    s = sub.add_parser("workstreams", help="areas of the repo and their owners")
+    s.add_argument("--paths", action="store_true")
+    s.set_defaults(fn=cmd_workstreams)
+
+    s = sub.add_parser("own", help="take (or --release) ownership of a workstream")
+    s.add_argument("workstream")
+    s.add_argument("--release", action="store_true")
+    s.set_defaults(fn=cmd_own)
+
+    s = sub.add_parser("owner", help="who owns these paths, and are they claimed?")
+    s.add_argument("paths", nargs="+")
+    s.set_defaults(fn=cmd_owner)
 
     s = sub.add_parser("hook", help="Claude Code hook entry points")
     s.add_argument("event", choices=("session-start", "prompt", "guard-push"))
