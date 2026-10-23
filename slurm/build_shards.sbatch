@@ -40,15 +40,22 @@ mkdir -p "$HF_HOME" "$LOCAL_SHARDS"
 cd "$REPO_DIR"
 c3_stage_fineweb        # all 14 files: the build reads the whole stream
 
-MANIFEST="${C3_MANIFEST:-$PERSIST/corpus/exclusion_v2.json}"
-if [ ! -f "$MANIFEST" ]; then
-    echo "[shards] WARNING: $MANIFEST not found; falling back to the proposal-era manifest"
-    MANIFEST="$PERSIST/corpus/exclusion_manifest.json"
+# C3_MANIFEST: one or more space-separated manifests, e.g. the v2 record plus the
+# time-split set (artifacts/exclusion_timesplit.json, marked external, so it is
+# excluded if it ever appears but not required to match).
+read -r -a MANIFESTS <<< "${C3_MANIFEST:-$PERSIST/corpus/exclusion_v2.json}"
+if [ -z "${C3_MANIFEST:-}" ] && [ ! -f "${MANIFESTS[0]}" ]; then
+    echo "[shards] WARNING: ${MANIFESTS[0]} not found; falling back to the proposal-era manifest"
+    MANIFESTS=("$PERSIST/corpus/exclusion_manifest.json")
 fi
+for m in "${MANIFESTS[@]}"; do
+    [ -f "$m" ] || { echo "[shards] FATAL: exclusion manifest $m not found"; exit 1; }
+done
+echo "[shards] exclusion manifests: ${MANIFESTS[*]}"
 
 "$C3_PY" scripts/build_training_shards.py \
     --out-dir "$LOCAL_SHARDS" \
-    --manifest "$MANIFEST" \
+    --manifest "${MANIFESTS[@]}" \
     --target-tokens "${C3_MAX_TOKENS:-10000000000}" \
     --val-fraction "${C3_VAL_FRACTION:-0.0005}"
 
@@ -74,10 +81,10 @@ if [ "${C3_SHARDS_PUSH:-1}" = 0 ]; then
 fi
 
 echo "[stage] pushing shards to $BLOBS/shards"
-ssh $SSH_OPTS "$USER@ada" "rm -rf '$BLOBS/shards.new' && mkdir -p '$BLOBS/shards.new'"
+ssh $SSH_OPTS "$USER@$C3_LOGIN_HOST" "rm -rf '$BLOBS/shards.new' && mkdir -p '$BLOBS/shards.new'"
 rsync -a --partial -e "ssh $SSH_OPTS" \
-    "$LOCAL_SHARDS/" "$USER@ada:$BLOBS/shards.new/" \
+    "$LOCAL_SHARDS/" "$USER@$C3_LOGIN_HOST:$BLOBS/shards.new/" \
     || { echo "[stage] FATAL: shard push failed"; exit 1; }
 # Swap in only once the whole set has arrived.
-ssh $SSH_OPTS "$USER@ada" "rm -rf '$BLOBS/shards.old'; [ -d '$BLOBS/shards' ] && mv '$BLOBS/shards' '$BLOBS/shards.old'; mv '$BLOBS/shards.new' '$BLOBS/shards'"
+ssh $SSH_OPTS "$USER@$C3_LOGIN_HOST" "rm -rf '$BLOBS/shards.old'; [ -d '$BLOBS/shards' ] && mv '$BLOBS/shards' '$BLOBS/shards.old'; mv '$BLOBS/shards.new' '$BLOBS/shards'"
 echo "[stage] done: $(du -sh "$LOCAL_SHARDS" | cut -f1) -> $BLOBS/shards"

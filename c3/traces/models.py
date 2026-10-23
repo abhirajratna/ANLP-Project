@@ -49,12 +49,24 @@ def set_deterministic(seed: int) -> dict:
             "CUBLAS_WORKSPACE_CONFIG": os.environ["CUBLAS_WORKSPACE_CONFIG"]}
 
 
-def check_finite_logits(logits, name: str = "model", precision: str = "na") -> None:
-    """Refuse inf/NaN logits instead of letting them become NaN confidences."""
+def check_finite_logits(logits, name: str = "model", precision: str = "na",
+                        mask_token_id: int | None = None) -> None:
+    """Refuse inf/NaN logits instead of letting them become NaN confidences.
+
+    The [MASK] column is exempt when ``mask_token_id`` is given: every scorer sets
+    it to -inf anyway (SUBS), and the 110M model emits it as -inf by design, so a
+    check that counted it failed every 110M forward pass (2,048 "non-finite
+    logits" for 8 x 256 positions).
+    """
     import torch
 
-    if not bool(torch.isfinite(logits).all()):
-        n_bad = int((~torch.isfinite(logits)).sum())
+    # One bool tensor the size of the logits, no copy of the logits themselves:
+    # boolean-indexing the vocab axis would copy (B, L, V), ~1 GB on LLaDA-8B.
+    finite = torch.isfinite(logits)
+    if mask_token_id is not None and 0 <= int(mask_token_id) < logits.shape[-1]:
+        finite[..., int(mask_token_id)] = True
+    if not bool(finite.all()):
+        n_bad = int((~finite).sum())
         hint = (" fp16 overflows above 65504; use fp32 (with CPU offload if needed)"
                 if precision == "fp16" else "")
         raise FloatingPointError(f"{name} ({precision}): {n_bad} non-finite logits.{hint}")

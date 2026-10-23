@@ -1,0 +1,41 @@
+{
+  "steps": 169055,
+  "tokens_seen": 9995032224,
+  "config_hash": "53f70713a312b3b2",
+  "config": {
+    "index_path": "/ssd_scratch/ojas.k/c3-shards/index.json",
+    "out_dir": "/ssd_scratch/ojas.k/train110m-v3",
+    "seq_len": 256,
+    "batch_size": 16,
+    "grad_accum": 4,
+    "lr": 0.0003,
+    "min_lr_frac": 0.1,
+    "warmup_steps": 2000,
+    "max_tokens": 10000000000,
+    "weight_decay": 0.02,
+    "grad_clip": 1.0,
+    "log_every": 50,
+    "ckpt_every": 1000,
+    "eval_every": 1000,
+    "eval_batches": 16,
+    "ema_decay": 0.9999,
+    "window_mode": "chunks",
+    "objective": "mdlm",
+    "seed": 20260917,
+    "init_from": null,
+    "run_name": "train110m-v3",
+    "wandb_project": "c3-dllm-calibration",
+    "wandb_entity": "ANLP-project"
+  },
+  "model_config": {
+    "vocab_size": 50258,
+    "max_len": 256,
+    "d_model": 768,
+    "n_layers": 12,
+    "n_heads": 12,
+    "d_ff": 3072,
+    "dropout": 0.0,
+    "mask_token_id": 50257,
+    "causal": false
+  }
+}

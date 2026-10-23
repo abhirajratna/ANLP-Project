@@ -1,0 +1,42 @@
+{
+ "index": "/ssd_scratch/ojas.k/c3-shards/index.json",
+ "index_sha256": "1bfa339754d58c54640f9da573e9ba1d5767ea027be18b90fdc24513e168492a",
+ "manifests": {
+  "artifacts/exclusion_timesplit.json": "f8cfd5f65e890e2b8c4cef1b84a0691d7f6a621be9ecfcee8c7aedc5f4018d24"
+ },
+ "documents_scanned": 9669362,
+ "matches": [],
+ "summary": {
+  "entries": 500,
+  "matched": 0,
+  "skipped_by_key": {
+   "id": 0,
+   "content": 0,
+   "token": 0
+  },
+  "by_role": {
+   "timesplit": {
+    "entries": 500,
+    "matched": 0
+   }
+  }
+ },
+ "provenance": {
+  "git_commit": "8ad45f55250dd074a9374bcc4acf501bb14465e5",
+  "git_dirty": false,
+  "python": "3.12.4",
+  "platform": "Linux-5.15.0-194-generic-x86_64-with-glibc2.35",
+  "host": "gnode060",
+  "slurm_job_id": "17430",
+  "packages": {
+   "numpy": "2.5.3",
+   "scipy": "1.18.1",
+   "pandas": "3.0.5",
+   "pyarrow": "25.0.1",
+   "torch": "2.6.0+cu124",
+   "transformers": "4.46.3",
+   "bitsandbytes": "0.50.2",
+   "accelerate": "1.15.0"
+  }
+ }
+}

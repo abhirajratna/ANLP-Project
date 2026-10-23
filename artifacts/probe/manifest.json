@@ -1,0 +1,67 @@
+{
+ "seed": 20261012,
+ "n_schemas": 200,
+ "rhos": [
+  0.0,
+  0.25,
+  0.5,
+  0.75,
+  1.0
+ ],
+ "fields_per_schema": {
+  "min": 6,
+  "max": 16,
+  "mean": 12.075
+ },
+ "field_kinds": {
+  "str": 1153,
+  "bool": 818,
+  "enum": 160,
+  "num": 284
+ },
+ "max_tokens": {
+  "gpt2": 195,
+  "llada-8b-base": 161,
+  "dream-7b-base": 145
+ },
+ "files": {
+  "spec.json": "e6d3326acfc913d9d2b9844cbe12d5dc5b6c9f0bb31ca5e240eee6040c050727",
+  "eval_instances.jsonl": "c203bfabf2a15c90a9671a19a2b595c1e639587e89ed035f18b05800f068c3a6"
+ },
+ "eval": {
+  "n": 1000,
+  "per_rho": 200
+ },
+ "train": {
+  "n": 200000,
+  "label": "probe-train",
+  "text_sha256": "4a18de66fafb100e337eddf39414ce07db61326cb423ab83409451c68491d9ed"
+ },
+ "val": {
+  "n": 2000,
+  "label": "probe-val",
+  "text_sha256": "6b8ecd5e0e9345c96e487a167b628ca0c977dfaf8bd702ccbd888f09de4f8ba4"
+ },
+ "schemastore": {
+  "repo": "https://github.com/SchemaStore/schemastore",
+  "commit": "5e44c8eee8839250a8f6820aa516961b56ab0cff",
+  "dir": "src/schemas/json"
+ },
+ "provenance": {
+  "git_commit": "fdc2700de3c0053ec1527a06bdc06abfe84ff0d1",
+  "git_dirty": false,
+  "python": "3.12.12",
+  "platform": "Linux-7.2.8-arch1-2-x86_64-with-glibc2.44",
+  "host": "arch",
+  "slurm_job_id": null,
+  "packages": {
+   "numpy": "2.5.4",
+   "scipy": "1.18.1",
+   "pandas": "3.0.6",
+   "pyarrow": "26.0.0",
+   "torch": "2.14.1+cpu",
+   "transformers": "4.46.3",
+   "matplotlib": "3.11.2"
+  }
+ }
+}

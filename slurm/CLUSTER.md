@@ -11,6 +11,8 @@ A100 assumptions, drive every budget decision in the repo.
 | Node-local scratch | `/scratch`, 1.8 TB | where token shards and HF caches belong |
 | **`/share1` is login-node-only** | not *mounted* on compute nodes, but reachable from them by `ssh`/`rsync` back to `ada` | job StdOut and anything opened by path must be on `/home2`; large blobs live on `/share1` and are **pulled to node-local SSD at job start** (the pattern in `run-llama.sh`) |
 | `/share1/$USER` free space | ~76 GB, 3,000-inode quota | the right home for tarballs, checkpoints and model weights — few large files, never many small ones |
+| **ssh from compute nodes (since the Oct 2026 reset)** | `ada` refuses it ("no longer available for SSH access"); the gateways `ada-gw1` / `ada-gw2` accept key auth and see `/share1` | every job reaches `/share1` through `$C3_LOGIN_HOST` (default `ada-gw1`, set in `activate_env.sh`); a job that still says `$USER@ada:` fails to stage or push |
+| **CPUs raised to fit memory (since the Oct 2026 reset, Slurm 26.05)** | more than ~3 GB per CPU raises cpus-per-task (64G with 16 CPUs -> 22), and `srun` inside the job then fails: `cpus-per-task set by two different environment variables` | `activate_env.sh` re-exports `SLURM_TRES_PER_TASK` to match; count the raised CPUs against the 40-CPU QOS cap |
 | Node-local SSD | `/ssd_scratch`, 880 GB | staging target; persists on a node between jobs, so only the first job on a node pays the transfer |
 | Compute-visible persistent | `/home2/$USER` (NFS), 30 GB quota, 25.7 GB used | **~5 GB free** — the binding storage constraint; `~/.cache` holds 5.3 GB of reclaimable pip/HF cache |
 | Inode quota on `/share1` | 3,000 files | the built env is **47,361 files**, so it ships as a single tarball |
@@ -105,6 +107,9 @@ card is not enough:
 | T2 pilot, 2722140 | LLaDA-8B-Base fp16, `device_map=auto` over 2 x 2080 Ti (9 GiB each) | **7.6 forward passes/s** of 256 tokens; 74 passes/doc -> 370 docs/hour. The full plan v2 design (466 passes/doc) -> ~59 docs/hour, ~34 h per 2,000-doc arm |
 | contamination, 2722128 | same | 731 docs/hour (50 passes of ~100 tokens each) |
 | 110M training, 2722281 | 2 x 2080 Ti, batch 16 x accum 8 | 43.4k tok/s -> 10B tokens in ~2.7 days. Batch 32 x accum 4 OOMed on gnode047, whose GPU 1 carried ~670 MB of foreign processes |
+| 110M training, 17431 (2026-10-12) | 4 x 2080 Ti on one node (gnode060), batch 16 x accum 4 (same global batch) | 93.5-96k tok/s -> 10B tokens in ~30 h |
+| T9 probe grid, 17340 | 110M fp32, 1 x 2080 Ti | 1,000 instances x 8 cells (46,480 decoding steps) in 201 s |
+| T9 fine-tune, 17349 | 110M, 3 x 2080 Ti, batch 16 x accum 2, one instance per 256-token window | 23.9k real tok/s (instances average 85 tokens): 100M tokens in 1 h 10 min |
 
 Five repeats of the pilot were bitwise identical under fp16 over two cards
 (`artifacts/t2_pilot/floor_llada_base_fp16.json`).

@@ -1,0 +1,31 @@
+{
+  "gate": "G2",
+  "pass": true,
+  "metric": "ema_val_nelbo",
+  "tail_fraction": 0.1,
+  "points_in_tail": 18,
+  "fitted_change_over_tail": -0.013331127176280707,
+  "relative_change": 0.0036846878139570292,
+  "threshold": 0.005,
+  "final_nelbo": 3.612127951055192,
+  "final_ppl_bound": 37.04479851970446,
+  "history": "/ssd_scratch/ojas.k/train110m-v3-history.jsonl",
+  "provenance": {
+    "git_commit": "4dff8b10f2d88f0212068cce6ec1857b7d40b882",
+    "git_dirty": false,
+    "python": "3.12.4",
+    "platform": "Linux-5.15.0-194-generic-x86_64-with-glibc2.35",
+    "host": "gnode060",
+    "slurm_job_id": "17434",
+    "packages": {
+      "numpy": "2.5.3",
+      "scipy": "1.18.1",
+      "pandas": "3.0.5",
+      "pyarrow": "25.0.1",
+      "torch": "2.6.0+cu124",
+      "transformers": "4.46.3",
+      "bitsandbytes": "0.50.2",
+      "accelerate": "1.15.0"
+    }
+  }
+}
