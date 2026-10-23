@@ -1,11 +1,12 @@
-# Plan to the final submission (23–30 Oct 2026)
+# Plan to the final submission (23–31 Oct 2026)
 
-Written 23 Oct by ojas. The final is `DuckDuckDuckGoose-Final.zip`: the paper (≤ 8 pages + ≤ 2
-appendix pages, ACL style), the code as a ZIP, and the viva slides as a PDF. It is due
-Sat 31 Oct. We submit on Fri 30, all four of us. Ack or object on the bus by Sat 24, 10:00.
+Written 23 Oct by ojas; updated the same day: results freeze on Fri 30 Oct. The final is
+`DuckDuckDuckGoose-Final.zip`: the paper (≤ 8 pages + ≤ 2 appendix pages, ACL style), the
+code as a ZIP, and the viva slides as a PDF. It is due Sat 31 Oct, and all four of us submit
+it. Ack or object on the bus by Sat 24, 10:00.
 
-Agents may draft report text. The course dropped the human-written rule on 30 Sep;
-`documents/project-timeline.md` and the guidelines PDF predate the change.
+Agents can write the report. The course dropped the human-written rule on 30 Sep; the
+guidelines PDF predates the change.
 
 ## Where we stand
 
@@ -47,9 +48,9 @@ calibrator, and the 8B analysis can run under three accounts' limits instead of 
 2. Sat 12:00: the 110M arm and the open prereg items go in.
 3. Sat evening: tag `prereg-v1`, upload to OSF.
 4. Sat–Mon: the report-half analysis.
-5. Wed 28, 12:00: results freeze.
-6. Thu 29: full draft and slides.
-7. Fri 30: submit.
+5. Thu 29: full draft and slides, with the results so far.
+6. Fri 30: results freeze; the final numbers, figures and tables are regenerated into the paper.
+7. Sat 31: submit (the deadline).
 
 T11 and T12 do not wait for the tag. The calibrator is fit on the fit half, and T12 is not
 a pre-registered endpoint, so both run in parallel with the analysis.
@@ -118,7 +119,7 @@ a pre-registered endpoint, so both run in parallel with the analysis.
    wall-clock.
 4. **Sun 25:** sanity check on ~200 GSM8K problems: top-k and the Fast-dLLM threshold
    against the published numbers at matched settings, within 1–2 points.
-5. **Sun 25 – Wed 28, 12:00, the sweep:**
+5. **Sun 25 – Thu 29, the sweep:**
    - decoders: top-k, threshold, entropy-bounded, margin, KLASS, PC-Sampler and C3a, each
      at 3 speeds;
    - tasks: the report halves of GSM8K and MBPP, greedy, one seed, on Jarvis;
@@ -153,7 +154,7 @@ a pre-registered endpoint, so both run in parallel with the analysis.
 6. **Integration:**
    - a README with the HF and W&B links and how to reproduce the results;
    - CI green;
-   - on Thu 29, build the code ZIP from the final commit, then the Final ZIP.
+   - on Fri 30, after the freeze, build the code ZIP from the final commit, then the Final ZIP.
 
 ## Timeline
 
@@ -164,9 +165,10 @@ a pre-registered endpoint, so both run in parallel with the analysis.
 | Sun 25 | report-half analysis running (8B, 110M); T12 sanity check, then the sweep |
 | Mon 26 | 8B and 110M results committed; section drafting starts |
 | Tue 27 | T10 done; two-thirds of the T12 sweep done; §1–§5 drafted |
-| Wed 28 | **12:00 results freeze**: whatever is missing is cut or becomes a limitation; final figures |
-| Thu 29 | full draft and slides; each of us reads the whole paper; fixes; ZIPs built |
-| Fri 30 | all four submit (deadline Sat 31) |
+| Wed 28 | T12 sweep finishing; figures and tables regenerated from the results so far |
+| Thu 29 | full draft and slides; each of us reads the whole paper; fixes |
+| Fri 30 | **results freeze**: whatever is missing is cut or becomes a limitation; final numbers, figures and tables regenerated; ZIPs built |
+| Sat 31 | all four submit (the deadline) |
 
 ## Cut to future work
 
