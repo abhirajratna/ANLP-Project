@@ -19,3 +19,4 @@ logs/
 *.bin
 *.pt
 .gitattributes
+.claude/settings.local.json
