@@ -139,11 +139,60 @@ class ContextLogistic:
         eta = self.intercept + self._design(pos.ell, X_field) @ self.beta
         return _sigmoid(eta)
 
+    def predict_arrays(self, ell: np.ndarray, field: dict | None = None) -> np.ndarray:
+        """pi_hat from raw arrays: ``field`` maps each used feature name to a value
+        or an array broadcastable to ``ell`` (what a decoder has at a step)."""
+        if self.beta is None:
+            raise RuntimeError("ContextLogistic is not fitted")
+        ell = np.asarray(ell, dtype=np.float64)
+        field = field or {}
+        missing = [n for n in self.used if n not in field]
+        if missing:
+            raise KeyError(f"field features {missing} are needed by this calibrator")
+        X = (np.column_stack([np.broadcast_to(np.asarray(field[n], dtype=np.float64), ell.shape)
+                              for n in self.used]) if self.used else np.empty((ell.size, 0)))
+        return _sigmoid(self.intercept + self._design(ell, X) @ self.beta)
+
     def to_dict(self) -> dict:
         return {"kind": "context_logistic", "features": list(self.used),
                 "interactions": self.interactions,
                 "knots": self.spline.knots.tolist(), "intercept": self.intercept,
                 "beta": self.beta.tolist(), "converged": self.converged}
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "ContextLogistic":
+        if d.get("kind") != "context_logistic":
+            raise ValueError(f"not a context logistic: kind={d.get('kind')!r}")
+        knots = np.asarray(d["knots"], dtype=np.float64)
+        return cls(features=tuple(d["features"]), n_knots=knots.size,
+                   interactions=bool(d["interactions"]), spline=Spline(knots),
+                   used=list(d["features"]), intercept=float(d["intercept"]),
+                   beta=np.asarray(d["beta"], dtype=np.float64), converged=bool(d["converged"]))
+
+    @classmethod
+    def load(cls, path) -> "ContextLogistic":
+        """A calibrator saved by ``scripts/fit_c3a_calibrator.py`` (its ``calibrator`` entry)
+        or a bare ``to_dict()`` JSON."""
+        import json
+        from pathlib import Path
+
+        d = json.loads(Path(path).read_text())
+        return cls.from_dict(d.get("calibrator", d))
+
+
+DECODE_FEATURES = ("median_ell", "mask_rate", "log_n_masked")
+"""The field features a decoder can compute at a step, defined as in the traces.  ``step``
+is left out: a trace's step counts teacher-forced commits of k tokens, a free-running
+decoder's does not."""
+
+
+def state_field_features(ell_masked: np.ndarray, n_masked: int, region_size: int) -> dict:
+    """The decode-time field features of one state, as the traces define them
+    (``c3.traces.masks.MaskedState.rate``, ``PositionFrame``): the median ell over every
+    masked position, the masked share of the maskable region, and log |M|."""
+    return {"median_ell": float(np.median(np.asarray(ell_masked, dtype=np.float64))),
+            "mask_rate": float(n_masked) / float(region_size),
+            "log_n_masked": float(np.log(max(int(n_masked), 1)))}
 
 
 def _features_exact(pos: PositionFrame, names) -> np.ndarray:

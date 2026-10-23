@@ -31,6 +31,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from ..calibrators import state_field_features
 from .policies import StepContext
 from .scoring import position_stats
 
@@ -89,6 +90,8 @@ def decode(model, x_init, policy, block_length: int | None = None, max_steps: in
     dev = getattr(model, "input_device", None)
     gen = torch.Generator().manual_seed(int(seed))
     needs_kl = bool(getattr(policy, "needs_kl", False))
+    needs_state = bool(getattr(policy, "needs_state", False))
+    region_size = int(region.sum())
     prev_logp: dict[int, object] = {}
     kl_history: dict[int, list] = {}
     res = DecodeResult(tokens=x)
@@ -113,6 +116,14 @@ def decode(model, x_init, policy, block_length: int | None = None, max_steps: in
             stats = position_stats(lg, eligible[None, :], mask_id,
                                    true_ids=None if ref is None else ref[None, :], topk=topk,
                                    chunk=256)
+            state = None
+            if needs_state:
+                # The field features the calibrator was fitted on: over every masked
+                # position of the generated region (the traces have no blocks), with
+                # the mask rate as a share of that region.
+                every = stats if eligible.sum() == masked.sum() else position_stats(
+                    lg, masked[None, :], mask_id, topk=1, chunk=256)
+                state = state_field_features(every["ell"], int(masked.sum()), region_size)
             if needs_kl or sample:
                 z = lg[0, torch.as_tensor(positions, device=lg.device)].float()
                 if 0 <= mask_id < z.shape[-1]:
@@ -133,7 +144,7 @@ def decode(model, x_init, policy, block_length: int | None = None, max_steps: in
         res.n_forward += 1
 
         ctx = StepContext(step=step, positions=positions, gen_start=gen_start,
-                          kl_history=kl_history)
+                          kl_history=kl_history, state=state)
         order, n_commit = policy.select(stats, ctx)
         n_commit = max(1, min(int(n_commit), positions.size))
         chosen = np.asarray(order[:n_commit], dtype=np.int64)

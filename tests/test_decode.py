@@ -126,3 +126,102 @@ def test_sampling_is_reproducible_by_seed():
     a = decode(model, x, TopKConfidence(2), sample=True, seed=3)
     b = decode(model, x, TopKConfidence(2), sample=True, seed=3)
     assert np.array_equal(a.tokens, b.tokens)
+
+
+# --------------------------------------------------------------------------- #
+# C3a (plan v2 T11)
+# --------------------------------------------------------------------------- #
+
+def _calibrator():
+    """A context calibrator fitted on simulated decoder states."""
+    from c3.calibrators import DECODE_FEATURES, ContextLogistic
+    from c3.frame import PositionFrame
+    from c3.sim.trajectories import simulate_design
+
+    df = simulate_design("calibrated", n_docs=30, doc_len=64, ks=(4,), matched=False, seed=1)
+    df = df[df["mask_kind"] == "decoder"].reset_index(drop=True)
+    return ContextLogistic(features=DECODE_FEATURES).fit(PositionFrame.from_frame(df))
+
+
+class _StateSpy:
+    """Top-1 per step, recording what a policy with ``needs_state`` is given."""
+
+    needs_state = True
+
+    def __init__(self):
+        self.seen = []
+
+    def select(self, stats, ctx):
+        self.seen.append((ctx.positions.copy(), dict(ctx.state)))
+        return np.argsort(-np.asarray(stats["ell"]), kind="stable"), 1
+
+
+def test_c3a_commits_every_position_above_one_minus_alpha_or_one():
+    from c3.decode.policies import C3a
+
+    cal = _calibrator()
+    state = {"median_ell": 0.5, "mask_rate": 0.5, "log_n_masked": np.log(16)}
+    stats = {"ell": np.array([4.0, -2.0, 1.0, 6.0])}
+    ctx = StepContext(step=0, positions=np.arange(4), state=state)
+    c = cal.predict_arrays(stats["ell"], state)
+    for alpha in (0.01, 0.2, 0.5, 0.9):
+        order, n = C3a(alpha, cal).select(stats, ctx)
+        assert n == max(1, int(np.sum(c >= 1 - alpha)))
+        assert list(order[:n]) == list(np.argsort(-c, kind="stable")[:n])
+    with pytest.raises(ValueError):
+        C3a(0.1, cal).select(stats, StepContext(step=0, positions=np.arange(4)))
+
+
+def test_state_features_cover_the_whole_masked_region_not_just_the_block():
+    model, _, x = _setup(L=40, prompt=8)
+    spy = _StateSpy()
+    decode(model, x, spy, block_length=8)
+    region = 32
+    for step, (positions, st) in enumerate(spy.seen):
+        n_masked = region - step                         # one commit per step
+        assert st["mask_rate"] == pytest.approx(n_masked / region)
+        assert st["log_n_masked"] == pytest.approx(np.log(n_masked))
+        assert positions.size <= 8                       # the policy still sees only its block
+    # the median is over every masked position: at step 0 that is all 32, and it equals
+    # the median of a whole-span step-0 state
+    whole = _StateSpy()
+    decode(model, x, whole)
+    assert spy.seen[0][1]["median_ell"] == pytest.approx(whole.seen[0][1]["median_ell"])
+
+
+def test_c3a_decodes_from_one_per_step_to_a_block_per_step():
+    from c3.decode.policies import C3a
+
+    cal = _calibrator()
+    model, _, x = _setup(L=40, prompt=8)
+    slow = decode(model, x, C3a(1e-12, cal), block_length=8)
+    _check_run(slow, x, model.mask_token_id)
+    assert slow.n_forward == 32                          # nothing reaches 1 - 1e-12: one per step
+    fast = decode(model, x, C3a(1.0, cal), block_length=8)
+    _check_run(fast, x, model.mask_token_id)
+    assert fast.n_forward == 4                           # everything clears 0: a block per step
+
+
+def test_baselines_get_no_state_and_are_unchanged():
+    model, _, x = _setup()
+    a = decode(model, x, TopKConfidence(3), block_length=8)
+    b = decode(model, x, TopKConfidence(3), block_length=8)
+    assert np.array_equal(a.tokens, b.tokens) and a.n_forward == b.n_forward
+
+
+def test_calibrator_round_trips_and_predicts_like_the_trace_frame(tmp_path):
+    import json
+
+    from c3.calibrators import ContextLogistic, state_field_features
+    from c3.frame import PositionFrame
+    import pandas as pd
+
+    cal = _calibrator()
+    (tmp_path / "c.json").write_text(json.dumps({"calibrator": cal.to_dict(), "other": 1}))
+    back = ContextLogistic.load(tmp_path / "c.json")
+    # one trace state: 6 masked positions of a 12-position maskable region
+    ell = np.array([2.0, -1.0, 0.3, 3.0, 1.1, -0.2])
+    df = pd.DataFrame({"doc_id": 0, "state_id": 0, "position": np.arange(6), "ell": ell,
+                       "agree": 1, "mask_rate": 6 / 12, "n_masked": 6, "step": 0})
+    st = state_field_features(ell, 6, 12)
+    assert np.allclose(back.predict_arrays(ell, st), cal.predict(PositionFrame.from_frame(df)))

@@ -38,6 +38,16 @@ Definitions follow the papers (checked against the arXiv versions, Sep 2026):
   subset in the paper), lambda = 0.25 and alpha = 10; top-k by score.  Without
   ``log_freq`` the frequency factor is 1 and only the positional weight remains,
   which is recorded as ``variant = "position-only"``.
+
+C3a (plan v2 T11, this project): commit every eligible position with
+c_hat >= 1 - alpha, and at least one, where c_hat = pi_hat(ell, s) is a context-aware
+calibrator (``c3.calibrators.ContextLogistic``) fitted on fit-half traces.  The
+state s is described by the decode-time field features (``DECODE_FEATURES``),
+computed over every masked position of the generated region as the traces do,
+not only over the active block (``needs_state``; ``c3.decode.loop.decode``).  All
+positions of a state share s, so within a step C3a is a confidence threshold
+whose cut moves with the state: it changes how many tokens are committed, not
+which.
 """
 
 from __future__ import annotations
@@ -55,6 +65,7 @@ class StepContext:
     positions: np.ndarray                 # the rows' sequence positions, ascending
     gen_start: int = 0                    # first position of the generated region
     kl_history: dict = field(default_factory=dict)   # position -> recent KLs, newest last
+    state: dict | None = None             # decode-time field features (policies with needs_state)
 
 
 def _stable_order(key: np.ndarray) -> np.ndarray:
@@ -155,8 +166,32 @@ class PCSampler:
         return order, min(self.k, order.size)
 
 
+@dataclass
+class C3a:
+    alpha: float
+    calibrator: object = field(default=None, repr=False)
+    name: str = "c3a"
+    needs_state: bool = True
+
+    def calibrated(self, stats, ctx) -> np.ndarray:
+        """c_hat for every row, from its ell and the state's field features."""
+        if self.calibrator is None:
+            raise ValueError("C3a needs a fitted calibrator")
+        if ctx.state is None:
+            raise ValueError("C3a needs the state's field features (StepContext.state)")
+        return self.calibrator.predict_arrays(np.asarray(stats["ell"], dtype=np.float64),
+                                              ctx.state)
+
+    def select(self, stats, ctx):
+        c = self.calibrated(stats, ctx)
+        order = _stable_order(c)
+        return order, max(1, int(np.sum(c >= 1.0 - self.alpha)))
+
+
 POLICIES = {"topk_conf": TopKConfidence, "margin": Margin, "threshold": Threshold,
-            "entropy_bounded": EntropyBounded, "klass": KLASS, "pc_sampler": PCSampler}
+            "entropy_bounded": EntropyBounded, "klass": KLASS, "pc_sampler": PCSampler,
+            "c3a": C3a}
+CALIBRATED = ("c3a",)
 
 
 def unigram_log_freq(token_arrays, vocab_size: int, smoothing: float = 1.0) -> np.ndarray:
