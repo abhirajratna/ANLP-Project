@@ -11,6 +11,9 @@
 #
 #   sbatch --export="ALL,C3_RUN=c1-llada-base,C3_GPUS=2,C3_CORPUS=/home2/$USER/c3-runs/corpus/calibration_docs.jsonl" slurm/merge_validate.sbatch
 #
+# C3_MERGE_ARGS=--allow-mixed-commits, for a run whose shards were collected at
+# different commits, goes to both the merge and the validator.
+#
 # /share1 is not mounted here, so the run's parts are pulled to node-local SSD,
 # merged into $RUN.dataset.json (a manifest of the validated parts; no second
 # copy of the data), validated by scripts/validate_run.py, and the manifest is
@@ -44,7 +47,7 @@ echo "[merge] pulled $(ls "$DIR" | grep -c '\.parquet$') parts, $(du -sh "$DIR" 
 RC=0
 "$C3_PY" scripts/validate_run.py --dataset "$DIR/$RUN.dataset.json" --run "$RUN" \
     --gpus-per-task "${C3_GPUS:-2}" ${C3_CORPUS:+--corpus "$C3_CORPUS"} \
-    --out "artifacts/c1/$RUN.json" || RC=$?
+    --out "artifacts/c1/$RUN.json" ${C3_MERGE_ARGS:-} || RC=$?
 rsync -a -e "ssh $SSH_OPTS" "$DIR/$RUN.dataset.json" "$USER@$C3_LOGIN_HOST:$BLOBS/traces/$RUN/" \
     && echo "[merge] manifest pushed to $BLOBS/traces/$RUN/$RUN.dataset.json" \
     || { echo "[merge] FATAL: could not push the manifest"; exit 1; }

@@ -90,6 +90,7 @@ SRCARGS=(--docs "$PERSIST/corpus/calibration_docs.jsonl")
 case "$RUN" in
     *gsm8k*) SRCARGS=(--task gsm8k --task-jsonl "$PERSIST/corpus/tasks/gsm8k_test.jsonl") ;;
     *mbpp*)  SRCARGS=(--task mbpp --task-jsonl "$PERSIST/corpus/tasks/mbpp_test.jsonl") ;;
+    *110m*)  SRCARGS+=(--tokenizer gpt2) ;;     # local-110m is not in KNOWN_MODELS
 esac
 want t8 && step t8 "$C3_PY" scripts/run_controls.py --traces "$OUT/trace.parquet" --split half --half fit \
     --manifest "$MANIFEST" --n-boot "$BOOT" --knots 9 \

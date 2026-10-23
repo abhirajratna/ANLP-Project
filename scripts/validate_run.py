@@ -105,6 +105,9 @@ def main() -> int:
     ap.add_argument("--corpus", default=None,
                     help="the input JSONL, to report how many documents the length filter dropped")
     ap.add_argument("--out", required=True)
+    ap.add_argument("--allow-mixed-commits", action="store_true",
+                    help="accept shards collected at different git commits (as merged with the "
+                         "same flag); the commits are still listed")
     a = ap.parse_args()
 
     meta = trace_meta(a.dataset)
@@ -180,8 +183,9 @@ def main() -> int:
     pkgs = sorted({json.dumps(p.get("packages", {}), sort_keys=True) for p in prov})
     commits = meta["git_commit"] if isinstance(meta["git_commit"], list) else [meta["git_commit"]]
     checks["one_identity_across_shards"] = {
-        "ok": len(gpus) <= 1 and len(pkgs) <= 1 and len(commits) == 1,
+        "ok": len(gpus) <= 1 and len(pkgs) <= 1 and (len(commits) == 1 or a.allow_mixed_commits),
         "gpus": gpus, "n_package_sets": len(pkgs), "commits": commits,
+        "mixed_commits_allowed": len(commits) > 1 and a.allow_mixed_commits,
         "identity_keys": "config, model, variant, revision, precision, dataset, schema "
                          "(refused at merge if they differ)"}
 
