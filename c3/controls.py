@@ -40,6 +40,11 @@ top-1 log-odds, c = sigma(ell / T), fitted by the NLL of correctness; exact
 from the trace, and it never changes a ranking.
 
 **Precision**: the same documents in fp16 and 4-bit (``precision_rows``).
+
+**Confidence statistic** (T13 ablation 1): pools won by the highest margin or the
+lowest entropy instead of the highest ell, on the same pool draws, with the gap
+still the committed token's own confidence minus its correctness.  Only the pool
+version: decoder-induced states exist for confidence top-k only (deviations item 3).
 """
 
 from __future__ import annotations
@@ -48,7 +53,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from . import DEFAULT_KNOTS, POOL_SIZES
+from . import DEFAULT_KNOTS, N_POOLS, POOL_SIZES
 from .calibrators import ContextLogistic, IsotonicOwn, _features_exact, pool_weights
 from .endpoints.e1 import winner_gap
 from .frame import FIELD_FEATURES, AnalysisFrame, PositionFrame
@@ -411,6 +416,73 @@ def apply_temperatures(kind: str, T: np.ndarray, rate: np.ndarray, *, ell=None, 
                                         vocab, float(T[j]))
     conf = np.clip(conf, 1e-12, 1 - 1e-12)
     return conf, np.log(conf) - np.log1p(-conf)
+
+
+# --------------------------------------------------------------------------- #
+# Confidence statistic (plan v2 T13 ablation 1)
+# --------------------------------------------------------------------------- #
+
+RANK_STATISTICS = ("margin", "entropy")
+
+
+def rank_score(df, statistic: str) -> np.ndarray:
+    """What a decoder ranks positions by under ``statistic``, highest committed first:
+    the margin p_top1 - p_top2 (the Margin decoder) or minus the predictive entropy
+    (EB-Sampler's order)."""
+    if statistic == "margin":
+        return df["margin"].to_numpy(np.float64)
+    if statistic == "entropy":
+        return -df["entropy"].to_numpy(np.float64)
+    raise ValueError(f"statistic must be one of {RANK_STATISTICS}, got {statistic!r}")
+
+
+def reranked_pools(pos: PositionFrame, score: np.ndarray, seed: int) -> AnalysisFrame:
+    """The T8 pools of ``pos`` ranked by ``score`` instead of ell.
+
+    Pool memberships never look at the score, so with the same seed these are the
+    same pools as the ell-ranked ones; only who wins them changes, and the two
+    Delta(m) curves are paired draw by draw.
+    """
+    from .assemble import frame_from_arrays
+
+    return frame_from_arrays(pos.doc_id, pos.state_id, pos.position, score, pos.agree,
+                             pool_sizes=POOL_SIZES, n_pools_per_size=N_POOLS, seed=seed,
+                             retain=1, min_state_size=max(POOL_SIZES))
+
+
+def winner_agreement(pools_a: AnalysisFrame, pools_b: AnalysisFrame) -> dict:
+    """Per pool size, the share of pools whose winner is the same position under both rankings."""
+    wa, wb = pools_a.winners(), pools_b.winners()
+    if len(wa) != len(wb) or not np.array_equal(wa.m, wb.m):
+        raise ValueError("the two pool frames do not hold the same pools")
+    same = wa.src_row == wb.src_row
+    return {int(m): float(same[wa.m == m].mean()) for m in np.unique(wa.m)}
+
+
+@dataclass
+class StatisticEffects:
+    """Delta(m) and the E2 field term when pools are won by another confidence statistic."""
+
+    delta: GroupedMean           # E_m[c - a], winners by the statistic, c the stored confidence
+    field: GroupedMean           # E_m[pi(l) - pi(l, s)] over the same winners
+    agreement: dict              # m -> share of pools with the same winner as under ell
+
+
+def statistic_control(pools: AnalysisFrame, pos: PositionFrame, score: np.ndarray,
+                      fit_mask: np.ndarray, report_mask: np.ndarray, codes: np.ndarray,
+                      counts: np.ndarray, seed: int,
+                      n_knots: int = DEFAULT_KNOTS) -> StatisticEffects:
+    """The E1 gap and the pre-registered E2 field term with pools ranked by ``score``.
+
+    The gap is still the committed token's own probability minus its correctness:
+    the statistic changes which token is committed, not what the model claims for it.
+    The calibrators are the pre-registered ones (fitted on all fit-half positions,
+    which do not depend on the ranking).
+    """
+    pools_s = reranked_pools(pos, score, seed)
+    delta = winner_gap(pools_s, pos, pos.conf, pos.agree, codes, counts, report_mask)
+    field = preregistered_field(pools_s, pos, fit_mask, report_mask, codes, counts, n_knots)
+    return StatisticEffects(delta, field, winner_agreement(pools, pools_s))
 
 
 # --------------------------------------------------------------------------- #

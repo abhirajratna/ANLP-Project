@@ -26,6 +26,10 @@ gain exceeds 2 x ``--floor`` and is positive.  Secondary contrasts (no
 multiplicity correction) isolate the parts: C3a - Fast-dLLM threshold (the field
 effect alone), C3-set - C3-indep (the learned dependence), C3-set - EB-Sampler
 and C3-set - C3a (set vs token targets).
+
+Runs made with ``eval_infill.py --cal-tag T`` hold C3 policies named ``c3a@T`` etc.
+(T13: C3 under other calibrators or fitting sizes); ``--new c3indep@T`` compares one
+of them with the baselines, and ``--pairs X Y`` adds any secondary contrast X - Y.
 """
 from __future__ import annotations
 
@@ -84,6 +88,8 @@ def main() -> int:
     ap.add_argument("--speeds", type=float, nargs="+", default=[2.0, 4.0, 8.0])
     ap.add_argument("--new", default="c3set")
     ap.add_argument("--baselines", nargs="+", default=list(BASELINES))
+    ap.add_argument("--pairs", nargs="*", default=[],
+                    help="extra secondary contrasts X Y [X Y ...] (policy names), each X - Y")
     ap.add_argument("--floor", type=float, default=0.0,
                     help="accuracy non-determinism floor (0 when repeated runs are identical)")
     ap.add_argument("--allow-incomplete", action="store_true",
@@ -97,6 +103,8 @@ def main() -> int:
     ap.add_argument("--label", default="")
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
+    if len(a.pairs) % 2:
+        raise SystemExit("--pairs takes policy names in pairs")
 
     df, n_conflict = load_records(a.runs)
     configs = sorted(df["config"].unique())
@@ -186,7 +194,8 @@ def main() -> int:
         rec.setdefault("improves", False)
 
     secondary = {}
-    for x, y in SECONDARY:
+    extra = list(zip(a.pairs[::2], a.pairs[1::2]))
+    for x, y in list(SECONDARY) + extra:
         if x in at_draws and y in at_draws:
             secondary[f"{x}-{y}"] = {
                 str(t): summarise(at[x][str(t)]["acc"] - at[y][str(t)]["acc"],
@@ -194,11 +203,12 @@ def main() -> int:
 
     coverage = []
     for i, c in enumerate(configs):
-        if policy_of[i] in ("c3a", "c3indep", "c3set"):
+        kind = str(policy_of[i]).split("@")[0]          # c3a@<calibrator tag> is still C3a
+        if kind in ("c3a", "c3indep", "c3set"):
             target = 1.0 - float(first["alpha"].iloc[i])
-            got = float(acc_pt[i]) if policy_of[i] == "c3a" else float(sar_pt[i])
+            got = float(acc_pt[i]) if kind == "c3a" else float(sar_pt[i])
             coverage.append({"config": c, "policy": policy_of[i], "target": target,
-                             "quantity": "token accuracy" if policy_of[i] == "c3a"
+                             "quantity": "token accuracy" if kind == "c3a"
                              else "per-step all-right rate", "achieved": got,
                              "tokens_per_step": float(tps_pt[i])})
 

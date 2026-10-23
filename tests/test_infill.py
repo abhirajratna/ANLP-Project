@@ -76,6 +76,40 @@ def test_batched_infill_is_the_single_sequence_decode(cfg, calibrators):
         assert np.array_equal(single.tokens[:SPAN[0]], ids[:SPAN[0]])
 
 
+@pytest.mark.parametrize("cfg", CONFIGS, ids=config_key)
+def test_block_wise_infill_is_the_single_sequence_block_decode(cfg, calibrators):
+    model, docs = _docs()
+    tok, setcal = calibrators
+    got = infill_batch(model, docs, build_policy(cfg, tok, setcal), span=SPAN, block_length=8)
+    for (doc_id, ids), res in zip(docs, got):
+        x = ids.copy()
+        x[SPAN[0]:SPAN[1]] = model.mask_token_id
+        model.reference = model.refs[ids[:8].tobytes()]
+        single = decode(_Single(model, ids), x, build_policy(cfg, tok, setcal), block_length=8,
+                        record=False)
+        assert np.array_equal(single.tokens[SPAN[0]:SPAN[1]], res["tokens"]), (cfg, doc_id)
+        assert single.n_forward == res["n_forward"]
+
+
+def test_blocks_are_filled_in_order_and_log_the_whole_sequence_mask_rate():
+    model, docs = _docs(n=2)
+    log = StepLog.empty()
+    infill_batch(model, docs, TopKConfidence(3), span=SPAN, block_length=8, log=log)
+    df = log.frame()
+    blk = (df["position"] - SPAN[0]) // 8
+    # every step's rows lie in one block, and the active block never goes back
+    per_step = df.groupby(["doc_id", "step"])
+    assert (per_step["position"].apply(lambda p: ((p - SPAN[0]) // 8).nunique()) == 1).all()
+    first = df.assign(blk=blk).groupby(["doc_id", "step"])["blk"].first().groupby("doc_id")
+    assert all(np.all(np.diff(s.to_numpy()) >= 0) for _, s in first)
+    # field features count the whole sequence, not just the active block
+    step0 = df[df.step == 0]
+    assert (step0["n_masked"] == SPAN[1] - SPAN[0]).all() and len(step0) == 2 * 8
+    # with blocks of k, top-k commits exactly one block per step
+    res = infill_batch(model, docs, TopKConfidence(8), span=SPAN, block_length=8)
+    assert all(r["n_forward"] == (SPAN[1] - SPAN[0]) // 8 for r in res)
+
+
 class _Single:
     """One document's view of the multi-reference toy, for ``decode``."""
 

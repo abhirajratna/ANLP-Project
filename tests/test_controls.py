@@ -167,6 +167,63 @@ def test_cli_writes_one_table_with_every_control(tmp_path):
     assert len(names) == len(set(names))
 
 
+def test_rank_score():
+    import pandas as pd
+
+    df = pd.DataFrame({"margin": [0.1, 0.9], "entropy": [2.0, 0.5]})
+    assert C.rank_score(df, "margin").tolist() == [0.1, 0.9]
+    assert C.rank_score(df, "entropy").tolist() == [-2.0, -0.5]
+    with pytest.raises(ValueError):
+        C.rank_score(df, "conf")
+
+
+def test_a_statistic_monotone_in_ell_changes_nothing():
+    sub, pos, pools, fm, rm, codes, counts = _frames("noisy")
+    se = C.statistic_control(pools, pos, np.tanh(pos.ell / 3.0), fm, rm, codes, counts, seed=0)
+    assert all(v == 1.0 for v in se.agreement.values())
+    base = C.winner_gap(pools, pos, pos.conf, pos.agree, codes, counts, rm)
+    assert np.array_equal(se.delta.point, base.point) and np.array_equal(se.delta.draws, base.draws)
+    pr = C.preregistered_field(pools, pos, fm, rm, codes, counts)
+    assert np.array_equal(se.field.point, pr.point)
+
+
+def test_a_statistic_blind_to_the_scores_removes_the_selection_effect():
+    # Winners by a score unrelated to ell are random members: Delta(m) is flat in m.
+    sub, pos, pools, fm, rm, codes, counts = _frames("noisy")
+    base = C.winner_gap(pools, pos, pos.conf, pos.agree, codes, counts, rm)
+    noise = np.random.default_rng(1).normal(size=len(pos))
+    se = C.statistic_control(pools, pos, noise, fm, rm, codes, counts, seed=0)
+    d_base, _ = base.contrast(HI, LO)
+    d_rand, draws = se.delta.contrast(HI, LO)
+    assert d_base > 0.03
+    assert abs(d_rand) < 0.25 * d_base
+    assert se.agreement[HI] < 0.2
+
+
+def test_cli_statistic_control_on_a_trace_with_margin_and_entropy(tmp_path):
+    df = simulate_design("noisy", n_docs=40, ks=(4,), seed=3)
+    rng = np.random.default_rng(0)
+    # margin a noisy monotone function of confidence; entropy its mirror
+    df["margin"] = np.clip(2 * df["conf"] - 1 + 0.1 * rng.normal(size=len(df)), -1, 1)
+    df["entropy"] = 1.0 - df["margin"]
+    path = tmp_path / "trace.parquet"
+    df.to_parquet(path, index=False)
+    out = tmp_path / "out"
+    _run("scripts/run_controls.py", "--traces", path, "--controls", "statistic", "--split", "half",
+         "--half", "report", "--n-boot", "50", "--out", out)
+    res = json.loads((out / "ablation.json").read_text())
+    got = {(r["control"], r["effect"]) for r in res["rows"]}
+    for stat in ("margin", "entropy"):
+        assert {(f"statistic_{stat}", e) for e in ("E1_contrast", f"Delta({HI})",
+                                                   "E2_field_contrast")} <= got
+    arm = next(iter(res["arms"].values()))
+    agree = arm["statistic"]["margin"]["winner_agreement"]
+    assert agree["1"] == 1.0 and 0.0 < agree[str(HI)] < 1.0
+    # entropy = 1 - margin ranks exactly as margin: the same rows
+    by = {(r["control"], r["effect"]): r["with"]["value"] for r in res["rows"]}
+    assert by[("statistic_margin", "E1_contrast")] == by[("statistic_entropy", "E1_contrast")]
+
+
 def test_cli_precision_on_identical_traces_differs_by_nothing(tmp_path):
     _run("scripts/run_controls.py", "--traces", "sim-design:noisy,n_docs=30",
          "--precision-trace", "sim-design:noisy,n_docs=30", "--controls", "precision",

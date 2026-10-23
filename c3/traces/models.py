@@ -113,6 +113,19 @@ KNOWN_MODELS = {
         # recorded; detect_variant() checks before it is used.
         "local_hint": "/share1/ishita/llada_model",
     },
+    # Plan v2 T13 ablation 8, the third model (E1 and E2 only): LLaDA-1.5 is
+    # LLaDA-8B-Instruct further trained with VRPO, same architecture and tokenizer
+    # (config.json at this revision, read 2026-10-20: mask 126336, vocab 126464,
+    # 32 layers, d_model 4096).  Chat-formatted, so it runs on the tasks.
+    "llada-1.5": {
+        "path": "GSAI-ML/LLaDA-1.5",
+        "revision": "84346fd91ba60252d260022201ad6fc5a3468fb2",
+        "variant": "instruct",
+        "mask_token_id": 126336,
+        "vocab_size": 126464,
+        "logit_shift": 0,
+        "local_hint": None,
+    },
     "dream-7b-base": {
         "path": "Dream-org/Dream-v0-Base-7B",
         "revision": "6572adb5535263e4d1a337b56942ba48b6dee2a9",

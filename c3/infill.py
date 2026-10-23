@@ -96,8 +96,12 @@ class StepLog:
         return cls({k: [] for k in ("doc_id", "state_id", "step", "position", "ell", "conf",
                                     "entropy", "agree", "n_masked", "mask_rate", "committed")})
 
-    def add(self, doc_id, state_id, step, positions, stats, ref_tokens, chosen, seq_len):
+    def add(self, doc_id, state_id, step, positions, stats, ref_tokens, chosen, seq_len,
+            n_masked: int | None = None):
+        """``n_masked``: masked positions in the whole sequence (default: the rows given,
+        which differ only when decoding block by block)."""
         n = positions.size
+        n_masked = n if n_masked is None else int(n_masked)
         committed = np.zeros(n, dtype=bool)
         committed[chosen] = True
         c = self.columns
@@ -109,8 +113,8 @@ class StepLog:
         c["conf"].append(np.asarray(stats["conf"], np.float64))
         c["entropy"].append(np.asarray(stats["entropy"], np.float64))
         c["agree"].append((np.asarray(stats["top1"]) == ref_tokens).astype(np.int8))
-        c["n_masked"].append(np.full(n, n, np.int64))
-        c["mask_rate"].append(np.full(n, n / seq_len, np.float64))
+        c["n_masked"].append(np.full(n, n_masked, np.int64))
+        c["mask_rate"].append(np.full(n, n_masked / seq_len, np.float64))
         c["committed"].append(committed)
 
     def frame(self):
@@ -170,9 +174,16 @@ def gap_masks(doc_ids, length: int, span=SPAN, gap: int = 8, rate: float = 0.5,
 
 
 def infill_batch(model, docs, policy, span=SPAN, topk: int = 1, log: StepLog | None = None,
-                 state_base: int = 0, masks: np.ndarray | None = None) -> list[dict]:
+                 state_base: int = 0, masks: np.ndarray | None = None,
+                 block_length: int | None = None) -> list[dict]:
     """Infill every document in ``docs`` (a list of (doc_id, ids)) with ``policy``: the whole
-    ``span``, or with ``masks`` ((n_docs, L) bool, inside ``span``) only those positions."""
+    ``span``, or with ``masks`` ((n_docs, L) bool, inside ``span``) only those positions.
+
+    ``block_length`` (T13 ablation 5) decodes the span block by block, as LLaDA's
+    semi-autoregressive sampler does: block j is span positions a + j*block_length onwards,
+    and the policy chooses only among the masked positions of a document's first block that
+    still has any (``c3.decode.loop.decode`` with ``block_length``).  The state's field
+    features still count every masked position of the sequence."""
     import time
 
     import torch
@@ -197,6 +208,10 @@ def infill_batch(model, docs, policy, span=SPAN, topk: int = 1, log: StepLog | N
         raise ValueError("masks must be (n_docs, L), inside the span, at least one per document")
     X[masks] = mask_id
     region = np.arange(a, b)
+    if block_length is not None and block_length < 1:
+        raise ValueError(f"block_length must be >= 1, got {block_length}")
+    block_of = np.full(L, -1, np.int64)                 # block index of every span position
+    block_of[a:b] = (region - a) // block_length if block_length else 0
     dev = getattr(model, "input_device", None)
     needs_kl = bool(getattr(policy, "needs_kl", False))
     kl_hist = [dict() for _ in range(B)]
@@ -214,11 +229,18 @@ def infill_batch(model, docs, policy, span=SPAN, topk: int = 1, log: StepLog | N
         if dev is not None:
             t = t.to(dev)
         masked = X[rows] == mask_id
+        n_masked = masked.sum(axis=1)
+        eligible = masked
+        if block_length:
+            # each document's first block that still has a masked position
+            active = np.where(masked, block_of[None, :], np.iinfo(np.int64).max).min(axis=1)
+            eligible = masked & (block_of[None, :] == active[:, None])
         with torch.no_grad():
             lg = model.logits(t)
             check_finite_logits(lg, getattr(model, "name", "model"),
                                 getattr(model, "precision", "na"), mask_token_id=mask_id)
-            stats = position_stats(lg, masked, mask_id, true_ids=ref[rows], topk=topk, chunk=1024)
+            stats = position_stats(lg, eligible, mask_id, true_ids=ref[rows], topk=topk,
+                                   chunk=1024)
             if needs_kl:
                 prev = _klass_update(lg, stats, rows, a, mask_id, prev, have_prev, kl_hist)
         cut = np.searchsorted(stats["rows"], np.arange(rows.size + 1))
@@ -227,7 +249,7 @@ def infill_batch(model, docs, policy, span=SPAN, topk: int = 1, log: StepLog | N
             sub = {f: stats[f][s:e] for f in STAT_FIELDS}
             positions = stats["cols"][s:e].astype(np.int64)
             ctx = StepContext(step=step, positions=positions, gen_start=a,
-                              kl_history=kl_hist[r], n_masked_total=e - s, seq_len=L)
+                              kl_history=kl_hist[r], n_masked_total=int(n_masked[i]), seq_len=L)
             order, n_commit = policy.select(sub, ctx)
             n_commit = max(1, min(int(n_commit), e - s))
             chosen = np.asarray(order[:n_commit], dtype=np.int64)
@@ -235,7 +257,7 @@ def infill_batch(model, docs, policy, span=SPAN, topk: int = 1, log: StepLog | N
             tokens = np.asarray(sub["top1"])[chosen]
             if log is not None:
                 log.add(docs[r][0], state_base + int(docs[r][0]) * 1000 + step, step, positions,
-                        sub, ref[r, positions], chosen, L)
+                        sub, ref[r, positions], chosen, L, n_masked=int(n_masked[i]))
             X[r, commit] = tokens
             all_right[r] += int(np.all(tokens == ref[r, commit]))
             n_forward[r] += 1

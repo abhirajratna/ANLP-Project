@@ -19,7 +19,8 @@ nearest unmasked token, PC-Sampler's weight as covariates), ``token_type``
 (punctuation / stop-word / content: covariates, and the split by type),
 ``temperature`` (one per mask-rate bin, fitted on the fit half; log-odds and
 softmax, one row each), ``precision``
-(fp16 vs 4-bit on the same documents).  Every row gives the main effect -- E1
+(fp16 vs 4-bit on the same documents), and ``statistic`` (T13 ablation 1, not run
+by default: pools won by the highest margin or lowest entropy instead of ell).  Every row gives the main effect -- E1
 Delta(32) - Delta(1), E2 field(32) - field(1) -- without and with the control,
 and the paired difference, on one resample matrix per document set.
 
@@ -40,7 +41,7 @@ import numpy as np
 
 from c3 import DEFAULT_KNOTS, N_BOOT, N_POOLS, POOL_SIZES
 from c3 import controls as C
-from c3.assemble import arm_labels, frame_from_arrays, position_and_pool_frames
+from c3.assemble import arm_labels, position_and_pool_frames
 from c3.endpoints.e1 import winner_gap
 from c3.provenance import collect as provenance, sha256_file
 from c3.stats import doc_boot_counts, grouped_doc_mean
@@ -62,15 +63,19 @@ def _sim_kw(spec):
     return name, kw
 
 
-def load(spec: str, extra_cols=()):
-    """The trace's scalar columns (and ``extra_cols``), or a simulated trace."""
+def load(spec: str, extra_cols=(), arms=None):
+    """The trace's scalar columns (and ``extra_cols``), or a simulated trace.  With
+    ``arms``, only rows of those arms' mask kinds are read (a 110M or 8B fit half is
+    ~60M rows)."""
     if spec.startswith("sim-design:"):
         from c3.sim.trajectories import simulate_design
         name, kw = _sim_kw(spec)
         return simulate_design(name, **kw), {"source": spec}
     from c3.assemble import read_trace_table, trace_meta
 
-    df = read_trace_table(spec, columns=list(BASE_COLUMNS) + list(extra_cols)).to_pandas()
+    filters = [("mask_kind", "in", sorted({x.split(":")[0] for x in arms}))] if arms else None
+    df = read_trace_table(spec, columns=list(BASE_COLUMNS) + list(extra_cols),
+                          filters=filters).to_pandas()
     for c in ("mask_kind", "policy", "model", "dataset"):
         if c in df.columns:
             df[c] = df[c].astype(str)
@@ -236,9 +241,7 @@ def control_rows(arm, df, fit_docs, est_docs, codes, counts, args, classes=None)
                 T = C.fit_temperatures("logodds", tr.mask_rate, w, ell=tr.ell, agree=tr.agree)
                 conf_t, ell_t = C.apply_temperatures("logodds", T, pos.mask_rate, ell=pos.ell)
             # Same pool memberships (they never look at ell), re-ranked on the tempered ell.
-            pools_t = frame_from_arrays(pos.doc_id, pos.state_id, pos.position, ell_t, pos.agree,
-                                        pool_sizes=POOL_SIZES, n_pools_per_size=N_POOLS,
-                                        seed=args.seed, retain=1, min_state_size=max(POOL_SIZES))
+            pools_t = C.reranked_pools(pos, ell_t, args.seed)
             delta_t = winner_gap(pools_t, pos, conf_t, pos.agree, codes, counts, rep_mask)
             name = f"temperature_{kind}"
             note = f"{kind} temperature per mask-rate bin, fitted on the fit half"
@@ -248,6 +251,29 @@ def control_rows(arm, df, fit_docs, est_docs, codes, counts, args, classes=None)
                                        (float(delta.point[i]), delta.draws[:, i]),
                                        (float(delta_t.point[i]), delta_t.draws[:, i]), n_docs, note))
             extra["temperature"][kind] = {"T": T.tolist(), **kw}
+
+    if "statistic" in args.controls:
+        extra["statistic"] = {}
+        i = int(np.flatnonzero(delta.levels == HI)[0])
+        for stat in args.statistics:
+            if stat not in df.columns:
+                extra["statistic"][stat] = {"skipped": f"no {stat} column in this trace"}
+                continue
+            se = C.statistic_control(pools, pos, C.rank_score(df, stat), fit_mask, rep_mask,
+                                     codes, counts, args.seed, args.knots)
+            name = f"statistic_{stat}"
+            note = (f"pools won by the {'highest margin' if stat == 'margin' else 'lowest entropy'}"
+                    " instead of the highest ell (same pools); gap = own confidence - correct")
+            rows.append(C.ablation_row(name, "E1_contrast", arm, delta.contrast(HI, LO),
+                                       se.delta.contrast(HI, LO), n_docs, note))
+            rows.append(C.ablation_row(name, f"Delta({HI})", arm,
+                                       (float(delta.point[i]), delta.draws[:, i]),
+                                       (float(se.delta.point[i]), se.delta.draws[:, i]), n_docs, note))
+            rows.append(C.ablation_row(name, "E2_field_contrast", arm, field_pr.contrast(HI, LO),
+                                       se.field.contrast(HI, LO), n_docs,
+                                       note + "; pre-registered calibrators"))
+            extra["statistic"][stat] = {"winner_agreement": se.agreement,
+                                        "delta": se.delta.to_records("delta")}
     return rows, extra
 
 
@@ -281,7 +307,7 @@ def stratified_row(name, arm, strata, delta, pools, pos, rep_mask, codes, counts
 def _vocab_of(df) -> int:
     from c3.traces.models import KNOWN_MODELS
     model = str(df["model"].iloc[0])
-    return {"llada-8b-base": 126464, "llada-8b-instruct": 126464,
+    return {"llada-8b-base": 126464, "llada-8b-instruct": 126464, "llada-1.5": 126464,
             "dream-7b-base": 152064, "dream-7b-instruct": 152064}.get(model) or \
         int(KNOWN_MODELS.get(model, {}).get("vocab_size", 0)) or 50258
 
@@ -386,7 +412,10 @@ def main() -> int:
     ap.add_argument("--precision-trace", default=None, help="the 4-bit trace for --controls precision")
     ap.add_argument("--controls", nargs="+",
                     default=["position", "token_type", "temperature"],
-                    choices=["position", "token_type", "temperature", "precision"])
+                    choices=["position", "token_type", "temperature", "precision", "statistic"])
+    ap.add_argument("--statistics", nargs="+", choices=list(C.RANK_STATISTICS),
+                    default=list(C.RANK_STATISTICS),
+                    help="for --controls statistic (T13): rank pools by these instead of ell")
     ap.add_argument("--split", choices=["half", "none"], default="half")
     ap.add_argument("--half", choices=["fit", "report"], default=None)
     ap.add_argument("--manifest", default=None)
@@ -415,7 +444,9 @@ def main() -> int:
 
     extra_cols = (["topk_p", "p_true"] if "temperature" in a.controls and "softmax" in a.temperature
                   else [])
-    df, meta = load(a.traces, extra_cols)
+    if "statistic" in a.controls:
+        extra_cols += ["margin", "entropy"]
+    df, meta = load(a.traces, extra_cols, arms=a.arms)
     if a.exclude_docs:
         from c3.data.contamination import excluded_doc_ids
         drop = excluded_doc_ids(a.exclude_docs)

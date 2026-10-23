@@ -97,6 +97,24 @@ def hash_halves(doc_ids, seed: int = 0) -> np.ndarray:
                     dtype=np.int64)
 
 
+def nested_doc_subsets(doc_ids, sizes, seed: int = 0) -> dict:
+    """{size: sorted ids} with every smaller subset inside every larger one (T13 ablation 3).
+
+    Documents are ordered by a hash of (seed, doc_id) and each subset is a prefix of
+    that order, so a curve over sizes adds documents rather than swapping them, and a
+    document's place does not depend on which other documents are present.  A size
+    above the number of documents is refused.
+    """
+    ids = np.unique(np.asarray(doc_ids, np.int64))
+    order = ids[np.argsort([derive_seed(seed, "nested", str(int(d))) for d in ids], kind="stable")]
+    out = {}
+    for n in sorted(int(s) for s in sizes):
+        if n > ids.size:
+            raise ValueError(f"asked for {n} documents, only {ids.size} available")
+        out[n] = np.sort(order[:n])
+    return out
+
+
 # Per-state covariates the context-aware calibrator may use (plan v2 T6(2)).
 FIELD_FEATURES = ("median_ell", "mask_rate", "log_n_masked", "step")
 

@@ -102,6 +102,51 @@ def test_toy_infill_end_to_end_resumes_and_is_deterministic(calibrated, tmp_path
     assert g["arms"]["pooled"]["n_rows"] == json.loads(onp.read_text())["arms"]["pooled"]["n_rows"]
 
 
+def test_t13_tagged_runs_sit_beside_the_plain_run_in_one_analysis(calibrated, tmp_path):
+    """--cal-tag (another calibrator: ablations 2-3) and --tag with --block-length
+    (ablation 5) label the records, so analyze_infill pairs them with the plain run."""
+    from c3 import recal
+    from c3.frame import PositionFrame
+    import pandas as pd
+
+    d, _ = calibrated
+    iso_dir = tmp_path / "iso"
+    iso_dir.mkdir()
+    df = pd.read_parquet(d / "sim.parquet")
+    df = df[df.mask_kind == "decoder"]
+    recal.save(recal.make("isotonic").fit(PositionFrame.from_frame(df)), iso_dir / "tok.json")
+
+    man = tmp_path / "toy.manifest.json"
+    man.write_text(json.dumps({str(i): 0 for i in range(10)}))
+    grid = tmp_path / "grid.json"
+    grid.write_text(json.dumps({"configs": [{"policy": "topk_conf", "k": k} for k in (1, 2, 4, 8)]
+                                + [{"policy": "c3indep", "alpha": a} for a in (0.1, 0.5, 0.9)]}))
+    common = ["scripts/eval_infill.py", "--model", "toy", "--device", "cpu", "--manifest", man,
+              "--half", "fit", "--configs", grid, "--max-tokens", 64, "--span", 16, 48]
+    plain, iso, blk = tmp_path / "plain", tmp_path / "iso_run", tmp_path / "blk"
+    _run(*common, "--calibrator", d / "cal" / "tok.json", "--out-dir", plain)
+    _run(*common, "--calibrator", iso_dir / "tok.json", "--cal-tag", "isotonic",
+         "--only", "c3indep", "--out-dir", iso)
+    _run(*common, "--calibrator", d / "cal" / "tok.json", "--block-length", 8, "--tag", "b8",
+         "--out-dir", blk)
+    pol = {json.loads(x)["policy"] for x in (iso / "infill.shard0of1.jsonl").read_text().splitlines()}
+    assert pol == {"c3indep@isotonic"}
+    pol = {json.loads(x)["policy"] for x in (blk / "infill.shard0of1.jsonl").read_text().splitlines()}
+    assert pol == {"topk_conf@b8", "c3indep@b8"}
+
+    out = tmp_path / "a.json"
+    _run("scripts/analyze_infill.py", "--runs", plain, iso, blk, "--speeds", 2, 4, "--n-boot", 100,
+         "--new", "c3indep@isotonic", "--baselines", "topk_conf",
+         "--pairs", "c3indep@isotonic", "c3indep", "topk_conf@b8", "topk_conf", "--out", out)
+    res = json.loads(out.read_text())
+    assert {"c3indep@isotonic-c3indep", "topk_conf@b8-topk_conf"} <= set(res["secondary"])
+    assert res["n_configs"] == 7 + 3 + 7
+    # blocks of 8 with top-8 commit one block per forward pass: same speed as whole-span top-8
+    tps = {(c["policy"], c["k"]): c["tokens_per_step"] for c in res["curves"]}
+    assert tps[("topk_conf@b8", 8.0)] == tps[("topk_conf", 8.0)] == 8.0
+    assert {c["policy"] for c in res["coverage"]} == {"c3indep", "c3indep@isotonic", "c3indep@b8"}
+
+
 def test_the_report_half_of_the_frozen_split_is_refused(tmp_path):
     man = tmp_path / "split_manifest.json"
     man.write_text(json.dumps({str(i): i % 2 for i in range(8)}))

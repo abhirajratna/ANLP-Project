@@ -38,6 +38,7 @@ import numpy as np
 
 from c3.infill import (HALVES, SPAN, StepLog, build_policy, config_id, config_key, infill_batch,
                        gap_masks, load_configs, scatter_masks, select_docs, summarise_tokens)
+from c3.decode.policies import CALIBRATED
 from c3.provenance import collect as provenance, sha256_file
 from c3.util import require_report_ok
 
@@ -96,8 +97,15 @@ def main() -> int:
     ap.add_argument("--configs", required=True, help="knob grid JSON (c3.infill.load_configs)")
     ap.add_argument("--only", nargs="*", default=None,
                     help="run only these policies of the grid (names, e.g. topk_conf c3set)")
-    ap.add_argument("--calibrator", default=None, help="token calibrator JSON (tok.json)")
+    ap.add_argument("--calibrator", default=None,
+                    help="token calibrator JSON (tok.json, or any c3.recal method)")
     ap.add_argument("--set-calibrator", default=None, help="set calibrator JSON (set.json)")
+    ap.add_argument("--cal-tag", default=None,
+                    help="label the calibrated policies' records <policy>@<tag> (T13: C3 under "
+                         "several calibrators in one analysis); baselines are unchanged")
+    ap.add_argument("--tag", default=None,
+                    help="label every policy's records <policy>@<tag> (T13: the same grid under "
+                         "another decoding setting, e.g. --block-length, paired with the plain run)")
     ap.add_argument("--unigram-docs", default=None,
                     help="background text for PC-Sampler's p_D (reserve docs; never scored)")
     ap.add_argument("--max-tokens", type=int, default=256)
@@ -108,6 +116,9 @@ def main() -> int:
     ap.add_argument("--gap-len", type=int, default=None,
                     help="with --mask-rate: hide contiguous gaps of this many tokens "
                          "(c3.infill.gap_masks) instead of scattered positions")
+    ap.add_argument("--block-length", type=int, default=None,
+                    help="decode the span block by block (T13 ablation 5; LLaDA's default is 32); "
+                         "default: the whole span at once")
     ap.add_argument("--shard", type=int, default=0)
     ap.add_argument("--num-shards", type=int, default=1)
     ap.add_argument("--limit", type=int, default=0, help="first N documents of the half (0 = all)")
@@ -138,8 +149,8 @@ def main() -> int:
         configs = [c for c in configs if c["policy"] in set(a.only)]
     tok = setcal = log_freq = None
     if a.calibrator:
-        from c3.calibrators import ContextLogistic
-        tok = ContextLogistic.load(a.calibrator)
+        from c3 import recal
+        tok = recal.load(a.calibrator)
     if a.set_calibrator:
         from c3.setcal import SetCalibrator
         setcal = SetCalibrator.load(a.set_calibrator)
@@ -159,6 +170,7 @@ def main() -> int:
     rec_path = out / f"{stem}.jsonl"
     done = done_pairs(rec_path)
     meta = {"label": a.label, "half": a.half, "span": list(span), "mask_rate": a.mask_rate, "gap_len": a.gap_len,
+            "block_length": a.block_length,
             "shard": a.shard,
             "num_shards": a.num_shards, "n_docs": len(docs), "docs_missing_or_short": missing,
             "doc_ids": [d for d, _ in docs], "model": a.model, "precision": a.precision,
@@ -168,7 +180,7 @@ def main() -> int:
             "docs_sha256": sha256_file(a.docs) if a.docs else None,
             "configs": configs, "configs_path": a.configs, "configs_sha256": sha256_file(a.configs),
             "calibrator": a.calibrator, "calibrator_sha256": sha256_file(a.calibrator) if a.calibrator else None,
-            "set_calibrator": a.set_calibrator,
+            "cal_tag": a.cal_tag, "tag": a.tag, "set_calibrator": a.set_calibrator,
             "set_calibrator_sha256": sha256_file(a.set_calibrator) if a.set_calibrator else None,
             "pc_sampler_variant": "full" if log_freq is not None else "position-only",
             "batch_size": a.batch_size, "deterministic": det, "provenance": provenance()}
@@ -186,8 +198,12 @@ def main() -> int:
     t_all = time.time()
     with rec_path.open("a") as fh:
         for cfg in configs:
-            key = config_key(cfg)
             policy = build_policy(cfg, tok, setcal, log_freq)
+            if a.cal_tag and cfg["policy"] in CALIBRATED:
+                cfg = {**cfg, "policy": f"{cfg['policy']}@{a.cal_tag}"}
+            elif a.tag:
+                cfg = {**cfg, "policy": f"{cfg['policy']}@{a.tag}"}
+            key = config_key(cfg)
             t0, n_new = time.time(), 0
             for bi, batch in enumerate(batches):
                 if all((key, d) in done for d, _ in batch):
@@ -203,7 +219,8 @@ def main() -> int:
                 else:
                     masks = scatter_masks(ids_b, L_b, span, a.mask_rate)
                 rows = infill_batch(model, batch, policy, span=span, log=log, masks=masks,
-                                    state_base=config_id(cfg) * 10_000_000)
+                                    state_base=config_id(cfg) * 10_000_000,
+                                    block_length=a.block_length)
                 if scorer is not None:
                     seqs = np.stack([ids for _, ids in batch])
                     seqs[:, span[0]:span[1]] = np.stack([r["tokens"] for r in rows])  # span slice

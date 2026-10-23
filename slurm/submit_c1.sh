@@ -6,6 +6,8 @@
 #   bash slurm/submit_c1.sh main [a b c d]   # (a)-(d), in priority order (default all)
 #   bash slurm/submit_c1.sh timesplit        # (e), needs corpus/timesplit_docs.jsonl
 #   bash slurm/submit_c1.sh precision        # (f) T8: LLaDA-8B-Base 4-bit, 200 documents
+#   bash slurm/submit_c1.sh third            # T13: LLaDA-1.5 on GSM8K (C3_LIMIT=5: smoke)
+#   bash slurm/submit_c1.sh long             # T13: LLaDA-8B-Base at 256/512/1,024 tokens
 #   bash slurm/submit_c1.sh floor dream-7b-base   # the T1 floor for Dream (LLaDA's is in t2_pilot)
 #   bash slurm/submit_c1.sh merge <run> [gpus-per-task]
 #   DRY_RUN=1 bash slurm/submit_c1.sh main   # print the sbatch lines, submit nothing
@@ -123,6 +125,25 @@ precision)
     echo "a6c4ddcfdff39f58ad24f2eadb3df6e0aba2e0b36af7f54370611d5c41a35590  $D" | sha256sum -c --quiet \
         || { echo "[c1] FATAL: precision_docs.jsonl hash mismatch"; exit 1; }
     trace c1t8-llada-base-4bit 1 gpu:1 "C3_PRECISION=4bit,C3_MODEL=llada-8b-base,C3_DOCS=$D,C3_EXTRA_ARGS=$EXTRA"
+    ;;
+third)
+    # T13 ablation 8: the third model, LLaDA-1.5, for E1 and E2 only, on GSM8K as the
+    # LLaDA-Instruct run (b) (same design, cap and split; LLaDA's floor, deviations item 4).
+    # C3_LIMIT=5 for a smoke run first.
+    T="$PERSIST/corpus/tasks"
+    need "$T/gsm8k_test.jsonl"
+    trace "c1t13-llada15-gsm8k${C3_LIMIT:+-smoke}" 1 gpu:2 "$FP16,C3_MODEL=llada-1.5,C3_TASK=gsm8k${C3_LIMIT:+,C3_LIMIT=$C3_LIMIT},C3_EXTRA_ARGS=$EXTRA $TASK_CAP --task-jsonl $T/gsm8k_test.jsonl"
+    ;;
+long)
+    # T13 ablation 4: LLaDA-8B-Base on the same 100 fit-half documents at 256, 512 and
+    # 1,024 tokens (scripts/make_long_subset.py), uniform masks and the k = 4 decoder only
+    # (the pre-registered E1 arms; the full design at 1,024 tokens is ~4x the passes).
+    D="$PERSIST/corpus/long_docs.jsonl"
+    need "$D"
+    echo "[c1] long-document corpus sha256 $(sha256sum "$D" | cut -d' ' -f1)"
+    for L in ${C3_LENGTHS:-256 512 1024}; do
+        trace "c1t13-long$L-llada" 1 gpu:2 "$FP16,C3_MODEL=llada-8b-base,C3_DOCS=$D,C3_EXTRA_ARGS=$EXTRA --max-tokens $L --decoder-k 4 --no-uniform-matched"
+    done
     ;;
 floor)
     # The non-determinism floor (plan v2 T1 step 4) for a model other than LLaDA-8B-Base,

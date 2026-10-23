@@ -209,3 +209,21 @@ def test_analyze_traces_end_to_end(tmp_path):
              if line.startswith("\\newcommand")]
     assert names and not any(ch.isdigit() for n in names for ch in n)
     assert (out / "fig_gap_uniform.png").exists()
+
+
+def test_winner_gap_leaves_the_callers_mask_alone():
+    from c3 import POOL_SIZES
+    from c3.assemble import position_and_pool_frames
+    from c3.endpoints.e1 import winner_gap
+    from c3.sim.trajectories import simulate_design
+    from c3.stats import doc_boot_counts
+
+    df = simulate_design("noisy", n_docs=20, ks=(4,), seed=0)
+    df = df[df.mask_kind == "uniform"].reset_index(drop=True)
+    pos, pools = position_and_pool_frames(df, pool_sizes=POOL_SIZES, seed=0, retain=1,
+                                          min_state_size=max(POOL_SIZES))
+    mask = pos.doc_id % 2 == 1
+    before = mask.copy()
+    codes = np.unique(pos.doc_id[mask])
+    winner_gap(pools, pos, pos.conf, pos.agree, codes, doc_boot_counts(codes.size, 20, 0), mask)
+    assert np.array_equal(mask, before)

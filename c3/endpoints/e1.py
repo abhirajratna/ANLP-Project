@@ -69,7 +69,8 @@ def winner_gap(pools: AnalysisFrame, pos: PositionFrame, q: np.ndarray, target: 
     if exact_m1:
         keep = m != 1
         vals, m, weights, doc_ids = vals[keep], m[keep], weights[keep], doc_ids[keep]
-        sel = np.ones(len(pos), dtype=bool) if pos_mask is None else np.asarray(pos_mask, bool)
+        # a copy: the in-place restriction below must not reach the caller's mask
+        sel = np.ones(len(pos), dtype=bool) if pos_mask is None else np.array(pos_mask, bool)
         # Only states that contributed pools contribute to m=1, so every m
         # averages over the same states.
         states_in_pools = np.unique(pools.state_id)
