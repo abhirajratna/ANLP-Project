@@ -1,6 +1,6 @@
 ---
 member: ayush
-updated: 2026-10-23T13:14:29Z
-branch: collab-setup
+updated: 2026-10-23T13:43:33Z
+branch: ayush/t12-scoring
 ---
-ayush: T12 scoring module (ayush/t12-scoring), then paper/ skeleton + reviews of #7, #6
+ayush: T12 scoring PR #14 open (needs review); next paper/ skeleton, reviews of #7, #6
