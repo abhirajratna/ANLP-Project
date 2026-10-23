@@ -1,6 +1,6 @@
 ---
 member: parth
-updated: 2026-10-23T07:43:56Z
+updated: 2026-10-23T13:34:08Z
 branch: parth/t12-driver
 ---
-T11 draft PR #6 (C3a + calibrator fit; calibrator waits on the 8B read grant); T12 driver draft PR #7 (completions + speed; accuracy via Ayush's module). Next: Ada smoke run of the driver
+Working on: PR #6/#7 review fixes (ojas's agent), few-shot prompt for the Sun sanity check, launch scripts (Jarvis, Ada sbatch for T12 + C3a fit). T12 analysis waits on ayush's scorer
