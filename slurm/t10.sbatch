@@ -17,14 +17,19 @@
 #     sbatch --export=ALL,C3_T10_RUN=train110m-v3 slurm/t10.sbatch
 #     C3_T10_ARGS="--n-docs 5 --probe-limit 20 --probe-ks 2 --n-boot 200" \
 #         sbatch --export=ALL,C3_T10_RUN=smoke,C3_T10_PROBES=ft110m-v3-visible slurm/t10.sbatch
+#     sbatch --gres=gpu:2 --time=04:00:00 \
+#         --export=ALL,C3_T10_RUN=c1-design,C3_T10_MODEL=llada-8b-base slurm/t10.sbatch
 #
 # The base checkpoint (C3_T10_CKPT_REMOTE) and each probe model's
 # /share1/$USER/probe/<tag>/final.pt are pulled to node SSD through $C3_LOGIN_HOST
-# (/share1 is not mounted here); the corpus is read from /home2.  Results go to
-# artifacts/c2/ in the checkout ($C3_REPO; commit them).
+# (/share1 is not mounted here); the corpus is read from /home2.  An 8B model
+# (C3_T10_MODEL) runs real text only, as in the C1 sweep: fp16 split over two cards
+# (C3_MAX_MEMORY, devices separated by ';'), weights staged by slurm/stage_model.sh.
+# Results go to artifacts/c2/ in the checkout ($C3_REPO; commit them).
 set -euo pipefail
 REPO_DIR="${C3_REPO:-/home2/$USER/c3}"
 RUN="${C3_T10_RUN:?set C3_T10_RUN, e.g. train110m-v3}"
+MODEL="${C3_T10_MODEL:-local-110m}"
 CK_REMOTE="${C3_T10_CKPT_REMOTE:-/share1/$USER/v2/train110m-v3/final.pt}"
 PROBES="${C3_T10_PROBES-ft110m-v3-visible ft110m-v3}"     # set it empty for real text only
 SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=accept-new"
@@ -44,18 +49,32 @@ pull() {
         || { echo "[t10] FATAL: could not pull $1"; exit 1; }
 }
 mkdir -p "$C3_SCRATCH/t10"
-CK="$C3_SCRATCH/t10/$(basename "$(dirname "$CK_REMOTE")").pt"
-pull "$CK_REMOTE" "$CK"
 ARGS=()
-for tag in $PROBES; do
-    pull "/share1/$USER/probe/$tag/final.pt" "$C3_SCRATCH/t10/$tag.pt"
-    ARGS+=(--probe "$tag=$C3_SCRATCH/t10/$tag.pt")
-done
-echo "[t10] $RUN: $CK_REMOTE, probes [${PROBES}] on $(hostname -s), commit $C3_GIT_COMMIT"
+if [ "$MODEL" = local-110m ]; then
+    PRECISION=fp32
+    SOURCE="$CK_REMOTE"
+    CK="$C3_SCRATCH/t10/$(basename "$(dirname "$CK_REMOTE")").pt"
+    pull "$CK_REMOTE" "$CK"
+    ARGS+=(--model-path "$CK" --precision "$PRECISION" --batch-size "${C3_BATCH_SIZE:-32}")
+    for tag in $PROBES; do
+        pull "/share1/$USER/probe/$tag/final.pt" "$C3_SCRATCH/t10/$tag.pt"
+        ARGS+=(--probe "$tag=$C3_SCRATCH/t10/$tag.pt")
+    done
+else
+    PRECISION="${C3_PRECISION:-fp16}"
+    PROBES=""                                   # the probe models are 110M fine-tunes
+    source "$REPO_DIR/slurm/stage_model.sh"     # MODEL -> MODEL_PATH_ARG
+    SOURCE="${MODEL_PATH_ARG[*]:-hub revision}"
+    MAXMEM="${C3_MAX_MEMORY:-0=9GiB;1=9GiB}"
+    ARGS+=(${MODEL_PATH_ARG[@]+"${MODEL_PATH_ARG[@]}"} --precision "$PRECISION"
+           --device-map auto --max-memory "${MAXMEM//;/,}" --batch-size "${C3_BATCH_SIZE:-4}")
+fi
+OUT="artifacts/c2/t10_${MODEL}_${PRECISION}_$RUN.json"
+echo "[t10] $RUN: $MODEL $PRECISION ($SOURCE), probes [${PROBES}] on $(hostname -s), commit $C3_GIT_COMMIT"
 
-"$C3_PY" scripts/run_t10.py --model local-110m --model-path "$CK" --precision fp32 \
-    --corpus "$CORPUS" --run "$RUN" --out-dir artifacts/c2 ${ARGS[@]+"${ARGS[@]}"} ${C3_T10_ARGS:-}
+"$C3_PY" scripts/run_t10.py --model "$MODEL" --corpus "$CORPUS" --run "$RUN" \
+    --out-dir artifacts/c2 "${ARGS[@]}" ${C3_T10_ARGS:-}
 
 mkdir -p logs
-echo "$(date +%F_%T) t10=${SLURM_JOB_ID:-?} $RUN (${CK_REMOTE}; probes [${PROBES}]; args [${C3_T10_ARGS:-}]) -> artifacts/c2/t10_local-110m_fp32_$RUN.json; commit $C3_GIT_COMMIT" >> logs/t3_jobs.txt
-echo "[t10] done: artifacts/c2/t10_local-110m_fp32_$RUN.json -- commit it"
+echo "$(date +%F_%T) t10=${SLURM_JOB_ID:-?} $RUN ($MODEL $PRECISION, $SOURCE; probes [${PROBES}]; args [${C3_T10_ARGS:-}]) -> $OUT; commit $C3_GIT_COMMIT" >> logs/t3_jobs.txt
+echo "[t10] done: $OUT -- commit it"
