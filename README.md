@@ -27,8 +27,8 @@ The Mid-submission report is in (documents/DuckDuckDuckGoose-Mid.pdf)
 
 The measurement instrument for C1 and C2, the Stage 0 pilot and its written gate,
 and the 110M training stack — everything the mid submission needs to demonstrate
-as progress. The write-up itself is not here and must be written by hand: course
-guidelines allow AI for implementation and code but **not** for generating reports.
+as progress. The write-up itself is not here. The course has allowed AI-written
+reports since 30 Sep, so agents may write it.
 
 ```
 c3/
