@@ -97,7 +97,7 @@ def load(path: Path):
 
 def rel(path: Path) -> str:
     p = Path(path).resolve()
-    return str(p.relative_to(ROOT)) if p.is_relative_to(ROOT) else str(p)
+    return p.relative_to(ROOT).as_posix() if p.is_relative_to(ROOT) else p.as_posix()   # '/' on every OS
 
 
 def last_val(history: Path) -> dict:
