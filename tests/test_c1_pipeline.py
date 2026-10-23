@@ -96,6 +96,23 @@ def test_validate_run_passes_a_clean_run_and_fails_a_corrupted_one(tmp_path):
     assert not bad["ok"] and "decoder" in bad["first_bad"][0]["problems"][0]
 
 
+def test_validate_run_accepts_mixed_commits_only_when_asked(tmp_path):
+    stem = _run_two_shards(tmp_path)
+    man = merge(stem, tmp_path / "run.dataset.json")
+    m = json.loads(Path(man).read_text())
+    first = m["git_commit"] if isinstance(m["git_commit"], str) else m["git_commit"][0]
+    m["git_commit"] = [first, "0" * 40]                 # shards collected at two commits
+    Path(man).write_text(json.dumps(m))
+    out = tmp_path / "c1" / "run.json"
+    cmd = [sys.executable, "scripts/validate_run.py", "--dataset", man, "--run", "run", "--out", out]
+    assert subprocess.run(cmd, cwd=ROOT, capture_output=True).returncode == 1
+    assert not json.loads(out.read_text())["checks"]["one_identity_across_shards"]["ok"]
+    r = subprocess.run([*cmd, "--allow-mixed-commits"], cwd=ROOT, capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+    check = json.loads(out.read_text())["checks"]["one_identity_across_shards"]
+    assert check["ok"] and check["mixed_commits_allowed"] and len(check["commits"]) == 2
+
+
 class _OverflowToy(ToyDiffusionLM):
     """Overflows (inf logits) whenever document 2's first token is visible."""
 
