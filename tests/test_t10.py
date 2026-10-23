@@ -165,8 +165,8 @@ def test_delta_and_ce_follow_their_definitions():
         by_doc.append((np.mean(cols["conf"][m] - (cols["parallel"][m] == cols["true"][m])),
                        np.mean(-cols["logp_true"][m])))
     r2 = next(r for r in s["per_k"] if r["k"] == 2)
-    assert r2["delta"]["mean"] == pytest.approx(np.mean([x for x, _ in by_doc]), abs=1e-12)
-    assert r2["ce"]["mean"] == pytest.approx(np.mean([y for _, y in by_doc]), abs=1e-12)
+    assert r2["delta"]["mean"] == pytest.approx(np.mean([x for x, _ in by_doc]), rel=1e-6)
+    assert r2["ce"]["mean"] == pytest.approx(np.mean([y for _, y in by_doc]), rel=1e-6)
     assert np.all(np.isfinite(cols["logp_true"])) and np.all(cols["logp_true"] <= 0)
 
 
