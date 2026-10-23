@@ -1,0 +1,119 @@
+{
+  "note": "run diagnostics for the C1 sweep, not results: no endpoint is computed here",
+  "dataset": "/ssd_scratch/ojas.k/merge/timesplit-110m-v3/timesplit-110m-v3.dataset.json",
+  "dataset_sha256": "0c17b77f6de73d8191c3843fc5b1c842888c9e385f2e7eaa52682abead580581",
+  "summary": {
+    "run": "timesplit-110m-v3",
+    "model": "local-110m",
+    "variant": "base",
+    "precision": "fp32",
+    "dataset": "timesplit",
+    "revision": "53f70713a312b3b2",
+    "device_map": null,
+    "documents": 500,
+    "rows": 30208673,
+    "forward_passes": 79500,
+    "num_shards": 1,
+    "collection_seconds_total": 2826.634276151657,
+    "collection_seconds_longest_shard": 2826.634276151657,
+    "gpu_hours": 0.7851761878199047,
+    "passes_per_second": 28.12532228549775,
+    "docs_per_hour_per_task": 636.7997498603264,
+    "design": {
+      "mask_rates": [
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        0.6,
+        0.7,
+        0.8,
+        0.9
+      ],
+      "masks_per_rate": 2,
+      "decoder_k": [
+        2,
+        4,
+        8
+      ],
+      "include_uniform_matched": true,
+      "topk": 20,
+      "batch_size": 8
+    },
+    "gpus_per_task": 1
+  },
+  "checks": {
+    "every_document_present": {
+      "ok": true,
+      "n_docs": 500,
+      "n_expected": 500,
+      "excluded_too_long": [],
+      "max_doc_tokens": null,
+      "n_corpus": 500,
+      "dropped_by_length_filter": 0
+    },
+    "rows_per_document": {
+      "ok": true,
+      "n_bad": 0,
+      "first_bad": [],
+      "mean_rows_per_doc": 60417.346,
+      "uniform_count_z": {
+        "mean": 0.04630928837062754,
+        "sd": 0.9619601275166335
+      }
+    },
+    "forward_passes": {
+      "ok": true,
+      "recorded": 79500,
+      "expected": null,
+      "per_doc": 159.0,
+      "note": "closed form needs batch_size 1, this run used 8"
+    },
+    "no_nonfinite_values": {
+      "ok": true,
+      "nonfinite_ell": 0,
+      "nonfinite_conf": 0,
+      "conf_outside_unit": 0,
+      "n_saturated": 5
+    },
+    "no_flagged_nonfinite_passes": {
+      "ok": true,
+      "n_documents_skipped": 0,
+      "doc_ids": [],
+      "errors": [],
+      "note": "documents whose forward passes overflowed (inf/NaN logits) and were left out"
+    },
+    "one_identity_across_shards": {
+      "ok": true,
+      "gpus": [
+        "NVIDIA GeForce RTX 2080 Ti"
+      ],
+      "n_package_sets": 1,
+      "commits": [
+        "26fbe8c9a8beebc152d226aa48b89aad88cb65b0"
+      ],
+      "identity_keys": "config, model, variant, revision, precision, dataset, schema (refused at merge if they differ)"
+    }
+  },
+  "all_ok": true,
+  "provenance": {
+    "git_commit": "19dfac0335d8d3244d0e29f7b6348ba83350d4cc",
+    "git_dirty": false,
+    "python": "3.12.4",
+    "platform": "Linux-5.15.0-194-generic-x86_64-with-glibc2.35",
+    "host": "gnode012",
+    "slurm_job_id": "35850",
+    "packages": {
+      "numpy": "2.5.3",
+      "scipy": "1.18.1",
+      "pandas": "3.0.5",
+      "pyarrow": "25.0.1",
+      "torch": "2.6.0+cu124",
+      "transformers": "4.46.3",
+      "bitsandbytes": "0.50.2",
+      "accelerate": "1.15.0"
+    }
+  },
+  "generated_at": "2026-10-23T07:36:57+00:00"
+}
