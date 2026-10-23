@@ -102,7 +102,8 @@ def test_frozen_config_reads_the_code(tmp_path):
     assert cfg["provenance"]["git_commit"]
 
 
-@pytest.mark.parametrize("path", ["prereg/analysis_commands.sh"])
+@pytest.mark.parametrize("path", ["prereg/analysis_commands.sh", "slurm/prereg_analysis.sbatch",
+                                  "tests/prereg_stub_py.sh"])
 def test_prereg_script_parses(path):
     subprocess.run(["bash", "-n", str(ROOT / path)], check=True)
 

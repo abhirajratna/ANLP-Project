@@ -12,7 +12,8 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SWEEP_SCRIPTS = ["slurm/activate_env.sh", "slurm/stage_model.sh",
-                 "slurm/collect_traces.sbatch", "slurm/build_env.sbatch"]
+                 "slurm/collect_traces.sbatch", "slurm/build_env.sbatch",
+                 "slurm/prereg_analysis.sbatch"]
 
 
 @pytest.mark.parametrize("path", SWEEP_SCRIPTS)
