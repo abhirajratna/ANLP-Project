@@ -39,7 +39,12 @@ def test_fit_reads_only_the_fit_half_and_freezes_a_loadable_calibrator(tmp_path)
     assert rec["split"]["fit_half"] == 0 and "git_commit" in rec["provenance"]
     chk = rec["dev_check"]
     assert chk["n_dev_fit_docs"] + chk["n_dev_eval_docs"] == len(fit_docs)
+    assert rec["n_fit_states"] > 0 and 0.0 <= rec["monotone_share"] <= 1.0
     cal = ContextLogistic.load(out)
+    assert set(cal.feature_ranges) == set(cal.used) == set(rec["feature_quantiles"])
+    for name, r in cal.feature_ranges.items():
+        q = rec["feature_quantiles"][name]
+        assert r["min"] <= q["p05"] <= q["p50"] <= q["p95"] <= r["max"]
     st = {"median_ell": 0.5, "mask_rate": 0.4, "log_n_masked": np.log(20)}
     q = cal.predict_arrays(np.array([-2.0, 0.0, 3.0]), st)
     assert np.all((q > 0) & (q < 1)) and q[0] < q[2]

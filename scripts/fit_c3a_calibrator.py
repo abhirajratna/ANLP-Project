@@ -17,6 +17,15 @@ as every other development analysis): fit on dev-fit, score on dev-eval, against
 raw confidence sigma(ell).  It is a sanity check, not a reported number.  The final
 calibrator is then fitted on every fit-half document and written, with its inputs'
 digests and the provenance stamp, to ``--out`` for ``C3a(alpha, ContextLogistic.load(out))``.
+
+Two diagnostics travel with it.  ``feature_ranges`` (inside the calibrator) is the
+fit-half range of each field feature over the decoder states, so C3a can count, or clamp,
+the decode steps that fall outside it: free-running generation starts from 256 masks,
+while a fit state's region is the reference answer (median ~90 tokens on GSM8K).
+``feature_quantiles`` gives the 5/50/95th percentiles for reporting that shift.
+``monotone_share`` is the share of fit states in which c_hat never decreases with ell; C3a
+ranks by ell and uses c_hat only for the count, so non-monotone states change the count's
+meaning, not the order.
 """
 from __future__ import annotations
 
@@ -80,6 +89,34 @@ def scores(p: np.ndarray, pos: PositionFrame, counts: np.ndarray, codes: np.ndar
     return out
 
 
+def state_features(pos: PositionFrame, names) -> dict:
+    """Each field feature once per state (states are the rows' unit of the fit)."""
+    from c3.calibrators import _features_exact
+
+    X = _features_exact(pos, names)
+    _, first = np.unique(pos.state_id, return_index=True)
+    return {n: X[first, j] for j, n in enumerate(names)}
+
+
+def feature_summary(pos: PositionFrame, names) -> tuple[dict, dict]:
+    """(fit-half range per feature, its 5/50/95th percentiles), over states."""
+    per_state = state_features(pos, names)
+    ranges = {n: {"min": float(v.min()), "max": float(v.max())} for n, v in per_state.items()}
+    quants = {n: dict(zip(("p05", "p50", "p95"), map(float, np.percentile(v, [5, 50, 95]))))
+              for n, v in per_state.items()}
+    return ranges, quants
+
+
+def monotone_share(cal: ContextLogistic, pos: PositionFrame) -> float:
+    """Share of states in which c_hat is non-decreasing in ell."""
+    c = cal.predict(pos)
+    order = np.lexsort((pos.ell, pos.state_id))
+    s, cc = pos.state_id[order], c[order]
+    drop = (np.diff(cc) < -1e-12) & (s[1:] == s[:-1])
+    bad = np.unique(s[1:][drop])
+    return float(1.0 - bad.size / np.unique(s).size)
+
+
 def dev_check(pos: PositionFrame, features, knots: int, n_boot: int, seed: int) -> dict:
     """Fit on dev-fit, score on dev-eval: calibrated against raw sigma(ell)."""
     docs = np.unique(pos.doc_id)
@@ -130,6 +167,10 @@ def main() -> int:
     cal = ContextLogistic(features=tuple(a.features), n_knots=a.knots).fit(pos, pool_weights(pos))
     if not cal.converged:
         print("[c3a] WARNING: the final fit did not converge", flush=True)
+    cal.feature_ranges, quantiles = feature_summary(pos, cal.used)
+    mono = monotone_share(cal, pos)
+    print(f"[c3a] c_hat monotone in ell in {mono:.1%} of fit states; feature ranges "
+          f"{json.dumps(cal.feature_ranges)}", flush=True)
     meta = trace_meta(a.traces)
     rec = {
         "what": "C3a calibrator (plan v2 T11), frozen: pi_hat(ell, s) on the decode-time field "
@@ -138,6 +179,8 @@ def main() -> int:
         "features_requested": list(a.features), "arms": list(a.arms),
         "weights": "pool (calibrators.pool_weights)",
         "n_fit_docs": n_docs, "n_fit_positions": int(len(pos)),
+        "n_fit_states": int(np.unique(pos.state_id).size),
+        "feature_quantiles": quantiles, "monotone_share": mono,
         "traces": {"path": a.traces, "sha256": sha256_file(a.traces),
                    **{k: meta.get(k) for k in ("model", "variant", "precision", "dataset",
                                                "git_commit", "revision") if k in meta}},
