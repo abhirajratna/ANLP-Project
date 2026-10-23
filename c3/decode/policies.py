@@ -39,15 +39,13 @@ Definitions follow the papers (checked against the arXiv versions, Sep 2026):
   ``log_freq`` the frequency factor is 1 and only the positional weight remains,
   which is recorded as ``variant = "position-only"``.
 
-C3a (plan v2 T11, this project): commit every eligible position with
-c_hat >= 1 - alpha, and at least one, where c_hat = pi_hat(ell, s) is a context-aware
-calibrator (``c3.calibrators.ContextLogistic``) fitted on fit-half traces.  The
-state s is described by the decode-time field features (``DECODE_FEATURES``),
-computed over every masked position of the generated region as the traces do,
-not only over the active block (``needs_state``; ``c3.decode.loop.decode``).  All
-positions of a state share s, so within a step C3a is a confidence threshold
-whose cut moves with the state: it changes how many tokens are committed, not
-which.
+C3a (plan v2 T11, this project): commit n = #{eligible positions with
+c_hat >= 1 - alpha}, at least one, taking them in the model's own order (ell), where
+c_hat = pi_hat(ell, s) is a context-aware calibrator (``c3.calibrators.ContextLogistic``)
+fitted on fit-half traces.  The state s is described by the decode-time field features
+(``DECODE_FEATURES``), computed over every masked position of the generated region as
+the traces do, not only over the active block (``needs_state``;
+``c3.decode.loop.decode``).  C3a changes how many tokens are committed, not which.
 """
 
 from __future__ import annotations
@@ -168,24 +166,55 @@ class PCSampler:
 
 @dataclass
 class C3a:
+    """Commit the top-n positions by ell, n = #{c_hat >= 1 - alpha} (at least one).
+
+    The ranking is the model's own (ell), as plan v2 defines C3a: the calibrator only
+    sets how many are committed.  With ell x feature interactions c_hat need not be
+    monotone in ell, so ranking by c_hat could change which tokens go first.
+
+    The calibrator's ``feature_ranges`` (the fit-half range of each field feature,
+    written by ``scripts/fit_c3a_calibrator.py``) mark the steps whose state lies
+    outside the fitted range; ``clamp`` moves those features to the range's edge
+    first.  With ``log`` a list, every step appends its state, n_commit and the
+    out-of-range features, so the shift between fit states and decode states can be
+    reported.
+    """
+
     alpha: float
     calibrator: object = field(default=None, repr=False)
+    clamp: bool = False
+    log: list | None = field(default=None, repr=False)
     name: str = "c3a"
     needs_state: bool = True
 
-    def calibrated(self, stats, ctx) -> np.ndarray:
-        """c_hat for every row, from its ell and the state's field features."""
-        if self.calibrator is None:
-            raise ValueError("C3a needs a fitted calibrator")
+    def state_features(self, ctx) -> tuple[dict, list]:
+        """(the features the calibrator is given, the names outside its fit range)."""
         if ctx.state is None:
             raise ValueError("C3a needs the state's field features (StepContext.state)")
+        st = dict(ctx.state)
+        outside = []
+        for name, r in (getattr(self.calibrator, "feature_ranges", None) or {}).items():
+            if name in st and not r["min"] <= st[name] <= r["max"]:
+                outside.append(name)
+                if self.clamp:
+                    st[name] = min(max(st[name], r["min"]), r["max"])
+        return st, outside
+
+    def calibrated(self, stats, ctx) -> tuple[np.ndarray, list]:
+        """(c_hat for every row, the state features outside the fit range)."""
+        if self.calibrator is None:
+            raise ValueError("C3a needs a fitted calibrator")
+        st, outside = self.state_features(ctx)
         return self.calibrator.predict_arrays(np.asarray(stats["ell"], dtype=np.float64),
-                                              ctx.state)
+                                              st), outside
 
     def select(self, stats, ctx):
-        c = self.calibrated(stats, ctx)
-        order = _stable_order(c)
-        return order, max(1, int(np.sum(c >= 1.0 - self.alpha)))
+        c, outside = self.calibrated(stats, ctx)
+        n = max(1, int(np.sum(c >= 1.0 - self.alpha)))
+        if self.log is not None:
+            self.log.append({"step": int(ctx.step), **ctx.state, "n_eligible": int(c.size),
+                             "n_commit": n, "outside": outside})
+        return _stable_order(stats["ell"]), n
 
 
 POLICIES = {"topk_conf": TopKConfidence, "margin": Margin, "threshold": Threshold,

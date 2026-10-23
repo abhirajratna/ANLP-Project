@@ -9,7 +9,8 @@
 - [ ] **Final submission — due Sat 31 Oct 2026** (submit by Fri 30 Oct) ← 57 days
 
 > ⚠️ Guidelines: schedule is **strict, no extensions**. Every team member must make
-> every submission. AI is allowed for code, **not** for report writing. ACL style
+> every submission. AI is allowed for code, **not** for report writing (changed 30 Sep:
+> reports may be AI-written). ACL style
 > (LaTeX template from the course) for all submissions.
 
 ---
@@ -138,7 +139,7 @@ writing runs in parallel with experiments instead of only at the end.
 - [ ] Weekly team sync: what ran, what failed, who owns what next
 - [ ] Experiment log (WandB or a `logs/` dir): seed, model, precision, mask type, doc split — every run
 - [ ] Keep `final/` LaTeX skeleton updated weekly; never leave writing to the last week
-- [ ] Write-up discipline: human-written text only (AI for code/implementation is fine, for reports it is not)
+- [x] ~~Write-up discipline: human-written text only~~ (dropped 30 Sep: agents may write the report)
 
 ## 5. Top risks & buffers
 1. **110M training is on the critical path.** Start in W1, not W3. If it isn't usable by W4–W5, run C1 on the two 8B models first and add the 110M arm as soon as it's ready (level-estimation claims rest on it, so this delay matters most for C1 levels, not gradients).

@@ -129,19 +129,8 @@ def test_sampling_is_reproducible_by_seed():
 
 
 # --------------------------------------------------------------------------- #
-# C3a (plan v2 T11)
+# C3a in the decode loop (plan v2 T11); the policy alone is in test_c3a_policy.py
 # --------------------------------------------------------------------------- #
-
-def _calibrator():
-    """A context calibrator fitted on simulated decoder states."""
-    from c3.calibrators import DECODE_FEATURES, ContextLogistic
-    from c3.frame import PositionFrame
-    from c3.sim.trajectories import simulate_design
-
-    df = simulate_design("calibrated", n_docs=30, doc_len=64, ks=(4,), matched=False, seed=1)
-    df = df[df["mask_kind"] == "decoder"].reset_index(drop=True)
-    return ContextLogistic(features=DECODE_FEATURES).fit(PositionFrame.from_frame(df))
-
 
 class _StateSpy:
     """Top-1 per step, recording what a policy with ``needs_state`` is given."""
@@ -156,20 +145,14 @@ class _StateSpy:
         return np.argsort(-np.asarray(stats["ell"]), kind="stable"), 1
 
 
-def test_c3a_commits_every_position_above_one_minus_alpha_or_one():
-    from c3.decode.policies import C3a
+class _TopKWithState(TopKConfidence):
+    """Top-k that asks for the state and ignores it."""
 
-    cal = _calibrator()
-    state = {"median_ell": 0.5, "mask_rate": 0.5, "log_n_masked": np.log(16)}
-    stats = {"ell": np.array([4.0, -2.0, 1.0, 6.0])}
-    ctx = StepContext(step=0, positions=np.arange(4), state=state)
-    c = cal.predict_arrays(stats["ell"], state)
-    for alpha in (0.01, 0.2, 0.5, 0.9):
-        order, n = C3a(alpha, cal).select(stats, ctx)
-        assert n == max(1, int(np.sum(c >= 1 - alpha)))
-        assert list(order[:n]) == list(np.argsort(-c, kind="stable")[:n])
-    with pytest.raises(ValueError):
-        C3a(0.1, cal).select(stats, StepContext(step=0, positions=np.arange(4)))
+    needs_state = True
+
+    def select(self, stats, ctx):
+        assert ctx.state is not None
+        return super().select(stats, ctx)
 
 
 def test_state_features_cover_the_whole_masked_region_not_just_the_block():
@@ -191,6 +174,7 @@ def test_state_features_cover_the_whole_masked_region_not_just_the_block():
 
 def test_c3a_decodes_from_one_per_step_to_a_block_per_step():
     from c3.decode.policies import C3a
+    from test_c3a_policy import _calibrator
 
     cal = _calibrator()
     model, _, x = _setup(L=40, prompt=8)
@@ -202,26 +186,10 @@ def test_c3a_decodes_from_one_per_step_to_a_block_per_step():
     assert fast.n_forward == 4                           # everything clears 0: a block per step
 
 
-def test_baselines_get_no_state_and_are_unchanged():
+def test_computing_the_state_changes_no_decision():
     model, _, x = _setup()
-    a = decode(model, x, TopKConfidence(3), block_length=8)
-    b = decode(model, x, TopKConfidence(3), block_length=8)
-    assert np.array_equal(a.tokens, b.tokens) and a.n_forward == b.n_forward
-
-
-def test_calibrator_round_trips_and_predicts_like_the_trace_frame(tmp_path):
-    import json
-
-    from c3.calibrators import ContextLogistic, state_field_features
-    from c3.frame import PositionFrame
-    import pandas as pd
-
-    cal = _calibrator()
-    (tmp_path / "c.json").write_text(json.dumps({"calibrator": cal.to_dict(), "other": 1}))
-    back = ContextLogistic.load(tmp_path / "c.json")
-    # one trace state: 6 masked positions of a 12-position maskable region
-    ell = np.array([2.0, -1.0, 0.3, 3.0, 1.1, -0.2])
-    df = pd.DataFrame({"doc_id": 0, "state_id": 0, "position": np.arange(6), "ell": ell,
-                       "agree": 1, "mask_rate": 6 / 12, "n_masked": 6, "step": 0})
-    st = state_field_features(ell, 6, 12)
-    assert np.allclose(back.predict_arrays(ell, st), cal.predict(PositionFrame.from_frame(df)))
+    plain = decode(model, x, TopKConfidence(3), block_length=8)
+    with_state = decode(model, x, _TopKWithState(3), block_length=8)
+    assert np.array_equal(plain.tokens, with_state.tokens)
+    assert plain.n_forward == with_state.n_forward
+    assert [s.positions.tolist() for s in plain.steps] ==         [s.positions.tolist() for s in with_state.steps]

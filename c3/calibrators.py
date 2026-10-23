@@ -101,6 +101,7 @@ class ContextLogistic:
     intercept: float = 0.0
     beta: np.ndarray | None = None
     converged: bool = False
+    feature_ranges: dict | None = None    # name -> {"min", "max"} over the fit states, if recorded
 
     def _design(self, ell: np.ndarray, X_field: np.ndarray) -> np.ndarray:
         cols = [self.spline.transform(ell)]
@@ -154,10 +155,13 @@ class ContextLogistic:
         return _sigmoid(self.intercept + self._design(ell, X) @ self.beta)
 
     def to_dict(self) -> dict:
-        return {"kind": "context_logistic", "features": list(self.used),
-                "interactions": self.interactions,
-                "knots": self.spline.knots.tolist(), "intercept": self.intercept,
-                "beta": self.beta.tolist(), "converged": self.converged}
+        d = {"kind": "context_logistic", "features": list(self.used),
+             "interactions": self.interactions,
+             "knots": self.spline.knots.tolist(), "intercept": self.intercept,
+             "beta": self.beta.tolist(), "converged": self.converged}
+        if self.feature_ranges is not None:
+            d["feature_ranges"] = self.feature_ranges
+        return d
 
     @classmethod
     def from_dict(cls, d: dict) -> "ContextLogistic":
@@ -167,7 +171,8 @@ class ContextLogistic:
         return cls(features=tuple(d["features"]), n_knots=knots.size,
                    interactions=bool(d["interactions"]), spline=Spline(knots),
                    used=list(d["features"]), intercept=float(d["intercept"]),
-                   beta=np.asarray(d["beta"], dtype=np.float64), converged=bool(d["converged"]))
+                   beta=np.asarray(d["beta"], dtype=np.float64), converged=bool(d["converged"]),
+                   feature_ranges=d.get("feature_ranges"))
 
     @classmethod
     def load(cls, path) -> "ContextLogistic":
