@@ -1,0 +1,2 @@
+{"what": "T12 driver smoke run: one fast configuration, to check the driver end to end on LLaDA-8B-Instruct",
+ "configs": [{"policy": "topk_conf", "k": 8}]}
