@@ -1,6 +1,6 @@
 ---
 member: ojas
-updated: 2026-10-23T10:43:32Z
+updated: 2026-10-23T11:21:01Z
 branch: ojas/110m-c1-arm
 ---
-110M prereg arms in PR #9 (floor 0, both runs validated, dev fit run OK); T10 and the HF trace release in progress
+Building slurm/prereg_analysis.sbatch (110M report-half runner, waits for prereg-v1) + matplotlib on Ada; on ojas/110m-c1-arm
