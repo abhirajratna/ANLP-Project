@@ -1,6 +1,6 @@
 ---
 member: ayush
-updated: 2026-10-22T20:09:15Z
+updated: 2026-10-23T13:02:03Z
 branch: collab-setup
 ---
-Set up team coordination (PR #1, collab-setup); review welcome
+PR #1 merged; reviewing the final plan; next: T12 scoring module (CPU) + paper/ skeleton
