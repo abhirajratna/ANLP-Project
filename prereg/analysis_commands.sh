@@ -58,10 +58,31 @@ ARMS=(
 # other arm (decoder k = 2 and 8, uniform_matched) is reported as exploratory.
 PRIMARY_ARMS=(uniform decoder:topk_conf:k4)
 
+# The runs live under two Ada accounts, and /share1 has no ACLs, so each account runs
+# the arms whose traces it holds: a run missing from TRACES is skipped and named.  The
+# Holm summary needs every arm.  It runs once $OUT/c1/<label>/results.json exists for
+# all of them.  Copy the other account's $OUT/c1/<label> directories in, then re-run
+# with SUMMARY_ONLY=1.
+have() { [ -e "$TRACES/$1/$1.dataset.json" ] || { echo "[prereg] $1 not in TRACES; skipped here"; return 1; }; }
+summarize() {   # Holm across models x datasets for the two primary contrasts; gamma_2..4 within arm
+    local inputs=() missing=() label
+    for row in "${ARMS[@]}"; do
+        read -r label _ <<<"$row"
+        if [ -e "$OUT/c1/$label/results.json" ]; then inputs+=("$label=$OUT/c1/$label"); else missing+=("$label"); fi
+    done
+    if [ ${#missing[@]} -gt 0 ]; then
+        echo "[prereg] Holm summary waits for: ${missing[*]}"
+        return 0
+    fi
+    "$PY" scripts/summarize_c1.py --results "${inputs[@]}" \
+        --primary-arms "${PRIMARY_ARMS[@]}" --out "$OUT/c1/summary"
+}
+if [ "${SUMMARY_ONLY:-0}" = 1 ]; then summarize; exit 0; fi
+
 # ---------------------------------------------------------------- E1, E2, Eq. 2/3
-SUMMARY_INPUTS=()
 for row in "${ARMS[@]}"; do
     read -r LABEL RUN MANIFEST FLOOR DATA <<<"$row"
+    have "$RUN" || continue
     T="$TRACES/$RUN/$RUN.dataset.json"
     COMMON=(--traces "$T" --split half --manifest "$MANIFEST" "${BOOT[@]}" --eq-boot 10000
             --floor "$FLOOR" --n-jobs "$N_JOBS")
@@ -70,7 +91,6 @@ for row in "${ARMS[@]}"; do
     # and without state FE, the native gap; 9 knots.
     "$PY" scripts/analyze_traces.py "${COMMON[@]}" --knots 9 \
         --out "$OUT/c1/$LABEL" --macro-prefix "COne$LABEL"
-    SUMMARY_INPUTS+=("$LABEL=$OUT/c1/$LABEL")
     # Knot sensitivity panel (reported alongside, never instead).
     "$PY" scripts/analyze_traces.py "${COMMON[@]}" --knots 5 --no-figures \
         --out "$OUT/c1/${LABEL}_knots5" --macro-prefix "COne${LABEL}KnotsFive"
@@ -91,9 +111,7 @@ for row in "${ARMS[@]}"; do
     fi
 done
 
-# Holm across models x datasets for the two primary contrasts; gamma_2..4 within arm.
-"$PY" scripts/summarize_c1.py --results "${SUMMARY_INPUTS[@]}" \
-    --primary-arms "${PRIMARY_ARMS[@]}" --out "$OUT/c1/summary"
+summarize
 
 # Time-split set (T4, guaranteed unseen): its own split manifest, written with
 #   python scripts/make_split_manifest.py --docs runs/corpus/t3/timesplit_docs.jsonl \
@@ -116,6 +134,7 @@ done
 # confidence, for every decoder arm; nuisance choices from the fit half.
 for row in "${ARMS[@]}"; do
     read -r LABEL RUN MANIFEST FLOOR DATA <<<"$row"
+    have "$RUN" || continue
     "$PY" scripts/analyze_e3.py --traces "$TRACES/$RUN/$RUN.dataset.json" --split half \
         --half report --manifest "$MANIFEST" "${BOOT[@]}" --knots 9 --n-ell-bins 100 \
         --reference both --out "$OUT/e3/$LABEL" --macro-prefix "EThree$LABEL"
@@ -125,6 +144,7 @@ done
 # Position, token type and temperature on every arm; one ablation table per run.
 for row in "${ARMS[@]}"; do
     read -r LABEL RUN MANIFEST FLOOR DATA <<<"$row"
+    have "$RUN" || continue
     if [ "$DATA" = fineweb ]; then
         SRC=(--docs "$CORPUS")
     else
@@ -138,10 +158,12 @@ for row in "${ARMS[@]}"; do
 done
 # Precision: LLaDA-8B-Base fp16 against 4-bit on the 200 documents of
 # artifacts/t8_precision_docs.json (fit-half documents give the 4-bit calibrators).
-"$PY" scripts/run_controls.py --traces "$TRACES/c1-llada-base/c1-llada-base.dataset.json" \
-    --precision-trace "$TRACES/c1t8-llada-base-4bit/c1t8-llada-base-4bit.dataset.json" \
-    --controls precision --split half --half report --manifest artifacts/split_manifest.json \
-    "${BOOT[@]}" --eq-boot 10000 --n-jobs "$N_JOBS" --knots 9 \
-    --out "$OUT/t8/LladaBasePrecision" --macro-prefix "TEightLladaBasePrecision"
+if have c1-llada-base && have c1t8-llada-base-4bit; then
+    "$PY" scripts/run_controls.py --traces "$TRACES/c1-llada-base/c1-llada-base.dataset.json" \
+        --precision-trace "$TRACES/c1t8-llada-base-4bit/c1t8-llada-base-4bit.dataset.json" \
+        --controls precision --split half --half report --manifest artifacts/split_manifest.json \
+        "${BOOT[@]}" --eq-boot 10000 --n-jobs "$N_JOBS" --knots 9 \
+        --out "$OUT/t8/LladaBasePrecision" --macro-prefix "TEightLladaBasePrecision"
+fi
 
 echo "[prereg] done -> $OUT"
