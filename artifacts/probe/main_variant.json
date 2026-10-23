@@ -1,0 +1,85 @@
+{
+ "task": "T9: which fine-tune is the main variant of the C2 probe results",
+ "rule": {
+  "bar": "a fine-tune qualifies for the main result if its rho marker moves q(f(leader)) at rho = 1 by at least 0.5 (rho_check_<tag>.json: marker_effect_on_q_copy_at_rho1, own marker minus the marker swapped to rho = 0)",
+  "fallback": "if neither qualifies: the lower validation NELBO, both scored under one protocol (val_rescored.json: runs.<tag>.ema.marker_visible.val_nelbo; EMA weights, as in the probe grid, with the marker visible, as at evaluation)",
+  "both_qualify": "not covered by the rule as written; the script stops",
+  "written": [
+   {
+    "where": "artifacts/README.md, the probe/results row (since commit fc38138)",
+    "text": "`rho_check_<tag>.json`: how far the rho marker moves q(f(leader)) at rho=1 (+0.014 and +0.251; the pre-set bar for the main result was 0.5, **not met by either**)"
+   },
+   {
+    "where": "commit fc38138 (14 Oct), message",
+    "text": "neither reaches the 0.5 bar fixed for the main result, and (B) still grows with rho in both. [...] Main-result choice left to the user."
+   },
+   {
+    "where": "documents/final-plan.md, Ojas item 3",
+    "text": "**T9:** pick the main variant by the pre-set rule. That is `ft110m-v3-visible`, whose val NELBO with the marker visible is 0.1751 against 0.1892 (`val_rescored.json`). Then make the crossover figure."
+   }
+  ],
+  "note": "The 0.5 bar is written down (artifacts/README.md, commit fc38138). The fallback, lower validation NELBO, is not stated as a rule in any committed file; documents/final-plan.md applies it with these numbers. It is recorded here as applied. The training logs' NELBO is not comparable between the two: it masks and scores the marker, which ft110m-v3-visible never saw masked (2.21 vs 0.19)."
+ },
+ "candidates": {
+  "ft110m-v3": {
+   "fine_tune": "rho marker masked like any token",
+   "marker": "masked",
+   "fine_tune_tokens": 99984228,
+   "slurm_job": "20751",
+   "checkpoint_sha256": "2597c13ad77936525f5c971083d9c57fde1283f02986f3f1f33da78aef7ec0a8",
+   "probe_weights": "ema",
+   "marker_effect_on_q_copy_at_rho1": 0.013857989017615535,
+   "reaches_bar": false,
+   "val_nelbo_ema_marker_visible": 0.1891769887359402,
+   "val_nelbo_raw_marker_visible": 0.19340894126410216,
+   "val_nelbo_ema_marker_masked_training_log_protocol": 0.18939095551381188
+  },
+  "ft110m-v3-visible": {
+   "fine_tune": "rho marker never masked (visible prefix of 8 tokens)",
+   "marker": "visible",
+   "fine_tune_tokens": 299923840,
+   "slurm_job": "20750",
+   "checkpoint_sha256": "a9bb5c4c28a197a98878ac5f65e2db4d406c5cb2b59100ec1fac8f4adf91f89d",
+   "probe_weights": "ema",
+   "marker_effect_on_q_copy_at_rho1": 0.2512403180510791,
+   "reaches_bar": false,
+   "val_nelbo_ema_marker_visible": 0.17514635360312877,
+   "val_nelbo_raw_marker_visible": 0.17817202348463032,
+   "val_nelbo_ema_marker_masked_training_log_protocol": 2.2087467298723578
+  }
+ },
+ "choice": "ft110m-v3-visible",
+ "other": "ft110m-v3",
+ "decided_by": "fallback: neither reaches the 0.5 bar, so the lower validation NELBO (EMA weights, marker visible)",
+ "summary": "ft110m-v3-visible: marker effect +0.251 vs +0.014 (ft110m-v3), bar 0.5; validation NELBO 0.1751 vs 0.1892 nats/token",
+ "checks": {
+  "rho_check_and_grid_same_checkpoint": true,
+  "val_rescored_marker_masked_reproduces_training_log": true
+ },
+ "sources": {
+  "artifacts/probe/results/val_rescored.json": "92aa30668d1fdf6929197f71e6763afdf496219f2bb1ccc0c986bc06cdab8692",
+  "artifacts/probe/results/rho_check_ft110m-v3.json": "933ec63c12ca7297989872f4dbc40b5861dfadd1a374d959234e5647ff8f2de8",
+  "artifacts/probe/results/grid_ft110m-v3.json": "42f0689accd1cc124528c8e03b1b637744e2aad1aae6e19d931b659d5e411b44",
+  "artifacts/probe/results/history_ft110m-v3.jsonl": "1f9b1a8970ad251642c36fc4f9aa794144181f9d7ab279904165ac41480ee3bf",
+  "artifacts/probe/results/rho_check_ft110m-v3-visible.json": "ee4e76f8996e96d9473ccbac34b36e2e619bfc9ea1c093ef134f18d50c8aaa59",
+  "artifacts/probe/results/grid_ft110m-v3-visible.json": "8a61bd9240bf4e1ffed27a7de034461206a0f18e4defe311a860baddaf945b1a",
+  "artifacts/probe/results/history_ft110m-v3-visible.jsonl": "a40405498ca564ccea04250b0c9ddb72cdbb8fe8eeff62a72a143e27da89b980"
+ },
+ "provenance": {
+  "git_commit": "813e093c6c4972c54ec021a5d410b55df0a21a09",
+  "git_dirty": false,
+  "python": "3.12.12",
+  "platform": "Linux-7.2.9-arch1-1-x86_64-with-glibc2.44",
+  "host": "arch",
+  "slurm_job_id": null,
+  "packages": {
+   "numpy": "2.5.4",
+   "scipy": "1.18.1",
+   "pandas": "3.0.6",
+   "pyarrow": "26.0.0",
+   "torch": "2.14.1+cpu",
+   "transformers": "4.46.3",
+   "matplotlib": "3.11.2"
+  }
+ }
+}
