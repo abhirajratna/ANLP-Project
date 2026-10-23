@@ -49,6 +49,11 @@ def test_k1_is_zero_and_rank1_always_agrees():
     assert s["rank1_always_agrees"]
     assert _per_k(s, "disagreement")[1] == 0.0
     assert s["n_states"] == 4 * 10 and s["n_docs"] == 4
+    below = {r["k"]: r for r in s["per_k_rates_below_1"]}
+    sub = (cols["target_rate"] < 1.0) & (cols["rank"] <= 8)
+    assert below[8]["conf"]["mean"] == pytest.approx(np.mean(
+        [cols["conf"][sub & (cols["doc_id"] == d)].astype(np.float64).mean() for d in range(4)]),
+        abs=1e-12)
 
 
 def _independent(seed=0):
@@ -283,5 +288,6 @@ def test_probe_states_are_the_grids_states(gpt2):
         grid_rows = run_trajectories(model, spec, prepared, k, "confidence", seed=0, batch_size=8)
         mine = probe_disagreement(model, spec, prepared, k, batch_size=8, log=lambda s: None)
         al = align_with_grid_steps(mine, pd.DataFrame(grid_rows))
-        assert al["steps_here"] == al["steps_grid"] == al["steps_identical"] == len(grid_rows)
+        assert al["steps_here"] == al["steps_grid"] == len(grid_rows)
+        assert al["steps_same_state"] == al["steps_bitwise"] == len(grid_rows)
         assert all(0 <= r["n_disagree"] <= r["n_commit"] - 1 for r in mine)

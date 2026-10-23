@@ -63,6 +63,10 @@ ASSUMPTIONS = [
     "(exactly 0 analytically at rho = 0; the float residue would otherwise be ranked).",
     "No torch deterministic settings, as scripts/run_probe.py, so the probe passes are the "
     "grid's; probe batches and length groups are the grid's (--probe-batch-size 32).",
+    "At rate 1.0 every document's input is the all-[MASK] sequence, so the parallel and "
+    "sequential tokens (hence the disagreement) are identical for every document there; only "
+    "Delta and CE vary. per_k therefore weights one shared state 1/10; per_k_rates_below_1 "
+    "gives the same estimands over rates 0.1-0.9 (same resamples).",
 ]
 
 
@@ -239,12 +243,12 @@ def main() -> int:
             print(f"[t10]   k={r['k']}: " + "; ".join(parts), flush=True)
     for tag, rec in record.get("probe_calibration", {}).items():
         al, sp = rec["alignment"], rec["spearman"]
-        print(f"[t10] probe {tag}: states identical to the grid's "
-              f"{al.get('steps_identical')}/{al.get('steps_in_both')} (here {al.get('steps_here')})"
+        print(f"[t10] probe {tag}: {al.get('steps_same_state')}/{al.get('steps_here')} states are "
+              f"the grid's ({al.get('steps_bitwise')} bit for bit)"
               + (f"; Spearman {sp['rho_s']:.3f} [{sp['ci95'][0]:.3f}, {sp['ci95'][1]:.3f}] over "
                  f"{sp['n_cells']} cells" if sp else "; too few cells for a Spearman"), flush=True)
-        if al.get("steps_identical") is not None and al["steps_identical"] != al["steps_here"]:
-            print(f"[t10] WARNING: {tag}: {al['steps_here'] - al['steps_identical']} states differ "
+        if al.get("steps_same_state") is not None and al["steps_same_state"] != al["steps_here"]:
+            print(f"[t10] WARNING: {tag}: {al['steps_here'] - al['steps_same_state']} states differ "
                   f"from the grid's", flush=True)
     print(f"[t10] -> {path}", flush=True)
     return 0

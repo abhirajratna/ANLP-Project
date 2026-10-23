@@ -280,7 +280,10 @@ def run_text(model, docs, rates=T10_RATES, depth: int = max(T10_KS), seed: int =
             x = torch.as_tensor(ids, dtype=torch.long, device=model.input_device)
             with torch.no_grad():
                 lg = model.logits(x)
+                # ~128 MB per float32 temporary: 667 rows at the 110M's vocabulary, 265 at
+                # LLaDA's, which must fit beside 9 GiB of weights on an 11 GB card
                 st = masked_stats(lg, rows, pos, mask_id, truth=truth[rows, pos],
+                                  chunk=max(1, (32 << 20) // int(lg.shape[-1])),
                                   name=model.name, precision=getattr(model, "precision", "na"))
                 del lg
             counter["forward_passes"] += 1
@@ -353,6 +356,12 @@ def summarise_text(cols: dict, ks=T10_KS, b_ks=B_KS, rates=T10_RATES, n_boot: in
     by_k = {m: grouped_doc_mean(v, doc_idx, doc_ids.size, kcol, counts) for m, v in met.items()}
     by_kr = {m: grouped_doc_mean(v, doc_idx, doc_ids.size, kcol * 1000 + rcol, counts)
              for m, v in met.items()}
+    # At rate 1.0 every document's input is the all-[MASK] sequence, so its parallel and
+    # sequential tokens are the same for every document: one state, weighted 1/10 in per_k.
+    tr = np.asarray(cols["target_rate"])[idx]
+    part = tr < 1.0
+    by_k_part = ({m: grouped_doc_mean(v[part], doc_idx[part], doc_ids.size, kcol[part], counts)
+                  for m, v in met.items()} if part.any() and not part.all() else None)
 
     def wanted(m, k):
         # disagreement at k = 1 is kept as a check of the construction (exactly 0)
@@ -364,6 +373,11 @@ def summarise_text(cols: dict, ks=T10_KS, b_ks=B_KS, rates=T10_RATES, n_boot: in
         rec = {"k": int(k), "n_docs": int(by_k["conf"].n_docs[by_k["conf"].index(k)])}
         rec.update({m: _est(gm, k) for m, gm in by_k.items() if wanted(m, k)})
         per_k.append(rec)
+    per_k_part = []
+    for k in (all_k if by_k_part else []):
+        rec = {"k": int(k), "n_docs": int(by_k_part["conf"].n_docs[by_k_part["conf"].index(k)])}
+        rec.update({m: _est(gm, k) for m, gm in by_k_part.items() if wanted(m, k)})
+        per_k_part.append(rec)
     per_k_rate = []
     for k in all_k:
         for r, t in enumerate(rates):
@@ -388,7 +402,8 @@ def summarise_text(cols: dict, ks=T10_KS, b_ks=B_KS, rates=T10_RATES, n_boot: in
     return {"n_docs": int(doc_ids.size), "n_states": int(states),
             "rank1_always_agrees": bool(np.all(np.asarray(cols["parallel"])[rank1]
                                                == np.asarray(cols["sequential"])[rank1])),
-            "per_k": per_k, "per_k_rate": per_k_rate, "contrasts": contrasts,
+            "per_k": per_k, "per_k_rates_below_1": per_k_part, "per_k_rate": per_k_rate,
+            "contrasts": contrasts,
             "realised_rates": rate_real}
 
 
@@ -482,7 +497,7 @@ def probe_disagreement(model, spec, prepared, k: int, batch_size: int = 32,
                     rows.append({
                         "instance_id": p.inst.instance_id, "schema": p.inst.schema,
                         "rho": p.inst.rho, "k": k, "step": step, "n_fields": len(o),
-                        "n_masked": len(sc), "n_commit": len(S), "A": d["A"],
+                        "n_masked": len(sc), "n_commit": len(S), "A": d["A"], "B": d["B"],
                         "n_disagree": int((par != seq[j]).sum()),
                         "n_agree_true_parallel": int((par == true).sum()),
                         "n_agree_true_sequential": int((seq[j] == true).sum()),
@@ -589,29 +604,35 @@ def summarise_probe(rows: list[dict], grid: dict, n_boot: int = N_BOOT, seed: in
     return out
 
 
-def align_with_grid_steps(rows: list[dict], steps) -> dict:
+def align_with_grid_steps(rows: list[dict], steps, tol: float = 1e-4) -> dict:
     """Are these the grid's states?  Compare every (instance, k, step) with steps_<tag>.parquet.
 
-    A step matches when it commits as many fields with the same mean confidence
-    and the same exact (A); the confidence rule's choice is a function of the
-    state, so this is a check that the two runs saw the same states.
+    A step is the same state when it has as many masked fields, commits as many,
+    with the same exact (A), and its (B) and mean committed confidence agree to
+    ``tol`` (relative for (B)).  (A) and (B) depend on which fields are committed,
+    so a different commit set moves them by far more than float noise; but a
+    forward pass over a different batch (``--probe-limit``) moves confidences by
+    ~1e-6, so bit-for-bit agreement is counted separately.
     """
     import pandas as pd
 
-    mine = pd.DataFrame(rows)[["instance_id", "k", "step", "A", "n_commit", "conf_commit_mean"]]
+    keys = ["instance_id", "k", "step"]
+    vals = ["n_masked", "n_commit", "A", "B", "conf_commit_mean"]
+    mine = pd.DataFrame(rows)[keys + vals]
     ks = sorted(mine["k"].unique())
     theirs = steps[(steps["rule"] == "confidence") & steps["k"].isin(ks)
-                   & steps["instance_id"].isin(mine["instance_id"].unique())]
-    theirs = theirs[["instance_id", "k", "step", "A", "n_commit", "conf_commit_mean"]]
-    m = mine.merge(theirs, on=["instance_id", "k", "step"], how="outer", suffixes=("", "_grid"),
-                   indicator=True)
+                   & steps["instance_id"].isin(mine["instance_id"].unique())][keys + vals]
+    m = mine.merge(theirs, on=keys, how="outer", suffixes=("", "_grid"), indicator=True)
     both = m[m["_merge"] == "both"]
     dA = (both["A"] - both["A_grid"]).abs()
-    same = ((both["n_commit"] == both["n_commit_grid"]) & (dA <= ZERO_A)
-            & (both["conf_commit_mean"] == both["conf_commit_mean_grid"]))
+    dB = (both["B"] - both["B_grid"]).abs()
+    dc = (both["conf_commit_mean"] - both["conf_commit_mean_grid"]).abs()
+    same = ((both["n_masked"] == both["n_masked_grid"]) & (both["n_commit"] == both["n_commit_grid"])
+            & (dA <= 1e-9) & (dB <= tol * np.maximum(1.0, both["B_grid"].abs())) & (dc <= tol))
+    bitwise = same & (dA <= ZERO_A) & (dB == 0) & (dc == 0)
     return {"steps_here": int(len(mine)), "steps_grid": int(len(theirs)),
-            "steps_in_both": int(len(both)), "steps_identical": int(same.sum()),
+            "steps_in_both": int(len(both)), "steps_same_state": int(same.sum()),
+            "steps_bitwise": int(bitwise.sum()), "tol": tol,
             "max_abs_A_diff": float(dA.max()) if len(both) else None,
-            "max_abs_conf_commit_diff": float((both["conf_commit_mean"]
-                                               - both["conf_commit_mean_grid"]).abs().max())
-            if len(both) else None}
+            "max_abs_B_diff": float(dB.max()) if len(both) else None,
+            "max_abs_conf_commit_diff": float(dc.max()) if len(both) else None}
