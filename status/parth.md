@@ -1,6 +1,6 @@
 ---
 member: parth
-updated: 2026-10-23T13:34:08Z
+updated: 2026-10-23T13:51:18Z
 branch: parth/t12-driver
 ---
-Working on: PR #6/#7 review fixes (ojas's agent), few-shot prompt for the Sun sanity check, launch scripts (Jarvis, Ada sbatch for T12 + C3a fit). T12 analysis waits on ayush's scorer
+Review fixes pushed: #6 (7f3ad90) and #7 (d9b102b); lm-eval 5-shot sanity prompt + Fast-dLLM sanity grid; launch scripts (Jarvis, Ada t12.sbatch, fit_c3a.sbatch). Waiting on: 8B read grant (T11 fit), ayush's scorer (T12 accuracy), a GPU for the sanity run
