@@ -19,6 +19,7 @@ import validate_run  # noqa: E402
 
 
 def _run_two_shards(tmp_path, n_docs=4, length=24):
+    pytest.importorskip("torch")
     rng = np.random.default_rng(0)
     docs = [Document(i, rng.integers(0, 60, length)) for i in range(n_docs)]
     cfg = CollectConfig(topk=5)
@@ -128,6 +129,7 @@ class _OverflowToy(ToyDiffusionLM):
 
 
 def test_an_overflowing_document_is_skipped_flagged_and_fails_validation(tmp_path):
+    pytest.importorskip("torch")
     rng = np.random.default_rng(0)
     docs = [Document(i, rng.integers(0, 60, 24)) for i in range(4)]
     docs[2].ids[0] = 61                          # an id no other document starts with
@@ -157,6 +159,7 @@ def test_an_overflowing_document_is_skipped_flagged_and_fails_validation(tmp_pat
 
 
 def test_single_shard_runs_can_merge_zero_copy_or_not_at_all(tmp_path):
+    pytest.importorskip("torch")
     common = [sys.executable, "scripts/collect_traces.py", "--model", "toy", "--device", "cpu",
               "--limit", "2", "--max-tokens", "16", "--mask-rates", "0.5", "--decoder-k", "8",
               "--resume"]
@@ -187,6 +190,7 @@ def test_dev_subset_holds_only_fit_half_documents(tmp_path):
 
 
 def test_max_doc_tokens_excludes_and_records_long_documents(tmp_path):
+    pytest.importorskip("torch")
     common = [sys.executable, "scripts/collect_traces.py", "--model", "toy", "--device", "cpu",
               "--limit", "2", "--max-tokens", "16", "--mask-rates", "0.5", "--decoder-k", "8",
               "--resume", "--merge-as", "none"]
