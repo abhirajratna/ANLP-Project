@@ -1,6 +1,6 @@
 ---
 member: ojas
-updated: 2026-10-22T21:13:34Z
-branch: t3-110m-probe
+updated: 2026-10-23T10:43:32Z
+branch: ojas/110m-c1-arm
 ---
-Posted the plan to the final (PR #4, bus); PRs #1-#3 verified together, waiting to be merged
+110M prereg arms in PR #9 (floor 0, both runs validated, dev fit run OK); T10 and the HF trace release in progress
