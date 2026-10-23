@@ -1,6 +1,6 @@
 ---
 member: ayush
-updated: 2026-10-23T13:02:03Z
+updated: 2026-10-23T13:14:29Z
 branch: collab-setup
 ---
-PR #1 merged; reviewing the final plan; next: T12 scoring module (CPU) + paper/ skeleton
+ayush: T12 scoring module (ayush/t12-scoring), then paper/ skeleton + reviews of #7, #6
