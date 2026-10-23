@@ -81,16 +81,16 @@ else
     PATTERN="$RUN.*"
 fi
 rsync -a --exclude '*.tmp' --include "$PATTERN" --exclude '*' -e "ssh $SSH_OPTS" \
-    "$USER@ada:$BLOBS/traces/$RUN/" "$OUT_DIR/" 2>/dev/null \
+    "$USER@$C3_LOGIN_HOST:$BLOBS/traces/$RUN/" "$OUT_DIR/" 2>/dev/null \
     && echo "[stage] pulled durable parts: $(ls "$OUT_DIR" | grep -c "\.p[0-9]*\.parquet$" || true)" \
     || echo "[stage] no durable parts yet"
 
 push_out() {
-    ssh $SSH_OPTS "$USER@ada" "mkdir -p '$BLOBS/traces/$RUN'" 2>/dev/null || true
+    ssh $SSH_OPTS "$USER@$C3_LOGIN_HOST" "mkdir -p '$BLOBS/traces/$RUN'" 2>/dev/null || true
     # Only this task's files, never *.tmp: a part becomes visible when complete.
     rsync -a --exclude '*.tmp' --include "$PATTERN" --include "$RUN.parquet" \
         --include "$RUN.meta.json" --exclude '*' -e "ssh $SSH_OPTS" \
-        "$OUT_DIR/" "$USER@ada:$BLOBS/traces/$RUN/" 2>/dev/null \
+        "$OUT_DIR/" "$USER@$C3_LOGIN_HOST:$BLOBS/traces/$RUN/" 2>/dev/null \
         && echo "[stage] pushed to $BLOBS/traces/$RUN at $(date +%H:%M:%S)" \
         || echo "[stage] WARNING: push to $BLOBS/traces/$RUN failed at $(date +%H:%M:%S)"
     # Never fail: under set -e a failed push would kill the sync loop, or abort

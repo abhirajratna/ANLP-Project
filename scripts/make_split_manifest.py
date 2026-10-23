@@ -42,19 +42,23 @@ def parse_ids(spec: str) -> list[int]:
 
 
 def build(docs_path: Path, seed: int, pilot_ids=None, pilot_docs=None,
-          exclusion_manifest=None) -> tuple[dict, dict]:
+          exclusion_manifest=None, any_ids: bool = False) -> tuple[dict, dict]:
     recs = [json.loads(line) for line in docs_path.read_text(encoding="utf-8").splitlines()
             if line.strip()]
     ids = [int(r["doc_id"]) for r in recs]
-    if ids != list(range(len(ids))):
+    if not any_ids and ids != list(range(len(ids))):
         raise ValueError("doc_id is not the file position 0..n-1; the split would not "
-                         "line up with the ids the traces carry")
+                         "line up with the ids the traces carry (--any-ids for a corpus "
+                         "whose ids are not positions, e.g. the time-split set)")
+    if len(set(ids)) != len(ids):
+        raise ValueError("doc_id values repeat")
     if exclusion_manifest is not None:
         held_out = set(json.loads(Path(exclusion_manifest).read_text())["excluded_hashes"])
         if {r["hash"] for r in recs} != held_out:
             raise ValueError("the corpus's content hashes differ from the exclusion manifest")
+    # The split is over file positions; with --any-ids each position maps to its doc_id.
     fit_idx, report_idx = document_split(len(ids), seed=seed)
-    half = {int(i): 0 for i in fit_idx} | {int(i): 1 for i in report_idx}
+    half = {ids[int(i)]: 0 for i in fit_idx} | {ids[int(i)]: 1 for i in report_idx}
 
     excluded: dict[int, str] = {}
     pilot_meta: dict = {}
@@ -94,6 +98,9 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=CorpusSpec().seed)
     ap.add_argument("--exclusion-manifest", default="artifacts/exclusion_manifest.json",
                     help="check the corpus against it ('' to skip)")
+    ap.add_argument("--any-ids", action="store_true",
+                    help="allow doc_ids that are not the file positions (split over file order, "
+                         "keyed by doc_id): the time-split set uses 200000-200499")
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
 
@@ -102,7 +109,7 @@ def main() -> int:
         raise SystemExit(f"{out} exists; the split is frozen once written (hard rule 5)")
     manifest, meta = build(Path(a.docs), a.seed,
                            parse_ids(a.pilot_ids) if a.pilot_ids else None, a.pilot_docs,
-                           a.exclusion_manifest or None)
+                           a.exclusion_manifest or None, any_ids=a.any_ids)
     meta["provenance"] = provenance()
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(manifest, indent=0))

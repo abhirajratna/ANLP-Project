@@ -410,8 +410,19 @@ IDENTITY_KEYS = ("schema_version", "config", "model", "variant", "revision", "pr
 
 
 def _collect_into(model, docs: list[Document], cfg: CollectConfig, next_path,
-                  part_docs: int | None, progress_every: int, stats: dict) -> list[dict]:
-    """Write ``docs`` into successive part files; returns a record per part."""
+                  part_docs: int | None, progress_every: int, stats: dict,
+                  on_nonfinite: str = "raise") -> list[dict]:
+    """Write ``docs`` into successive part files; returns a record per part.
+
+    ``on_nonfinite="skip"``: a document whose forward passes produce inf/NaN logits
+    (fp16 overflow) is left out and recorded in ``stats["nonfinite_docs"]``, so one
+    such document cannot stop a multi-day shard -- a resume would hit it again
+    deterministically.  The default refuses, as every pass is checked either way.
+    """
+    if on_nonfinite not in ("raise", "skip"):
+        raise ValueError(f"on_nonfinite must be 'raise' or 'skip', got {on_nonfinite!r}")
+    stats.setdefault("nonfinite_docs", [])
+    stats.setdefault("forward_passes_failed_docs", 0)
     ident = _identity(model, docs[0].dataset) if docs else None
     schema = arrow_schema(cfg.topk)
     parts: list[dict] = []
@@ -420,9 +431,18 @@ def _collect_into(model, docs: list[Document], cfg: CollectConfig, next_path,
     counter = {"forward_passes": 0}
     try:
         for i, doc in enumerate(docs):
+            before = counter["forward_passes"]
+            try:
+                table, sat = document_table(model, doc, cfg, ident, counter)
+            except FloatingPointError as exc:
+                if on_nonfinite == "raise":
+                    raise
+                stats["nonfinite_docs"].append({"doc_id": int(doc.doc_id), "error": str(exc)})
+                stats["forward_passes_failed_docs"] += counter["forward_passes"] - before
+                print(f"[collect] SKIPPED document {doc.doc_id}: {exc}", flush=True)
+                continue
             if writer is None:
                 writer = _PartWriter(next_path(), schema)
-            table, sat = document_table(model, doc, cfg, ident, counter)
             writer.write(table, doc.doc_id)
             stats["n_saturated"] += sat
             if part_docs and len(writer.doc_ids) >= part_docs:
@@ -477,12 +497,14 @@ def shard_stem(stem: str | Path, shard: int, num_shards: int) -> Path:
 def collect_shard(model, documents, cfg: CollectConfig, stem: str | Path, shard: int = 0,
                   num_shards: int = 1, resume: bool = False, part_docs: int = 50,
                   progress_every: int = 25, dataset: str = "fineweb",
-                  extra_meta: dict | None = None) -> Path:
+                  extra_meta: dict | None = None, on_nonfinite: str = "raise") -> Path:
     """Collect shard ``shard`` of ``num_shards`` into part files; returns the shard meta path.
 
     Files: ``<stem>.shard{I}of{N}.p{J}.parquet`` and ``<stem>.shard{I}of{N}.meta.json``.
     With ``resume``, documents already in a complete part are skipped, and the
     stored identity (config, model, revision, precision, ...) must match this run.
+    Documents skipped for non-finite logits (``on_nonfinite="skip"``) are listed in
+    ``doc_ids_failed``, count towards completeness, and are not retried.
     """
     base = shard_stem(stem, shard, num_shards)
     base.parent.mkdir(parents=True, exist_ok=True)
@@ -495,7 +517,8 @@ def collect_shard(model, documents, cfg: CollectConfig, stem: str | Path, shard:
 
     existing = sorted(base.parent.glob(base.name + ".p*.parquet"))
     old_parts: list[dict] = []
-    stats = {"n_saturated": 0, "forward_passes": 0, "seconds": 0.0}
+    stats = {"n_saturated": 0, "forward_passes": 0, "seconds": 0.0, "nonfinite_docs": [],
+             "forward_passes_failed_docs": 0}
     if existing or meta_path.exists():
         if not resume:
             raise FileExistsError(f"{base}: parts already exist; pass resume=True (--resume) "
@@ -512,7 +535,8 @@ def collect_shard(model, documents, cfg: CollectConfig, stem: str | Path, shard:
                                           | {meta["git_commit"]})
         old_parts = [part_record(p) for p in existing]
     done = {d for p in old_parts for d in p["doc_ids"]}
-    todo = [d for d in docs if d.doc_id not in done]
+    failed = {int(x["doc_id"]) for x in stats.get("nonfinite_docs", [])}
+    todo = [d for d in docs if d.doc_id not in done and d.doc_id not in failed]
     print(f"[collect] shard {shard}/{num_shards}: {len(docs)} docs, {len(done)} already done, "
           f"{len(todo)} to go", flush=True)
 
@@ -531,6 +555,8 @@ def collect_shard(model, documents, cfg: CollectConfig, stem: str | Path, shard:
         meta["parts"] = parts
         meta["n_rows"] = sum(p["n_rows"] for p in parts)
         meta["doc_ids_done"] = sorted(d for p in parts for d in p["doc_ids"])
+        meta["doc_ids_failed"] = sorted(int(x["doc_id"]) for x in stats.get("nonfinite_docs", []))
+        meta["on_nonfinite"] = on_nonfinite
         meta["complete"] = complete
         meta["stats"] = stats
         # Atomic: a job killed mid-write (or a push racing it) must not leave a
@@ -540,9 +566,11 @@ def collect_shard(model, documents, cfg: CollectConfig, stem: str | Path, shard:
         tmp.replace(meta_path)
 
     write_meta(old_parts, complete=not todo)
-    new_parts = _collect_into(model, todo, cfg, next_path, part_docs, progress_every, stats)
+    new_parts = _collect_into(model, todo, cfg, next_path, part_docs, progress_every, stats,
+                              on_nonfinite)
     parts = old_parts + new_parts
     covered = {d for p in parts for d in p["doc_ids"]}
+    covered |= {int(x["doc_id"]) for x in stats["nonfinite_docs"]}
     write_meta(parts, complete=set(meta["doc_ids_expected"]) <= covered)
     print(f"[collect] shard {shard}: {meta['n_rows']} rows in {len(parts)} parts -> {base}*")
     return meta_path

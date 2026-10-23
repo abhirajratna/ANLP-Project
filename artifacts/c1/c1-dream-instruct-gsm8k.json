@@ -1,0 +1,116 @@
+{
+  "note": "run diagnostics for the C1 sweep, not results: no endpoint is computed here",
+  "dataset": "/ssd_scratch/abhiraj.ratna/merge/c1-dream-instruct-gsm8k/c1-dream-instruct-gsm8k.dataset.json",
+  "dataset_sha256": "1f7c124a233af5f7f398ba2ce7cd6f6598fca3cb4a7a0f5a6a0312d0341ff63d",
+  "summary": {
+    "run": "c1-dream-instruct-gsm8k",
+    "model": "dream-7b-instruct",
+    "variant": "instruct",
+    "precision": "fp16",
+    "dataset": "gsm8k",
+    "revision": "05334cb9faaf763692dcf9d8737c642be2b2a6ae",
+    "device_map": "auto",
+    "documents": 1319,
+    "rows": 13399445,
+    "forward_passes": 241162,
+    "num_shards": 1,
+    "collection_seconds_total": 24642.64382624626,
+    "collection_seconds_longest_shard": 24642.64382624626,
+    "gpu_hours": 13.690357681247923,
+    "passes_per_second": 9.786368771971796,
+    "docs_per_hour_per_task": 192.69036364282465,
+    "design": {
+      "mask_rates": [
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        0.6,
+        0.7,
+        0.8,
+        0.9
+      ],
+      "masks_per_rate": 2,
+      "decoder_k": [
+        2,
+        4,
+        8
+      ],
+      "include_uniform_matched": true,
+      "topk": 20,
+      "batch_size": 1
+    },
+    "gpus_per_task": 2
+  },
+  "checks": {
+    "every_document_present": {
+      "ok": true,
+      "n_docs": 1319,
+      "n_expected": 1319,
+      "excluded_too_long": [],
+      "max_doc_tokens": null
+    },
+    "rows_per_document": {
+      "ok": true,
+      "n_bad": 0,
+      "first_bad": [],
+      "mean_rows_per_doc": 10158.790750568613,
+      "uniform_count_z": {
+        "mean": -0.0029033014800873545,
+        "sd": 1.0056080974180341
+      }
+    },
+    "forward_passes": {
+      "ok": true,
+      "recorded": 241162,
+      "expected": 241162,
+      "per_doc": 182.83699772554965
+    },
+    "no_nonfinite_values": {
+      "ok": true,
+      "nonfinite_ell": 0,
+      "nonfinite_conf": 0,
+      "conf_outside_unit": 0,
+      "n_saturated": 52378
+    },
+    "no_flagged_nonfinite_passes": {
+      "ok": true,
+      "n_documents_skipped": 0,
+      "doc_ids": [],
+      "errors": [],
+      "note": "documents whose forward passes overflowed (inf/NaN logits) and were left out"
+    },
+    "one_identity_across_shards": {
+      "ok": true,
+      "gpus": [
+        "NVIDIA GeForce RTX 2080 Ti"
+      ],
+      "n_package_sets": 1,
+      "commits": [
+        "c072bc6406555f6a0609f353223c0c1113360298"
+      ],
+      "identity_keys": "config, model, variant, revision, precision, dataset, schema (refused at merge if they differ)"
+    }
+  },
+  "all_ok": true,
+  "provenance": {
+    "git_commit": "d7965e06bdf78a1245099a45abc03e09246ec254",
+    "git_dirty": false,
+    "python": "3.12.4",
+    "platform": "Linux-5.15.0-194-generic-x86_64-with-glibc2.35",
+    "host": "gnode002",
+    "slurm_job_id": "20472",
+    "packages": {
+      "numpy": "2.5.4",
+      "scipy": "1.18.1",
+      "pandas": "3.0.6",
+      "pyarrow": "26.0.0",
+      "torch": "2.6.0+cu124",
+      "transformers": "4.46.3",
+      "bitsandbytes": "0.50.2",
+      "accelerate": "1.15.0"
+    }
+  },
+  "generated_at": "2026-10-14T05:20:46+00:00"
+}

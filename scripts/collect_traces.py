@@ -76,6 +76,9 @@ def main() -> int:
                     help="scripts/prepare_tasks.py output (default: the pinned hub revision)")
     ap.add_argument("--limit", type=int, default=None, help="first N documents only")
     ap.add_argument("--max-tokens", type=int, default=256)
+    ap.add_argument("--max-doc-tokens", type=int, default=None,
+                    help="exclude (and record) documents whose whole sequence, prompt included, "
+                         "is longer than this; the C1 task runs use 1024")
     ap.add_argument("--mask-rates", type=float, nargs="+", default=list(UNIFORM_RATES))
     ap.add_argument("--masks-per-rate", type=int, default=MASKS_PER_RATE)
     ap.add_argument("--decoder-k", type=int, nargs="+", default=list(DECODER_K))
@@ -95,6 +98,12 @@ def main() -> int:
     ap.add_argument("--num-shards", type=int, default=1)
     ap.add_argument("--resume", action="store_true")
     ap.add_argument("--part-docs", type=int, default=50, help="documents per part file")
+    ap.add_argument("--merge-as", choices=["parquet", "dataset", "none"], default="parquet",
+                    help="how a complete single-shard run is merged: a parquet copy, a "
+                         "zero-copy <out>.dataset.json manifest, or not at all")
+    ap.add_argument("--on-nonfinite", choices=["raise", "skip"], default="raise",
+                    help="skip: leave out (and record) a document whose logits overflow, "
+                         "instead of stopping the shard")
     ap.add_argument("--repeat", type=int, default=1,
                     help=">1 re-runs the same documents to measure the non-determinism floor")
     ap.add_argument("--out", required=True,
@@ -133,21 +142,37 @@ def main() -> int:
         # document differ slightly across arms; the state fixed effects absorb it.
         docs = [Document(i, x, dataset="fineweb")
                 for i, x in load_docs(a.docs, model.tokenizer, a.max_tokens, a.limit)]
+    too_long = []
+    if a.max_doc_tokens:
+        # The whole sequence (a task's prompt included) goes through every forward
+        # pass, and its float32 logits are L x vocab x 4 bytes: MBPP test 482 is
+        # 3,986 tokens (a 3,730-token prompt of test asserts), ~1.9 GiB at LLaDA's
+        # vocabulary, which no 2080 Ti holds beside 9 GiB of weights (job 17746).
+        too_long = [{"doc_id": int(d.doc_id), "tokens": int(d.ids.size)} for d in docs
+                    if d.ids.size > a.max_doc_tokens]
+        docs = [d for d in docs if d.ids.size <= a.max_doc_tokens]
+        for x in too_long:
+            print(f"[collect] EXCLUDED document {x['doc_id']}: {x['tokens']} tokens > "
+                  f"--max-doc-tokens {a.max_doc_tokens}", flush=True)
     cfg = build_config(a)
     print(f"[collect] {len(docs)} documents, model={a.model}, precision={a.precision}, "
           f"preset={a.preset}, config={json.dumps(cfg.to_dict())}", flush=True)
 
     extra = {"preset": a.preset, "deterministic": det, "limit": a.limit,
-             "source": a.task_jsonl or a.docs or a.task}
+             "source": a.task_jsonl or a.docs or a.task,
+             "max_doc_tokens": a.max_doc_tokens, "excluded_too_long": too_long}
     outputs = []
     if sharded:
         stem = a.out[:-len(".parquet")] if a.out.endswith(".parquet") else a.out
         meta = collect_shard(model, docs, cfg, stem, a.shard, a.num_shards, resume=a.resume,
-                             part_docs=a.part_docs, dataset=dataset, extra_meta=extra)
+                             part_docs=a.part_docs, dataset=dataset, extra_meta=extra,
+                             on_nonfinite=a.on_nonfinite)
         outputs.append(str(meta))
-        if a.num_shards == 1 and json.loads(Path(meta).read_text()).get("complete"):
-            from c3.traces.shards import merge
-            outputs.append(str(merge(stem, stem + ".parquet")))
+        if (a.num_shards == 1 and a.merge_as != "none"
+                and json.loads(Path(meta).read_text()).get("complete")):
+            from c3.traces.shards import DATASET_SUFFIX, merge
+            outputs.append(str(merge(stem, stem + (".parquet" if a.merge_as == "parquet"
+                                                   else DATASET_SUFFIX))))
     else:
         for rep in range(a.repeat):
             out = Path(a.out) if a.repeat == 1 else Path(a.out).with_name(
