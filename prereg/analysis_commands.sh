@@ -93,10 +93,10 @@ for row in "${ARMS[@]}"; do
     # and without state FE, the native gap; 9 knots.
     "$PY" scripts/analyze_traces.py "${COMMON[@]}" --knots 9 \
         --out "$OUT/c1/$LABEL" --macro-prefix "COne$LABEL"
-    # Knot sensitivity panel (reported alongside, never instead).
-    "$PY" scripts/analyze_traces.py "${COMMON[@]}" --knots 5 --no-figures \
+    # Knot sensitivity panel (reported alongside, never instead); Eq. 2/3 at 200 resamples.
+    "$PY" scripts/analyze_traces.py "${COMMON[@]}" --knots 5 --eq-boot 200 --no-figures \
         --out "$OUT/c1/${LABEL}_knots5" --macro-prefix "COne${LABEL}KnotsFive"
-    "$PY" scripts/analyze_traces.py "${COMMON[@]}" --knots 13 --no-figures \
+    "$PY" scripts/analyze_traces.py "${COMMON[@]}" --knots 13 --eq-boot 200 --no-figures \
         --out "$OUT/c1/${LABEL}_knots13" --macro-prefix "COne${LABEL}KnotsThirteen"
     # Contamination (T4): the 8B FineWeb arms without the documents flagged at
     # c3.CONTAM_THRESHOLD = 32 of 50 tokens.  The 110M was trained with the calibration

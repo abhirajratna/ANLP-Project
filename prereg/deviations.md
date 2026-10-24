@@ -53,8 +53,9 @@ above them is edited.
    resamples for every interval. The Eq. 2/3 interval (beta_z, gamma_k) refits the
    regression per resample: ~3.7 s on 150 documents with 8 CPUs, and ~310-475 s with one
    worker on a whole FineWeb run, where memory allows three workers (jobs 36215, 36251,
-   36422). At 10,000 that is weeks per run. It runs at 1,000 in the primary run and both
-   knot runs. The contamination-clean and time-split runs report E1/E2 only
+   36422). At 10,000 that is weeks per run. It runs at 1,000 in the primary run and at
+   200 in the two knot runs, which are sensitivity panels (~6-9 h each instead of
+   29-44 h). The contamination-clean and time-split runs report E1/E2 only
    (`--skip-regression`). Every other interval, including the E1 and E2 contrasts in the
    Holm families, stays at 10,000.
 
