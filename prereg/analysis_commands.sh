@@ -15,12 +15,14 @@
 # 21625, development only; the report half is the same size): E1/E2 without Eq. 2/3,
 # 21 min and 38 GB; E3, 3 min and 21 GB; T8, 80 min and 52 GB (all at 200 resamples).
 # Run each on a CPU job with >= 64 GB (u22 gives one CPU per 3 GB: slurm/CLUSTER.md).
-# The Eq. 2/3 bootstrap refits per resample, ~3.7 s each on 150 documents with 8 CPUs.
+# The Eq. 2/3 bootstrap refits per resample, ~3.7 s each on 150 documents with 8 CPUs, and
+# ~310-475 s with one worker on a whole FineWeb run (~120M rows, fit and report halves;
+# slurm/prereg_analysis.sbatch), so it runs at 1,000 resamples (deviation 7).
 #
 # Nothing here is fitted on the report half: calibrators, splines, knots, ell bins
 # and temperatures come from the fit half (manifest value 0); every number comes
-# from the report half (value 1).  Intervals: 10,000 document-bootstrap resamples,
-# percentile; declared only if the interval excludes 0 and |effect| > 2 x floor.
+# from the report half (value 1).  Intervals: 10,000 document-bootstrap resamples
+# (Eq. 2/3: 1,000, deviation 7), percentile; declared only if the interval excludes 0 and |effect| > 2 x floor.
 set -euo pipefail
 
 if [ "${C3_REPORT_HALF_OK:-}" != "1" ]; then
@@ -84,7 +86,7 @@ for row in "${ARMS[@]}"; do
     read -r LABEL RUN MANIFEST FLOOR DATA <<<"$row"
     have "$RUN" || continue
     T="$TRACES/$RUN/$RUN.dataset.json"
-    COMMON=(--traces "$T" --split half --manifest "$MANIFEST" "${BOOT[@]}" --eq-boot 10000
+    COMMON=(--traces "$T" --split half --manifest "$MANIFEST" "${BOOT[@]}" --eq-boot 1000
             --floor "$FLOOR" --n-jobs "$N_JOBS")
     # Primary: Delta(m), Delta(32) - Delta(1), ECE and smooth ECE, the Prop. 2
     # decomposition (isotonic own, interacted context calibrator), ICC, Eq. 2/3 with
@@ -106,7 +108,7 @@ for row in "${ARMS[@]}"; do
     esac
     if [ -n "$MODEL" ]; then
         "$PY" scripts/analyze_traces.py "${COMMON[@]}" --knots 9 \
-            --exclude-docs "artifacts/contamination_$MODEL.json" \
+            --exclude-docs "artifacts/contamination_$MODEL.json" --skip-regression \
             --out "$OUT/c1/${LABEL}_clean" --macro-prefix "COne${LABEL}Clean"
     fi
 done
@@ -124,7 +126,7 @@ for row in "LladaBaseTimeSplit c1ts-llada-base $FLOOR_LLADA" "DreamBaseTimeSplit
     T="$TRACES/$RUN/$RUN.dataset.json"
     [ -e "$T" ] || { echo "[prereg] $RUN not collected; skipped"; continue; }
     "$PY" scripts/analyze_traces.py --traces "$T" --split half \
-        --manifest artifacts/split_manifest_timesplit.json "${BOOT[@]}" --eq-boot 10000 \
+        --manifest artifacts/split_manifest_timesplit.json "${BOOT[@]}" --skip-regression \
         --floor "$FLOOR" --n-jobs "$N_JOBS" --knots 9 \
         --out "$OUT/c1/$LABEL" --macro-prefix "COne$LABEL"
 done

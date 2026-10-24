@@ -49,6 +49,15 @@ above them is edited.
    re-collected from scratch at one commit as `c1-llada-instruct-mbpp-v2`. Dream-Instruct
    MBPP carries the cap from the start.
 
+7. **Eq. 2/3 bootstrap at 1,000 resamples.** Plan v2 Sec. 5 asks for 10,000 document
+   resamples for every interval. The Eq. 2/3 interval (beta_z, gamma_k) refits the
+   regression per resample: ~3.7 s on 150 documents with 8 CPUs, and ~310-475 s with one
+   worker on a whole FineWeb run, where memory allows three workers (jobs 36215, 36251,
+   36422). At 10,000 that is weeks per run. It runs at 1,000 in the primary run and both
+   knot runs. The contamination-clean and time-split runs report E1/E2 only
+   (`--skip-regression`). Every other interval, including the E1 and E2 contrasts in the
+   Holm families, stays at 10,000.
+
 ## Choices the plan leaves open, fixed here (for sign-off)
 
 - E1/E2 Holm families: arms `uniform` and `decoder:topk_conf:k4` across models x datasets.
