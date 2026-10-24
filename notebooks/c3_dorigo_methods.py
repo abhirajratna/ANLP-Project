@@ -4,9 +4,11 @@
 # %% [markdown]
 # # C3 × Dorigo (2026): winner's-curse methods on stored traces
 #
-# ## Phase 1 verdict: **PARTIAL now, GO expected on the v2 traces** (written 24 Oct 2026, before Phase 2)
+# ## Phase 1 verdict: **GO** on the 110M v2 traces (cell 1.6, run of 24 Oct 2026)
 #
-# **Basis.** The repo, without the full traces. The full traces are on Ada (`/share1/ojas.k/traces/main-110m-v3/`, `/share1/abhiraj.ratna/traces/`) and not yet on Drive. Cells 1.1–1.6 redo every check below on the files you mount. If cell 1.6 prints a different verdict, cell 1.6 wins, and this cell must be edited to match.
+# **Basis.** Cell 1.6 on `ANLP-project/c3-traces` (`main-110m-v3/`: 119.6 M rows, 1,979 docs; `timesplit-110m-v3/`: 30.2 M rows, 500 docs), one schema, every module A–F feasible, 89–90% of states with |M| ≥ 32, largest kind ≈ 4.7 GB in memory, ≈ 6 min projected. The table below is the pre-data check of 24 Oct (written before Phase 2, from the repo only; it then said PARTIAL because only the old-schema pilot was on hand). Cells 1.1–1.6 redo every check on each run; if cell 1.6 prints a different verdict, cell 1.6 wins and this cell must be edited to match.
+#
+# **Not yet run here:** the LLaDA-8B traces (the pilot headline). They are on Ada (`/share1/abhiraj.ratna/traces/`), not on HF; add them to `DATASETS` when a copy is reachable.
 #
 # | check | what was found | source |
 # |---|---|---|
@@ -59,7 +61,7 @@ DATASETS = {**DATASETS_REAL,
 MOUNT_DRIVE = True            # Colab only; ignored elsewhere
 MASK_KINDS = ["uniform", "decoder", "uniform_matched"]   # "matched" is stored as uniform_matched
 M_GRID = [1, 2, 4, 8, 16, 32]
-POOLS_PER_STATE = 20
+POOLS_PER_STATE = 50          # Monte Carlo pools per state (shuffle test, pairing, quintiles); Δ itself is exact
 N_BOOT = 10_000
 DRY_RUN_BOOT = 2_000          # used instead of N_BOOT when the projected runtime exceeds 20 min
 CONFIRM_FULL_BOOT = False     # set True (after reading the warning) to run N_BOOT anyway
@@ -69,10 +71,22 @@ MIN_STATE_SIZE = max(M_GRID)  # states with |M| below this are excluded from eve
 RATE_BINS = 10                # mask-rate deciles for matching shuffled pools
 N_QUINTILES = 5               # Module F
 ECE_BINS = 15
+# E2 (Prop. 2): Δ(m) = own miscalibration E_m[c − π(ℓ)] + field term E_m[π(ℓ) − π(ℓ, s)] + residual
+# E_m[π(ℓ, s) − a].  π(ℓ) is isotonic, π(ℓ, s) a spline logistic with per-state field features and
+# their ℓ interactions, both fit on the fit half with pool weights (as c3/calibrators.py).
+FIELD_FEATURES = ("median_ell", "mask_rate", "log_n_masked", "step")   # = c3.frame.FIELD_FEATURES
+CAL_KNOTS = 9                 # spline knots on ℓ in π(ℓ, s)   (= c3.DEFAULT_KNOTS)
+CAL_MAX_ROWS = 1_000_000      # fit-half rows sampled (pool weights kept) to fit π(ℓ, s) (~19 parameters)
+CAL_C = 1e3                   # sklearn inverse ridge on mean-1 weights; C = 1 shrank π̂(ℓ, s) at the top on small fits
+CAL_REFIT_CHECK = True        # refit both calibrators on each half of the fit documents: field-term fit noise
+DELTA_MIN = 0.02              # pre-registered smallest effect worth reporting (= c3.DELTA_MIN)
+H3_PAIRS = [("decoder", "uniform_matched")]   # H3: compared at equal winner confidence
+H3_BINS = 20                  # equal-width winner-confidence bins for that comparison
+ICC_DROP_TOP = 5              # the ICC is also given without its 5 most influential documents
 TOY_N = 50_000                # Module A toys per Q
 SELFTEST_BOOT = 2_000         # bootstrap resamples inside the Module B self-tests
 OUT_DIR = "/content/c3_dorigo_out" if __import__("os").path.isdir("/content") else "c3_dorigo_out"
-NOTEBOOK_VERSION = "2026-10-24.1"
+NOTEBOOK_VERSION = "2026-10-25.1"
 
 # %% [markdown]
 # ## 0.2 Setup: imports, versions, seeds, exclusion log
@@ -93,6 +107,8 @@ import scipy
 from scipy.special import gammaln, expit
 import sklearn
 from sklearn.isotonic import IsotonicRegression
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import SplineTransformer
 import matplotlib
 import matplotlib.pyplot as plt
 from IPython.display import display, Markdown
@@ -154,10 +170,11 @@ FIELD_LABEL = {
     "delta_ell": "delta-ell since previous step", "commit_rank": "commit rank",
     "half": "fit/report flag",
 }
-USED_BY = {"doc": "C D E F ICC", "state": "C D E F ICC", "kind": "C D E F", "rate": "D",
-           "conf": "C D E F", "ell": "C D E F ICC", "agree": "C D E F ICC", "margin": "F",
+USED_BY = {"doc": "C D E F ICC", "state": "C D E F ICC", "kind": "C D E F", "rate": "D E2",
+           "conf": "C D E F", "ell": "C D E F E2 ICC", "agree": "C D E F E2 ICC", "margin": "F",
+           "step": "E2 (field feature)",
            "topk_p": "F (if no margin)", "half": "all (or split manifest)",
-           "position": "duplicate check", "n_masked": "consistency check / rate",
+           "position": "duplicate check", "n_masked": "consistency check / rate / E2",
            "doc_len": "rate (if no mask_rate)"}
 FORMAT_OF = {".parquet": "parquet", ".pq": "parquet", ".arrow": "arrow", ".feather": "arrow",
              ".ipc": "arrow", ".jsonl": "jsonl", ".json": "json", ".npz": "npz"}
@@ -245,6 +262,8 @@ def make_synthetic(scenario: str, n_docs=200, n_states=5, n_pos=100, seed=0,
     shared_err   l = 0.5 + u_s + e, logit p = l - u_s      -> gap != 0, ICC > 0
     shared_indep l = 0.5 + e, logit p = l + u_s            -> ICC > 0 but gap = 0 (the shuffle
                  test only sees dependence that reaches the winner's selection)
+    field_pos    l = 0.5 + u_s + e, logit p = l + u_s       -> E2 field term > 0 (not in SCENARIOS;
+                 used by the E2 test only)
     ``round_ell`` rounds l (creates ties) for the tie-break tests.
     """
     rng = rng_for("synthetic", scenario, seed)
@@ -270,6 +289,9 @@ def make_synthetic(scenario: str, n_docs=200, n_states=5, n_pos=100, seed=0,
     elif scenario == "shared_indep":
         ell = 0.5 + 1.5 * e
         logit_p = ell + u
+    elif scenario == "field_pos":
+        ell = 0.5 + u + 1.2 * e
+        logit_p = ell + u
     else:
         raise KeyError(scenario)
     if round_ell:
@@ -292,7 +314,8 @@ class Traces:
     """One dataset x mask kind, rows sorted by (doc, state, ell descending).
 
     Per row: ell, conf, agree, margin, row_state, blk_start/blk_len (the run of rows with the
-    same state and ell: a tie block).  Per state s: st_start, st_n, st_doc, st_rate, st_mean_ell.
+    same state and ell: a tie block).  Per state s: st_start, st_n, st_doc, st_rate, st_mean_ell,
+    st_median_ell, st_step (0 when the trace has no step column).
     """
     dataset: str
     kind: str
@@ -308,6 +331,8 @@ class Traces:
     st_doc: np.ndarray
     st_rate: np.ndarray
     st_mean_ell: np.ndarray
+    st_median_ell: np.ndarray
+    st_step: np.ndarray
 
     @property
     def n_states(self):
@@ -328,10 +353,10 @@ def _margin_from_topk(col) -> np.ndarray:
 def read_kind(files, fmap: dict, kind: str, model: str | None = None,
               need_margin: bool = True, batch_rows: int = 2_000_000) -> dict:
     """The rows of one mask kind as pruned, downcast numpy columns (batched; no list columns
-    kept).  Keys: doc, state, ell, conf, agree, margin, rate, n_masked, position (when present)."""
+    kept).  Keys: doc, state, ell, conf, agree, margin, rate, n_masked, step, position (when present)."""
     want = {"doc": np.int64, "state": np.int64, "ell": np.float64, "conf": np.float32,
             "agree": np.int8, "margin": np.float32, "rate": np.float32,
-            "n_masked": np.int32, "doc_len": np.int32, "position": np.int32}
+            "n_masked": np.int32, "doc_len": np.int32, "step": np.int32, "position": np.int32}
     cols = {k: fmap[k] for k in want if fmap.get(k)}
     use_topk = need_margin and not fmap.get("margin") and fmap.get("topk_p")
     read_cols = list(cols.values()) + ([fmap["topk_p"]] if use_topk else [])
@@ -425,12 +450,17 @@ def build_traces(cols: dict, dataset: str, kind: str) -> Traces:
     b_len = np.diff(np.append(b_start, n))
     blk_id = np.cumsum(new_blk) - 1
     st_mean_ell = np.bincount(row_state, weights=keep["ell"]) / st_n
+    # rows are sorted by ell descending within a state, so the median sits in the middle
+    st_median_ell = 0.5 * (keep["ell"][st_start + (st_n - 1) // 2] + keep["ell"][st_start + st_n // 2])
+    st_step = (keep["step"][st_start].astype(np.float32) if "step" in keep
+               else np.zeros(len(st_start), np.float32))
     print(f"[load] {dataset} / {kind}: {n:,} rows ({n0 - n:,} excluded), {len(st_start):,} states, "
           f"{np.unique(keep['doc']).size:,} docs, tied rows {(b_len[blk_id] > 1).mean():.1%}")
     return Traces(dataset, kind, keep["ell"], keep["conf"], keep["agree"], keep["margin"],
                   row_state.astype(np.int64), b_start[blk_id].astype(np.int64),
                   b_len[blk_id].astype(np.int64), st_start.astype(np.int64),
-                  st_n.astype(np.int64), keep["doc"][st_start], st_rate, st_mean_ell)
+                  st_n.astype(np.int64), keep["doc"][st_start], st_rate, st_mean_ell,
+                  st_median_ell, st_step)
 
 
 def traces_from_frame(df: pd.DataFrame, dataset: str, kind: str = "uniform") -> Traces:
@@ -439,7 +469,7 @@ def traces_from_frame(df: pd.DataFrame, dataset: str, kind: str = "uniform") -> 
     fm = field_map(sub.columns)
     want = {"doc": np.int64, "state": np.int64, "ell": np.float64, "conf": np.float32,
             "agree": np.int8, "margin": np.float32, "rate": np.float32,
-            "n_masked": np.int32, "position": np.int32}
+            "n_masked": np.int32, "step": np.int32, "position": np.int32}
     cols = {k: sub[fm[k]].to_numpy().astype(t) for k, t in want.items() if fm.get(k)}
     cols.setdefault("margin", np.full(len(sub), np.nan, np.float32))
     cols.setdefault("rate", np.full(len(sub), np.nan, np.float32))
@@ -566,9 +596,10 @@ def shuffled_pools(tr: Traces, states: np.ndarray, m: int, pools: int, rbin, rng
     return np.concatenate(ws_all), np.concatenate(w_all), dropped
 
 
-def exact_winner_mean(tr: Traces, states: np.ndarray, m: int, values: np.ndarray) -> np.ndarray:
-    """Per state, the exact mean of `values` at the winner over *all* m-subsets (ties shared
-    equally within a tie block): sum_j C(n-1-j, m-1)/C(n, m) v_j.  Checks the sampler."""
+def exact_winner_weights(tr: Traces, states: np.ndarray, m: int):
+    """(rows, w): every row of `states` (in row order) and its probability of being the winner of a
+    uniformly random m-subset of its state, C(n-1-j, m-1)/C(n, m) for sorted slot j, shared equally
+    within a tie block.  w sums to 1 over each state with |M| >= m."""
     smask = np.zeros(tr.n_states, bool); smask[states] = True
     rows = np.flatnonzero(smask[tr.row_state])
     rs = tr.row_state[rows]
@@ -581,20 +612,101 @@ def exact_winner_mean(tr: Traces, states: np.ndarray, m: int, values: np.ndarray
     seg = np.flatnonzero(np.r_[True, bstart[1:] != bstart[:-1]])
     blen = np.diff(np.append(seg, rows.size))
     wb = np.add.reduceat(w, seg) / blen
-    w_row = np.repeat(wb, blen)
-    val = np.bincount(rs, weights=w_row * values[rows], minlength=tr.n_states)
-    return val[states]
+    return rows, np.repeat(wb, blen)
+
+
+def exact_winner_mean(tr: Traces, states: np.ndarray, m: int, values: np.ndarray,
+                      ew=None) -> np.ndarray:
+    """Per state, the exact mean of `values` at the winner over *all* m-subsets (ties shared
+    equally within a tie block): sum_j C(n-1-j, m-1)/C(n, m) v_j.  This is the estimator Δ(m)
+    is reported with (no pool-sampling noise); the Monte Carlo pools are checked against it.
+    `values` is per row of the whole trace, or per row of `ew[0]` when that is given."""
+    rows, w = ew if ew is not None else exact_winner_weights(tr, states, m)
+    v = values if (ew is not None and len(values) == rows.size) else values[rows]
+    return np.bincount(tr.row_state[rows], weights=w * v, minlength=tr.n_states)[states]
 
 
 # ---------------------------------------------------------------- calibrator, ICC, ECE
-def fit_calibrator(ell: np.ndarray, agree: np.ndarray):
-    """Isotonic pi_hat(ell), increasing, fit on (ell rounded to 1e-4, mean agree) with counts."""
+def pool_weights(tr: Traces, states: np.ndarray):
+    """(rows, w): the rows of `states` and 1 / (|state| x states of its document among `states`).
+
+    Every document then weighs 1 and each of its states the same, which is the population the
+    document-first endpoints average over (as c3.calibrators.pool_weights).  Calibrators fit
+    with these weights make the m = 1 field term zero up to fitting error."""
+    smask = np.zeros(tr.n_states, bool); smask[states] = True
+    rows = np.flatnonzero(smask[tr.row_state])
+    rs = tr.row_state[rows]
+    _, inv, spd = np.unique(tr.st_doc[states], return_inverse=True, return_counts=True)
+    per_state = np.zeros(tr.n_states); per_state[states] = spd[inv]
+    return rows, 1.0 / (tr.st_n[rs] * per_state[rs])
+
+
+def fit_calibrator(ell: np.ndarray, agree: np.ndarray, weights: np.ndarray | None = None):
+    """Isotonic pi_hat(ell), increasing, fit on (ell rounded to 1e-4, weighted mean agree)."""
     key = np.round(ell, 4)
-    u, inv, cnt = np.unique(key, return_inverse=True, return_counts=True)
-    ybar = np.bincount(inv, weights=agree.astype(np.float64)) / cnt
+    u, inv = np.unique(key, return_inverse=True)
+    w = np.ones(key.size) if weights is None else np.asarray(weights, np.float64)
+    sw = np.bincount(inv, weights=w)
+    ybar = np.bincount(inv, weights=w * agree) / sw
     iso = IsotonicRegression(y_min=0.0, y_max=1.0, increasing=True, out_of_bounds="clip")
-    iso.fit(u, ybar, sample_weight=cnt)
+    iso.fit(u, ybar, sample_weight=sw)
     return lambda x: iso.predict(np.round(np.asarray(x, np.float64), 4))
+
+
+def state_features(tr: Traces, names=FIELD_FEATURES) -> np.ndarray:
+    """Per-state field features g(s), n_states x len(names) (as c3.frame.field_features):
+    median ℓ over the state's masked positions, mask rate, log |M|, decoding step."""
+    have = {"median_ell": tr.st_median_ell, "mask_rate": tr.st_rate.astype(np.float64),
+            "log_n_masked": np.log(np.maximum(tr.st_n, 1).astype(np.float64)),
+            "step": tr.st_step.astype(np.float64)}
+    return np.column_stack([have[k] for k in names])
+
+
+class ContextCalibrator:
+    """pi_hat(ℓ, s) = sigmoid(a + f(ℓ) + g(s)·γ + ℓ g(s)·δ), the default (interacted) form of
+    c3.calibrators.ContextLogistic: f a cubic spline in ℓ (CAL_KNOTS quantile knots), g(s) the
+    standardised field features, a negligible ridge (sklearn C = CAL_C on mean-1 weights), pool weights.
+
+    Features that are constant or non-finite on the fit states are dropped (listed in `used`).
+    At most `max_rows` fit rows are used, drawn uniformly with their pool weights kept."""
+
+    def fit(self, tr: Traces, states: np.ndarray, rng, max_rows: int = CAL_MAX_ROWS):
+        rows, w = pool_weights(tr, states)
+        if rows.size > max_rows:
+            pick = np.sort(rng.choice(rows.size, max_rows, replace=False))
+            rows, w = rows[pick], w[pick]
+        G = state_features(tr)[tr.row_state[rows]]
+        with np.errstate(invalid="ignore"):
+            ok = np.isfinite(G).all(0) & (np.nanmax(G, 0) > np.nanmin(G, 0))
+        self.used = [k for k, o in zip(FIELD_FEATURES, ok) if o]
+        self.cols = np.flatnonzero(ok)
+        G = G[:, self.cols]
+        self.mu, self.sd = G.mean(0), G.std(0)
+        ell = tr.ell[rows]
+        self.ell_mu, self.ell_sd = float(ell.mean()), float(ell.std())
+        self.spline = SplineTransformer(n_knots=CAL_KNOTS, degree=3, knots="quantile",
+                                        extrapolation="linear").fit(ell[:, None])
+        self.lr = LogisticRegression(C=CAL_C, max_iter=2000, tol=1e-6)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            self.lr.fit(self._design(ell, G), tr.agree[rows], sample_weight=w * (w.size / w.sum()))
+        self.n_iter = int(np.max(self.lr.n_iter_)); self.converged = self.n_iter < 2000
+        self.n_fit_rows = int(rows.size)
+        return self
+
+    def _design(self, ell, G):
+        e = ((ell - self.ell_mu) / self.ell_sd)[:, None]
+        Z = (G - self.mu) / np.where(self.sd > 0, self.sd, 1.0)
+        return np.hstack([self.spline.transform(ell[:, None]), Z, e * Z])
+
+    def predict(self, tr: Traces, rows: np.ndarray, chunk: int = 4_000_000) -> np.ndarray:
+        """pi_hat(ℓ, s) for the given rows (chunked to bound memory)."""
+        G_all = state_features(tr)[:, self.cols]
+        out = np.empty(rows.size)
+        for i in range(0, rows.size, chunk):
+            r = rows[i:i + chunk]
+            out[i:i + chunk] = self.lr.predict_proba(self._design(tr.ell[r], G_all[tr.row_state[r]]))[:, 1]
+        return out
 
 
 def icc_from_stats(st: np.ndarray) -> np.ndarray:
@@ -607,6 +719,36 @@ def icc_from_stats(st: np.ndarray) -> np.ndarray:
     msw = (Q - C) / (N - k)
     n0 = (N - n2 / N) / (k - 1)
     return (msb - msw) / (msb + (n0 - 1) * msw)
+
+
+def icc_doc_stats(tr: Traces, states: np.ndarray, didx_state: np.ndarray, D: int,
+                  resid_rows: np.ndarray, rows: np.ndarray) -> np.ndarray:
+    """Per-document ICC sufficient statistics (D x 6, see icc_from_stats) of residuals given per
+    row of `rows` (the rows of `states`, in row order)."""
+    S = tr.n_states
+    rs = tr.row_state[rows]
+    n_s = np.bincount(rs, minlength=S)[states].astype(np.float64)
+    S_s = np.bincount(rs, weights=resid_rows, minlength=S)[states]
+    Q_s = np.bincount(rs, weights=resid_rows ** 2, minlength=S)[states]
+    di = didx_state[states]
+    return np.column_stack([np.bincount(di, weights=v, minlength=D) for v in
+                            (n_s, S_s, S_s ** 2 / n_s, Q_s, np.ones_like(n_s), n_s ** 2)])
+
+
+def icc_influence(dstat: np.ndarray, doc_ids: np.ndarray, top: int = ICC_DROP_TOP):
+    """Leave-one-document-out ICC.  Returns (table of the `top` most influential documents,
+    ICC without them).  Influence = ICC(all) − ICC(without the document)."""
+    tot = dstat.sum(0)
+    full = float(icc_from_stats(tot))
+    loo = icc_from_stats(tot[None, :] - dstat)
+    infl = full - loo
+    order = np.argsort(-np.abs(infl))[:top]
+    N, Ssum, C, Q, k, _ = (dstat[:, i] for i in range(6))
+    tab = pd.DataFrame({"doc_id": doc_ids[order], "n_states": k[order].astype(int),
+                        "n_rows": N[order].astype(int), "mean_resid": (Ssum / N)[order],
+                        "between_state_ss": (C - Ssum ** 2 / N)[order], "within_state_ss": (Q - C)[order],
+                        "icc_without": loo[order], "influence": infl[order]})
+    return tab, float(icc_from_stats(tot - dstat[order].sum(0)))
 
 
 def ece_equal_mass(conf: np.ndarray, agree: np.ndarray, n_bins: int = 15) -> float:
@@ -661,12 +803,19 @@ def ci(boot: np.ndarray, point: float) -> dict:
 # ---------------------------------------------------------------- the analysis of one dataset x kind
 def analyze(tr: Traces, st_half: np.ndarray, *, m_grid=M_GRID, pools=POOLS_PER_STATE,
             n_boot=N_BOOT, rate_bins=RATE_BINS, min_state=MIN_STATE_SIZE,
-            n_quint=N_QUINTILES, key="main") -> dict:
-    """Modules C, D, E, F and the ICC for one dataset x mask kind.
+            n_quint=N_QUINTILES, key="main", h3_bins=H3_BINS, e2=True,
+            refit_check=CAL_REFIT_CHECK) -> dict:
+    """Modules C, D, E, F, the E2 split and the ICC for one dataset x mask kind.
 
-    Report-half states only (|M| >= min_state for every m); the isotonic calibrator for the ICC
-    is fit on fit-half states.  Returns tables `main` (per m), `paired` (per m >= 2) and
-    `quint` (per m x margin quintile), plus `info`.
+    Report-half states only (|M| >= min_state for every m); both calibrators are fit on fit-half
+    states (`e2=False` skips π̂(ℓ, s): field = 0 and the ICC uses π̂(ℓ); used by the replicate
+    tests, which only look at the shuffle gap).  `refit_check` refits both calibrators on each
+    half of the fit documents and reports the field term at max(m) for each (its fit noise,
+    which the CIs leave out).  Δ(m) and its E2 terms use the exact all-subsets estimator (no pool noise); the
+    shuffle test, the winner-vs-random-member pairing and the margin quintiles use Monte Carlo
+    pools.  Returns tables `main` (per m), `paired` (per m >= 2), `e2` (per m), `quint`
+    (per m x margin quintile), `icc_top` (most influential documents), the per-document winner-
+    confidence histograms `h3` (for the equal-confidence comparison) and `info`.
     """
     t0 = time.time()
     ds_, kd = tr.dataset, tr.kind
@@ -679,32 +828,67 @@ def analyze(tr: Traces, st_half: np.ndarray, *, m_grid=M_GRID, pools=POOLS_PER_S
         raise ValueError(f"{ds_}/{kd}: no report or fit states with |M| >= {min_state}")
     S = tr.n_states
     smask_rep = np.zeros(S, bool); smask_rep[rep] = True
-    smask_fit = np.zeros(S, bool); smask_fit[fit] = True
-    row_rep = smask_rep[tr.row_state]; row_fit = smask_fit[tr.row_state]
+    rows_rep = np.flatnonzero(smask_rep[tr.row_state])
+    rs_rep = tr.row_state[rows_rep]
 
     rep_docs, inv = np.unique(tr.st_doc[rep], return_inverse=True)
     D = rep_docs.size
     didx = np.full(S, -1, np.int64); didx[rep] = inv
     W = doc_weights(D, n_boot, rng_for(key, ds_, kd, "boot"))
 
-    # ICC of a - pi_hat(ell), calibrator from the fit half
-    cal = fit_calibrator(tr.ell[row_fit], tr.agree[row_fit])
-    rs = tr.row_state[row_rep]
-    resid = tr.agree[row_rep] - cal(tr.ell[row_rep])
-    n_s = np.bincount(rs, minlength=S)[rep].astype(np.float64)
-    S_s = np.bincount(rs, weights=resid, minlength=S)[rep]
-    Q_s = np.bincount(rs, weights=resid ** 2, minlength=S)[rep]
-    dstat = np.column_stack([np.bincount(inv, weights=v, minlength=D) for v in
-                             (n_s, S_s, S_s ** 2 / n_s, Q_s, np.ones_like(n_s), n_s ** 2)])
+    # calibrators from the fit half (pool weights), applied to the report half
+    t_cal = time.time()
+    fit_rows, fit_w = pool_weights(tr, fit)
+    cal = fit_calibrator(tr.ell[fit_rows], tr.agree[fit_rows], fit_w)
+    del fit_rows, fit_w
+    c_r = tr.conf[rows_rep].astype(np.float64)
+    a_r = tr.agree[rows_rep].astype(np.float64)
+    po_r = cal(tr.ell[rows_rep])
+    ctx = ContextCalibrator().fit(tr, fit, rng_for(key, ds_, kd, "ctx")) if e2 else None
+    pc_r = ctx.predict(tr, rows_rep) if e2 else po_r
+    refit = []
+    if e2 and refit_check:
+        par = (tr.st_doc[fit] % 2) == 0
+        for j, hsel in enumerate((par, ~par)):
+            fh = fit[hsel]
+            rr, ww = pool_weights(tr, fh)
+            cal_h = fit_calibrator(tr.ell[rr], tr.agree[rr], ww)
+            ctx_h = ContextCalibrator().fit(tr, fh, rng_for(key, ds_, kd, "ctx-half", j), CAL_MAX_ROWS // 2)
+            refit.append(cal_h(tr.ell[rows_rep]) - ctx_h.predict(tr, rows_rep))
+            del rr, ww
+    t_cal = time.time() - t_cal
+
+    # ICC of a − pi_hat(ℓ, s) (as c3.endpoints.e2.icc_residuals) and of a − pi_hat(ℓ)
+    dstat = icc_doc_stats(tr, rep, didx, D, a_r - pc_r, rows_rep)
     icc = ci(icc_from_stats(W @ dstat), float(icc_from_stats(dstat.sum(0))))
-    ece = ece_equal_mass(tr.conf[row_rep], tr.agree[row_rep], ECE_BINS)
+    dstat_own = icc_doc_stats(tr, rep, didx, D, a_r - po_r, rows_rep)
+    icc_own = ci(icc_from_stats(W @ dstat_own), float(icc_from_stats(dstat_own.sum(0))))
+    icc_top, icc_drop = icc_influence(dstat, rep_docs)
+    ece = ece_equal_mass(tr.conf[rows_rep], tr.agree[rows_rep], ECE_BINS)
 
     rbin, n_rbins = rate_bins_of(tr, np.concatenate([rep, fit]), rate_bins)
-    has_margin = bool(np.isfinite(tr.margin[row_rep]).all())
+    has_margin = bool(np.isfinite(tr.margin[rows_rep]).all())
     acc = DocAccumulator(D)
-    counts, exact = {}, {}
+    counts, exact_terms, h3 = {}, {"delta": c_r - a_r, "own": c_r - po_r, "field": po_r - pc_r,
+                                   "resid": pc_r - a_r, "c": c_r, "a": a_r}, {}
+    nsd = np.bincount(inv, minlength=D).astype(np.float64)       # report states per document
+    hbin_r = np.minimum((c_r * h3_bins).astype(np.int64), h3_bins - 1)
     gap_row = tr.conf.astype(np.float64) - tr.agree
+    refit_pt = []
     for m in m_grid:
+        ew = exact_winner_weights(tr, rep, m)
+        assert ew[0].size == rows_rep.size
+        for nm, v in exact_terms.items():
+            acc.add(f"x_{nm}|{m}", didx[rep], exact_winner_mean(tr, rep, m, v, ew))
+        # per document and winner-confidence bin: winner mass and winner (c − a) mass, states averaged
+        dw = ew[1] / nsd[didx[rs_rep]]
+        cell = didx[rs_rep] * h3_bins + hbin_r
+        h3[m] = {"M": np.bincount(cell, weights=dw, minlength=D * h3_bins).reshape(D, h3_bins),
+                 "G": np.bincount(cell, weights=dw * (c_r - a_r), minlength=D * h3_bins).reshape(D, h3_bins)}
+        if m == m_grid[-1]:
+            refit_pt = [float(pd.Series(exact_winner_mean(tr, rep, m, v, ew)).groupby(didx[rep]).mean().mean())
+                        for v in refit]
+        del ew, dw, cell
         s, w, u = actual_pools(tr, rep, m, pools, rng_for(key, ds_, kd, "actual", m))
         di = didx[s]
         g = gap_row[w]
@@ -712,8 +896,6 @@ def analyze(tr: Traces, st_half: np.ndarray, *, m_grid=M_GRID, pools=POOLS_PER_S
         acc.add(f"delta|{m}", di, g); acc.add(f"infl|{m}", di, tr.ell[w] - tr.st_mean_ell[s])
         if m >= 2:
             acc.add(f"pdiff|{m}", di, g - gap_row[u])
-        ex = exact_winner_mean(tr, rep, m, gap_row)
-        exact[m] = float(pd.Series(ex).groupby(didx[rep]).mean().mean())
         counts[m] = {"n_pools": int(s.size), "n_shuf_pools": 0, "n_shuf_docs": 0,
                      "n_shuf_dropped": 0}
         if has_margin:
@@ -732,6 +914,7 @@ def analyze(tr: Traces, st_half: np.ndarray, *, m_grid=M_GRID, pools=POOLS_PER_S
                     qs = np.searchsorted(edges, tr.margin[sw], side="right")
                     for q in range(n_quint):
                         acc.add(f"sq{q}|{m}", didx[ss][qs == q], gap_row[sw][qs == q])
+    del c_r, a_r, po_r, pc_r, exact_terms, hbin_r, refit
     point, boot = acc.estimate(W)
 
     def get(name):
@@ -742,27 +925,44 @@ def analyze(tr: Traces, st_half: np.ndarray, *, m_grid=M_GRID, pools=POOLS_PER_S
             return None
         return ci(boot[a] - boot[b], point[a] - point[b])
 
-    main, paired, quint = [], [], []
+    m0 = m_grid[0]
+    main, paired, e2, quint = [], [], [], []
     for m in m_grid:
         row = {"dataset": ds_, "kind": kd, "m": m, "n_states": int(rep.size), "n_docs": int(D),
-               **counts[m], "delta_exact": exact[m], "ece": ece, "n_rate_bins": n_rbins}
-        for nm, k in (("E_c_w", f"c_w|{m}"), ("E_a_w", f"a_w|{m}"), ("delta", f"delta|{m}"),
-                      ("ell_infl", f"infl|{m}"), ("delta_shuf", f"shuf|{m}")):
+               **counts[m], "ece": ece, "n_rate_bins": n_rbins}
+        for nm, k in (("delta_x", f"x_delta|{m}"), ("E_c_w", f"x_c|{m}"), ("E_a_w", f"x_a|{m}"),
+                      ("delta", f"delta|{m}"), ("ell_infl", f"infl|{m}"), ("delta_shuf", f"shuf|{m}")):
             r = get(k)
             for f in ("est", "lo", "hi", "se"):
                 row[f"{nm}_{f}"] = r[f] if r else np.nan
+        row["delta_exact"] = row["delta_x_est"]
         gap = diff(f"delta|{m}", f"shuf|{m}") if m >= 2 else None
         for f in ("est", "lo", "hi", "se"):
             row[f"gap_{f}"] = gap[f] if gap else np.nan
         for f in ("est", "lo", "hi"):
             row[f"icc_{f}"] = icc[f]
+            row[f"icc_own_{f}"] = icc_own[f]
             v = icc[f] if f == "est" else icc["hi" if f == "lo" else "lo"]
             row[f"m_eff_{f}"] = m / (1 + (m - 1) * v)
         main.append(row)
+        er = {"dataset": ds_, "kind": kd, "m": m}
+        for t in ("delta", "own", "field", "resid"):
+            r, c = get(f"x_{t}|{m}"), diff(f"x_{t}|{m}", f"x_{t}|{m0}")
+            for f in ("est", "lo", "hi", "se"):
+                er[f"{t}_{f}"] = r[f]
+                er[f"{t}_contrast_{f}"] = c[f] if m != m0 else 0.0
+        er["identity_error"] = er["delta_est"] - er["own_est"] - er["field_est"] - er["resid_est"]
+        er["delta_contrast_within_dmin"] = bool(-DELTA_MIN < er["delta_contrast_lo"] and er["delta_contrast_hi"] < DELTA_MIN)
+        er["field_refit_a"], er["field_refit_b"] = (refit_pt if m == m_grid[-1] and len(refit_pt) == 2
+                                                    else (np.nan, np.nan))
+        e2.append(er)
         if m >= 2:
-            pr, up = get(f"pdiff|{m}"), diff(f"delta|{m}", f"delta|{m_grid[0]}")
-            se_ind = math.hypot(get(f"delta|{m}")["se"], get(f"delta|{m_grid[0]}")["se"])
+            pr, up = get(f"pdiff|{m}"), diff(f"delta|{m}", f"delta|{m0}")
+            ux = diff(f"x_delta|{m}", f"x_delta|{m0}")
+            se_ind = math.hypot(get(f"delta|{m}")["se"], get(f"delta|{m0}")["se"])
             paired.append({"dataset": ds_, "kind": kd, "m": m,
+                           "exact_est": ux["est"], "exact_lo": ux["lo"], "exact_hi": ux["hi"],
+                           "exact_se": ux["se"],
                            "paired_est": pr["est"], "paired_lo": pr["lo"], "paired_hi": pr["hi"],
                            "paired_se": pr["se"], "unpaired_est": up["est"],
                            "unpaired_lo": up["lo"], "unpaired_hi": up["hi"],
@@ -779,10 +979,51 @@ def analyze(tr: Traces, st_half: np.ndarray, *, m_grid=M_GRID, pools=POOLS_PER_S
                               **{f"delta_shuf_{f}": sh[f] if sh else np.nan for f in ("est", "lo", "hi")},
                               **{f"gap_{f}": gq[f] if gq else np.nan for f in ("est", "lo", "hi")}})
     info = {"dataset": ds_, "kind": kd, "n_rep_states": int(rep.size), "n_fit_states": int(fit.size),
-            "n_docs": int(D), "n_boot": int(n_boot), "icc": icc, "ece": ece, "has_margin": has_margin,
-            "n_rate_bins": n_rbins, "seconds": round(time.time() - t0, 1)}
-    return {"main": pd.DataFrame(main), "paired": pd.DataFrame(paired),
-            "quint": pd.DataFrame(quint), "info": info}
+            "n_docs": int(D), "n_boot": int(n_boot), "icc": icc, "icc_own": icc_own,
+            "icc_without_top": icc_drop, "ece": ece, "has_margin": has_margin,
+            "n_rate_bins": n_rbins, "ctx_features": ctx.used if ctx else None,
+            "ctx_fit_rows": ctx.n_fit_rows if ctx else 0, "ctx_iterations": ctx.n_iter if ctx else 0,
+            "ctx_converged": ctx.converged if ctx else None,
+            "calibrator_seconds": round(t_cal, 1), "seconds": round(time.time() - t0, 1)}
+    return {"main": pd.DataFrame(main), "paired": pd.DataFrame(paired), "e2": pd.DataFrame(e2),
+            "quint": pd.DataFrame(quint), "icc_top": icc_top.assign(dataset=ds_, kind=kd),
+            "h3": {"docs": rep_docs, "bins": h3_bins, **{m: h3[m] for m in m_grid}}, "info": info}
+
+
+def equal_conf_contrast(A: dict, B: dict, m: int, n_boot: int, rng, target: str = "A") -> dict:
+    """H3 at equal winner confidence: Δ_A − Δ_B with both arms' per-bin gaps E[c − a | winner in
+    bin b] averaged over one winner-confidence distribution (A's by default, or B's).
+
+    A and B are the `h3` outputs of `analyze` for two arms; only documents in both are used, and
+    one set of document weights resamples both (the same documents carry both arms).  Bins where
+    either arm has no winner mass are left out; `support` is the share of the target arm's mass
+    that remains.  Returns est/lo/hi for both reweighted Δs and their difference, plus per-bin
+    gaps of each arm (point estimates)."""
+    docs = np.intersect1d(A["docs"], B["docs"])
+    ia, ib = np.searchsorted(A["docs"], docs), np.searchsorted(B["docs"], docs)
+    MA, GA, MB, GB = A[m]["M"][ia], A[m]["G"][ia], B[m]["M"][ib], B[m]["G"][ib]
+    W = np.vstack([np.ones(docs.size), doc_weights(docs.size, n_boot, rng)])
+    with np.errstate(invalid="ignore", divide="ignore"):
+        mA, mB = W @ MA, W @ MB
+        gA, gB = (W @ GA) / mA, (W @ GB) / mB
+        both = (mA > 0) & (mB > 0)
+        tm = np.where(both, mA if target == "A" else mB, 0.0)
+        p = tm / tm.sum(1, keepdims=True)
+        dA = np.nansum(p * np.where(both, gA, 0), 1)
+        dB = np.nansum(p * np.where(both, gB, 0), 1)
+        support = tm.sum(1) / (mA if target == "A" else mB).sum(1)
+    out = {"m": m, "target": target, "n_docs": int(docs.size), "support": float(support[0])}
+    for nm, v in (("delta_A", dA), ("delta_B", dB), ("diff", dA - dB)):
+        r = ci(v[1:], v[0])
+        out.update({f"{nm}_est": r["est"], f"{nm}_lo": r["lo"], f"{nm}_hi": r["hi"]})
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")      # empty bins give all-NaN percentiles
+        out["bins"] = pd.DataFrame({
+            "bin": np.arange(MA.shape[1]), "conf_lo": np.arange(MA.shape[1]) / MA.shape[1],
+            "mass_A": mA[0] / mA[0].sum(), "mass_B": mB[0] / mB[0].sum(), "gap_A": gA[0], "gap_B": gB[0],
+            "gap_A_lo": np.nanpercentile(gA[1:], 2.5, 0), "gap_A_hi": np.nanpercentile(gA[1:], 97.5, 0),
+            "gap_B_lo": np.nanpercentile(gB[1:], 2.5, 0), "gap_B_hi": np.nanpercentile(gB[1:], 97.5, 0)})
+    return out
 
 
 # ---------------------------------------------------------------- Module A toy
@@ -983,7 +1224,7 @@ for name, files in FILES.items():
 
 # %% [markdown]
 # ## 1.5 Memory and runtime estimate
-# Each dataset × kind is loaded on its own with about 10 downcast columns (≈41 B/row, plus about 2× that during the sort).
+# Each dataset × kind is loaded on its own with about 11 downcast columns (≈45 B/row, plus about 2.5× that during the sort and the E2 terms).
 # Runtime is measured on a synthetic benchmark of the same pool and bootstrap code, then scaled by the real state counts.
 
 # %%
@@ -992,7 +1233,7 @@ try:
     AVAIL_GB = psutil.virtual_memory().available / 1e9
 except ImportError:
     AVAIL_GB = float("nan")
-BYTES_PER_ROW, PEAK_FACTOR = 41, 2.0
+BYTES_PER_ROW, PEAK_FACTOR = 45, 2.5
 
 bench_tr = traces_from_frame(make_synthetic("calibrated", n_docs=400, n_states=10, n_pos=100), "bench")
 bench_states = np.arange(bench_tr.n_states)
@@ -1011,6 +1252,12 @@ t = time.time()
 Wb = doc_weights(1000, 2000, rng_for("bench-w"))
 _ = Wb @ np.random.default_rng(0).random((1000, 150))
 t_boot = (time.time() - t) / (2000 * 1000)
+t = time.time()
+_cc = ContextCalibrator().fit(bench_tr, bench_states, rng_for("bench-c"))
+t_cfit = (time.time() - t) / bench_tr.ell.size
+t = time.time()
+_ = _cc.predict(bench_tr, np.arange(bench_tr.ell.size))
+t_cpred = (time.time() - t) / bench_tr.ell.size
 EXCLUSIONS[:] = [e for e in EXCLUSIONS if e["dataset"] != "bench"]
 
 PROJ = []
@@ -1025,13 +1272,17 @@ for name, st in STATE_TABLE.items():
         sec_pools = S_rep * POOLS_PER_STATE * (len(M_GRID) * t_act / 1 + sum(M_GRID[1:]) * t_shuf)
         sec_boot = N_BOOT * D * t_boot * 1.5
         sec_load = rows / 5e6
+        # π̂(ℓ, s): one fit on CAL_MAX_ROWS rows plus two on half that (refit check), three predictions
+        # on the report rows; the lbfgs iteration count varies, so this is rough
+        sec_cal = (2 * min(rows / 2, CAL_MAX_ROWS) * t_cfit * (1 + CAL_REFIT_CHECK)
+                   + rows / 2 * t_cpred * (1 + 2 * CAL_REFIT_CHECK))
         PROJ.append({"dataset": name, "kind": kind, "rows": rows,
                      "mem_GB": rows * BYTES_PER_ROW * PEAK_FACTOR / 1e9, "report_states": S_rep,
                      "report_docs": D, "load_min": sec_load / 60, "pools_min": sec_pools / 60,
-                     "boot_min": sec_boot / 60})
+                     "cal_min": sec_cal / 60, "boot_min": sec_boot / 60})
 PROJ = pd.DataFrame(PROJ)
 if not PROJ.empty:
-    PROJ["total_min"] = PROJ[["load_min", "pools_min", "boot_min"]].sum(1)
+    PROJ["total_min"] = PROJ[["load_min", "pools_min", "cal_min", "boot_min"]].sum(1)
     print(PROJ.round(2).to_string(index=False))
 TOY_MIN = 2.0
 PROJECTED_MIN = float(PROJ["total_min"].sum() if not PROJ.empty else 0) + TOY_MIN + 1.0
@@ -1259,6 +1510,16 @@ check("ANOVA ICC recovers a known ICC of 0.10", abs(icc_from_stats(stt) - rho) <
 cal_t = fit_calibrator(tie_tr.ell, tie_tr.agree)
 xs = np.linspace(-5, 5, 101)
 check("isotonic calibrator is non-decreasing and in [0, 1]", (np.diff(cal_t(xs)) >= -1e-12).all() and (cal_t(xs) >= 0).all() and (cal_t(xs) <= 1).all())
+ew_t = exact_winner_weights(tie_tr, st_all, 8)
+check("exact winner weights sum to 1 in every state", np.allclose(np.bincount(tie_tr.row_state[ew_t[0]], ew_t[1]), 1.0))
+pw_r, pw_w = pool_weights(tie_tr, st_all)
+check("pool weights: every document weighs 1", np.allclose(np.bincount(tie_tr.st_doc[tie_tr.row_state[pw_r]], pw_w), 1.0))
+ds_t = icc_doc_stats(tie_tr, st_all, tie_tr.st_doc, 40, tie_tr.agree - cal_t(tie_tr.ell), np.arange(tie_tr.ell.size))
+tab_t, _ = icc_influence(ds_t, np.arange(40), top=1)
+keep_t = st_all[tie_tr.st_doc != tab_t.doc_id.iloc[0]]
+kr_t = np.flatnonzero(np.isin(tie_tr.row_state, keep_t))
+direct_t = icc_from_stats(icc_doc_stats(tie_tr, keep_t, tie_tr.st_doc, 40, (tie_tr.agree - cal_t(tie_tr.ell))[kr_t], kr_t).sum(0))
+check("leave-one-document-out ICC = ICC recomputed without that document", abs(tab_t.icc_without.iloc[0] - direct_t) < 1e-10)
 fit_i, rep_i = document_split_rule(200)
 check("document split is 50/50 and disjoint", len(fit_i) == len(rep_i) == 100 and not set(fit_i) & set(rep_i))
 check("ECE of perfectly calibrated data is small", ece_equal_mass(*(lambda c: (c, (rng.random(c.size) < c).astype(np.int8)))(rng.random(200_000))) < 0.01)
@@ -1309,6 +1570,47 @@ check(f"(4) shared errors: shuffle gap CI at m={M} excludes 0", not covers(row("
 check("(4) shared errors: ICC CI above 0", row("shared_err", M).icc_lo > 0)
 check("(4b) independent state effect: ICC CI above 0", row("shared_indep", M).icc_lo > 0)
 
+
+def erow(scen, m):
+    """The `e2` row of a scenario at pool size m."""
+    t = SYN[scen]["e2"]
+    return t[t.m == m].iloc[0]
+
+
+# E2 split (Prop. 2): which term carries Δ in each scenario
+check("E2: Δ = own + field + residual exactly, every scenario and m",
+      all(np.abs(SYN[s]["e2"].identity_error).max() < 1e-9 for s in SCENARIOS))
+check("E2: field term at m = 1 is ~0 (|field(1)| < 0.005), every scenario",
+      all(abs(erow(s, 1).field_est) < 0.005 for s in SCENARIOS))
+# The field-term CIs treat the fitted calibrators as fixed, so they are far narrower than the
+# calibrators' own fit error (≈0.001-0.003 here).  Null checks therefore bound its size.
+check(f"E2 (1) calibrated: |field({M})| < 0.005 and residual CI covers 0",
+      abs(erow("calibrated", M).field_est) < 0.005 and covers(erow("calibrated", M).resid_lo, erow("calibrated", M).resid_hi))
+check(f"E2 (2) flat: own term ≈ 0.08 and |field({M})| < 0.005",
+      abs(erow("flat_miscal", M).own_est - 0.08) < 0.01 and abs(erow("flat_miscal", M).field_est) < 0.005)
+check(f"E2 (3) context (position-level miscalibration only): own contrast above 0, |field contrast| < 1/4 of it",
+      erow("context", M).own_contrast_lo > 0 and abs(erow("context", M).field_contrast_est) < 0.25 * erow("context", M).own_contrast_est)
+# Pools are drawn within a state, so the winner is selected on its own noise and not on the state's
+# shift: at equal ℓ, winners come from states where that ℓ is high *for the state* (low-shift
+# states).  shared_err (shift raises confidence only): those states are more accurate, field < 0.
+# field_pos (low-shift states also less accurate at equal ℓ, logit p = ℓ + u): field > 0 (H2).
+check(f"E2 (4) shared errors: field({M}) CI below 0", erow("shared_err", M).field_hi < 0)
+tr_fp = traces_from_frame(make_synthetic("field_pos"), "synthetic-field_pos")
+E2_FP = analyze(tr_fp, make_split({"rule": {"n_docs": 200}})(tr_fp.st_doc), n_boot=SELFTEST_BOOT, key="selftest")["e2"]
+fp = E2_FP[E2_FP.m == M].iloc[0]
+check(f"E2 (5) field_pos: field({M}) CI above 0 and above the refit spread",
+      fp.field_lo > 0 and fp.field_est > 2 * abs(fp.field_refit_a - fp.field_refit_b))
+print(f"info field_pos at m={M}: Δ {fp.delta_est:+.4f}, own {fp.own_est:+.4f}, field {fp.field_est:+.4f} "
+      f"[{fp.field_lo:+.4f}, {fp.field_hi:+.4f}], refits {fp.field_refit_a:+.4f} / {fp.field_refit_b:+.4f}")
+tr_h3 = traces_from_frame(make_synthetic("calibrated", seed=7), "synthetic-h3")
+h3_other = analyze(tr_h3, make_split({"rule": {"n_docs": 200}})(tr_h3.st_doc), m_grid=[1, M],
+                   n_boot=200, key="h3")["h3"]
+h3_same = equal_conf_contrast(SYN["calibrated"]["h3"], h3_other, M, SELFTEST_BOOT, rng_for("h3-test"))
+h3_flat = equal_conf_contrast(SYN["flat_miscal"]["h3"], SYN["calibrated"]["h3"], M, SELFTEST_BOOT, rng_for("h3-test2"))
+check(f"H3 equal-confidence contrast: two calibrated draws, CI covers 0 at m={M}", covers(h3_same["diff_lo"], h3_same["diff_hi"]))
+check(f"H3 equal-confidence contrast: flat (0.08) vs calibrated, CI covers 0.08 at m={M}",
+      h3_flat["diff_lo"] <= 0.08 <= h3_flat["diff_hi"] and h3_flat["support"] > 0.9)
+
 # Replicates: R independent synthetic data sets per scenario (fresh seeds), shuffle gap at m = M.
 # Null scenarios: no bias (|mean gap| < 3 SD / sqrt(R)), CI coverage >= 16/20 (a correct 95% CI
 # fails this with probability 1.6%), bootstrap SE within 30% of the replicate SD.
@@ -1319,7 +1621,7 @@ for scen in ("calibrated", "context", "shared_indep", "shared_err"):
     for rep_i in range(R_REP):
         tr_r = traces_from_frame(make_synthetic(scen, seed=1000 + rep_i), f"synthetic-rep-{scen}")
         res_r = analyze(tr_r, make_split({"rule": {"n_docs": 200}})(tr_r.st_doc), m_grid=[1, M],
-                        n_boot=1000, key=f"rep{rep_i}")["main"]
+                        n_boot=1000, key=f"rep{rep_i}", e2=False)["main"]
         x = res_r[res_r.m == M].iloc[0]
         REPS.append({"scenario": scen, "rep": rep_i, "gap": x.gap_est, "se": x.gap_se,
                      "covers": covers(x.gap_lo, x.gap_hi)})
@@ -1331,7 +1633,10 @@ for scen in ("calibrated", "context", "shared_indep"):
     r_ = rep_summ.loc[scen]
     check(f"replicates, {scen}: shuffle gap unbiased (|mean| < 3 SD/sqrt(R))", abs(r_.mean_gap) < 3 * r_.sd_gap / math.sqrt(R_REP))
     check(f"replicates, {scen}: CI coverage >= 16/{R_REP}", r_.coverage >= 16 / R_REP)
-    check(f"replicates, {scen}: bootstrap SE within 30% of replicate SD", 0.7 < r_.mean_se / r_.sd_gap < 1.3)
+    # One-sided: the shuffle-gap SE must not be anti-conservative.  With 50 pools per state it runs
+    # 1.0-1.6x the replicate SD (conservative; coverage near 100%); with 20 pools, pool noise hid that.
+    check(f"replicates, {scen}: bootstrap SE not below 0.7 x replicate SD", r_.mean_se / r_.sd_gap > 0.7)
+    print(f"info {scen}: bootstrap SE / replicate SD = {r_.mean_se / r_.sd_gap:.2f}")
 r_ = rep_summ.loc["shared_err"]
 check("replicates, shared_err: shuffle gap != 0 (|mean| > 3 SD/sqrt(R))", abs(r_.mean_gap) > 3 * r_.sd_gap / math.sqrt(R_REP))
 # pairing removes document-level noise: a clear gain where states share an effect, none to lose elsewhere
@@ -1360,10 +1665,12 @@ fig.tight_layout(); fig.savefig(os.path.join(FIG_DIR, "moduleB_scenarios.png"), 
 # %% [markdown]
 # ## Modules C–F on the configured datasets
 # The datasets are processed one at a time, for each dataset × mask kind: load (pruned and downcast), check, sort, then pools and the bootstrap. Every reported number comes from report-half documents. Calibrators are fit on the fit half.
-# * C: E[c_w], E[a_w], Δ(m), and ℓ inflation (E[ℓ_w] − the state's mean ℓ, the expected ℓ of a random position).
-# * D: shuffle gap and ICC.
-# * E: paired contrast.
+# * C: E[c_w], E[a_w], Δ(m) (exact all-subsets estimator, no pool noise), and ℓ inflation (E[ℓ_w] − the state's mean ℓ, the expected ℓ of a random position).
+# * E2 (Prop. 2): Δ(m) = own miscalibration E_m[c − π̂(ℓ)] + field term E_m[π̂(ℓ) − π̂(ℓ, s)] + residual E_m[π̂(ℓ, s) − a], on the same winners and resamples. Growth of Δ with m that sits in the own term is ordinary high-confidence miscalibration; only the field term is a winner's curse from the state (H2).
+# * D: shuffle gap (Monte Carlo pools) and the ICC of a − π̂(ℓ, s) (also of a − π̂(ℓ), and without the most influential documents).
+# * E: paired contrast Δ(m) − Δ(1): exact (primary) and the Monte Carlo winner-minus-random-member pairing.
 # * F: margin quintiles. Quintile edges come from the report-half actual winners' margins at each m (a covariate only, no outcome); the shuffled winners use the same edges.
+# * H3: decoder vs uniform-matched Δ at equal winner confidence (per-bin gaps averaged over one arm's winner-confidence distribution), after both arms of a dataset are done.
 
 # %%
 RESULTS = {}
@@ -1389,8 +1696,30 @@ for name, spec in DATASETS.items():
         RESULTS[(name, kind)] = res
         i = res["info"]
         print(f"   {name}/{kind}: {i['n_rep_states']:,} report states, {i['n_docs']:,} docs, "
-              f"ICC {i['icc']['est']:.4f}, ECE {i['ece']:.4f}, {i['seconds']} s analysis")
+              f"ICC {i['icc']['est']:.4f}, ECE {i['ece']:.4f}, π̂(ℓ, s) features {i['ctx_features']} "
+              f"({'converged' if i['ctx_converged'] else 'NOT converged'}), {i['seconds']} s analysis")
         del tr
+
+H3 = {}
+for name in dict.fromkeys(k[0] for k in RESULTS):
+    for ka, kb in H3_PAIRS:
+        if (name, ka) not in RESULTS or (name, kb) not in RESULTS:
+            continue
+        for m in M_GRID:
+            for tgt in ("A", "B"):
+                H3[(name, ka, kb, m, tgt)] = equal_conf_contrast(
+                    RESULTS[(name, ka)]["h3"], RESULTS[(name, kb)]["h3"], m, N_BOOT_RUN,
+                    rng_for("main", name, ka, kb, "h3", m), target=tgt)
+H3_TAB = pd.DataFrame([{"dataset": k[0], "arm_A": k[1], "arm_B": k[2], "weights_from": k[1] if k[4] == "A" else k[2],
+                        **{kk: vv for kk, vv in v.items() if kk != "bins"}} for k, v in H3.items()])
+H3_BINS_TAB = pd.concat([v["bins"].assign(dataset=k[0], arm_A=k[1], arm_B=k[2], m=k[3])
+                         for k, v in H3.items() if k[4] == "A"], ignore_index=True) if H3 else pd.DataFrame()
+E2 = pd.concat([r["e2"] for r in RESULTS.values()], ignore_index=True)
+ICC_TOP = pd.concat([r["icc_top"] for r in RESULTS.values()], ignore_index=True)
+E2.to_csv(os.path.join(OUT_DIR, "summary_e2.csv"), index=False)
+H3_TAB.to_csv(os.path.join(OUT_DIR, "summary_h3.csv"), index=False)
+H3_BINS_TAB.to_csv(os.path.join(OUT_DIR, "h3_bins.csv"), index=False)
+ICC_TOP.to_csv(os.path.join(OUT_DIR, "icc_influence.csv"), index=False)
 
 MAIN = pd.concat([r["main"] for r in RESULTS.values()], ignore_index=True)
 PAIRED = pd.concat([r["paired"] for r in RESULTS.values()], ignore_index=True)
@@ -1399,12 +1728,23 @@ MAIN.to_csv(os.path.join(OUT_DIR, "summary_main.csv"), index=False)
 PAIRED.to_csv(os.path.join(OUT_DIR, "summary_paired.csv"), index=False)
 QUINT.to_csv(os.path.join(OUT_DIR, "summary_quintiles.csv"), index=False)
 pd.DataFrame(EXCLUSIONS).to_csv(os.path.join(OUT_DIR, "exclusions.csv"), index=False)
-show = ["dataset", "kind", "m", "n_states", "n_docs", "delta_est", "delta_lo", "delta_hi",
-        "delta_exact", "delta_shuf_est", "gap_est", "gap_lo", "gap_hi", "icc_est", "m_eff_est", "ece"]
+show = ["dataset", "kind", "m", "n_states", "n_docs", "delta_x_est", "delta_x_lo", "delta_x_hi",
+        "delta_est", "delta_shuf_est", "gap_est", "gap_lo", "gap_hi", "icc_est", "icc_own_est", "m_eff_est", "ece"]
 print(MAIN[show].round(4).to_string(index=False))
+print("\nE2 split (exact; contrast = value at m minus value at m = 1)")
+print(E2[["dataset", "kind", "m", "delta_est", "own_est", "field_est", "field_lo", "field_hi", "resid_est",
+          "delta_contrast_est", "own_contrast_est", "field_contrast_est", "field_contrast_lo",
+          "field_contrast_hi"]].round(4).to_string(index=False))
+if len(H3_TAB):
+    print("\nH3 at equal winner confidence (diff = arm A − arm B)")
+    print(H3_TAB[["dataset", "arm_A", "arm_B", "m", "weights_from", "support", "delta_A_est", "delta_B_est",
+                  "diff_est", "diff_lo", "diff_hi"]].round(4).to_string(index=False))
+print("\nmost influential documents for the ICC (influence = ICC − ICC without the document)")
+print(ICC_TOP.round(5).to_string(index=False))
 
 # %% [markdown]
 # ### Summary table per dataset × mask kind (m = 1 and m = 32)
+# Δ and its E2 terms use the exact estimator; "within ±δ_min" means the 95% CI of Δ(32) − Δ(1) lies inside (−0.02, 0.02), the pre-registered smallest effect worth reporting (an equivalence reading, not a test of H1).
 
 # %%
 def fmt(e, lo, hi):
@@ -1414,15 +1754,22 @@ def fmt(e, lo, hi):
 
 SUMMARY = []
 for (name, kind), r in RESULTS.items():
-    t = r["main"].set_index("m"); p = r["paired"].set_index("m")
-    SUMMARY.append({"dataset": name, "kind": kind, "report docs": r["info"]["n_docs"],
-                    "report states": r["info"]["n_rep_states"], "ECE": round(r["info"]["ece"], 4),
-                    "Δ(1)": fmt(*t.loc[1, ["delta_est", "delta_lo", "delta_hi"]]),
-                    f"Δ({M})": fmt(*t.loc[M, ["delta_est", "delta_lo", "delta_hi"]]),
-                    f"Δ({M})−Δ(1) paired": fmt(*p.loc[M, ["paired_est", "paired_lo", "paired_hi"]]),
-                    f"var. reduction": f"{p.loc[M, 'var_reduction_vs_indep']:.0%}",
+    t = r["main"].set_index("m"); p = r["paired"].set_index("m"); e = r["e2"].set_index("m"); i = r["info"]
+    SUMMARY.append({"dataset": name, "kind": kind, "report docs": i["n_docs"],
+                    "report states": i["n_rep_states"], "ECE": round(i["ece"], 4),
+                    "Δ(1)": fmt(*t.loc[1, ["delta_x_est", "delta_x_lo", "delta_x_hi"]]),
+                    f"Δ({M})": fmt(*t.loc[M, ["delta_x_est", "delta_x_lo", "delta_x_hi"]]),
+                    f"Δ({M})−Δ(1)": fmt(*e.loc[M, ["delta_contrast_est", "delta_contrast_lo", "delta_contrast_hi"]]),
+                    f"within ±δ_min": "yes" if e.loc[M, "delta_contrast_within_dmin"] else "no",
+                    f"own Δ({M})−Δ(1)": fmt(*e.loc[M, ["own_contrast_est", "own_contrast_lo", "own_contrast_hi"]]),
+                    f"field({M}) (H2)": fmt(*e.loc[M, ["field_est", "field_lo", "field_hi"]]),
+                    f"field({M})−field(1)": fmt(*e.loc[M, ["field_contrast_est", "field_contrast_lo", "field_contrast_hi"]]),
+                    f"residual({M})": fmt(*e.loc[M, ["resid_est", "resid_lo", "resid_hi"]]),
+                    f"MC pairing var. reduction": f"{p.loc[M, 'var_reduction_vs_indep']:.0%}",
                     f"shuffle gap m={M}": fmt(*t.loc[M, ["gap_est", "gap_lo", "gap_hi"]]),
-                    "ICC": fmt(*t.loc[M, ["icc_est", "icc_lo", "icc_hi"]]),
+                    "ICC π̂(ℓ,s)": fmt(*t.loc[M, ["icc_est", "icc_lo", "icc_hi"]]),
+                    "ICC π̂(ℓ)": fmt(*t.loc[M, ["icc_own_est", "icc_own_lo", "icc_own_hi"]]),
+                    f"ICC w/o top {ICC_DROP_TOP} docs": f"{i['icc_without_top']:+.4f}",
                     f"m_eff({M})": f"{t.loc[M, 'm_eff_est']:.1f}"})
 SUMMARY = pd.DataFrame(SUMMARY)
 SUMMARY.to_csv(os.path.join(OUT_DIR, "summary_table.csv"), index=False)
@@ -1446,12 +1793,12 @@ for name in dict.fromkeys(k[0] for k in RESULTS):
         c = f"C{i}"
         errbar(ax[0, 0], x, t, "E_c_w", fmt="o-", c=c, label=kind)
         errbar(ax[0, 1], x, t, "E_a_w", fmt="o-", c=c, label=kind)
-        errbar(ax[1, 0], x, t, "delta", fmt="o-", c=c, label=f"{kind} Δ(m)")
+        errbar(ax[1, 0], x, t, "delta_x", fmt="o-", c=c, label=f"{kind} Δ(m)")
         ax[1, 0].axhline(t.ece.iloc[0], c=c, ls="--", lw=1, label=f"{kind} ECE (all positions)")
         errbar(ax[1, 1], x, t, "ell_infl", fmt="o-", c=c, label=kind)
     ax[0, 0].set(ylabel="E[c_winner]", title="raw winner confidence")
     ax[0, 1].set(ylabel="E[a_winner]", title="winner accuracy")
-    ax[1, 0].set(ylabel="Δ(m) = E[c − a] at winner", title="calibrated gap (+ = overconfident)")
+    ax[1, 0].set(ylabel="Δ(m) = E[c − a] at winner", title="calibrated gap, exact (+ = overconfident)")
     ax[1, 1].set(ylabel="E[ℓ_w] − E[ℓ random position]", title="log-odds inflation of the winner")
     for a in ax.flat:
         a.set_xlabel("log2 pool size m"); a.grid(alpha=0.3); a.legend(fontsize=7)
@@ -1496,6 +1843,35 @@ for name in dict.fromkeys(k[0] for k in RESULTS):
             ax[0, j].grid(alpha=0.3); ax[0, j].legend(fontsize=7)
         fig.tight_layout(); fig.savefig(os.path.join(FIG_DIR, f"moduleF_{name}.png"), dpi=300); plt.show()
 
+    fig, ax = plt.subplots(1, len(kinds), figsize=(5.5 * len(kinds), 4), squeeze=False)
+    for j, kind in enumerate(kinds):
+        e = RESULTS[(name, kind)]["e2"]; x = np.log2(e.m)
+        for i, (term, lab) in enumerate((("delta", "Δ(m)"), ("own", "own: E[c − π̂(ℓ)]"),
+                                         ("field", "field: E[π̂(ℓ) − π̂(ℓ,s)]"), ("resid", "residual: E[π̂(ℓ,s) − a]"))):
+            errbar(ax[0, j], x + 0.04 * i, e, term, fmt="o-" if term == "delta" else "s:", c=f"C{i}", label=lab)
+        ax[0, j].axhline(0, c="k", lw=0.8)
+        ax[0, j].set(xlabel="log2 pool size m", ylabel="contribution to Δ(m)", title=f"E2 split: {name}/{kind}")
+        ax[0, j].grid(alpha=0.3); ax[0, j].legend(fontsize=7)
+    fig.tight_layout(); fig.savefig(os.path.join(FIG_DIR, f"E2_split_{name}.png"), dpi=300); plt.show()
+
+    for ka, kb in H3_PAIRS:
+        if (name, ka, kb, M, "A") not in H3:
+            continue
+        b = H3[(name, ka, kb, M, "A")]["bins"]; xc = b.conf_lo + 0.5 / H3_BINS
+        fig, ax = plt.subplots(1, 2, figsize=(12, 4))
+        for col, kd_, cc in (("A", ka, "C1"), ("B", kb, "C2")):
+            ok = b[f"mass_{col}"] > 0
+            ax[0].errorbar(xc[ok], b[f"gap_{col}"][ok], [(b[f"gap_{col}"] - b[f"gap_{col}_lo"])[ok],
+                           (b[f"gap_{col}_hi"] - b[f"gap_{col}"])[ok]], fmt="o-", c=cc, capsize=3, label=kd_)
+            ax[1].bar(xc + (-0.012 if col == "A" else 0.012), b[f"mass_{col}"], width=0.024, color=cc, label=kd_)
+        ax[0].axhline(0, c="k", lw=0.8)
+        ax[0].set(xlabel="winner confidence", ylabel="E[c − a | winner in bin]", title=f"H3 at equal confidence, m = {M}")
+        ax[1].set(xlabel="winner confidence", ylabel="share of winners", title="winner-confidence distribution")
+        for a_ in ax:
+            a_.grid(alpha=0.3); a_.legend(fontsize=7)
+        fig.suptitle(f"{name}: {ka} vs {kb}"); fig.tight_layout()
+        fig.savefig(os.path.join(FIG_DIR, f"H3_{name}_{ka}_vs_{kb}.png"), dpi=300); plt.show()
+
 # %% [markdown]
 # ## Provenance and exclusions
 
@@ -1503,7 +1879,9 @@ for name in dict.fromkeys(k[0] for k in RESULTS):
 RUN_META = {"created": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "versions": VERSIONS,
             "config": {k: globals()[k] for k in ("USE_SYNTHETIC", "MASK_KINDS", "M_GRID", "POOLS_PER_STATE",
                                                  "N_BOOT", "SEED", "MIN_STATE_SIZE", "RATE_BINS",
-                                                 "N_QUINTILES", "ECE_BINS", "TOY_N")},
+                                                 "N_QUINTILES", "ECE_BINS", "TOY_N", "FIELD_FEATURES",
+                                                 "CAL_KNOTS", "CAL_MAX_ROWS", "DELTA_MIN", "H3_PAIRS",
+                                                 "H3_BINS", "ICC_DROP_TOP")},
             "n_boot_run": N_BOOT_RUN, "phase1_verdict": PHASE1_VERDICT,
             "datasets": {n: {"path": s.get("path"), "hf": s.get("hf"), "split": s["split"], "model": s.get("model"),
                              "files": [{"name": f.name, "bytes": f.stat().st_size,
@@ -1536,35 +1914,81 @@ lines.append(f"\n**Toy (Module A).** In the Gaussian matched filter, Q × local 
              f"(theory 0.5). At Q = 1 the global search adds a remote term of {d1.B_remote:.3f} to the local bias of {d1.B_local:.3f}, and "
              f"the remote side wins {d1.P_remote_wins:.0%} of the time (L = 6). This checks the code; it says nothing about language models.")
 for (name, kind), r in RESULTS.items():
-    t = r["main"].set_index("m"); p = r["paired"].set_index("m"); i = r["info"]
-    a1, aM = t.loc[1], t.loc[M]; pm = p.loc[M]
+    t = r["main"].set_index("m"); p = r["paired"].set_index("m"); e = r["e2"].set_index("m"); i = r["info"]
+    a1, aM, eM, e1 = t.loc[1], t.loc[M], e.loc[M], e.loc[1]
     lines.append(f"\n**{name} / {kind}** ({i['n_docs']:,} report documents, {i['n_rep_states']:,} states, ECE {i['ece']:.3f}).")
     lines.append(f"- The winner's raw confidence rises from {a1.E_c_w_est:.3f} (m = 1) to {aM.E_c_w_est:.3f} (m = {M}), "
                  f"and its log-odds sit {aM.ell_infl_est:.2f} above the state's average position. That is the expected inflation of a maximum.")
-    lines.append(f"- The calibrated gap Δ goes from {a1.delta_est:+.4f} [{a1.delta_lo:+.4f}, {a1.delta_hi:+.4f}] at m = 1 to "
-                 f"{aM.delta_est:+.4f} [{aM.delta_lo:+.4f}, {aM.delta_hi:+.4f}] at m = {M}. The paired change Δ({M}) − Δ(1) = "
-                 f"{pm.paired_est:+.4f} [{pm.paired_lo:+.4f}, {pm.paired_hi:+.4f}] (CI {side(pm.paired_lo, pm.paired_hi)}); "
-                 + (f"pairing cut its variance by {pm.var_reduction_vs_indep:.0%}." if pm.var_reduction_vs_indep > 0 else f"pairing did not reduce its variance here ({pm.var_reduction_vs_indep:+.0%})."))
+    lines.append(f"- The calibrated gap Δ (exact estimator) goes from {a1.delta_x_est:+.4f} [{a1.delta_x_lo:+.4f}, {a1.delta_x_hi:+.4f}] at m = 1 to "
+                 f"{aM.delta_x_est:+.4f} [{aM.delta_x_lo:+.4f}, {aM.delta_x_hi:+.4f}] at m = {M}. The change Δ({M}) − Δ(1) = "
+                 f"{eM.delta_contrast_est:+.4f} [{eM.delta_contrast_lo:+.4f}, {eM.delta_contrast_hi:+.4f}] (CI {side(eM.delta_contrast_lo, eM.delta_contrast_hi)}); "
+                 + (f"its CI lies inside ±{DELTA_MIN}, so any change is smaller than the pre-registered smallest effect worth reporting."
+                    if eM.delta_contrast_within_dmin else f"its CI is not inside ±{DELTA_MIN}."))
+    grows = eM.delta_contrast_lo > 0
+    own_share = eM.own_contrast_est / eM.delta_contrast_est if grows else np.nan
+    if eM.field_lo > 0:
+        verdict = ("Part of the change is a winner's curse from the state: at equal own confidence, winners of larger "
+                   "pools sit in states where the context-aware calibrator expects lower accuracy.")
+    elif eM.field_hi < 0:
+        verdict = ("The field term is negative: at equal own confidence, large-pool winners sit in states the "
+                   "context-aware calibrator rates as more accurate, so the state works against the winner's curse here.")
+    elif grows and eM.own_contrast_lo > 0:
+        verdict = ("No field term is detected; the growth of Δ sits in the own term, which is ordinary high-confidence "
+                   "miscalibration seen through the maximum, not a winner's curse from the state.")
+    else:
+        verdict = "No field term is detected."
+    lines.append(f"- E2 split of that change: own miscalibration {eM.own_contrast_est:+.4f} [{eM.own_contrast_lo:+.4f}, {eM.own_contrast_hi:+.4f}], "
+                 f"field term {eM.field_contrast_est:+.4f} [{eM.field_contrast_lo:+.4f}, {eM.field_contrast_hi:+.4f}], residual "
+                 f"{eM.resid_contrast_est:+.4f} [{eM.resid_contrast_lo:+.4f}, {eM.resid_contrast_hi:+.4f}]"
+                 + (f" (own share {own_share:.0%})." if np.isfinite(own_share) and 0 <= own_share <= 1.5 else ".")
+                 + f" The field term at m = {M} is {eM.field_est:+.4f} [{eM.field_lo:+.4f}, {eM.field_hi:+.4f}] (H2; CI {side(eM.field_lo, eM.field_hi)}; "
+                 f"at m = 1 it is {e1.field_est:+.4f}, which should be ≈ 0"
+                 + (f"; refitting both calibrators on each half of the fit documents gives {eM.field_refit_a:+.4f} and "
+                    f"{eM.field_refit_b:+.4f}, a calibrator-fit spread the CI leaves out" if np.isfinite(eM.field_refit_a) else "")
+                 + "). " + verdict)
+    if not covers(eM.resid_lo, eM.resid_hi):
+        lines.append(f"- Specification check: the residual E[π̂(ℓ, s) − a] at m = {M} is {eM.resid_est:+.4f} [{eM.resid_lo:+.4f}, {eM.resid_hi:+.4f}], "
+                     "not 0, so π̂(ℓ, s) misses some of what drives the winners' accuracy; read the field term with that margin.")
     if np.isfinite(aM.gap_est):
-        lines.append(f"- Shuffle test at m = {M}: actual pools {aM.delta_est:+.4f}, shuffled pools {aM.delta_shuf_est:+.4f}, gap "
+        lines.append(f"- Shuffle test at m = {M} (Monte Carlo pools): actual {aM.delta_est:+.4f}, shuffled {aM.delta_shuf_est:+.4f}, gap "
                      f"{aM.gap_est:+.4f} [{aM.gap_lo:+.4f}, {aM.gap_hi:+.4f}] (CI {side(aM.gap_lo, aM.gap_hi)}). "
-                     + ("A gap that excludes 0 means a state's positions are not exchangeable with positions from other states: "
-                        "errors, or confidence shifts, are shared within a state. It does not by itself say which."
-                        if not covers(aM.gap_lo, aM.gap_hi) else
+                     + ("A winner drawn from strangers in the same mask-rate bin is more overconfident than one drawn from its own state: "
+                        "state-level calibration differences that rate matching does not absorb. That is evidence that context matters, "
+                        "not a test of Prop. 1."
+                        if aM.gap_hi < 0 else
+                        "A winner drawn from its own state is more overconfident than one drawn from strangers in the same rate bin: "
+                        "errors or confidence shifts are shared within a state. This is not a test of Prop. 1 by itself."
+                        if aM.gap_lo > 0 else
                         "No sign that a winner behaves differently next to its own state's competitors than next to strangers."))
     else:
         lines.append(f"- Shuffle test at m = {M}: not available (see exclusions).")
-    lines.append(f"- Residual ICC {i['icc']['est']:.4f} [{i['icc']['lo']:.4f}, {i['icc']['hi']:.4f}], so a pool of {M} behaves like "
-                 f"{aM.m_eff_est:.1f} independent positions (Kish).")
+    few = i["icc_without_top"] < 0.5 * i["icc"]["est"]
+    lines.append(f"- Residual ICC (a − π̂(ℓ, s)) {i['icc']['est']:.4f} [{i['icc']['lo']:.4f}, {i['icc']['hi']:.4f}]; with π̂(ℓ) only it is "
+                 f"{i['icc_own']['est']:.4f}. Without its {ICC_DROP_TOP} most influential documents it is {i['icc_without_top']:.4f}"
+                 + (", so a handful of documents carry it (icc_influence.csv lists them)." if few else ".")
+                 + f" A pool of {M} behaves like {aM.m_eff_est:.1f} independent positions (Kish).")
     q = r["quint"]
     if len(q):
         qm = q[q.m == M]
         lines.append(f"- Margin quintiles at m = {M}: Δ runs " + ", ".join(f"{v:+.3f}" for v in qm.delta_est)
                      + " from the weakest to the strongest winners; shuffle gaps " + ", ".join(f"{v:+.3f}" for v in qm.gap_est) + ".")
-lines.append("\nCaveats: the CIs are conditional on the pool draws (20 per state); pool-sampling noise is small next to the "
-             "document bootstrap but is not included. A nonzero shuffle gap can come from shared errors or from state-level "
+for name in dict.fromkeys(k[0] for k in RESULTS):
+    for ka, kb in H3_PAIRS:
+        if (name, ka, kb, M, "A") not in H3:
+            continue
+        hA, hB = H3[(name, ka, kb, M, "A")], H3[(name, ka, kb, M, "B")]
+        lines.append(f"\n**H3, {name}: {ka} vs {kb} at equal winner confidence (m = {M}).** Raw winner confidence "
+                     f"{RESULTS[(name, ka)]['main'].set_index('m').loc[M, 'E_c_w_est']:.2f} vs "
+                     f"{RESULTS[(name, kb)]['main'].set_index('m').loc[M, 'E_c_w_est']:.2f}, so the raw Δs are not comparable. "
+                     f"Over {ka}'s winner-confidence distribution, Δ is {hA['delta_A_est']:+.4f} ({ka}) vs {hA['delta_B_est']:+.4f} ({kb}), "
+                     f"difference {hA['diff_est']:+.4f} [{hA['diff_lo']:+.4f}, {hA['diff_hi']:+.4f}] (CI {side(hA['diff_lo'], hA['diff_hi'])}; "
+                     f"{hA['support']:.0%} of {ka}'s winners in shared bins). Over {kb}'s distribution: {hB['diff_est']:+.4f} "
+                     f"[{hB['diff_lo']:+.4f}, {hB['diff_hi']:+.4f}] ({hB['support']:.0%} support).")
+lines.append(f"\nCaveats: Δ and the E2 terms are exact over pools; the shuffle test, the Monte Carlo pairing and the quintiles use "
+             f"{POOLS_PER_STATE} pools per state, and their CIs are conditional on those draws. The E2 CIs treat the fitted calibrators "
+             "as fixed (fit half), as c3/endpoints/e2.py does. A nonzero shuffle gap can come from shared errors or from state-level "
              "shifts in confidence (Module B scenario 4); a zero gap does not rule out shared errors that are independent of "
-             "confidence (scenario 4b, which the ICC does detect).")
+             "confidence (scenario 4b, which the ICC does detect). Only the datasets listed above were run.")
 SUMMARY_MD = "\n".join(lines)
 with open(os.path.join(OUT_DIR, "summary.md"), "w") as fh:
     fh.write(SUMMARY_MD)
