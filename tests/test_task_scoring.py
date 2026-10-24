@@ -95,9 +95,116 @@ def test_cli_aggregates_per_config(tmp_path):
     assert (by["a"]["n"], by["a"]["n_correct"]) == (3, 2)
     assert (by["b"]["n"], by["b"]["n_correct"], by["b"]["n_unstopped"]) == (2, 2, 2)
     assert by["a"]["ci95"][0] < 2 / 3 < by["a"]["ci95"][1]
-    assert any(w.startswith("gsm8k a:") for w in s["warnings"])  # a has doc 2, b does not
+    assert any(" gsm8k a:" in w for w in s["warnings"])  # a has doc 2, b does not
     assert "git_commit" in s["provenance"]
+    assert s["inputs"][0]["sha256"]
     assert len((tmp_path / "v.jsonl").read_text().splitlines()) == 5
+
+
+def _shard(d, rows, meta=None):
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "t12.shard0of1.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+    if meta is not None:
+        (d / "t12.shard0of1.meta.json").write_text(json.dumps(meta))
+
+
+def _cli(tmp_path, *dirs):
+    task = tmp_path / "gsm8k.jsonl"
+    task.write_text("".join(json.dumps(dict(GSM, doc_id=i)) + "\n" for i in range(1319)))
+    out = tmp_path / "summary.json"
+    subprocess.run([sys.executable, str(ROOT / "scripts/score_t12.py"), *map(str, dirs),
+                    "--task-jsonl", str(task), "--out", str(out)], check=True, capture_output=True)
+    return json.loads(out.read_text())
+
+
+def test_cli_driver_error_records(tmp_path):
+    rows = [{"task": "gsm8k", "config": "a", "doc_id": 0, "completion": "18", "error": None},
+            {"task": "gsm8k", "config": "a", "doc_id": 1, "completion": None,
+             "error": "RuntimeError: CUDA out of memory"}]
+    _shard(tmp_path / "run", rows)
+    (r,) = _cli(tmp_path, tmp_path / "run")["rows"]
+    assert (r["n"], r["n_correct"], r["n_driver_error"]) == (2, 1, 1)
+
+
+def test_cli_runs_never_merge(tmp_path):
+    rec = {"task": "gsm8k", "config": "topk_conf[k=2]", "doc_id": 0}
+    meta = {"model": "m", "precision": "fp16", "task": "gsm8k", "half": "report"}
+    _shard(tmp_path / "lm", [{**rec, "run_id": "lmeval1", "completion": "#### 18"}],
+           {**meta, "prompt": {"format": "lmeval", "fewshot": 5}, "run_id": "lmeval1"})
+    _shard(tmp_path / "chat", [{**rec, "run_id": "chat1", "completion": "#### 1"}],
+           {**meta, "prompt": {"format": "chat", "fewshot": 0}, "run_id": "chat1"})
+    rows = _cli(tmp_path, tmp_path / "lm", tmp_path / "chat")["rows"]
+    by = {r["prompt_format"]: r for r in rows}
+    assert (by["lmeval"]["n_correct"], by["chat"]["n_correct"]) == (1, 0)
+    # without meta files, the records' run_id still keeps them apart
+    for d in ("lm", "chat"):
+        (tmp_path / d / "t12.shard0of1.meta.json").unlink()
+    assert len(_cli(tmp_path, tmp_path / "lm", tmp_path / "chat")["rows"]) == 2
+
+
+def test_cli_shards_of_one_run_pool(tmp_path):
+    meta = {"model": "m", "precision": "fp16", "task": "gsm8k", "half": "report",
+            "prompt": {"format": "chat"}}
+    for i in range(2):
+        d = tmp_path / "run"
+        d.mkdir(exist_ok=True)
+        (d / f"t12.shard{i}of2.jsonl").write_text(json.dumps(
+            {"task": "gsm8k", "config": "a", "doc_id": i, "completion": "18",
+             "run_id": f"r{i}"}) + "\n")
+        (d / f"t12.shard{i}of2.meta.json").write_text(json.dumps(
+            {**meta, "shard": i, "num_shards": 2, "run_id": f"r{i}"}))
+    (r,) = _cli(tmp_path, tmp_path / "run")["rows"]
+    assert (r["n"], r["n_correct"]) == (2, 2)
+
+
+@pytest.mark.parametrize("tail", [
+    "exit()", "import sys; sys.exit(0)", "import os; os._exit(0)",
+    "import unittest\nclass T(unittest.TestCase):\n    def test(self):\n        pass\n"
+    "if __name__ == '__main__':\n    unittest.main()"])
+def test_early_exit_after_wrong_code_fails(tail):
+    v = score("mbpp", MBPP, f"def add(a, b):\n    return a - b\n{tail}\n")
+    assert not v["correct"]
+
+
+def test_main_block_reading_input_is_inert():
+    c = ("def add(a, b):\n    return a + b\n"
+         "if __name__ == '__main__':\n    a, b = map(int, input().split())\n")
+    assert score("mbpp", MBPP, c)["correct"]
+
+
+def test_stdout_flood_and_grandchild():
+    flood = "def add(a, b):\n    return a + b\nwhile True:\n    print('x' * 100000)\n"
+    assert score("mbpp", MBPP, flood, timeout=2.0)["error"] == "timeout"
+    fork = ("import os, time\nif os.fork() == 0:\n    time.sleep(20)\n    os._exit(0)\n"
+            "def add(a, b):\n    return a + b\n")
+    assert score("mbpp", MBPP, fork, timeout=5.0)["correct"]
+
+
+def test_unfenced_code_with_prose():
+    code = "def add(a, b):\n    return a + b\n"
+    assert score("mbpp", MBPP, "Here is the function:\n" + code)["correct"]
+    assert score("mbpp", MBPP, code + "\nThis function returns the sum of a and b.")["correct"]
+    assert score("humaneval", HE, "    return x + 1\n\nThis adds one to x.")["correct"]
+    v = score("mbpp", MBPP, "def add(a, b) return a + b")
+    assert v["error"].startswith("SyntaxError")
+
+
+@pytest.mark.parametrize("text,ours,strict,flexible", [
+    ("#### 18.0", True, False, False),
+    ("So the total is 18.", True, False, True),
+    ("#### 18\n\n#### 20", False, True, False),
+    ("#### 18", True, True, True),
+    ("It is $1,8.", True, False, True),  # both drop commas before comparing
+])
+def test_gsm8k_lmeval_parity(text, ours, strict, flexible):
+    v = score("gsm8k", GSM, text)
+    assert (v["correct"], v["lmeval_strict"], v["lmeval_flexible"]) == (ours, strict, flexible)
+
+
+def test_gsm8k_edge_cases():
+    assert gsm8k_extract("\\boxed{18 \\text{ dollars}} per week for 7 days") == "18 \\text{ dollars}"
+    assert parse_number(gsm8k_extract("It took 10-18 min")) == 18
+    assert parse_number(gsm8k_extract("It fell to -4 degrees")) == -4
 
 
 TASK_DIR = os.environ.get("C3_TASK_DIR")
