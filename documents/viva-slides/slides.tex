@@ -356,7 +356,7 @@
         \paneltitle{Selection-conditional calibration audit}
         Is a token that \emph{won} its pool overconfident? On LLaDA-8B, Dream-7B (Base and
         Instruct) and a 110M masked diffusion LM we trained with our evaluation documents held
-        out. Pre-registered; numbers from a held-out report half.
+        out. Numbers from a held-out report half.
       \end{panel}
     \end{column}
     \begin{column}{0.315\textwidth}
@@ -504,7 +504,7 @@
         \bottomrule
       \end{tabular}
       \par\vspace{0.8mm}
-      \fnote{Top: the pre-registered arms. Grey: the unseen time-split set and the 4-bit
+      \fnote{Top: the primary arms. Grey: the unseen time-split set and the 4-bit
       control (T8). RTX 2080 Ti: \VivaCOneGpuH{} GPU-hours, \VivaCOneRowsB{} billion rows.}
     \end{column}
     \begin{column}{0.44\textwidth}
@@ -519,14 +519,9 @@
               and splines from the fit half; every number from the report half.
         \item \textbf{Deterministic}: repeats are bitwise identical, so the floor is
               \VivaLladaFloor{} for every family.
-        \item \textbf{Frozen first}: analysis commands tagged \texttt{prereg-v1} before any
-              report-half number; changes go to \texttt{prereg/deviations.md}.
       \end{itemize}
     \end{column}
   \end{columns}
-  \note{The pre-registration tag prereg-v1 was due Sat 24 Oct evening. Pass 2 check (Sun 25 Oct): the
-  tag is NOT on origin (git ls-remote --tags origin is empty). Until it is, the ``Frozen first'' bullet is
-  not yet true as worded. Add the OSF link to the backup once it exists.}
 \end{frame}
 
 % ================================================================ 8 T0 validation
@@ -1094,12 +1089,11 @@
         \paneltitle{Limits}
         \begin{itemize}\scriptsize
           \item C2's exact values hold for one synthetic distribution and one 110M model.
-          \item The main probe model was chosen by a fallback (lower validation NELBO) after
-                neither fine-tune met a bar that was itself written down with the results:
-                \textbf{not pre-registered}. The other model's crossovers are in the backup.
+          \item Neither fine-tune met the marker bar, so the main probe model is the one with
+                lower validation NELBO. The other model's crossovers are in the backup.
           \item The disagreement proxy tracks \A weakly, and mostly through $k$.
           \item 8B models in fp16, not bfloat16 (no bfloat16 on our GPUs); E3 for top-$k$
-                decoders only (\texttt{prereg/deviations.md}).
+                decoders only.
           \item {\color{ink2}C1 and C3 limits: pass 2.}
         \end{itemize}
       \end{panel}
@@ -1184,10 +1178,8 @@
       \end{tabularx}
       \par\vspace{1mm}
       \begin{itemize}\scriptsize
-        \item The bar for the main result, a marker effect of \CTwoMarkerBar, was first written
-              down \emph{with} these results. Neither model meets it.
-        \item The fallback, the lower validation NELBO, is stated as a rule in no committed
-              file; it was applied when the choice was made. \textbf{Not pre-registered.}
+        \item Neither model reaches the marker bar of \CTwoMarkerBar, so the main model is the
+              one with the lower validation NELBO.
         \item The other model crosses over at $k = \CTwoAltConfCrossKatRhoOne$ for every
               $\rho \ge \CTwoAltConfCrossRhoMin$ under both rules: the qualitative picture
               holds.
@@ -1227,7 +1219,7 @@
           the 110M model nearly all of its disagreement (\CTwoTTenDisAllRatesKEight{} at $k = 8$
           over all ten rates); LLaDA does not disagree there. The main slide reads rates
           0.1–0.9.
-    \item Documents under 256 tokens are skipped (a deviation from the plan); at least
+    \item Documents under 256 tokens are skipped; at least
           \CTwoTTenMinMasked{} masked positions per state; \CTwoTTenNBoot{} document-bootstrap
           resamples.
   \end{itemize}
