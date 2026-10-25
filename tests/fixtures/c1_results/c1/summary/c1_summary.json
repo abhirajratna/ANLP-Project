@@ -1,0 +1,3549 @@
+{
+ "rows": [
+  {
+   "model": "LladaBase",
+   "arm": "decoder:topk_conf:k4",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.3654914102493781,
+    "ci": [
+     -0.3851987819101713,
+     -0.3410169207031205
+    ]
+   },
+   "delta_32": {
+    "value": -0.6657732845465135,
+    "ci": [
+     -0.6860443084466238,
+     -0.6501083207899635
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": -0.30028187429713543,
+    "ci": [
+     -0.3418884074624966,
+     -0.2688633700234855
+    ],
+    "p_boot": 0.0001,
+    "declared": true,
+    "floor": 0.01,
+    "slope_log2m": -0.061009805790344616,
+    "slope_ci": [
+     -0.07059001033323117,
+     -0.05440028288549516
+    ],
+    "holm_family": "E1",
+    "p_holm": 0.0014,
+    "holm_reject": true
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": 0.01684270806149058,
+    "ci": [
+     0.015907394752911117,
+     0.018260325175862478
+    ],
+    "p_boot": 0.0001,
+    "declared": false,
+    "sigma_d": 0.0019771506759955933,
+    "n_required_provisional": 1,
+    "holm_family": "E2",
+    "p_holm": 0.0014,
+    "holm_reject": true
+   },
+   "beta_z_nofe": {
+    "value": -0.18030850576055538,
+    "ci": [
+     -0.2480266141372282,
+     -0.08853390219705246
+    ],
+    "p_boot": 0.09523809523809523
+   },
+   "beta_z_fe": {
+    "value": 0.054718381878958854,
+    "ci": [
+     -0.2592329062839247,
+     859.9003540009548
+    ],
+    "p_boot": 0.7619047619047619
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 8138.7215382780005,
+     "ci": [
+      -271.18187482795054,
+      27460.712117224677
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": 9075.703421073718,
+     "ci": [
+      -294.7007736472116,
+      218755.30662501225
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": 830372.9428467517,
+     "ci": [
+      -2249379.225501725,
+      971508.7213110435
+     ],
+     "p_boot": 0.38095238095238093,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.3944146921540695,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/LladaBase"
+  },
+  {
+   "model": "LladaBase",
+   "arm": "decoder:topk_conf:k8",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.38344305169498394,
+    "ci": [
+     -0.4043969820807478,
+     -0.3669593944423455
+    ]
+   },
+   "delta_32": {
+    "value": -0.6239835530933406,
+    "ci": [
+     -0.6428886111561978,
+     -0.6042747626377506
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": -0.2405405013983567,
+    "ci": [
+     -0.26621212680745876,
+     -0.20648509976322232
+    ],
+    "p_boot": 0.0001,
+    "declared": true,
+    "floor": 0.01,
+    "slope_log2m": -0.04761035570432972,
+    "slope_ci": [
+     -0.053916840219531484,
+     -0.04025747301486346
+    ],
+    "holm_family": "exploratory"
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": 0.015594327346678519,
+    "ci": [
+     0.013613991808220153,
+     0.01748187193903749
+    ],
+    "p_boot": 0.0001,
+    "declared": false,
+    "sigma_d": 0.003614602775240645,
+    "n_required_provisional": 1,
+    "holm_family": "exploratory"
+   },
+   "beta_z_nofe": {
+    "value": -0.2230579309704196,
+    "ci": [
+     -0.35827890930313,
+     -0.027340214750070407
+    ],
+    "p_boot": 0.19047619047619047
+   },
+   "beta_z_fe": {
+    "value": -0.09256086099197035,
+    "ci": [
+     -0.21362533353686908,
+     4263.157762713229
+    ],
+    "p_boot": 0.38095238095238093
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 0.29167643731706744,
+     "ci": [
+      -33.9308301056083,
+      16360.15708475944
+     ],
+     "p_boot": 0.9523809523809523,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": 1.5906257079571517,
+     "ci": [
+      -1739690.9532012949,
+      926136.0763327482
+     ],
+     "p_boot": 0.6666666666666666,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": -7.088562052887833,
+     "ci": [
+      -20447.810467898882,
+      4957.593684698347
+     ],
+     "p_boot": 0.8571428571428571,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.40715602080693797,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/LladaBase"
+  },
+  {
+   "model": "LladaBase",
+   "arm": "uniform",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.469920771832177,
+    "ci": [
+     -0.4801879343305043,
+     -0.45991128369228357
+    ]
+   },
+   "delta_32": {
+    "value": -0.42090509093832223,
+    "ci": [
+     -0.46585802380838215,
+     -0.38575530356106663
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": 0.049015680893854774,
+    "ci": [
+     -0.000872456755050564,
+     0.0830764927256491
+    ],
+    "p_boot": 0.0001,
+    "declared": false,
+    "floor": 0.01,
+    "slope_log2m": 0.017450333649268585,
+    "slope_ci": [
+     0.007301123719889184,
+     0.027169740188790346
+    ],
+    "holm_family": "E1",
+    "p_holm": 0.0014,
+    "holm_reject": true
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": -0.0007815748612452928,
+    "ci": [
+     -0.002642879635905953,
+     0.0012250803437250657
+    ],
+    "p_boot": 0.0001,
+    "declared": false,
+    "sigma_d": 0.003561491058377451,
+    "n_required_provisional": 1,
+    "holm_family": "E2",
+    "p_holm": 0.0014,
+    "holm_reject": true
+   },
+   "beta_z_nofe": {
+    "value": 0.3141570768375049,
+    "ci": [
+     -0.26909656508264596,
+     0.76643585188681
+    ],
+    "p_boot": 0.2857142857142857
+   },
+   "beta_z_fe": {
+    "value": 0.44409206445246974,
+    "ci": [
+     -0.23634257398204006,
+     1071.6136901667144
+    ],
+    "p_boot": 0.2857142857142857
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": -0.11296230386495723,
+     "ci": [
+      -0.3792754728696138,
+      0.20966489310171765
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": -0.07928904703856027,
+     "ci": [
+      -0.29264790211333463,
+      0.09937840361651795
+     ],
+     "p_boot": 0.7619047619047619,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": 0.047219361992047924,
+     "ci": [
+      -0.08591400907221731,
+      0.22650107268469669
+     ],
+     "p_boot": 0.6666666666666666,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.4668195596535169,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/LladaBase"
+  },
+  {
+   "model": "LladaBase",
+   "arm": "uniform_matched:topk_conf:k4",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.4830045568680742,
+    "ci": [
+     -0.49374351384168125,
+     -0.4670222712343213
+    ]
+   },
+   "delta_32": {
+    "value": -0.4294740526885208,
+    "ci": [
+     -0.44164292101276875,
+     -0.4148088116087167
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": 0.053530504179553406,
+    "ci": [
+     0.037272641937889414,
+     0.06728486655696635
+    ],
+    "p_boot": 0.0001,
+    "declared": true,
+    "floor": 0.01,
+    "slope_log2m": 0.020040760189650193,
+    "slope_ci": [
+     0.016447109362939163,
+     0.023314183365798193
+    ],
+    "holm_family": "exploratory"
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": -0.002437317126466028,
+    "ci": [
+     -0.0032704042922240264,
+     -0.0017303502522990272
+    ],
+    "p_boot": 0.0001,
+    "declared": false,
+    "sigma_d": 0.0012848269567803299,
+    "n_required_provisional": 1,
+    "holm_family": "exploratory"
+   },
+   "beta_z_nofe": {
+    "value": 0.04104968886332827,
+    "ci": [
+     -0.17308925130379638,
+     0.2286983977774179
+    ],
+    "p_boot": 1.0
+   },
+   "beta_z_fe": {
+    "value": 0.29046261465762957,
+    "ci": [
+     0.10522898399895973,
+     0.42037000642800093
+    ],
+    "p_boot": 0.09523809523809523
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 0.04427686174697536,
+     "ci": [
+      -0.07411845163404812,
+      0.15601897749666221
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": -0.04372599893019052,
+     "ci": [
+      -0.16423156160597102,
+      0.07545722729682569
+     ],
+     "p_boot": 0.6666666666666666,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": -0.005977274332666767,
+     "ci": [
+      -0.1275318591676997,
+      0.13706960027797874
+     ],
+     "p_boot": 0.7619047619047619,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.48276705548824955,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/LladaBase"
+  },
+  {
+   "model": "LladaBase",
+   "arm": "uniform_matched:topk_conf:k8",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.4874654162588185,
+    "ci": [
+     -0.5052024969319159,
+     -0.4669638010819066
+    ]
+   },
+   "delta_32": {
+    "value": -0.4077407542409169,
+    "ci": [
+     -0.4330799840912518,
+     -0.39237831972965165
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": 0.07972466201790163,
+    "ci": [
+     0.040711557073661225,
+     0.10268123754852322
+    ],
+    "p_boot": 0.0001,
+    "declared": true,
+    "floor": 0.01,
+    "slope_log2m": 0.02440092571402689,
+    "slope_ci": [
+     0.016148963467613207,
+     0.029607983680628877
+    ],
+    "holm_family": "exploratory"
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": -0.0013796810647787566,
+    "ci": [
+     -0.0023965936715029776,
+     -0.0005176873017566423
+    ],
+    "p_boot": 0.0001,
+    "declared": false,
+    "sigma_d": 0.0012151990292693265,
+    "n_required_provisional": 1,
+    "holm_family": "exploratory"
+   },
+   "beta_z_nofe": {
+    "value": 0.049231050192614215,
+    "ci": [
+     -0.17626825456005046,
+     0.3612658381515046
+    ],
+    "p_boot": 0.6666666666666666
+   },
+   "beta_z_fe": {
+    "value": 0.40339735032449797,
+    "ci": [
+     0.04950489060371122,
+     8041.61090096365
+    ],
+    "p_boot": 0.19047619047619047
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 0.15738575020504417,
+     "ci": [
+      0.03722111264561408,
+      0.28545177573989067
+     ],
+     "p_boot": 0.09523809523809523,
+     "p_holm": 0.2857142857142857,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": 0.19843124094419842,
+     "ci": [
+      0.1028619884016569,
+      0.3287749852537719
+     ],
+     "p_boot": 0.09523809523809523,
+     "p_holm": 0.2857142857142857,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": 0.0822791480942829,
+     "ci": [
+      -0.03613351711114473,
+      0.2014004689536457
+     ],
+     "p_boot": 0.2857142857142857,
+     "p_holm": 0.2857142857142857,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.48741173161896784,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/LladaBase"
+  },
+  {
+   "model": "DreamBase",
+   "arm": "decoder:topk_conf:k4",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.29239312819950247,
+    "ci": [
+     -0.30815902552813706,
+     -0.2728135365624964
+    ]
+   },
+   "delta_32": {
+    "value": -0.5326186276372108,
+    "ci": [
+     -0.548835446757299,
+     -0.5200866566319708
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": -0.24022549943770835,
+    "ci": [
+     -0.2735107259699973,
+     -0.21509069601878839
+    ],
+    "p_boot": 0.0001,
+    "declared": true,
+    "floor": 0.01,
+    "slope_log2m": -0.04880784463227569,
+    "slope_ci": [
+     -0.05647200826658494,
+     -0.04352022630839613
+    ],
+    "holm_family": "E1",
+    "p_holm": 0.0014,
+    "holm_reject": true
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": 0.013474166449192465,
+    "ci": [
+     0.012725915802328895,
+     0.014608260140689984
+    ],
+    "p_boot": 0.2,
+    "declared": false,
+    "sigma_d": 0.0019771506759955933,
+    "n_required_provisional": 1,
+    "holm_family": "E2",
+    "p_holm": 1.0,
+    "holm_reject": false
+   },
+   "beta_z_nofe": {
+    "value": -0.18030850576055538,
+    "ci": [
+     -0.2480266141372282,
+     -0.08853390219705246
+    ],
+    "p_boot": 0.09523809523809523
+   },
+   "beta_z_fe": {
+    "value": 0.054718381878958854,
+    "ci": [
+     -0.2592329062839247,
+     859.9003540009548
+    ],
+    "p_boot": 0.7619047619047619
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 8138.7215382780005,
+     "ci": [
+      -271.18187482795054,
+      27460.712117224677
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": 9075.703421073718,
+     "ci": [
+      -294.7007736472116,
+      218755.30662501225
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": 830372.9428467517,
+     "ci": [
+      -2249379.225501725,
+      971508.7213110435
+     ],
+     "p_boot": 0.38095238095238093,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.3944146921540695,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/DreamBase"
+  },
+  {
+   "model": "DreamBase",
+   "arm": "decoder:topk_conf:k8",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.3067544413559872,
+    "ci": [
+     -0.32351758566459826,
+     -0.2935675155538764
+    ]
+   },
+   "delta_32": {
+    "value": -0.49918684247467254,
+    "ci": [
+     -0.5143108889249582,
+     -0.4834198101102005
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": -0.19243240111868537,
+    "ci": [
+     -0.21296970144596702,
+     -0.16518807981057787
+    ],
+    "p_boot": 0.0001,
+    "declared": true,
+    "floor": 0.01,
+    "slope_log2m": -0.038088284563463776,
+    "slope_ci": [
+     -0.04313347217562519,
+     -0.03220597841189077
+    ],
+    "holm_family": "exploratory"
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": 0.012475461877342817,
+    "ci": [
+     0.010891193446576124,
+     0.013985497551229992
+    ],
+    "p_boot": 0.2,
+    "declared": false,
+    "sigma_d": 0.003614602775240645,
+    "n_required_provisional": 1,
+    "holm_family": "exploratory"
+   },
+   "beta_z_nofe": {
+    "value": -0.2230579309704196,
+    "ci": [
+     -0.35827890930313,
+     -0.027340214750070407
+    ],
+    "p_boot": 0.19047619047619047
+   },
+   "beta_z_fe": {
+    "value": -0.09256086099197035,
+    "ci": [
+     -0.21362533353686908,
+     4263.157762713229
+    ],
+    "p_boot": 0.38095238095238093
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 0.29167643731706744,
+     "ci": [
+      -33.9308301056083,
+      16360.15708475944
+     ],
+     "p_boot": 0.9523809523809523,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": 1.5906257079571517,
+     "ci": [
+      -1739690.9532012949,
+      926136.0763327482
+     ],
+     "p_boot": 0.6666666666666666,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": -7.088562052887833,
+     "ci": [
+      -20447.810467898882,
+      4957.593684698347
+     ],
+     "p_boot": 0.8571428571428571,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.40715602080693797,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/DreamBase"
+  },
+  {
+   "model": "DreamBase",
+   "arm": "uniform",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.37593661746574164,
+    "ci": [
+     -0.38415034746440346,
+     -0.3679290269538269
+    ]
+   },
+   "delta_32": {
+    "value": -0.3367240727506578,
+    "ci": [
+     -0.37268641904670574,
+     -0.30860424284885335
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": 0.03921254471508382,
+    "ci": [
+     -0.0006979654040404513,
+     0.06646119418051928
+    ],
+    "p_boot": 0.0001,
+    "declared": false,
+    "floor": 0.01,
+    "slope_log2m": 0.01396026691941487,
+    "slope_ci": [
+     0.005840898975911348,
+     0.021735792151032277
+    ],
+    "holm_family": "E1",
+    "p_holm": 0.0014,
+    "holm_reject": true
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": -0.0006252598889962342,
+    "ci": [
+     -0.0021143037087247626,
+     0.0009800642749800525
+    ],
+    "p_boot": 0.2,
+    "declared": false,
+    "sigma_d": 0.003561491058377451,
+    "n_required_provisional": 1,
+    "holm_family": "E2",
+    "p_holm": 1.0,
+    "holm_reject": false
+   },
+   "beta_z_nofe": {
+    "value": 0.3141570768375049,
+    "ci": [
+     -0.26909656508264596,
+     0.76643585188681
+    ],
+    "p_boot": 0.2857142857142857
+   },
+   "beta_z_fe": {
+    "value": 0.44409206445246974,
+    "ci": [
+     -0.23634257398204006,
+     1071.6136901667144
+    ],
+    "p_boot": 0.2857142857142857
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": -0.11296230386495723,
+     "ci": [
+      -0.3792754728696138,
+      0.20966489310171765
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": -0.07928904703856027,
+     "ci": [
+      -0.29264790211333463,
+      0.09937840361651795
+     ],
+     "p_boot": 0.7619047619047619,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": 0.047219361992047924,
+     "ci": [
+      -0.08591400907221731,
+      0.22650107268469669
+     ],
+     "p_boot": 0.6666666666666666,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.4668195596535169,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/DreamBase"
+  },
+  {
+   "model": "DreamBase",
+   "arm": "uniform_matched:topk_conf:k4",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.3864036454944594,
+    "ci": [
+     -0.394994811073345,
+     -0.37361781698745705
+    ]
+   },
+   "delta_32": {
+    "value": -0.34357924215081664,
+    "ci": [
+     -0.353314336810215,
+     -0.3318470492869734
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": 0.04282440334364273,
+    "ci": [
+     0.029818113550311533,
+     0.05382789324557308
+    ],
+    "p_boot": 0.0001,
+    "declared": true,
+    "floor": 0.01,
+    "slope_log2m": 0.016032608151720154,
+    "slope_ci": [
+     0.01315768749035133,
+     0.018651346692638553
+    ],
+    "holm_family": "exploratory"
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": -0.0019498537011728224,
+    "ci": [
+     -0.002616323433779221,
+     -0.0013842802018392219
+    ],
+    "p_boot": 0.2,
+    "declared": false,
+    "sigma_d": 0.0012848269567803299,
+    "n_required_provisional": 1,
+    "holm_family": "exploratory"
+   },
+   "beta_z_nofe": {
+    "value": 0.04104968886332827,
+    "ci": [
+     -0.17308925130379638,
+     0.2286983977774179
+    ],
+    "p_boot": 1.0
+   },
+   "beta_z_fe": {
+    "value": 0.29046261465762957,
+    "ci": [
+     0.10522898399895973,
+     0.42037000642800093
+    ],
+    "p_boot": 0.09523809523809523
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 0.04427686174697536,
+     "ci": [
+      -0.07411845163404812,
+      0.15601897749666221
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": -0.04372599893019052,
+     "ci": [
+      -0.16423156160597102,
+      0.07545722729682569
+     ],
+     "p_boot": 0.6666666666666666,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": -0.005977274332666767,
+     "ci": [
+      -0.1275318591676997,
+      0.13706960027797874
+     ],
+     "p_boot": 0.7619047619047619,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.48276705548824955,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/DreamBase"
+  },
+  {
+   "model": "DreamBase",
+   "arm": "uniform_matched:topk_conf:k8",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.3899723330070548,
+    "ci": [
+     -0.4041619975455327,
+     -0.3735710408655253
+    ]
+   },
+   "delta_32": {
+    "value": -0.32619260339273354,
+    "ci": [
+     -0.3464639872730015,
+     -0.31390265578372134
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": 0.06377972961432131,
+    "ci": [
+     0.032569245658928984,
+     0.08214499003881859
+    ],
+    "p_boot": 0.0001,
+    "declared": true,
+    "floor": 0.01,
+    "slope_log2m": 0.019520740571221513,
+    "slope_ci": [
+     0.012919170774090567,
+     0.023686386944503104
+    ],
+    "holm_family": "exploratory"
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": -0.0011037448518230054,
+    "ci": [
+     -0.0019172749372023822,
+     -0.00041414984140531385
+    ],
+    "p_boot": 0.2,
+    "declared": false,
+    "sigma_d": 0.0012151990292693265,
+    "n_required_provisional": 1,
+    "holm_family": "exploratory"
+   },
+   "beta_z_nofe": {
+    "value": 0.049231050192614215,
+    "ci": [
+     -0.17626825456005046,
+     0.3612658381515046
+    ],
+    "p_boot": 0.6666666666666666
+   },
+   "beta_z_fe": {
+    "value": 0.40339735032449797,
+    "ci": [
+     0.04950489060371122,
+     8041.61090096365
+    ],
+    "p_boot": 0.19047619047619047
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 0.15738575020504417,
+     "ci": [
+      0.03722111264561408,
+      0.28545177573989067
+     ],
+     "p_boot": 0.09523809523809523,
+     "p_holm": 0.2857142857142857,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": 0.19843124094419842,
+     "ci": [
+      0.1028619884016569,
+      0.3287749852537719
+     ],
+     "p_boot": 0.09523809523809523,
+     "p_holm": 0.2857142857142857,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": 0.0822791480942829,
+     "ci": [
+      -0.03613351711114473,
+      0.2014004689536457
+     ],
+     "p_boot": 0.2857142857142857,
+     "p_holm": 0.2857142857142857,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.48741173161896784,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/DreamBase"
+  },
+  {
+   "model": "LladaInstructGsm",
+   "arm": "decoder:topk_conf:k4",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.18274570512468905,
+    "ci": [
+     -0.19259939095508566,
+     -0.17050846035156025
+    ]
+   },
+   "delta_32": {
+    "value": -0.33288664227325676,
+    "ci": [
+     -0.3430221542233119,
+     -0.32505416039498175
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": -0.15014093714856772,
+    "ci": [
+     -0.1709442037312483,
+     -0.13443168501174274
+    ],
+    "p_boot": 0.01,
+    "declared": true,
+    "floor": 0.01,
+    "slope_log2m": -0.030504902895172308,
+    "slope_ci": [
+     -0.03529500516661559,
+     -0.02720014144274758
+    ],
+    "holm_family": "E1",
+    "p_holm": 0.08,
+    "holm_reject": false
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": 0.00842135403074529,
+    "ci": [
+     0.007953697376455559,
+     0.009130162587931239
+    ],
+    "p_boot": 0.3,
+    "declared": false,
+    "sigma_d": 0.0019771506759955933,
+    "n_required_provisional": 1,
+    "holm_family": "E2",
+    "p_holm": 1.0,
+    "holm_reject": false
+   },
+   "beta_z_nofe": {
+    "value": -0.18030850576055538,
+    "ci": [
+     -0.2480266141372282,
+     -0.08853390219705246
+    ],
+    "p_boot": 0.09523809523809523
+   },
+   "beta_z_fe": {
+    "value": 0.054718381878958854,
+    "ci": [
+     -0.2592329062839247,
+     859.9003540009548
+    ],
+    "p_boot": 0.7619047619047619
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 8138.7215382780005,
+     "ci": [
+      -271.18187482795054,
+      27460.712117224677
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": 9075.703421073718,
+     "ci": [
+      -294.7007736472116,
+      218755.30662501225
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": 830372.9428467517,
+     "ci": [
+      -2249379.225501725,
+      971508.7213110435
+     ],
+     "p_boot": 0.38095238095238093,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.3944146921540695,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/LladaInstructGsm"
+  },
+  {
+   "model": "LladaInstructGsm",
+   "arm": "decoder:topk_conf:k8",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.19172152584749197,
+    "ci": [
+     -0.2021984910403739,
+     -0.18347969722117274
+    ]
+   },
+   "delta_32": {
+    "value": -0.3119917765466703,
+    "ci": [
+     -0.3214443055780989,
+     -0.3021373813188753
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": -0.12027025069917835,
+    "ci": [
+     -0.13310606340372938,
+     -0.10324254988161116
+    ],
+    "p_boot": 0.01,
+    "declared": true,
+    "floor": 0.01,
+    "slope_log2m": -0.02380517785216486,
+    "slope_ci": [
+     -0.026958420109765742,
+     -0.02012873650743173
+    ],
+    "holm_family": "exploratory"
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": 0.0077971636733392595,
+    "ci": [
+     0.0068069959041100764,
+     0.008740935969518745
+    ],
+    "p_boot": 0.3,
+    "declared": false,
+    "sigma_d": 0.003614602775240645,
+    "n_required_provisional": 1,
+    "holm_family": "exploratory"
+   },
+   "beta_z_nofe": {
+    "value": -0.2230579309704196,
+    "ci": [
+     -0.35827890930313,
+     -0.027340214750070407
+    ],
+    "p_boot": 0.19047619047619047
+   },
+   "beta_z_fe": {
+    "value": -0.09256086099197035,
+    "ci": [
+     -0.21362533353686908,
+     4263.157762713229
+    ],
+    "p_boot": 0.38095238095238093
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 0.29167643731706744,
+     "ci": [
+      -33.9308301056083,
+      16360.15708475944
+     ],
+     "p_boot": 0.9523809523809523,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": 1.5906257079571517,
+     "ci": [
+      -1739690.9532012949,
+      926136.0763327482
+     ],
+     "p_boot": 0.6666666666666666,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": -7.088562052887833,
+     "ci": [
+      -20447.810467898882,
+      4957.593684698347
+     ],
+     "p_boot": 0.8571428571428571,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.40715602080693797,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/LladaInstructGsm"
+  },
+  {
+   "model": "LladaInstructGsm",
+   "arm": "uniform",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.2349603859160885,
+    "ci": [
+     -0.24009396716525214,
+     -0.22995564184614178
+    ]
+   },
+   "delta_32": {
+    "value": -0.21045254546916112,
+    "ci": [
+     -0.23292901190419107,
+     -0.19287765178053332
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": 0.024507840446927387,
+    "ci": [
+     -0.000436228377525282,
+     0.04153824636282455
+    ],
+    "p_boot": 0.01,
+    "declared": false,
+    "floor": 0.01,
+    "slope_log2m": 0.008725166824634293,
+    "slope_ci": [
+     0.003650561859944592,
+     0.013584870094395173
+    ],
+    "holm_family": "E1",
+    "p_holm": 0.08,
+    "holm_reject": false
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": -0.0003907874306226464,
+    "ci": [
+     -0.0013214398179529766,
+     0.0006125401718625328
+    ],
+    "p_boot": 0.3,
+    "declared": false,
+    "sigma_d": 0.003561491058377451,
+    "n_required_provisional": 1,
+    "holm_family": "E2",
+    "p_holm": 1.0,
+    "holm_reject": false
+   },
+   "beta_z_nofe": {
+    "value": 0.3141570768375049,
+    "ci": [
+     -0.26909656508264596,
+     0.76643585188681
+    ],
+    "p_boot": 0.2857142857142857
+   },
+   "beta_z_fe": {
+    "value": 0.44409206445246974,
+    "ci": [
+     -0.23634257398204006,
+     1071.6136901667144
+    ],
+    "p_boot": 0.2857142857142857
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": -0.11296230386495723,
+     "ci": [
+      -0.3792754728696138,
+      0.20966489310171765
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": -0.07928904703856027,
+     "ci": [
+      -0.29264790211333463,
+      0.09937840361651795
+     ],
+     "p_boot": 0.7619047619047619,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": 0.047219361992047924,
+     "ci": [
+      -0.08591400907221731,
+      0.22650107268469669
+     ],
+     "p_boot": 0.6666666666666666,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.4668195596535169,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/LladaInstructGsm"
+  },
+  {
+   "model": "LladaInstructGsm",
+   "arm": "uniform_matched:topk_conf:k4",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.2415022784340371,
+    "ci": [
+     -0.24687175692084062,
+     -0.23351113561716064
+    ]
+   },
+   "delta_32": {
+    "value": -0.2147370263442604,
+    "ci": [
+     -0.22082146050638438,
+     -0.20740440580435834
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": 0.026765252089776703,
+    "ci": [
+     0.018636320968944707,
+     0.03364243327848317
+    ],
+    "p_boot": 0.01,
+    "declared": true,
+    "floor": 0.01,
+    "slope_log2m": 0.010020380094825096,
+    "slope_ci": [
+     0.008223554681469581,
+     0.011657091682899096
+    ],
+    "holm_family": "exploratory"
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": -0.001218658563233014,
+    "ci": [
+     -0.0016352021461120132,
+     -0.0008651751261495136
+    ],
+    "p_boot": 0.3,
+    "declared": false,
+    "sigma_d": 0.0012848269567803299,
+    "n_required_provisional": 1,
+    "holm_family": "exploratory"
+   },
+   "beta_z_nofe": {
+    "value": 0.04104968886332827,
+    "ci": [
+     -0.17308925130379638,
+     0.2286983977774179
+    ],
+    "p_boot": 1.0
+   },
+   "beta_z_fe": {
+    "value": 0.29046261465762957,
+    "ci": [
+     0.10522898399895973,
+     0.42037000642800093
+    ],
+    "p_boot": 0.09523809523809523
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 0.04427686174697536,
+     "ci": [
+      -0.07411845163404812,
+      0.15601897749666221
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": -0.04372599893019052,
+     "ci": [
+      -0.16423156160597102,
+      0.07545722729682569
+     ],
+     "p_boot": 0.6666666666666666,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": -0.005977274332666767,
+     "ci": [
+      -0.1275318591676997,
+      0.13706960027797874
+     ],
+     "p_boot": 0.7619047619047619,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.48276705548824955,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/LladaInstructGsm"
+  },
+  {
+   "model": "LladaInstructGsm",
+   "arm": "uniform_matched:topk_conf:k8",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.24373270812940925,
+    "ci": [
+     -0.25260124846595794,
+     -0.2334819005409533
+    ]
+   },
+   "delta_32": {
+    "value": -0.20387037712045844,
+    "ci": [
+     -0.2165399920456259,
+     -0.19618915986482582
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": 0.03986233100895081,
+    "ci": [
+     0.020355778536830613,
+     0.05134061877426161
+    ],
+    "p_boot": 0.01,
+    "declared": true,
+    "floor": 0.01,
+    "slope_log2m": 0.012200462857013445,
+    "slope_ci": [
+     0.008074481733806604,
+     0.014803991840314439
+    ],
+    "holm_family": "exploratory"
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": -0.0006898405323893783,
+    "ci": [
+     -0.0011982968357514888,
+     -0.00025884365087832116
+    ],
+    "p_boot": 0.3,
+    "declared": false,
+    "sigma_d": 0.0012151990292693265,
+    "n_required_provisional": 1,
+    "holm_family": "exploratory"
+   },
+   "beta_z_nofe": {
+    "value": 0.049231050192614215,
+    "ci": [
+     -0.17626825456005046,
+     0.3612658381515046
+    ],
+    "p_boot": 0.6666666666666666
+   },
+   "beta_z_fe": {
+    "value": 0.40339735032449797,
+    "ci": [
+     0.04950489060371122,
+     8041.61090096365
+    ],
+    "p_boot": 0.19047619047619047
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 0.15738575020504417,
+     "ci": [
+      0.03722111264561408,
+      0.28545177573989067
+     ],
+     "p_boot": 0.09523809523809523,
+     "p_holm": 0.2857142857142857,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": 0.19843124094419842,
+     "ci": [
+      0.1028619884016569,
+      0.3287749852537719
+     ],
+     "p_boot": 0.09523809523809523,
+     "p_holm": 0.2857142857142857,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": 0.0822791480942829,
+     "ci": [
+      -0.03613351711114473,
+      0.2014004689536457
+     ],
+     "p_boot": 0.2857142857142857,
+     "p_holm": 0.2857142857142857,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.48741173161896784,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/LladaInstructGsm"
+  },
+  {
+   "model": "LladaInstructMbpp",
+   "arm": "decoder:topk_conf:k4",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.14619656409975124,
+    "ci": [
+     -0.15407951276406853,
+     -0.1364067682812482
+    ]
+   },
+   "delta_32": {
+    "value": -0.2663093138186054,
+    "ci": [
+     -0.2744177233786495,
+     -0.2600433283159854
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": -0.12011274971885418,
+    "ci": [
+     -0.13675536298499866,
+     -0.10754534800939419
+    ],
+    "p_boot": 0.04,
+    "declared": true,
+    "floor": 0.01,
+    "slope_log2m": -0.024403922316137847,
+    "slope_ci": [
+     -0.02823600413329247,
+     -0.021760113154198065
+    ],
+    "holm_family": "E1",
+    "p_holm": 0.24,
+    "holm_reject": false
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": 0.006737083224596233,
+    "ci": [
+     0.0063629579011644476,
+     0.007304130070344992
+    ],
+    "p_boot": 0.6,
+    "declared": false,
+    "sigma_d": 0.0019771506759955933,
+    "n_required_provisional": 1,
+    "holm_family": "E2",
+    "p_holm": 1.0,
+    "holm_reject": false
+   },
+   "beta_z_nofe": {
+    "value": -0.18030850576055538,
+    "ci": [
+     -0.2480266141372282,
+     -0.08853390219705246
+    ],
+    "p_boot": 0.09523809523809523
+   },
+   "beta_z_fe": {
+    "value": 0.054718381878958854,
+    "ci": [
+     -0.2592329062839247,
+     859.9003540009548
+    ],
+    "p_boot": 0.7619047619047619
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 8138.7215382780005,
+     "ci": [
+      -271.18187482795054,
+      27460.712117224677
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": 9075.703421073718,
+     "ci": [
+      -294.7007736472116,
+      218755.30662501225
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": 830372.9428467517,
+     "ci": [
+      -2249379.225501725,
+      971508.7213110435
+     ],
+     "p_boot": 0.38095238095238093,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.3944146921540695,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/LladaInstructMbpp"
+  },
+  {
+   "model": "LladaInstructMbpp",
+   "arm": "decoder:topk_conf:k8",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.1533772206779936,
+    "ci": [
+     -0.16175879283229913,
+     -0.1467837577769382
+    ]
+   },
+   "delta_32": {
+    "value": -0.24959342123733627,
+    "ci": [
+     -0.2571554444624791,
+     -0.24170990505510026
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": -0.09621620055934269,
+    "ci": [
+     -0.10648485072298351,
+     -0.08259403990528894
+    ],
+    "p_boot": 0.04,
+    "declared": true,
+    "floor": 0.01,
+    "slope_log2m": -0.019044142281731888,
+    "slope_ci": [
+     -0.021566736087812594,
+     -0.016102989205945384
+    ],
+    "holm_family": "exploratory"
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": 0.006237730938671408,
+    "ci": [
+     0.005445596723288062,
+     0.006992748775614996
+    ],
+    "p_boot": 0.6,
+    "declared": false,
+    "sigma_d": 0.003614602775240645,
+    "n_required_provisional": 1,
+    "holm_family": "exploratory"
+   },
+   "beta_z_nofe": {
+    "value": -0.2230579309704196,
+    "ci": [
+     -0.35827890930313,
+     -0.027340214750070407
+    ],
+    "p_boot": 0.19047619047619047
+   },
+   "beta_z_fe": {
+    "value": -0.09256086099197035,
+    "ci": [
+     -0.21362533353686908,
+     4263.157762713229
+    ],
+    "p_boot": 0.38095238095238093
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 0.29167643731706744,
+     "ci": [
+      -33.9308301056083,
+      16360.15708475944
+     ],
+     "p_boot": 0.9523809523809523,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": 1.5906257079571517,
+     "ci": [
+      -1739690.9532012949,
+      926136.0763327482
+     ],
+     "p_boot": 0.6666666666666666,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": -7.088562052887833,
+     "ci": [
+      -20447.810467898882,
+      4957.593684698347
+     ],
+     "p_boot": 0.8571428571428571,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.40715602080693797,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/LladaInstructMbpp"
+  },
+  {
+   "model": "LladaInstructMbpp",
+   "arm": "uniform",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.18796830873287082,
+    "ci": [
+     -0.19207517373220173,
+     -0.18396451347691345
+    ]
+   },
+   "delta_32": {
+    "value": -0.1683620363753289,
+    "ci": [
+     -0.18634320952335287,
+     -0.15430212142442667
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": 0.01960627235754191,
+    "ci": [
+     -0.00034898270202022566,
+     0.03323059709025964
+    ],
+    "p_boot": 0.04,
+    "declared": false,
+    "floor": 0.01,
+    "slope_log2m": 0.006980133459707435,
+    "slope_ci": [
+     0.002920449487955674,
+     0.010867896075516139
+    ],
+    "holm_family": "E1",
+    "p_holm": 0.24,
+    "holm_reject": false
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": -0.0003126299444981171,
+    "ci": [
+     -0.0010571518543623813,
+     0.0004900321374900263
+    ],
+    "p_boot": 0.6,
+    "declared": false,
+    "sigma_d": 0.003561491058377451,
+    "n_required_provisional": 1,
+    "holm_family": "E2",
+    "p_holm": 1.0,
+    "holm_reject": false
+   },
+   "beta_z_nofe": {
+    "value": 0.3141570768375049,
+    "ci": [
+     -0.26909656508264596,
+     0.76643585188681
+    ],
+    "p_boot": 0.2857142857142857
+   },
+   "beta_z_fe": {
+    "value": 0.44409206445246974,
+    "ci": [
+     -0.23634257398204006,
+     1071.6136901667144
+    ],
+    "p_boot": 0.2857142857142857
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": -0.11296230386495723,
+     "ci": [
+      -0.3792754728696138,
+      0.20966489310171765
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": -0.07928904703856027,
+     "ci": [
+      -0.29264790211333463,
+      0.09937840361651795
+     ],
+     "p_boot": 0.7619047619047619,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": 0.047219361992047924,
+     "ci": [
+      -0.08591400907221731,
+      0.22650107268469669
+     ],
+     "p_boot": 0.6666666666666666,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.4668195596535169,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/LladaInstructMbpp"
+  },
+  {
+   "model": "LladaInstructMbpp",
+   "arm": "uniform_matched:topk_conf:k4",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.1932018227472297,
+    "ci": [
+     -0.1974974055366725,
+     -0.18680890849372853
+    ]
+   },
+   "delta_32": {
+    "value": -0.17178962107540832,
+    "ci": [
+     -0.1766571684051075,
+     -0.1659235246434867
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": 0.021412201671821365,
+    "ci": [
+     0.014909056775155766,
+     0.02691394662278654
+    ],
+    "p_boot": 0.04,
+    "declared": true,
+    "floor": 0.01,
+    "slope_log2m": 0.008016304075860077,
+    "slope_ci": [
+     0.006578843745175665,
+     0.009325673346319277
+    ],
+    "holm_family": "exploratory"
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": -0.0009749268505864112,
+    "ci": [
+     -0.0013081617168896106,
+     -0.0006921401009196109
+    ],
+    "p_boot": 0.6,
+    "declared": false,
+    "sigma_d": 0.0012848269567803299,
+    "n_required_provisional": 1,
+    "holm_family": "exploratory"
+   },
+   "beta_z_nofe": {
+    "value": 0.04104968886332827,
+    "ci": [
+     -0.17308925130379638,
+     0.2286983977774179
+    ],
+    "p_boot": 1.0
+   },
+   "beta_z_fe": {
+    "value": 0.29046261465762957,
+    "ci": [
+     0.10522898399895973,
+     0.42037000642800093
+    ],
+    "p_boot": 0.09523809523809523
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 0.04427686174697536,
+     "ci": [
+      -0.07411845163404812,
+      0.15601897749666221
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": -0.04372599893019052,
+     "ci": [
+      -0.16423156160597102,
+      0.07545722729682569
+     ],
+     "p_boot": 0.6666666666666666,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": -0.005977274332666767,
+     "ci": [
+      -0.1275318591676997,
+      0.13706960027797874
+     ],
+     "p_boot": 0.7619047619047619,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.48276705548824955,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/LladaInstructMbpp"
+  },
+  {
+   "model": "LladaInstructMbpp",
+   "arm": "uniform_matched:topk_conf:k8",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.1949861665035274,
+    "ci": [
+     -0.20208099877276636,
+     -0.18678552043276264
+    ]
+   },
+   "delta_32": {
+    "value": -0.16309630169636677,
+    "ci": [
+     -0.17323199363650074,
+     -0.15695132789186067
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": 0.031889864807160655,
+    "ci": [
+     0.016284622829464492,
+     0.041072495019409294
+    ],
+    "p_boot": 0.04,
+    "declared": true,
+    "floor": 0.01,
+    "slope_log2m": 0.009760370285610756,
+    "slope_ci": [
+     0.006459585387045283,
+     0.011843193472251552
+    ],
+    "holm_family": "exploratory"
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": -0.0005518724259115027,
+    "ci": [
+     -0.0009586374686011911,
+     -0.00020707492070265693
+    ],
+    "p_boot": 0.6,
+    "declared": false,
+    "sigma_d": 0.0012151990292693265,
+    "n_required_provisional": 1,
+    "holm_family": "exploratory"
+   },
+   "beta_z_nofe": {
+    "value": 0.049231050192614215,
+    "ci": [
+     -0.17626825456005046,
+     0.3612658381515046
+    ],
+    "p_boot": 0.6666666666666666
+   },
+   "beta_z_fe": {
+    "value": 0.40339735032449797,
+    "ci": [
+     0.04950489060371122,
+     8041.61090096365
+    ],
+    "p_boot": 0.19047619047619047
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 0.15738575020504417,
+     "ci": [
+      0.03722111264561408,
+      0.28545177573989067
+     ],
+     "p_boot": 0.09523809523809523,
+     "p_holm": 0.2857142857142857,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": 0.19843124094419842,
+     "ci": [
+      0.1028619884016569,
+      0.3287749852537719
+     ],
+     "p_boot": 0.09523809523809523,
+     "p_holm": 0.2857142857142857,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": 0.0822791480942829,
+     "ci": [
+      -0.03613351711114473,
+      0.2014004689536457
+     ],
+     "p_boot": 0.2857142857142857,
+     "p_holm": 0.2857142857142857,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.48741173161896784,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/LladaInstructMbpp"
+  },
+  {
+   "model": "DreamInstructGsm",
+   "arm": "decoder:topk_conf:k4",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.21929484614962685,
+    "ci": [
+     -0.23111926914610278,
+     -0.2046101524218723
+    ]
+   },
+   "delta_32": {
+    "value": -0.3994639707279081,
+    "ci": [
+     -0.4116265850679743,
+     -0.3900649924739781
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": -0.18016912457828124,
+    "ci": [
+     -0.20513304447749794,
+     -0.1613180220140913
+    ],
+    "p_boot": 0.3,
+    "declared": true,
+    "floor": 0.01,
+    "slope_log2m": -0.03660588347420677,
+    "slope_ci": [
+     -0.042354006199938704,
+     -0.032640169731297096
+    ],
+    "holm_family": "E1",
+    "p_holm": 1.0,
+    "holm_reject": false
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": 0.010105624836894348,
+    "ci": [
+     0.00954443685174667,
+     0.010956195105517487
+    ],
+    "p_boot": 0.7,
+    "declared": false,
+    "sigma_d": 0.0019771506759955933,
+    "n_required_provisional": 1,
+    "holm_family": "E2",
+    "p_holm": 1.0,
+    "holm_reject": false
+   },
+   "beta_z_nofe": {
+    "value": -0.18030850576055538,
+    "ci": [
+     -0.2480266141372282,
+     -0.08853390219705246
+    ],
+    "p_boot": 0.09523809523809523
+   },
+   "beta_z_fe": {
+    "value": 0.054718381878958854,
+    "ci": [
+     -0.2592329062839247,
+     859.9003540009548
+    ],
+    "p_boot": 0.7619047619047619
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 8138.7215382780005,
+     "ci": [
+      -271.18187482795054,
+      27460.712117224677
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": 9075.703421073718,
+     "ci": [
+      -294.7007736472116,
+      218755.30662501225
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": 830372.9428467517,
+     "ci": [
+      -2249379.225501725,
+      971508.7213110435
+     ],
+     "p_boot": 0.38095238095238093,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.3944146921540695,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/DreamInstructGsm"
+  },
+  {
+   "model": "DreamInstructGsm",
+   "arm": "decoder:topk_conf:k8",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.23006583101699035,
+    "ci": [
+     -0.24263818924844868,
+     -0.2201756366654073
+    ]
+   },
+   "delta_32": {
+    "value": -0.3743901318560044,
+    "ci": [
+     -0.38573316669371865,
+     -0.36256485758265034
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": -0.144324300839014,
+    "ci": [
+     -0.15972727608447526,
+     -0.12389105985793339
+    ],
+    "p_boot": 0.3,
+    "declared": true,
+    "floor": 0.01,
+    "slope_log2m": -0.028566213422597832,
+    "slope_ci": [
+     -0.03235010413171889,
+     -0.024154483808918076
+    ],
+    "holm_family": "exploratory"
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": 0.00935659640800711,
+    "ci": [
+     0.008168395084932091,
+     0.010489123163422494
+    ],
+    "p_boot": 0.7,
+    "declared": false,
+    "sigma_d": 0.003614602775240645,
+    "n_required_provisional": 1,
+    "holm_family": "exploratory"
+   },
+   "beta_z_nofe": {
+    "value": -0.2230579309704196,
+    "ci": [
+     -0.35827890930313,
+     -0.027340214750070407
+    ],
+    "p_boot": 0.19047619047619047
+   },
+   "beta_z_fe": {
+    "value": -0.09256086099197035,
+    "ci": [
+     -0.21362533353686908,
+     4263.157762713229
+    ],
+    "p_boot": 0.38095238095238093
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 0.29167643731706744,
+     "ci": [
+      -33.9308301056083,
+      16360.15708475944
+     ],
+     "p_boot": 0.9523809523809523,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": 1.5906257079571517,
+     "ci": [
+      -1739690.9532012949,
+      926136.0763327482
+     ],
+     "p_boot": 0.6666666666666666,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": -7.088562052887833,
+     "ci": [
+      -20447.810467898882,
+      4957.593684698347
+     ],
+     "p_boot": 0.8571428571428571,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.40715602080693797,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/DreamInstructGsm"
+  },
+  {
+   "model": "DreamInstructGsm",
+   "arm": "uniform",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.2819524630993062,
+    "ci": [
+     -0.28811276059830254,
+     -0.2759467702153701
+    ]
+   },
+   "delta_32": {
+    "value": -0.2525430545629933,
+    "ci": [
+     -0.2795148142850293,
+     -0.23145318213663996
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": 0.029409408536312864,
+    "ci": [
+     -0.0005234740530303384,
+     0.04984589563538946
+    ],
+    "p_boot": 0.3,
+    "declared": false,
+    "floor": 0.01,
+    "slope_log2m": 0.01047020018956115,
+    "slope_ci": [
+     0.004380674231933511,
+     0.016301844113274205
+    ],
+    "holm_family": "E1",
+    "p_holm": 1.0,
+    "holm_reject": false
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": -0.0004689449167471757,
+    "ci": [
+     -0.001585727781543572,
+     0.0007350482062350394
+    ],
+    "p_boot": 0.7,
+    "declared": false,
+    "sigma_d": 0.003561491058377451,
+    "n_required_provisional": 1,
+    "holm_family": "E2",
+    "p_holm": 1.0,
+    "holm_reject": false
+   },
+   "beta_z_nofe": {
+    "value": 0.3141570768375049,
+    "ci": [
+     -0.26909656508264596,
+     0.76643585188681
+    ],
+    "p_boot": 0.2857142857142857
+   },
+   "beta_z_fe": {
+    "value": 0.44409206445246974,
+    "ci": [
+     -0.23634257398204006,
+     1071.6136901667144
+    ],
+    "p_boot": 0.2857142857142857
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": -0.11296230386495723,
+     "ci": [
+      -0.3792754728696138,
+      0.20966489310171765
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": -0.07928904703856027,
+     "ci": [
+      -0.29264790211333463,
+      0.09937840361651795
+     ],
+     "p_boot": 0.7619047619047619,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": 0.047219361992047924,
+     "ci": [
+      -0.08591400907221731,
+      0.22650107268469669
+     ],
+     "p_boot": 0.6666666666666666,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.4668195596535169,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/DreamInstructGsm"
+  },
+  {
+   "model": "DreamInstructGsm",
+   "arm": "uniform_matched:topk_conf:k4",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.2898027341208445,
+    "ci": [
+     -0.29624610830500875,
+     -0.2802133627405928
+    ]
+   },
+   "delta_32": {
+    "value": -0.25768443161311244,
+    "ci": [
+     -0.2649857526076612,
+     -0.24888528696523
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": 0.032118302507732045,
+    "ci": [
+     0.022363585162733648,
+     0.04037091993417981
+    ],
+    "p_boot": 0.3,
+    "declared": true,
+    "floor": 0.01,
+    "slope_log2m": 0.012024456113790116,
+    "slope_ci": [
+     0.009868265617763498,
+     0.013988510019478916
+    ],
+    "holm_family": "exploratory"
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": -0.0014623902758796167,
+    "ci": [
+     -0.001962242575334416,
+     -0.0010382101513794163
+    ],
+    "p_boot": 0.7,
+    "declared": false,
+    "sigma_d": 0.0012848269567803299,
+    "n_required_provisional": 1,
+    "holm_family": "exploratory"
+   },
+   "beta_z_nofe": {
+    "value": 0.04104968886332827,
+    "ci": [
+     -0.17308925130379638,
+     0.2286983977774179
+    ],
+    "p_boot": 1.0
+   },
+   "beta_z_fe": {
+    "value": 0.29046261465762957,
+    "ci": [
+     0.10522898399895973,
+     0.42037000642800093
+    ],
+    "p_boot": 0.09523809523809523
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 0.04427686174697536,
+     "ci": [
+      -0.07411845163404812,
+      0.15601897749666221
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": -0.04372599893019052,
+     "ci": [
+      -0.16423156160597102,
+      0.07545722729682569
+     ],
+     "p_boot": 0.6666666666666666,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": -0.005977274332666767,
+     "ci": [
+      -0.1275318591676997,
+      0.13706960027797874
+     ],
+     "p_boot": 0.7619047619047619,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.48276705548824955,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/DreamInstructGsm"
+  },
+  {
+   "model": "DreamInstructGsm",
+   "arm": "uniform_matched:topk_conf:k8",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.2924792497552911,
+    "ci": [
+     -0.3031214981591495,
+     -0.28017828064914396
+    ]
+   },
+   "delta_32": {
+    "value": -0.2446444525445501,
+    "ci": [
+     -0.2598479904547511,
+     -0.23542699183779098
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": 0.04783479721074097,
+    "ci": [
+     0.024426934244196733,
+     0.06160874252911393
+    ],
+    "p_boot": 0.3,
+    "declared": true,
+    "floor": 0.01,
+    "slope_log2m": 0.014640555428416134,
+    "slope_ci": [
+     0.009689378080567924,
+     0.017764790208377325
+    ],
+    "holm_family": "exploratory"
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": -0.0008278086388672539,
+    "ci": [
+     -0.0014379562029017865,
+     -0.0003106123810539854
+    ],
+    "p_boot": 0.7,
+    "declared": false,
+    "sigma_d": 0.0012151990292693265,
+    "n_required_provisional": 1,
+    "holm_family": "exploratory"
+   },
+   "beta_z_nofe": {
+    "value": 0.049231050192614215,
+    "ci": [
+     -0.17626825456005046,
+     0.3612658381515046
+    ],
+    "p_boot": 0.6666666666666666
+   },
+   "beta_z_fe": {
+    "value": 0.40339735032449797,
+    "ci": [
+     0.04950489060371122,
+     8041.61090096365
+    ],
+    "p_boot": 0.19047619047619047
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 0.15738575020504417,
+     "ci": [
+      0.03722111264561408,
+      0.28545177573989067
+     ],
+     "p_boot": 0.09523809523809523,
+     "p_holm": 0.2857142857142857,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": 0.19843124094419842,
+     "ci": [
+      0.1028619884016569,
+      0.3287749852537719
+     ],
+     "p_boot": 0.09523809523809523,
+     "p_holm": 0.2857142857142857,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": 0.0822791480942829,
+     "ci": [
+      -0.03613351711114473,
+      0.2014004689536457
+     ],
+     "p_boot": 0.2857142857142857,
+     "p_holm": 0.2857142857142857,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.48741173161896784,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/DreamInstructGsm"
+  },
+  {
+   "model": "DreamInstructMbpp",
+   "arm": "decoder:topk_conf:k4",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.10964742307481343,
+    "ci": [
+     -0.11555963457305139,
+     -0.10230507621093615
+    ]
+   },
+   "delta_32": {
+    "value": -0.19973198536395406,
+    "ci": [
+     -0.20581329253398714,
+     -0.19503249623698904
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": -0.09008456228914062,
+    "ci": [
+     -0.10256652223874897,
+     -0.08065901100704564
+    ],
+    "p_boot": 0.5,
+    "declared": true,
+    "floor": 0.01,
+    "slope_log2m": -0.018302941737103385,
+    "slope_ci": [
+     -0.021177003099969352,
+     -0.016320084865648548
+    ],
+    "holm_family": "E1",
+    "p_holm": 1.0,
+    "holm_reject": false
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": 0.005052812418447174,
+    "ci": [
+     0.004772218425873335,
+     0.005478097552758744
+    ],
+    "p_boot": 0.9,
+    "declared": false,
+    "sigma_d": 0.0019771506759955933,
+    "n_required_provisional": 1,
+    "holm_family": "E2",
+    "p_holm": 1.0,
+    "holm_reject": false
+   },
+   "beta_z_nofe": {
+    "value": -0.18030850576055538,
+    "ci": [
+     -0.2480266141372282,
+     -0.08853390219705246
+    ],
+    "p_boot": 0.09523809523809523
+   },
+   "beta_z_fe": {
+    "value": 0.054718381878958854,
+    "ci": [
+     -0.2592329062839247,
+     859.9003540009548
+    ],
+    "p_boot": 0.7619047619047619
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 8138.7215382780005,
+     "ci": [
+      -271.18187482795054,
+      27460.712117224677
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": 9075.703421073718,
+     "ci": [
+      -294.7007736472116,
+      218755.30662501225
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": 830372.9428467517,
+     "ci": [
+      -2249379.225501725,
+      971508.7213110435
+     ],
+     "p_boot": 0.38095238095238093,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.3944146921540695,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/DreamInstructMbpp"
+  },
+  {
+   "model": "DreamInstructMbpp",
+   "arm": "decoder:topk_conf:k8",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.11503291550849518,
+    "ci": [
+     -0.12131909462422434,
+     -0.11008781833270365
+    ]
+   },
+   "delta_32": {
+    "value": -0.1871950659280022,
+    "ci": [
+     -0.19286658334685933,
+     -0.18128242879132517
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": -0.072162150419507,
+    "ci": [
+     -0.07986363804223763,
+     -0.061945529928966694
+    ],
+    "p_boot": 0.5,
+    "declared": true,
+    "floor": 0.01,
+    "slope_log2m": -0.014283106711298916,
+    "slope_ci": [
+     -0.016175052065859445,
+     -0.012077241904459038
+    ],
+    "holm_family": "exploratory"
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": 0.004678298204003555,
+    "ci": [
+     0.0040841975424660455,
+     0.005244561581711247
+    ],
+    "p_boot": 0.9,
+    "declared": false,
+    "sigma_d": 0.003614602775240645,
+    "n_required_provisional": 1,
+    "holm_family": "exploratory"
+   },
+   "beta_z_nofe": {
+    "value": -0.2230579309704196,
+    "ci": [
+     -0.35827890930313,
+     -0.027340214750070407
+    ],
+    "p_boot": 0.19047619047619047
+   },
+   "beta_z_fe": {
+    "value": -0.09256086099197035,
+    "ci": [
+     -0.21362533353686908,
+     4263.157762713229
+    ],
+    "p_boot": 0.38095238095238093
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 0.29167643731706744,
+     "ci": [
+      -33.9308301056083,
+      16360.15708475944
+     ],
+     "p_boot": 0.9523809523809523,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": 1.5906257079571517,
+     "ci": [
+      -1739690.9532012949,
+      926136.0763327482
+     ],
+     "p_boot": 0.6666666666666666,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": -7.088562052887833,
+     "ci": [
+      -20447.810467898882,
+      4957.593684698347
+     ],
+     "p_boot": 0.8571428571428571,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.40715602080693797,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/DreamInstructMbpp"
+  },
+  {
+   "model": "DreamInstructMbpp",
+   "arm": "uniform",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.1409762315496531,
+    "ci": [
+     -0.14405638029915127,
+     -0.13797338510768506
+    ]
+   },
+   "delta_32": {
+    "value": -0.12627152728149665,
+    "ci": [
+     -0.13975740714251464,
+     -0.11572659106831998
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": 0.014704704268156432,
+    "ci": [
+     -0.0002617370265151692,
+     0.02492294781769473
+    ],
+    "p_boot": 0.5,
+    "declared": false,
+    "floor": 0.01,
+    "slope_log2m": 0.005235100094780575,
+    "slope_ci": [
+     0.0021903371159667554,
+     0.008150922056637103
+    ],
+    "holm_family": "E1",
+    "p_holm": 1.0,
+    "holm_reject": false
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": -0.00023447245837358784,
+    "ci": [
+     -0.000792863890771786,
+     0.0003675241031175197
+    ],
+    "p_boot": 0.9,
+    "declared": false,
+    "sigma_d": 0.003561491058377451,
+    "n_required_provisional": 1,
+    "holm_family": "E2",
+    "p_holm": 1.0,
+    "holm_reject": false
+   },
+   "beta_z_nofe": {
+    "value": 0.3141570768375049,
+    "ci": [
+     -0.26909656508264596,
+     0.76643585188681
+    ],
+    "p_boot": 0.2857142857142857
+   },
+   "beta_z_fe": {
+    "value": 0.44409206445246974,
+    "ci": [
+     -0.23634257398204006,
+     1071.6136901667144
+    ],
+    "p_boot": 0.2857142857142857
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": -0.11296230386495723,
+     "ci": [
+      -0.3792754728696138,
+      0.20966489310171765
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": -0.07928904703856027,
+     "ci": [
+      -0.29264790211333463,
+      0.09937840361651795
+     ],
+     "p_boot": 0.7619047619047619,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": 0.047219361992047924,
+     "ci": [
+      -0.08591400907221731,
+      0.22650107268469669
+     ],
+     "p_boot": 0.6666666666666666,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.4668195596535169,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/DreamInstructMbpp"
+  },
+  {
+   "model": "DreamInstructMbpp",
+   "arm": "uniform_matched:topk_conf:k4",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.14490136706042225,
+    "ci": [
+     -0.14812305415250437,
+     -0.1401066813702964
+    ]
+   },
+   "delta_32": {
+    "value": -0.12884221580655622,
+    "ci": [
+     -0.1324928763038306,
+     -0.124442643482615
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": 0.016059151253866023,
+    "ci": [
+     0.011181792581366824,
+     0.020185459967089904
+    ],
+    "p_boot": 0.5,
+    "declared": false,
+    "floor": 0.01,
+    "slope_log2m": 0.006012228056895058,
+    "slope_ci": [
+     0.004934132808881749,
+     0.006994255009739458
+    ],
+    "holm_family": "exploratory"
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": -0.0007311951379398084,
+    "ci": [
+     -0.000981121287667208,
+     -0.0005191050756897081
+    ],
+    "p_boot": 0.9,
+    "declared": false,
+    "sigma_d": 0.0012848269567803299,
+    "n_required_provisional": 1,
+    "holm_family": "exploratory"
+   },
+   "beta_z_nofe": {
+    "value": 0.04104968886332827,
+    "ci": [
+     -0.17308925130379638,
+     0.2286983977774179
+    ],
+    "p_boot": 1.0
+   },
+   "beta_z_fe": {
+    "value": 0.29046261465762957,
+    "ci": [
+     0.10522898399895973,
+     0.42037000642800093
+    ],
+    "p_boot": 0.09523809523809523
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 0.04427686174697536,
+     "ci": [
+      -0.07411845163404812,
+      0.15601897749666221
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": -0.04372599893019052,
+     "ci": [
+      -0.16423156160597102,
+      0.07545722729682569
+     ],
+     "p_boot": 0.6666666666666666,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": -0.005977274332666767,
+     "ci": [
+      -0.1275318591676997,
+      0.13706960027797874
+     ],
+     "p_boot": 0.7619047619047619,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.48276705548824955,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/DreamInstructMbpp"
+  },
+  {
+   "model": "DreamInstructMbpp",
+   "arm": "uniform_matched:topk_conf:k8",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.14623962487764555,
+    "ci": [
+     -0.15156074907957476,
+     -0.14008914032457198
+    ]
+   },
+   "delta_32": {
+    "value": -0.12232222627227506,
+    "ci": [
+     -0.12992399522737555,
+     -0.11771349591889549
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": 0.023917398605370486,
+    "ci": [
+     0.012213467122098367,
+     0.030804371264556964
+    ],
+    "p_boot": 0.5,
+    "declared": true,
+    "floor": 0.01,
+    "slope_log2m": 0.007320277714208067,
+    "slope_ci": [
+     0.004844689040283962,
+     0.008882395104188662
+    ],
+    "holm_family": "exploratory"
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": -0.00041390431943362694,
+    "ci": [
+     -0.0007189781014508933,
+     -0.0001553061905269927
+    ],
+    "p_boot": 0.9,
+    "declared": false,
+    "sigma_d": 0.0012151990292693265,
+    "n_required_provisional": 1,
+    "holm_family": "exploratory"
+   },
+   "beta_z_nofe": {
+    "value": 0.049231050192614215,
+    "ci": [
+     -0.17626825456005046,
+     0.3612658381515046
+    ],
+    "p_boot": 0.6666666666666666
+   },
+   "beta_z_fe": {
+    "value": 0.40339735032449797,
+    "ci": [
+     0.04950489060371122,
+     8041.61090096365
+    ],
+    "p_boot": 0.19047619047619047
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 0.15738575020504417,
+     "ci": [
+      0.03722111264561408,
+      0.28545177573989067
+     ],
+     "p_boot": 0.09523809523809523,
+     "p_holm": 0.2857142857142857,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": 0.19843124094419842,
+     "ci": [
+      0.1028619884016569,
+      0.3287749852537719
+     ],
+     "p_boot": 0.09523809523809523,
+     "p_holm": 0.2857142857142857,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": 0.0822791480942829,
+     "ci": [
+      -0.03613351711114473,
+      0.2014004689536457
+     ],
+     "p_boot": 0.2857142857142857,
+     "p_holm": 0.2857142857142857,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.48741173161896784,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/DreamInstructMbpp"
+  },
+  {
+   "model": "Mdlm",
+   "arm": "decoder:topk_conf:k4",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.4385896922992537,
+    "ci": [
+     -0.46223853829220557,
+     -0.4092203048437446
+    ]
+   },
+   "delta_32": {
+    "value": -0.7989279414558162,
+    "ci": [
+     -0.8232531701359486,
+     -0.7801299849479562
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": -0.3603382491565625,
+    "ci": [
+     -0.4102660889549959,
+     -0.3226360440281826
+    ],
+    "p_boot": 0.0001,
+    "declared": true,
+    "floor": 0.01,
+    "slope_log2m": -0.07321176694841354,
+    "slope_ci": [
+     -0.08470801239987741,
+     -0.06528033946259419
+    ],
+    "holm_family": "E1",
+    "p_holm": 0.0014,
+    "holm_reject": true
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": 0.020211249673788696,
+    "ci": [
+     0.01908887370349334,
+     0.021912390211034975
+    ],
+    "p_boot": 0.0001,
+    "declared": true,
+    "sigma_d": 0.0019771506759955933,
+    "n_required_provisional": 1,
+    "holm_family": "E2",
+    "p_holm": 0.0014,
+    "holm_reject": true
+   },
+   "beta_z_nofe": {
+    "value": -0.18030850576055538,
+    "ci": [
+     -0.2480266141372282,
+     -0.08853390219705246
+    ],
+    "p_boot": 0.09523809523809523
+   },
+   "beta_z_fe": {
+    "value": 0.054718381878958854,
+    "ci": [
+     -0.2592329062839247,
+     859.9003540009548
+    ],
+    "p_boot": 0.7619047619047619
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 8138.7215382780005,
+     "ci": [
+      -271.18187482795054,
+      27460.712117224677
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": 9075.703421073718,
+     "ci": [
+      -294.7007736472116,
+      218755.30662501225
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": 830372.9428467517,
+     "ci": [
+      -2249379.225501725,
+      971508.7213110435
+     ],
+     "p_boot": 0.38095238095238093,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.3944146921540695,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/Mdlm"
+  },
+  {
+   "model": "Mdlm",
+   "arm": "decoder:topk_conf:k8",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.4601316620339807,
+    "ci": [
+     -0.48527637849689736,
+     -0.4403512733308146
+    ]
+   },
+   "delta_32": {
+    "value": -0.7487802637120088,
+    "ci": [
+     -0.7714663333874373,
+     -0.7251297151653007
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": -0.288648601678028,
+    "ci": [
+     -0.3194545521689505,
+     -0.24778211971586678
+    ],
+    "p_boot": 0.0001,
+    "declared": true,
+    "floor": 0.01,
+    "slope_log2m": -0.057132426845195664,
+    "slope_ci": [
+     -0.06470020826343778,
+     -0.04830896761783615
+    ],
+    "holm_family": "exploratory"
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": 0.01871319281601422,
+    "ci": [
+     0.016336790169864182,
+     0.020978246326844988
+    ],
+    "p_boot": 0.0001,
+    "declared": false,
+    "sigma_d": 0.003614602775240645,
+    "n_required_provisional": 1,
+    "holm_family": "exploratory"
+   },
+   "beta_z_nofe": {
+    "value": -0.2230579309704196,
+    "ci": [
+     -0.35827890930313,
+     -0.027340214750070407
+    ],
+    "p_boot": 0.19047619047619047
+   },
+   "beta_z_fe": {
+    "value": -0.09256086099197035,
+    "ci": [
+     -0.21362533353686908,
+     4263.157762713229
+    ],
+    "p_boot": 0.38095238095238093
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 0.29167643731706744,
+     "ci": [
+      -33.9308301056083,
+      16360.15708475944
+     ],
+     "p_boot": 0.9523809523809523,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": 1.5906257079571517,
+     "ci": [
+      -1739690.9532012949,
+      926136.0763327482
+     ],
+     "p_boot": 0.6666666666666666,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": -7.088562052887833,
+     "ci": [
+      -20447.810467898882,
+      4957.593684698347
+     ],
+     "p_boot": 0.8571428571428571,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.40715602080693797,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/Mdlm"
+  },
+  {
+   "model": "Mdlm",
+   "arm": "uniform",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.5639049261986124,
+    "ci": [
+     -0.5762255211966051,
+     -0.5518935404307402
+    ]
+   },
+   "delta_32": {
+    "value": -0.5050861091259866,
+    "ci": [
+     -0.5590296285700586,
+     -0.4629063642732799
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": 0.05881881707262573,
+    "ci": [
+     -0.0010469481060606768,
+     0.09969179127077892
+    ],
+    "p_boot": 0.0001,
+    "declared": false,
+    "floor": 0.01,
+    "slope_log2m": 0.0209404003791223,
+    "slope_ci": [
+     0.008761348463867022,
+     0.03260368822654841
+    ],
+    "holm_family": "E1",
+    "p_holm": 0.0014,
+    "holm_reject": true
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": -0.0009378898334943514,
+    "ci": [
+     -0.003171455563087144,
+     0.0014700964124700789
+    ],
+    "p_boot": 0.0001,
+    "declared": false,
+    "sigma_d": 0.003561491058377451,
+    "n_required_provisional": 1,
+    "holm_family": "E2",
+    "p_holm": 0.0014,
+    "holm_reject": true
+   },
+   "beta_z_nofe": {
+    "value": 0.3141570768375049,
+    "ci": [
+     -0.26909656508264596,
+     0.76643585188681
+    ],
+    "p_boot": 0.2857142857142857
+   },
+   "beta_z_fe": {
+    "value": 0.44409206445246974,
+    "ci": [
+     -0.23634257398204006,
+     1071.6136901667144
+    ],
+    "p_boot": 0.2857142857142857
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": -0.11296230386495723,
+     "ci": [
+      -0.3792754728696138,
+      0.20966489310171765
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": -0.07928904703856027,
+     "ci": [
+      -0.29264790211333463,
+      0.09937840361651795
+     ],
+     "p_boot": 0.7619047619047619,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": 0.047219361992047924,
+     "ci": [
+      -0.08591400907221731,
+      0.22650107268469669
+     ],
+     "p_boot": 0.6666666666666666,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.4668195596535169,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/Mdlm"
+  },
+  {
+   "model": "Mdlm",
+   "arm": "uniform_matched:topk_conf:k4",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.579605468241689,
+    "ci": [
+     -0.5924922166100175,
+     -0.5604267254811856
+    ]
+   },
+   "delta_32": {
+    "value": -0.5153688632262249,
+    "ci": [
+     -0.5299715052153224,
+     -0.49777057393046
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": 0.06423660501546409,
+    "ci": [
+     0.044727170325467296,
+     0.08074183986835962
+    ],
+    "p_boot": 0.0001,
+    "declared": true,
+    "floor": 0.01,
+    "slope_log2m": 0.02404891222758023,
+    "slope_ci": [
+     0.019736531235526995,
+     0.027977020038957832
+    ],
+    "holm_family": "exploratory"
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": -0.0029247805517592334,
+    "ci": [
+     -0.003924485150668832,
+     -0.0020764203027588326
+    ],
+    "p_boot": 0.0001,
+    "declared": false,
+    "sigma_d": 0.0012848269567803299,
+    "n_required_provisional": 1,
+    "holm_family": "exploratory"
+   },
+   "beta_z_nofe": {
+    "value": 0.04104968886332827,
+    "ci": [
+     -0.17308925130379638,
+     0.2286983977774179
+    ],
+    "p_boot": 1.0
+   },
+   "beta_z_fe": {
+    "value": 0.29046261465762957,
+    "ci": [
+     0.10522898399895973,
+     0.42037000642800093
+    ],
+    "p_boot": 0.09523809523809523
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 0.04427686174697536,
+     "ci": [
+      -0.07411845163404812,
+      0.15601897749666221
+     ],
+     "p_boot": 0.5714285714285714,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": -0.04372599893019052,
+     "ci": [
+      -0.16423156160597102,
+      0.07545722729682569
+     ],
+     "p_boot": 0.6666666666666666,
+     "p_holm": 1.0,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": -0.005977274332666767,
+     "ci": [
+      -0.1275318591676997,
+      0.13706960027797874
+     ],
+     "p_boot": 0.7619047619047619,
+     "p_holm": 1.0,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.48276705548824955,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/Mdlm"
+  },
+  {
+   "model": "Mdlm",
+   "arm": "uniform_matched:topk_conf:k8",
+   "n_docs": 8,
+   "delta_1": {
+    "value": -0.5849584995105822,
+    "ci": [
+     -0.606242996318299,
+     -0.5603565612982879
+    ]
+   },
+   "delta_32": {
+    "value": -0.4892889050891002,
+    "ci": [
+     -0.5196959809095022,
+     -0.47085398367558196
+    ]
+   },
+   "contrast": {
+    "name": "Delta(32) - Delta(1)",
+    "value": 0.09566959442148194,
+    "ci": [
+     0.048853868488393466,
+     0.12321748505822785
+    ],
+    "p_boot": 0.0001,
+    "declared": true,
+    "floor": 0.01,
+    "slope_log2m": 0.029281110856832267,
+    "slope_ci": [
+     0.019378756161135848,
+     0.03552958041675465
+    ],
+    "holm_family": "exploratory"
+   },
+   "field_contrast": {
+    "name": "field(32) - field(1)",
+    "value": -0.0016556172777345078,
+    "ci": [
+     -0.002875912405803573,
+     -0.0006212247621079708
+    ],
+    "p_boot": 0.0001,
+    "declared": false,
+    "sigma_d": 0.0012151990292693265,
+    "n_required_provisional": 1,
+    "holm_family": "exploratory"
+   },
+   "beta_z_nofe": {
+    "value": 0.049231050192614215,
+    "ci": [
+     -0.17626825456005046,
+     0.3612658381515046
+    ],
+    "p_boot": 0.6666666666666666
+   },
+   "beta_z_fe": {
+    "value": 0.40339735032449797,
+    "ci": [
+     0.04950489060371122,
+     8041.61090096365
+    ],
+    "p_boot": 0.19047619047619047
+   },
+   "gamma": {
+    "gamma_2": {
+     "value": 0.15738575020504417,
+     "ci": [
+      0.03722111264561408,
+      0.28545177573989067
+     ],
+     "p_boot": 0.09523809523809523,
+     "p_holm": 0.2857142857142857,
+     "holm_reject": false
+    },
+    "gamma_3": {
+     "value": 0.19843124094419842,
+     "ci": [
+      0.1028619884016569,
+      0.3287749852537719
+     ],
+     "p_boot": 0.09523809523809523,
+     "p_holm": 0.2857142857142857,
+     "holm_reject": false
+    },
+    "gamma_4": {
+     "value": 0.0822791480942829,
+     "ci": [
+      -0.03613351711114473,
+      0.2014004689536457
+     ],
+     "p_boot": 0.2857142857142857,
+     "p_holm": 0.2857142857142857,
+     "holm_reject": false
+    }
+   },
+   "ece": 0.48741173161896784,
+   "source": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/c1out/tests/fixtures/c1_results/c1/Mdlm"
+  }
+ ],
+ "alpha": 0.05,
+ "primary_arms": [
+  "uniform",
+  "decoder:topk_conf:k4"
+ ],
+ "provenance": {
+  "git_commit": "0fb2fd691078e00be8f2f042663319e7588f0fa3",
+  "git_dirty": false,
+  "python": "3.12.12",
+  "platform": "Linux-7.2.9-arch1-1-x86_64-with-glibc2.44",
+  "host": "arch",
+  "slurm_job_id": null,
+  "packages": {
+   "numpy": "2.5.4",
+   "scipy": "1.18.1",
+   "pandas": "3.0.6",
+   "pyarrow": "26.0.0",
+   "torch": "2.14.1+cpu",
+   "transformers": "4.46.3",
+   "matplotlib": "3.11.2"
+  },
+  "note": "SYNTHETIC test fixture (toy model, scaled by make_fixtures.py): not a result"
+ },
+ "generated_at": "2026-10-25T12:41:45+00:00"
+}
