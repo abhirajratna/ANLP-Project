@@ -366,7 +366,7 @@ do_setup() {
     # so setup would pass and the run would die at the first kernel.  The constraint file keeps
     # the later installs from moving it.  The rest as pinned in pyproject.toml [models]
     # (transformers==4.46.3: do not move it).
-    timeout 1800 uv pip install --python "$PY" "torch==$TORCH_PIN" --index-url https://download.pytorch.org/whl/cu128
+    timeout 3600 uv pip install --python "$PY" "torch==$TORCH_PIN" --index-url https://download.pytorch.org/whl/cu128
     printf 'torch==%s\n' "$TORCH_PIN" > "$VENV/constraints.txt"
     timeout 1800 uv pip install --python "$PY" -c "$VENV/constraints.txt" -e ".[models]"
     uv pip freeze --python "$PY" | grep -Ei '^(torch|transformers|datasets|numpy|tokenizers|huggingface-hub)==' || true
