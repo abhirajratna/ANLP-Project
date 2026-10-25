@@ -1,6 +1,6 @@
 ---
 member: parth
-updated: 2026-10-25T21:12:02Z
+updated: 2026-10-25T22:28:15Z
 branch: parth/t12-driver
 ---
-Dorigo fit-only done (HF dorigo/fit_only-39417); prereg arms 39162/39181/39227 HELD for OSF link; T12 -> Jarvis via jl CLI: launcher being reworked + reviewed, protocol committed locally
+8B C1 traces on HF: ANLP-project/c3-traces-8b (private, verified). Ada: T11 fit 38705, T12 smoke 38706 -> sanity 38707
