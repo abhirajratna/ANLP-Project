@@ -81,19 +81,7 @@
   year   = {2026}
 }
 
-% ---- Sec. 7 (Related work), draft by ojas for ayush ----
-% Numbers (#n) are entries of documents/lit-review-list.md.  Authors, venues and years are
-% copied from the proposal's and the mid report's reference lists; fields they do not give
-% are left out.
-
-% #2
-@inproceedings{ho2020ddpm,
-  title     = {Denoising Diffusion Probabilistic Models},
-  author    = {Ho, Jonathan and Jain, Ajay and Abbeel, Pieter},
-  booktitle = {Advances in Neural Information Processing Systems},
-  year      = {2020}
-}
-
+% ---- Secs. 2-3 references (merged from ojas/paper-23 sec23.bib; #n = documents/lit-review-list.md) ----
 % #3
 @inproceedings{austin2021d3pm,
   title     = {Structured Denoising Diffusion Models in Discrete State-Spaces},
@@ -107,7 +95,8 @@
 @inproceedings{chang2022maskgit,
   title     = {{MaskGIT}: Masked Generative Image Transformer},
   author    = {Chang, Huiwen and Zhang, Han and Jiang, Lu and Liu, Ce and Freeman, William T.},
-  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern
+               Recognition},
   pages     = {11315--11325},
   year      = {2022}
 }
@@ -115,8 +104,9 @@
 % #5
 @inproceedings{sahoo2024mdlm,
   title     = {Simple and Effective Masked Diffusion Language Models},
-  author    = {Sahoo, Subham Sekhar and Arriola, Marianne and Schiff, Yair and Gokaslan, Aaron and
-               Marroquin, Edgar and Chiu, Justin T. and Rush, Alexander and Kuleshov, Volodymyr},
+  author    = {Sahoo, Subham Sekhar and Arriola, Marianne and Schiff, Yair and Gokaslan, Aaron
+               and Marroquin, Edgar and Chiu, Justin T. and Rush, Alexander and Kuleshov,
+               Volodymyr},
   booktitle = {Advances in Neural Information Processing Systems},
   year      = {2024}
 }
@@ -140,43 +130,6 @@
   year    = {2025}
 }
 
-% #10
-@inproceedings{kim2025ordering,
-  title     = {Train for the Worst, Plan for the Best: Understanding Token Ordering in Masked
-               Diffusions},
-  author    = {Kim, Jaeyeon and Shah, Kulin and Kontonis, Vasilis and Kakade, Sham and
-               Chen, Sitan},
-  booktitle = {International Conference on Machine Learning},
-  year      = {2025}
-}
-
-% #11
-@inproceedings{kim2025klass,
-  title     = {{KLASS}: {KL}-Guided Fast Inference in Masked Diffusion Models},
-  author    = {Kim, Seo Hyun and Hong, Sunwoo and Jung, Hojung and Park, Youngrok and
-               Yun, Se-Young},
-  booktitle = {Advances in Neural Information Processing Systems},
-  year      = {2025}
-}
-
-% #12
-@article{shen2025osdt,
-  title   = {Beyond Static Cutoffs: One-shot Dynamic Thresholding for Diffusion Language Models},
-  author  = {Shen, Jucheng and Ro, Yeonju},
-  journal = {arXiv preprint arXiv:2511.02077},
-  year    = {2025}
-}
-
-% #13
-@article{olausson2026temperatures,
-  title   = {A Tale of Two Temperatures: Simple, Efficient, and Diverse Sampling from Diffusion
-             Language Models},
-  author  = {Olausson, Theo X. and Jazbec, Metod and Wang, Xi and Solar-Lezama, Armando and
-             Naesseth, Christian A. and Mandt, Stephan and Nalisnick, Eric},
-  journal = {arXiv preprint arXiv:2604.09921},
-  year    = {2026}
-}
-
 % #14
 @article{huang2025pcsampler,
   title   = {{PC-Sampler}: Position-Aware Calibration of Decoding Bias in Masked Diffusion
@@ -185,91 +138,6 @@
              and Chen, Zulong and Xiao, Tong},
   journal = {arXiv preprint arXiv:2508.13021},
   year    = {2025}
-}
-
-% #15
-@article{wu2026swd,
-  title   = {Stability-Weighted Decoding for Diffusion Language Models},
-  author  = {Wu, Yue and Huang, Jian},
-  journal = {arXiv preprint arXiv:2604.17068},
-  year    = {2026}
-}
-
-% #16
-@article{mohamed2026less,
-  title   = {{LESS} is More: Mutual-Stability Sampling for Diffusion Language Models},
-  author  = {Mohamed, Amr and Shang, Guokan and Vazirgiannis, Michalis},
-  journal = {arXiv preprint arXiv:2606.16908},
-  year    = {2026}
-}
-
-% #17
-@article{chen2026stdec,
-  title   = {{STDec}: Spatio-Temporal Stability Guided Decoding for {dLLMs}},
-  author  = {Chen, Yuzhe and Cao, Jiale and Liu, Xuyang and Xie, Jin and Yang, Aiping and
-             Pang, Yanwei},
-  journal = {arXiv preprint arXiv:2604.06330},
-  year    = {2026}
-}
-
-% #21
-@article{bansal2025joint,
-  title   = {Enabling Approximate Joint Sampling in Diffusion {LMs}},
-  author  = {Bansal, Parikshit and Sanghavi, Sujay},
-  journal = {arXiv preprint arXiv:2509.22738},
-  year    = {2025}
-}
-
-% #23
-@inproceedings{israel2025apd,
-  title     = {Accelerating Diffusion {LLMs} via Adaptive Parallel Decoding},
-  author    = {Israel, Daniel and Van den Broeck, Guy and Grover, Aditya},
-  booktitle = {Advances in Neural Information Processing Systems},
-  year      = {2025}
-}
-
-% #24
-@inproceedings{chen2026dparallel,
-  title     = {{dParallel}: Learnable Parallel Decoding for {dLLMs}},
-  author    = {Chen, Zigeng and Fang, Gongfan and Ma, Xinyin and Yu, Ruonan and Wang, Xinchao},
-  booktitle = {International Conference on Learning Representations},
-  year      = {2026}
-}
-
-% #25
-@inproceedings{jazbec2026learning,
-  title     = {Learning Unmasking Policies for Diffusion Language Models},
-  author    = {Jazbec, Metod and Olausson, Theo X. and B{\'e}thune, Louis and Ablin, Pierre and
-               Kirchhof, Michael and Monteiro, Jo{\~a}o and Turrisi, Victor and
-               Ramapuram, Jason and Cuturi, Marco},
-  booktitle = {Proceedings of the 43rd International Conference on Machine Learning},
-  year      = {2026}
-}
-
-% #28
-@inproceedings{tang2026sampler,
-  title     = {Is Your Diffusion Sampler Actually Correct? {A} Sampler-Centric Evaluation of
-               Discrete Diffusion Language Models},
-  author    = {Tang, Luhan and Yu, Longxuan and Zhang, Shaorong and Ver Steeg, Greg},
-  booktitle = {Proceedings of the 43rd International Conference on Machine Learning},
-  year      = {2026}
-}
-
-% #29
-@article{cai2026confidence,
-  title   = {Confidence-Based Decoding is Provably Efficient for Diffusion Language Models},
-  author  = {Cai, Changxiao and Li, Gen},
-  journal = {arXiv preprint arXiv:2603.22248},
-  year    = {2026}
-}
-
-% #30
-@article{frkovic2026remasking,
-  title   = {Re-evaluating Confidence Remasking in Masked Diffusion Language Models},
-  author  = {Frkovic, Stipe and Jazbec, Metod and Zhang, Dan and Naesseth, Christian A. and
-             Bogunovic, Ilija and Nalisnick, Eric},
-  journal = {arXiv preprint arXiv:2606.12232},
-  year    = {2026}
 }
 
 % #31
@@ -294,7 +162,142 @@
   year    = {2024}
 }
 
-% #33
+% #39
+@article{cobbe2021gsm8k,
+  title   = {Training Verifiers to Solve Math Word Problems},
+  author  = {Cobbe, Karl and Kosaraju, Vineet and Bavarian, Mohammad and Chen, Mark and Jun,
+             Heewoo and Kaiser, Lukasz and Plappert, Matthias and Tworek, Jerry and Hilton,
+             Jacob and Nakano, Reiichiro and Hesse, Christopher and Schulman, John},
+  journal = {arXiv preprint arXiv:2110.14168},
+  year    = {2021}
+}
+
+% #40
+@article{austin2021mbpp,
+  title   = {Program Synthesis with Large Language Models},
+  author  = {Austin, Jacob and Odena, Augustus and Nye, Maxwell and Bosma, Maarten and
+             Michalewski, Henryk and Dohan, David and Jiang, Ellen and Cai, Carrie and Terry,
+             Michael and Le, Quoc and others},
+  journal = {arXiv preprint arXiv:2108.07732},
+  year    = {2021}
+}
+
+% ---- Sec. 7 (Related work), draft by ojas for ayush ----
+@inproceedings{ho2020ddpm,
+  title     = {Denoising Diffusion Probabilistic Models},
+  author    = {Ho, Jonathan and Jain, Ajay and Abbeel, Pieter},
+  booktitle = {Advances in Neural Information Processing Systems},
+  year      = {2020}
+}
+
+@inproceedings{kim2025ordering,
+  title     = {Train for the Worst, Plan for the Best: Understanding Token Ordering in Masked
+               Diffusions},
+  author    = {Kim, Jaeyeon and Shah, Kulin and Kontonis, Vasilis and Kakade, Sham and
+               Chen, Sitan},
+  booktitle = {International Conference on Machine Learning},
+  year      = {2025}
+}
+
+@inproceedings{kim2025klass,
+  title     = {{KLASS}: {KL}-Guided Fast Inference in Masked Diffusion Models},
+  author    = {Kim, Seo Hyun and Hong, Sunwoo and Jung, Hojung and Park, Youngrok and
+               Yun, Se-Young},
+  booktitle = {Advances in Neural Information Processing Systems},
+  year      = {2025}
+}
+
+@article{shen2025osdt,
+  title   = {Beyond Static Cutoffs: One-shot Dynamic Thresholding for Diffusion Language Models},
+  author  = {Shen, Jucheng and Ro, Yeonju},
+  journal = {arXiv preprint arXiv:2511.02077},
+  year    = {2025}
+}
+
+@article{olausson2026temperatures,
+  title   = {A Tale of Two Temperatures: Simple, Efficient, and Diverse Sampling from Diffusion
+             Language Models},
+  author  = {Olausson, Theo X. and Jazbec, Metod and Wang, Xi and Solar-Lezama, Armando and
+             Naesseth, Christian A. and Mandt, Stephan and Nalisnick, Eric},
+  journal = {arXiv preprint arXiv:2604.09921},
+  year    = {2026}
+}
+
+@article{wu2026swd,
+  title   = {Stability-Weighted Decoding for Diffusion Language Models},
+  author  = {Wu, Yue and Huang, Jian},
+  journal = {arXiv preprint arXiv:2604.17068},
+  year    = {2026}
+}
+
+@article{mohamed2026less,
+  title   = {{LESS} is More: Mutual-Stability Sampling for Diffusion Language Models},
+  author  = {Mohamed, Amr and Shang, Guokan and Vazirgiannis, Michalis},
+  journal = {arXiv preprint arXiv:2606.16908},
+  year    = {2026}
+}
+
+@article{chen2026stdec,
+  title   = {{STDec}: Spatio-Temporal Stability Guided Decoding for {dLLMs}},
+  author  = {Chen, Yuzhe and Cao, Jiale and Liu, Xuyang and Xie, Jin and Yang, Aiping and
+             Pang, Yanwei},
+  journal = {arXiv preprint arXiv:2604.06330},
+  year    = {2026}
+}
+
+@article{bansal2025joint,
+  title   = {Enabling Approximate Joint Sampling in Diffusion {LMs}},
+  author  = {Bansal, Parikshit and Sanghavi, Sujay},
+  journal = {arXiv preprint arXiv:2509.22738},
+  year    = {2025}
+}
+
+@inproceedings{israel2025apd,
+  title     = {Accelerating Diffusion {LLMs} via Adaptive Parallel Decoding},
+  author    = {Israel, Daniel and Van den Broeck, Guy and Grover, Aditya},
+  booktitle = {Advances in Neural Information Processing Systems},
+  year      = {2025}
+}
+
+@inproceedings{chen2026dparallel,
+  title     = {{dParallel}: Learnable Parallel Decoding for {dLLMs}},
+  author    = {Chen, Zigeng and Fang, Gongfan and Ma, Xinyin and Yu, Ruonan and Wang, Xinchao},
+  booktitle = {International Conference on Learning Representations},
+  year      = {2026}
+}
+
+@inproceedings{jazbec2026learning,
+  title     = {Learning Unmasking Policies for Diffusion Language Models},
+  author    = {Jazbec, Metod and Olausson, Theo X. and B{\'e}thune, Louis and Ablin, Pierre and
+               Kirchhof, Michael and Monteiro, Jo{\~a}o and Turrisi, Victor and
+               Ramapuram, Jason and Cuturi, Marco},
+  booktitle = {Proceedings of the 43rd International Conference on Machine Learning},
+  year      = {2026}
+}
+
+@inproceedings{tang2026sampler,
+  title     = {Is Your Diffusion Sampler Actually Correct? {A} Sampler-Centric Evaluation of
+               Discrete Diffusion Language Models},
+  author    = {Tang, Luhan and Yu, Longxuan and Zhang, Shaorong and Ver Steeg, Greg},
+  booktitle = {Proceedings of the 43rd International Conference on Machine Learning},
+  year      = {2026}
+}
+
+@article{cai2026confidence,
+  title   = {Confidence-Based Decoding is Provably Efficient for Diffusion Language Models},
+  author  = {Cai, Changxiao and Li, Gen},
+  journal = {arXiv preprint arXiv:2603.22248},
+  year    = {2026}
+}
+
+@article{frkovic2026remasking,
+  title   = {Re-evaluating Confidence Remasking in Masked Diffusion Language Models},
+  author  = {Frkovic, Stipe and Jazbec, Metod and Zhang, Dan and Naesseth, Christian A. and
+             Bogunovic, Ilija and Nalisnick, Eric},
+  journal = {arXiv preprint arXiv:2606.12232},
+  year    = {2026}
+}
+
 @inproceedings{guo2017calibration,
   title     = {On Calibration of Modern Neural Networks},
   author    = {Guo, Chuan and Pleiss, Geoff and Sun, Yu and Weinberger, Kilian Q.},
@@ -302,7 +305,6 @@
   year      = {2017}
 }
 
-% #34
 @inproceedings{schuster2022calm,
   title     = {Confident Adaptive Language Modeling},
   author    = {Schuster, Tal and Fisch, Adam and Gupta, Jai and Dehghani, Mostafa and Bahri, Dara
@@ -311,7 +313,6 @@
   year      = {2022}
 }
 
-% #35
 @inproceedings{angelopoulos2024conformal,
   title     = {Conformal Risk Control},
   author    = {Angelopoulos, Anastasios N. and Bates, Stephen and Fisch, Adam and Lei, Lihua and
@@ -320,7 +321,6 @@
   year      = {2024}
 }
 
-% #37
 @inproceedings{jazbec2024fast,
   title     = {Fast yet Safe: Early-Exiting with Risk Control},
   author    = {Jazbec, Metod and Timans, Alexander and Veljkovi{\'c}, Tin Had{\v{z}}i and

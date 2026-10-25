@@ -1,3 +1,214 @@
-\section{The instrument}
+% =====================================================================================
+% Sec. 3  Measurement instrument.  Owner: abhiraj.  FALLBACK draft by ojas (ojas/paper-23).
+%
+% Design facts only; no result numbers.  Every number is a macro from
+% documents/viva-slides/macros_setup.tex (prefix Viva, generated from artifacts/c1/*.json,
+% c3/__init__.py, the split and floor artifacts by documents/viva-slides/make_macros.py;
+% branch ojas/viva-slides, PR #20), which main.tex must \input, or a design constant whose
+% committed source is named in a comment beside it.
+% What is described is what the code computes: scripts/analyze_traces.py, analyze_e3.py,
+% run_controls.py, c3/{endpoints,calibrators,regression,stats}.py, and the frozen commands
+% prereg/analysis_commands.sh + prereg/deviations.md (branch ojas/prereg-eqboot, PR #19).
+%
+% Labels defined here: sec:instrument, sec:models, tab:runs, sec:traces, sec:estimands,
+% eq:eqtwo, eq:eqthree, sec:inference, sec:validation, sec:prereg.
+% =====================================================================================
+
+\section{Measurement instrument}
 \label{sec:instrument}
-% owner: abhiraj; placeholder
+
+\subsection{Models and data}
+\label{sec:models}
+
+\paragraph{Models.}
+We audit LLaDA-8B \citep{nie2025llada} and Dream-7B \citep{ye2025dream}, Base and Instruct, in
+fp16 over two RTX 2080 Ti cards, which lack bfloat16. Neither fully discloses its pretraining data,
+so we also trained a 110M MDLM \citep{sahoo2024mdlm} whose training set we control
+(\texttt{train110m-v3}): a bidirectional transformer with \VivaMdlmLayers{} layers, width
+\VivaMdlmWidth{} and \VivaMdlmHeads{} heads, GPT-2 BPE plus a mask token, sequence length
+\VivaMdlmSeqLen{} without packing, \VivaMdlmTokensB{}B tokens (\VivaMdlmSteps{} steps) of
+FineWeb-Edu sample-10BT \citep{penedo2024fineweb}. The calibration and reserve documents were
+removed from its training stream by ID and by hashes of their text and first 256 tokens, and
+no training document matches a time-split one.
+% artifacts/exclusion_v2.json; artifacts/shard_check_exclusion_timesplit.json (0 matches)
+Its traces are computed in fp32.
+
+\paragraph{Data.}
+% 200,000 qualifying documents of >= 1,200 characters: c3/data/fineweb.py (CorpusSpec).
+Base models and the 110M model read \VivaCorpusDocs{} FineWeb-Edu documents,
+reservoir-sampled with a fixed seed from the first 200,000 of at least 1,200 characters and
+truncated to their first 256 tokens under each model's tokeniser; shorter documents are left
+out. Instruct models read the GSM8K \citep{cobbe2021gsm8k} and MBPP \citep{austin2021mbpp} test
+sets with the question visible in the chat template and only the reference answer maskable;
+% MBPP test 482 (3,986 tokens), --max-doc-tokens 1024: prereg/deviations.md item 6.
+one MBPP document over 1,024 tokens is excluded. A time-split set of 500 English Wikipedia
+% artifacts/timesplit_manifest.json; artifacts/README.md (created 2025-04-04 .. 2026-08-29).
+articles created after both 8B releases, unseen by every model, is a robustness check
+(Table~\ref{tab:runs}). A document is flagged as contaminated if an 8B Base model,
+given its first \VivaLladaContamPrefix{} tokens, greedily reproduces a run of
+$\ge\VivaContamThreshold$ of the next 50 (\VivaLladaContamFlagged/\VivaLladaContamDocs{}
+LLaDA, \VivaDreamContamFlagged/\VivaDreamContamDocs{} Dream); 8B FineWeb endpoints are also
+reported without them.
+
+\begin{table}[t]
+  \centering\small
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{@{}llrr@{}}
+    \hline
+    Model & Text & Prec. & Docs \\
+    \hline
+    LLaDA-8B-Base     & FineWeb-Edu & \VivaLladaBasePrecision & \VivaLladaBaseDocs \\
+    Dream-7B-Base     & FineWeb-Edu & \VivaDreamBasePrecision & \VivaDreamBaseDocs \\
+    Our 110M MDLM     & FineWeb-Edu & \VivaMdlmPrecision      & \VivaMdlmDocs \\
+    LLaDA-8B-Instruct & GSM8K       & \VivaLladaInstructGsmPrecision  & \VivaLladaInstructGsmDocs \\
+    LLaDA-8B-Instruct & MBPP        & \VivaLladaInstructMbppPrecision & \VivaLladaInstructMbppDocs \\
+    Dream-7B-Instruct & GSM8K       & \VivaDreamInstructGsmPrecision  & \VivaDreamInstructGsmDocs \\
+    Dream-7B-Instruct & MBPP        & \VivaDreamInstructMbppPrecision & \VivaDreamInstructMbppDocs \\
+    \hline
+    LLaDA-8B-Base     & time-split  & \VivaLladaBaseTimeSplitPrecision & \VivaLladaBaseTimeSplitDocs \\
+    Dream-7B-Base     & time-split  & \VivaDreamBaseTimeSplitPrecision & \VivaDreamBaseTimeSplitDocs \\
+    Our 110M MDLM     & time-split  & \VivaMdlmTimeSplitPrecision      & \VivaMdlmTimeSplitDocs \\
+    LLaDA-8B-Base     & FineWeb-Edu & 4-bit & \VivaLladaBaseFourBitDocs \\
+    \hline
+  \end{tabular}
+  \caption{C1 trace runs. Top: the seven pre-registered arms. Bottom: the time-split set and
+    the 4-bit control. In all, \VivaCOneRowsB{} billion position rows, \VivaCOneGpuH{}
+    GPU-hours.}
+  \label{tab:runs}
+\end{table}
+
+\paragraph{Halves.}
+% Seed 20260917: artifacts/split_manifest.meta.json; tasks: scripts/make_task_split.py.
+Every set is split 50/50 by document with one fixed seed (FineWeb: \VivaNFit{}/\VivaNReport{}
+before the length filter). Everything fitted (calibrators, splines, knots, temperatures) uses
+the fit half; every number we report comes from the report half. 500 separate reserve
+documents served the pilot and the non-determinism floor.
+
+\subsection{Traces}
+\label{sec:traces}
+
+Each measurement is one forward pass on a true document with some positions masked, recording
+at every masked position $v_i$, $c_i$, $\ell_i$, $a_i$, the true token's probability, entropy,
+margin, the top-\VivaTopK{} and whether the position was committed. The model never fills in
+its own guesses, so $a_i$ carries no knock-on errors. Each document gets three arms of states:
+\emph{uniform}, each position masked independently at rate
+$t\in\{\VivaMaskRateMin,0.2,\dots,\VivaMaskRateMax\}$, \VivaMasksPerRate{} masks per rate, as
+in training; \emph{decoder}, every state of a teacher-forced confidence top-$k$ trajectory,
+$k\in\{\VivaDecoderK\}$, which starts fully masked, commits the $k$ most confident positions,
+fills them with the \emph{true} tokens and repeats, so these are the states a decoder visits
+if it is always right; and \emph{matched uniform}, a uniform mask of the same size as each
+decoder state, so only the pattern differs. That is \VivaPassesPerDoc{} passes per document.
+
+Pools are drawn from the stored trace. In every state with at least \VivaPoolMax{} masked
+positions we draw \VivaNPools{} random pools of each size $m\in\{\VivaPoolSizes\}$, rank them by
+$\ell$ with random tie-breaks (fp16 confidences saturate) and keep the top four ranks;
+$\Delta(1)$ is computed exactly over all masked positions of those states. Averages are taken
+within a document, every state weighing the same, then across documents.
+
+\subsection{Estimands}
+\label{sec:estimands}
+
+\paragraph{Calibrators.}
+Both are fitted on the fit half. $\hat\pi(\ell)$ is isotonic in $\ell$. $\hat\pi(\ell,s)$ is
+logistic in a restricted cubic spline of $\ell$ plus the state's field features (median $\ell$
+of its masked positions, mask rate, $\log|M|$, decoding step) and their products with $\ell$,
+so the curve's slope, not only its level, can vary with the state; the plan's additive form is
+a sensitivity check. Each position is weighted by $1/(|M_s|\times\text{states in its
+document})$, the population the averages use, which is the $m=1$ population of
+Proposition~\ref{prop:split}.
+
+\paragraph{E1, E2 and the native gap.}
+E1 is $\Delta(m)$ \eqref{eq:gap}, with primary contrast $\Delta(\VivaPoolMax)-\Delta(1)$,
+reported beside 15-bin equal-mass ECE and smooth ECE over all masked positions. E2 is the field
+term $\E_m[\hat\pi(\ell)-\hat\pi(\ell,s)]$, with primary contrast
+field$(\VivaPoolMax)-$field$(1)$. On the same winners and resamples,
+$\Delta=\E_m[c-\hat\pi(\ell)]+\text{field}+\E_m[\hat\pi(\ell,s)-a]$ holds exactly; the last
+term, zero under Proposition~\ref{prop:select}, is a specification check, beside the
+intra-class correlation of residuals $a-\hat\pi(\ell,s)$ within states. The \emph{native} gap
+is $c-a$ over tokens the decoder actually committed, grouped by $|M_t|$ at commit time.
+
+\paragraph{Eq.~2/3 diagnostics.}
+On pool winners (Eq.~2) and the top four ranks (Eq.~3),
+\begin{align}
+  \Pr(a_i{=}1) &= \sigma\bigl(\alpha\,[+\alpha_s] + f(\ell_i) + \beta_z z_{r,m}\bigr), \label{eq:eqtwo}\\
+  \Pr(a_i{=}1) &= \sigma\bigl(\alpha\,[+\alpha_s] + f(\ell_i) \notag\\
+               &\qquad + {\textstyle\sum_{k=2}^{4}}\gamma_k \1\{r{=}k\}\bigr), \label{eq:eqthree}
+\end{align}
+with $z_{r,m}$ the expected $r$-th largest of $m$ standard normals and $f$ a restricted cubic
+spline with \VivaKnots{} knots (5 and 13 as sensitivity), fitted on the fit half and carried
+over as a fixed offset. Each is fitted without and with state fixed effects $\alpha_s$, which
+absorb the field term because it lives between states: $\beta_z<0$ without them and ${\approx}0$
+with them points to a field effect, $\beta_z\neq0$ with them to shared errors. Simulation
+(\S\ref{sec:validation}) shows this reading is approximate, so $\beta_z$ is a diagnostic.
+
+\paragraph{E3, trajectory shift.}
+For each decoder arm we fit, on its positions and a reference arm's,
+$\Pr(a{=}1)=\sigma(\alpha_b+f(\ell)+\textit{dec}\cdot(g_0+f'(\ell)))$, with $\alpha_b$ an intercept
+per mask-rate bin (centred on $0.1,\dots,0.9$). The reference is the matched uniform arm
+(secondary: the uniform grid, reweighted to the decoder's rate mix). The endpoint is
+$\E_{\mathrm{dec}}[\pi_{\mathrm{ref}}(\ell,b)-\pi_{\mathrm{dec}}(\ell,b)]$, positive if
+decoder-state tokens are right less often at equal confidence and mask rate; $(g_0,f')$ are
+tested jointly by a sup-$t$ test on the difference curve.
+
+\paragraph{T8 controls.}
+Each control is a row giving the E1 and E2 contrasts without and with it, and their paired
+difference. \emph{Position} (absolute position, distance to the nearest unmasked token,
+PC-Sampler's position weight; \citealp{huang2025pcsampler}) and \emph{token type} (the true
+token is punctuation, a stop-word or content) are covariates $x$: $\E_m[\pi(\ell)-\pi(\ell,x)]$
+is removed from $\Delta(m)$ and $x$ enters both field-term calibrators. \emph{Temperature}
+fits $c=\sigma(\ell/T)$ per mask-rate bin on the fit half (a softmax temperature is a
+sensitivity row). \emph{Precision} compares 200 LLaDA-8B-Base documents in 4-bit NF4 and fp16.
+
+\subsection{Inference}
+\label{sec:inference}
+
+\paragraph{Bootstrap.}
+The document is the unit. Intervals are 95\% percentile intervals over \VivaNBoot{}
+document resamples, one matrix per run shared by all pool sizes, estimands and arms, so
+contrasts get intervals by differencing draws. Eq.~2/3 refit per resample, so they use 1,000
+(knot panels: 200); 10,000 would take weeks per run.
+% prereg/deviations.md item 7; prereg/analysis_commands.sh (--eq-boot 1000; 200 for knot runs).
+Calibrators are not refitted per resample, so E2 intervals are conditional on the fit half.
+
+\paragraph{Declaring an effect.}
+An effect is declared only if its interval excludes 0 \emph{and} its magnitude exceeds twice
+the non-determinism floor, the largest change in $\ell$ and $\Delta(m)$ over five repeats of 20
+reserve documents per model family. Repeats were bitwise identical, so every floor is
+\VivaLladaFloor{} and the floor half of the rule is vacuous: in practice, the interval
+excludes 0. $\delta_{\min}=\VivaDeltaMin$ was fixed in advance for power only.
+
+\paragraph{Multiple testing.}
+% PRIMARY_ARMS=(uniform decoder:topk_conf:k4) x 7 ARMS in prereg/analysis_commands.sh;
+% scripts/summarize_c1.py (Holm on two-sided bootstrap p-values).
+Holm's correction, on two-sided bootstrap $p$-values, runs in three families: the E1 contrast
+and the E2 contrast, each over the seven arms of Table~\ref{tab:runs} in the uniform and
+$k{=}4$ decoder states (14 tests each), and $\gamma_2,\gamma_3,\gamma_4$ within each arm.
+$k\in\{2,8\}$ and matched uniform are exploratory; the contamination-clean and time-split runs
+are robustness checks outside the families.
+
+\subsection{Validation and pre-registration}
+\label{sec:validation}
+
+\paragraph{Known truth (T0).}
+Before any model data, the whole pipeline ran on simulated traces in four worlds: calibrated
+everywhere; miscalibrated the same way in every context; miscalibrated depending on context
+(the winner's curse of Proposition~\ref{prop:split}); and errors shared within a state
+(violating Proposition~\ref{prop:select}). The E1 contrast was zero only in the first, and
+$\beta_z$ without fixed effects strongly negative only in the third. Three departures from the
+plan shape how we read \S\ref{sec:c1}: the field-term estimator reads high, slightly positive
+when the truth is zero and above it otherwise; fixed effects do not fully clean $\beta_z$ in
+the third world; and shared errors give a \emph{negative} field term with a \emph{positive}
+$\beta_z$ without fixed effects. A spline with too few knots let curvature load onto $z_{r,m}$,
+so the knots were fixed at \VivaKnots{} before any model data.
+% artifacts/t0/ (scripts/t0_scenarios.py; 200 simulated documents, fit -> report half);
+% artifacts/estimator_validation.json (scripts/validate_estimator.py).
+
+\paragraph{Pre-registration.}
+\label{sec:prereg}
+% CHECK before submission: tag prereg-v1 was not on origin on 25 Oct (PR #19 open).
+All choices above and the exact commands were frozen at git tag \texttt{prereg-v1} before
+any report-half number was computed. \texttt{prereg/deviations.md} lists departures from the
+plan: here, fp16, top-$k$-only E3, 1,000 Eq.~2/3 resamples, and a contamination threshold (the
+plan's suggested value) coded after the screens ran. An exploratory notebook read report-half
+rows of the 110M runs before the tag; its numbers were not committed or shared, and no frozen
+choice changed after it.
