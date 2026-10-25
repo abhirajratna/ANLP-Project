@@ -225,7 +225,8 @@ cmd_prepare() {
     # the GSM8K inputs verify; nothing leaves this machine.
     local tmp
     tmp="$(mktemp -d)"
-    if (cd "$dir" && T12_BASE="$tmp" T12_DRYRUN=1 bash "$name") > "$dir/rehearsal.log" 2>&1; then
+    # (native git on Windows needs the /tmp path conversion that is off for jl)
+    if (cd "$dir" && env -u MSYS_NO_PATHCONV -u MSYS2_ARG_CONV_EXCL T12_BASE="$tmp" T12_DRYRUN=1 bash "$name") > "$dir/rehearsal.log" 2>&1; then
         info "rehearsal ok ($(grep -c . "$dir/rehearsal.log") lines, $dir/rehearsal.log)"
     else
         tail -n 15 "$dir/rehearsal.log" >&2
@@ -455,7 +456,9 @@ EOF
     trap 'launch_exit' EXIT
     trap 'echo "[jl_t12] interrupted"; exit 130' INT TERM
     JOB_RC=0
-    (cd "$dir" && jl run "${args[@]}" --yes) 2>&1 | tee -a "$dir/launch.log" || JOB_RC="${PIPESTATUS[0]}"
+    # The job ends by itself at its deadline (+15 min); a jl that is still attached 90 min after
+    # that is stuck: kill it, and the safety net below finds the job's state.
+    (cd "$dir" && timeout -k 30 "$(awk -v h="$hours" 'BEGIN { printf "%d", h * 3600 + 5400 }')" jl run "${args[@]}" --yes) 2>&1 | tee -a "$dir/launch.log" || JOB_RC="${PIPESTATUS[0]}"
     info "jl run returned $JOB_RC"
     return 0
 }
