@@ -1,6 +1,6 @@
 ---
 member: parth
-updated: 2026-10-23T13:51:18Z
+updated: 2026-10-25T07:18:07Z
 branch: parth/t12-driver
 ---
-Review fixes pushed: #6 (7f3ad90) and #7 (d9b102b); lm-eval 5-shot sanity prompt + Fast-dLLM sanity grid; launch scripts (Jarvis, Ada t12.sbatch, fit_c3a.sbatch). Waiting on: 8B read grant (T11 fit), ayush's scorer (T12 accuracy), a GPU for the sanity run
+Sun 25: T11 calibrator fit on Ada (run:c3a-calibrator-fit) -> PR #6; T12 smoke + sanity on Ada fp16 (run:t12-sanity, Fast-dLLM 5-shot settings); 8B traces -> HF c3-traces-8b (pull from Ada running; upload after org invite)
