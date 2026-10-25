@@ -45,8 +45,25 @@
 \maketitle
 
 \begin{abstract}
-% owner: ayush; placeholder
-Abstract to be written.
+% DRAFT (ojas fallback, 26 Oct): ayush to review
+% owner: ayush.  ~180 words.  Same sources and rules as sections/01_intro.tex; no numbers.
+Masked diffusion language models decode by committing, at each step, the masked positions
+whose top token is most probable. Confidence thus picks the tokens it then describes, so on
+committed tokens it is a selected quantity, yet calibration is audited over random masks. We
+study it in three parts. C1 audits calibration conditional on selection: on teacher-forced
+traces from LLaDA-8B and Dream-7B, Base and Instruct, and a 110M model of our own, it measures how far committed tokens' confidence exceeds their accuracy as
+a function of how many candidates they beat, and splits this gap exactly into ordinary
+miscalibration and a field term, the part that is a winner's curse, on held-out documents
+with Holm-corrected tests.
+% TODO(results): one C1 sentence, same outcome wording as the C1 TODO in 01_intro.tex.
+C2 computes the two errors of committing several tokens at once, dependency and estimation,
+exactly on a synthetic JSON probe with a 110M model: dependency overtakes estimation only for
+strongly coupled tokens committed several at a time, confidence ranking raises dependency
+error, not estimation error, and for coupled tokens the two trade off as more are committed
+per step. On real text a dependency proxy is near zero. C3 is a commitment policy
+that thresholds a recalibrated confidence at no extra forward passes.
+% TODO(results): C3 outcome, same wording as the C3 TODO in 01_intro.tex; if T12 is not done
+%   at the freeze, drop the C3 sentence and say "in two parts".
 \end{abstract}
 
 \input{sections/01_intro}

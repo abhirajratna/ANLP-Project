@@ -1,3 +1,90 @@
+% DRAFT (ojas fallback, 26 Oct): ayush to review
+% =====================================================================================
+% Sec. 1  Introduction.  Owner: ayush (writing lead).  Fallback draft by ojas (branch
+% ojas/paper-intro) for ayush to rewrite or drop.  Budget: ~0.70 page, ~500 words, no figure.
+%
+% Sources: plan v2 Sec. 1 and Sec. 8 (documents/C3_Detailed_Plan_v2.pdf); Secs. 2, 3, 5 and
+% limitations.tex on main; Sec. 7 on origin/ojas/paper-related (PR #24).  Since PR #34 the
+% paper says nothing about pre-registration or process; keep it that way here.
+% No result numbers.  The only numbers are C2 macros (artifacts/probe/macros_t9.tex) and
+% design constants: k in {1,2,4,8} and rho in {0,...,1} (artifacts/probe/spec.json),
+% "2--8 tokens per step" (plan v2 T10; the k >= 2 range of Sec. 5).
+%
+% Labels used: sec:setup, prop:split, eq:decomp (Sec. 2); sec:instrument, sec:inference (Sec. 3);
+% sec:c1, sec:c2, sec:c3.  Citation keys: all in paper/refs.bib on main.
+% Not mentioned: the Dorigo (2026) winner's-curse notebook (no refs.bib entry on main); if
+% ayush adds it, keep it to methods (the E2 own/field split, the exact all-subsets estimator).
+% =====================================================================================
+
 \section{Introduction}
 \label{sec:intro}
-% owner: ayush; placeholder
+
+A masked diffusion language model writes by unmasking. Each step is one forward pass that
+gives a distribution at every masked position; the decoder then commits some positions for
+good. LLaDA and Dream by default commit the $k$ positions whose top token is most probable,
+and threshold rules such as Fast-dLLM commit every position above a confidence
+cutoff \citep{nie2025llada,ye2025dream,chang2022maskgit,wu2025fastdllm}. Confidence thus does two
+jobs: it chooses which tokens are committed, and it is read as the chance that they are
+right. On committed tokens it is a selected quantity. The largest of many noisy
+estimates tends to be one whose error pushed it up, the winner's curse
+\citep{andrews2024winners}, and a commit out of many masked positions, as at early steps and in
+long outputs, is such a maximum.
+
+The usual checks cannot tell whether this matters. Decoders are judged on accuracy and speed,
+not on the calibration of the tokens they commit. Calibration, where measured, is averaged
+over randomly masked positions, the states the model was trained on, not over the one the
+decoder picks. Nor is the bias automatic:
+selection does not bias a correct posterior \citep{efron2011tweedie}. We show that the gap
+between confidence and accuracy on committed tokens splits exactly into ordinary
+miscalibration, reweighted towards where winners sit, and a \emph{field term} that is nonzero
+only if accuracy at fixed confidence depends on context
+(Proposition~\ref{prop:split}, \S\ref{sec:setup}). Only the field term is a winner's curse,
+and only an audit at the decoder's selection can see it.
+
+We make three contributions.
+\begin{itemize}
+\item \textbf{C1, a selection-conditional calibration audit} (\S\ref{sec:c1}). On teacher-forced
+  traces (\S\ref{sec:instrument}) from LLaDA-8B and Dream-7B, Base and Instruct, and a 110M
+  masked diffusion model trained on data we control, we measure the committed-token gap as a
+  function of how many candidates a token beat, its field term, and whether the states a
+  decoder visits are calibrated worse than random masks. Everything fitted uses one half of
+  each set's documents; every number we report comes from the held-out other half, and the
+  primary contrasts are tested in Holm-corrected families across models and data
+  (\S\ref{sec:inference}).
+  % TODO(results): one sentence on C1, from the Holm summary (claimed stars only), keeping to
+  %   the levels/trends split of limitations.tex (levels from the 110M arm, trends in m from
+  %   the 8B arms).  Wording per outcome:
+  %   (a) E1 and E2 claimed in some arms: "The gap grows with field size in <arms>, and part
+  %       of the growth is a field term that a token's own confidence does not reveal."
+  %   (b) E1 claimed, E2 not: "The gap grows with field size in <arms>, but the field term
+  %       cannot be told from zero: the growth is ordinary miscalibration seen through
+  %       selection, so recalibrating per step, not per context, would remove it."
+  %   (c) neither claimed: "In no arm does the gap grow detectably with field size, which is
+  %       why confidence thresholding works as well as it does."
+  %   Add E3 (exploratory, not in a Holm family) only if its sup-t test rejects: "Decoder
+  %   states are <more/less> overconfident than random masks of the same size."
+\item \textbf{C2, an instrument for the two errors of parallel commitment}
+  (\S\ref{sec:c2}). Committing several tokens in one step incurs a dependency error (A) and an
+  estimation error (B) (Eq.~\ref{eq:decomp}). On a JSON probe with known joint distribution we
+  compute both exactly, in nats, for a fine-tune of our 110M model. (A) overtakes (B) only for
+  strongly coupled fields ($\rho\ge\CTwoConfCrossRhoMin$) and several tokens per step;
+  ranking by confidence raises (A), not (B); and the two trade off along $k$: at $\rho=1$,
+  (B) falls as (A) rises. On real text, a proxy for (A) is near zero for the 110M model and
+  LLaDA-8B-Base at 2--8 tokens per step, which looks like the probe's (B)-dominated regime,
+  though the proxy sees only dependence the model has learned.
+\item \textbf{C3, a calibrated commitment policy} (\S\ref{sec:c3}). C3a commits every
+  position whose recalibrated confidence, fitted on the fit half, implies an error rate of at
+  most $\alpha$, so its threshold reads as an error rate, and it needs no extra forward pass. We
+  compare it with confidence decoders at matched tokens per step in free-running generation
+  with LLaDA-8B-Instruct on GSM8K and MBPP.
+  % TODO(results): the C3 sentence from the T12 matched-speed table (Sec. 6).  Name the
+  %   baselines actually run (final-plan.md: top-k, Fast-dLLM threshold, entropy-bounded,
+  %   margin, KLASS, PC-Sampler) in place of "confidence decoders".  Wording per outcome:
+  %   (a) gain: "At matched speed C3a is <more accurate than / as accurate as> the best
+  %       baseline on <tasks>."
+  %   (b) no gain: "At matched speed C3a is no more accurate than the Fast-dLLM threshold; we
+  %       report the null."
+  %   (c) T12 not done at the 30 Oct freeze: drop this item, say "We make two
+  %       contributions", and move C3a to future work in limitations.tex (final-plan.md,
+  %       "Cut to future work").
+\end{itemize}
