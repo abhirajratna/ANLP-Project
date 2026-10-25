@@ -106,6 +106,8 @@ Items 7-14 are reserved for the T13 ablation entries (branch `t13-ablations`).
 
 ## After the freeze
 
+### Added 26 Oct 2026, after the prereg-v1 tag (6b4c25e)
+
 17. **T12 decoder sweep: protocol fixed before any report-half generation (26 Oct 2026).**
     T12 is not a pre-registered endpoint (`documents/final-plan.md:55-56`) and `prereg-v1`
     freezes no T12 number. Its choices are fixed here, before any T12 report-half problem is
