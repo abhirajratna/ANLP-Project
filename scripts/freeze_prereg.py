@@ -198,16 +198,27 @@ def frozen() -> dict:
                                       for m in ("llada-8b-base", "dream-7b-base")},
                           "deviation": "the threshold was fixed in code after the 29 Sep "
                                        "screens were seen (prereg/deviations.md)"},
-        "open": [
-            "CONFIRM the E1/E2 Holm-family arms: " + ", ".join(primary_arms()) + " (decoder "
-            "k = 2, 8 and uniform_matched exploratory)",
-            "CONFIRM the interacted context calibrator (code default) over plan v2 T6(2)'s "
-            "additive form; the additive fit is the sensitivity check",
-            "CONFIRM the GSM8K/MBPP split: the FineWeb rule applied to the task test sets",
-            "CONFIRM log-odds temperature as the T8 primary (softmax with the even-tail "
-            "approximation is a sensitivity row; prereg/deviations.md)",
-            "CONFIRM the time-split set (artifacts/timesplit_manifest.json on branch "
-            "t3-110m-probe, sha256 3374de4d...)"],
+        # The items plan v2 left open, settled by abhiraj's proposal on the bus
+        # (20261023T141455Z-abhiraj-2a71), accepted with no objection by its Sat 24 18:00 deadline.
+        "settled": {
+            "holm_families": "E1 Delta(32)-Delta(1) and E2 field(32)-field(1), each across the "
+                             "models x datasets arms of analysis_commands.sh on " + " and ".join(primary_arms())
+                             + "; decoder k = 2, 8 and uniform_matched exploratory; the "
+                             "contamination-clean and time-split runs are robustness checks outside "
+                             "the families; gamma_2..gamma_4 Holm within each arm",
+            "context_calibrator": "the interacted form (ell x field features, the code default); "
+                                  "plan v2 T6(2)'s additive form is the sensitivity check",
+            "task_splits": {"rule": "c3.data.fineweb.document_split (seed 20260917) on every set",
+                            "manifests": {m: _sha(f"artifacts/split_manifest_{m}.json")
+                                          for m in ("gsm8k", "mbpp", "timesplit")}},
+            "t8_temperature": "log-odds per mask-rate bin, c = sigma(ell / T), is the primary row; "
+                              "softmax (top-20 plus an even tail) is a sensitivity row",
+            "time_split_set": {"manifest": "artifacts/timesplit_manifest.json",
+                               "sha256": _sha("artifacts/timesplit_manifest.json"),
+                               "documents_sha256": "3374de4de746df125e6bbf888eccf32d0a16859789725b6663c370f93abfcfca"},
+            "eq23_bootstrap": "1,000 resamples in the primary run, 200 in the knot runs, none in "
+                              "the contamination-clean and time-split runs (prereg/deviations.md 7)"},
+        "open": [],
         "provenance": provenance(),
         "generated_at": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds"),
     }

@@ -59,6 +59,12 @@ above them is edited.
    (`--skip-regression`). Every other interval, including the E1 and E2 contrasts in the
    Holm families, stays at 10,000.
 
+8. **Report-half rows read before the tag (disclosure).** On 24 Oct an exploratory
+   notebook (`notebooks/c3_dorigo_methods.py`, PR #18; not part of this pre-registration)
+   computed report-half statistics on `main-110m-v3` and `timesplit-110m-v3` before
+   `prereg-v1` existed. Its numbers were not committed or shared. Every frozen choice was
+   posted on 23 Oct, before that run, and none changed after it.
+
 ## Choices the plan leaves open, fixed here (for sign-off)
 
 - E1/E2 Holm families: arms `uniform` and `decoder:topk_conf:k4` across models x datasets.
