@@ -1,6 +1,6 @@
 ---
 member: ayush
-updated: 2026-10-25T07:47:43Z
-branch: ayush/dorigo-prereg-hold
+updated: 2026-10-25T18:46:47Z
+branch: ayush/dorigo-fixes
 ---
-ayush: PR #21 (prereg hold + slurm/dorigo_notebook.sbatch) stacked on #18 (ready); reviews asked; Ada runs handed to abhiraj/parth; next paper/ skeleton
+ayush: PR #32 fixes Dorigo sbatch env (job 39141) + #21/#18 review items; parth to rerun 8B fit_only; reviews asked
