@@ -1,4 +1,5 @@
 """Phase C: the split manifest, gate G1, and the frozen pre-registration config."""
+import importlib.util
 import json
 import subprocess
 import sys
@@ -122,6 +123,17 @@ def test_summarize_c1_applies_holm(tmp_path):
         assert r["contrast"]["p_holm"] >= r["contrast"]["p_boot"]
         assert r["gamma"]["gamma_2"] is None or "p_holm" in r["gamma"]["gamma_2"]
     assert (tmp_path / "sum" / "table.tex").exists()
+
+
+def test_summarize_c1_macro_tags_are_letters_only():
+    spec = importlib.util.spec_from_file_location("summarize_c1",
+                                                  ROOT / "scripts" / "summarize_c1.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert mod.arm_tag("uniform") == "Uni"
+    assert mod.arm_tag("decoder:topk_conf:k4") == "DecTopkConfKFour"   # the primary decoder arm
+    assert mod.arm_tag("decoder:topk_conf:k2") != mod.arm_tag("decoder:topk_conf:k8")
+    assert all(mod.arm_tag(a).isalpha() for a in ("uniform_matched", "decoder:topk_conf:k8"))
 
 
 def test_frozen_config_records_the_new_choices(tmp_path):
