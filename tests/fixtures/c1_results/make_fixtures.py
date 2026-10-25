@@ -39,6 +39,13 @@ ARMS = {
     "LladaBaseTimeSplit": (0.9, 0.02, 0.02),
 }
 FLOOR = 0.01
+# bootstrap p of gamma_2..gamma_4 (Eq. 3): gamma_2 follows the E1 p of its arm, so the
+# within-row Holm of summarize_c1.py rejects for the strong arms only
+GAMMA_P = (None, 0.20, 0.60)
+# (label, tag, macro word, scale of E2): the sensitivity runs of analysis_commands.sh
+VARIANTS = (("LladaBase", "knots5", "KnotsFive", 1.1), ("LladaBase", "knots13", "KnotsThirteen", 1.1),
+            ("LladaBase", "clean", "Clean", 0.95), ("DreamBase", "knots5", "KnotsFive", 1.1),
+            ("LladaBase", "additive", "Additive", 0.7), ("LladaInstructGsm", "additive", "Additive", 0.8))
 
 
 def gen_base(out: Path) -> None:
@@ -72,6 +79,14 @@ def scale_pair(d: dict, keys, s: float) -> None:
             d[k] = [x * s for x in d[k]] if isinstance(d[k], list) else d[k] * s
 
 
+def set_gamma_p(res: dict, p1: float) -> None:
+    for r in res["by_mask_kind"].values():
+        for key in ("eq3_nofe", "eq3_fe"):
+            for g, p in zip(("gamma_2", "gamma_3", "gamma_4"), (p1,) + GAMMA_P[1:]):
+                if g in r.get("regression", {}).get(key, {}):
+                    r["regression"][key][g]["p_boot"] = p
+
+
 def make_c1(base: dict, label: str, s: float, p1: float, p2: float) -> dict:
     res = copy.deepcopy(base)
     res["label"] = f"{NOTE}; arm {label}"
@@ -93,14 +108,17 @@ def make_c1(base: dict, label: str, s: float, p1: float, p2: float) -> dict:
             c["declared"] = bool((lo > 0 or hi < 0) and abs(c["value"]) > 2 * FLOOR)
             if "slope_log2m" in c:
                 scale_pair(c, ("slope_log2m", "slope_ci"), s)
+    set_gamma_p(res, p1)
     return res
 
 
-def variant(res: dict, tag: str) -> dict:
+def variant(res: dict, tag: str, e2_scale: float) -> dict:
     out = copy.deepcopy(res)
     out["label"] += f" [{tag}]"
     for r in out["by_mask_kind"].values():
-        scale_pair(r["field_contrast"], ("value", "ci"), 1.1 if tag != "clean" else 0.95)
+        scale_pair(r["field_contrast"], ("value", "ci"), e2_scale)
+        if tag == "additive":          # --skip-regression: no Eq. 2/3 in the run
+            r.pop("regression", None)
     return out
 
 
@@ -113,6 +131,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--gen-base", default=None)
     ap.add_argument("--base", default=None)
+    ap.add_argument("--summarize", default=str(ROOT / "scripts" / "summarize_c1.py"))
     a = ap.parse_args()
     if a.gen_base:
         gen_base(Path(a.gen_base))
@@ -132,16 +151,16 @@ def main() -> None:
         res = make_c1(c1, label, s, p1, p2)
         dump(HERE / "c1" / label / "results.json", res)
         analyze_traces.write_macros(HERE / "c1" / label / "macros.tex", f"COne{label}", res)
-    for label, tag, word in (("LladaBase", "knots5", "KnotsFive"), ("LladaBase", "knots13", "KnotsThirteen"),
-                             ("LladaBase", "clean", "Clean"), ("DreamBase", "knots5", "KnotsFive")):
-        res = variant(make_c1(c1, label, *ARMS[label]), tag)
+    for label, tag, word, e2_scale in VARIANTS:
+        res = variant(make_c1(c1, label, *ARMS[label]), tag, e2_scale)
         d = HERE / "c1" / f"{label}_{tag}"
         dump(d / "results.json", res)
         analyze_traces.write_macros(d / "macros.tex", f"COne{label}{word}", res)
 
-    # the real summarize_c1.py, over the seven main arms
+    # the real summarize_c1.py (the Holm-family schema: claimed, holm_m, holm_members, holm_missing),
+    # over the seven main arms
     specs = [f"{l}={HERE / 'c1' / l}" for l in list(ARMS)[:7]]
-    subprocess.run([sys.executable, str(ROOT / "scripts" / "summarize_c1.py"), "--results", *specs,
+    subprocess.run([sys.executable, a.summarize, "--results", *specs,
                     "--primary-arms", "uniform", "decoder:topk_conf:k4", "--out",
                     str(HERE / "c1" / "summary")], check=True, cwd=ROOT)
     summ = json.loads((HERE / "c1" / "summary" / "c1_summary.json").read_text())
