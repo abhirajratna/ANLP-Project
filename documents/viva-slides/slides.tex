@@ -1,0 +1,953 @@
+% C3: Committed Confidence Calibration -- final viva slides (pass 1: structure, background, C2).
+%
+%   python3 documents/viva-slides/make_macros.py     # macros_setup.tex from artifacts/*.json
+%   tectonic documents/viva-slides/slides.tex        # XeTeX; from the repository root
+%
+% Every number on a slide is a macro read from a committed artifact:
+%   macros_setup.tex                    \Viva...   C1 arms, floors, design constants, 110M, probe size
+%   ../../artifacts/t0/macros.tex       \TZero...  T0 simulations
+%   ../../artifacts/probe/macros_t9.tex \CTwo...   T9, C2 on the JSON probe
+%   ../../artifacts/c2/macros_t10.tex   \CTwoTTen... T10, C2 on real text
+% Pass 2 adds the C1 report-half macros (prereg/analysis_commands.sh writes
+% results/c1/<Label>/macros.tex, prefix COne<Label>) and the C3 macros (artifacts/c3/).
+% Grid values (k, rho, mask rates as axis labels) are design constants, typed as the paper
+% types them, with their source in a comment.
+%
+% Style, theme and the background slides come from documents/mid-eval-slides/slides.tex.
+% Fonts are loaded by file name: tectonic core-dumps when fontspec looks one up by family.
+
+\documentclass[aspectratio=169,10pt,t]{beamer}
+
+\usefonttheme{professionalfonts}
+\usepackage[sfdefault,lining,book,semibold]{FiraSans}
+\usepackage[mathrm=sym]{unicode-math}
+\setmathfont{FiraMath-Regular.otf}
+
+\usepackage{booktabs}
+\usepackage{colortbl}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{xspace}
+\usepackage{xfp}
+\usepackage{graphicx}
+\usepackage{appendixnumberbeamer}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,calc}
+\usepackage[most]{tcolorbox}
+
+\graphicspath{{../../artifacts/probe/figures/}{../mid-eval-slides/figures/}}
+
+\input{macros_setup.tex}
+\input{../../artifacts/t0/macros.tex}
+\input{../../artifacts/probe/macros_t9.tex}
+\input{../../artifacts/c2/macros_t10.tex}
+
+% ---------------------------------------------------------------- colours
+\definecolor{ink}{HTML}{1A1A19}
+\definecolor{ink2}{HTML}{52514E}
+\definecolor{muted}{HTML}{898781}
+\definecolor{gridc}{HTML}{E1E0D9}
+\definecolor{base}{HTML}{C3C2B7}
+\definecolor{plane}{HTML}{F5F5F2}
+\definecolor{accent}{HTML}{2A78D6}
+\definecolor{accentdark}{HTML}{1C5CAB}
+\definecolor{wash}{HTML}{EEF4FC}
+\definecolor{mismatch}{HTML}{FCEAE2}
+\definecolor{dep}{HTML}{2A78D6}   % (A), as in the T9 figures
+\definecolor{est}{HTML}{E8612C}   % (B)
+
+% ---------------------------------------------------------------- theme
+\setbeamersize{text margin left=8mm,text margin right=8mm}
+\setbeamertemplate{navigation symbols}{}
+\setbeamercolor{normal text}{fg=ink,bg=white}
+\setbeamercolor{structure}{fg=accent}
+\setbeamercolor{frametitle}{fg=ink}
+\setbeamercolor{alerted text}{fg=accentdark}
+\setbeamerfont{frametitle}{size=\large,series=\bfseries}
+\setbeamerfont{framesubtitle}{size=\small,series=\mdseries}
+\setbeamerfont{itemize/enumerate body}{size=\small}
+\setbeamerfont{itemize/enumerate subbody}{size=\footnotesize}
+
+\makeatletter
+\setbeamertemplate{frametitle}{%
+  \vspace*{4mm}%
+  {\usebeamerfont{frametitle}\usebeamercolor[fg]{frametitle}\insertframetitle\par}%
+  \ifx\insertframesubtitle\@empty\else
+    {\vspace{0.6mm}\usebeamerfont{framesubtitle}\color{ink2}\insertframesubtitle\par}%
+  \fi
+  \vspace{1.4mm}{\color{accent}\rule{10mm}{1.4pt}}\par
+}
+\makeatother
+
+\setbeamertemplate{footline}{%
+  \hbox to \paperwidth{%
+    \hspace{8mm}{\color{muted}\fontsize{6.5}{8}\selectfont
+      C3 · Committed Confidence Calibration · Final viva}%
+    \hfill
+    {\color{muted}\fontsize{6.5}{8}\selectfont\insertframenumber\,/\,\inserttotalframenumber}%
+    \hspace{8mm}}%
+  \vspace{3.5mm}}
+
+\setbeamertemplate{itemize item}{\raisebox{0.18ex}{\color{accent}\rule{0.48em}{0.48em}}}
+\setbeamertemplate{itemize subitem}{\color{muted}–}
+\setbeamertemplate{enumerate item}{\color{accentdark}\firasemibold\insertenumlabel.}
+\setbeamertemplate{itemize/enumerate body begin}{\setlength{\itemsep}{2.6pt}\raggedright}
+\setbeamertemplate{itemize/enumerate subbody begin}{\setlength{\itemsep}{1pt}}
+
+% ---------------------------------------------------------------- helpers
+\newcommand{\pp}{\,pp\xspace}
+\newcommand{\pct}[1]{\fpeval{round(100*(#1),1)}}   % probability -> percentage points
+\newcommand{\ci}[1]{{\color{ink2}\scriptsize[#1]}}
+\newcommand{\fnote}[1]{{\color{ink2}\scriptsize #1\par}}
+\newcommand{\lbl}[1]{{\color{accentdark}\firasemibold #1}}
+\newcommand{\src}[1]{\par\vfill{\color{muted}\fontsize{6.5}{8}\selectfont #1}\par\vspace{1.2mm}}
+\newcommand{\A}{{\color{dep}\firasemibold (A)}\xspace}
+\newcommand{\B}{{\color{est}\firasemibold (B)}\xspace}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\newcolumntype{R}{>{\raggedleft\arraybackslash}X}
+
+\newtcolorbox{takeaway}[1][]{enhanced, colback=wash, colframe=wash, boxrule=0pt,
+  arc=1.2mm, left=3mm, right=3mm, top=1.2mm, bottom=1.2mm,
+  borderline west={1.6pt}{0pt}{accent}, fontupper=\small,
+  before upper=\raggedright, #1}
+
+\newtcolorbox{panel}[1][]{enhanced, colback=white, colframe=base, boxrule=0.5pt,
+  arc=1.2mm, left=2.4mm, right=2.4mm, top=1.4mm, bottom=1.4mm, fontupper=\footnotesize,
+  before upper=\raggedright, #1}
+
+\newcommand{\paneltitle}[1]{{\color{accentdark}\small\firasemibold #1}\par\vspace{0.8mm}}
+
+% placeholder for results that arrive after pass 1: {when}{what produces them}
+\newtcolorbox{pending}[2]{enhanced, colback=wash, frame hidden, arc=1.2mm,
+  borderline={0.9pt}{0pt}{accent, dash pattern=on 3pt off 2pt},
+  left=3mm, right=3mm, top=2mm, bottom=2mm, fontupper=\small, before upper={\raggedright
+    {\color{accentdark}\fontsize{11}{13}\selectfont\firasemibold RESULTS LAND #1}\par
+    \vspace{0.6mm}{\color{ink2}\footnotesize #2}\par\vspace{1.6mm}}}
+
+% planned-content stub (grey) inside a placeholder frame
+\newenvironment{stubs}{\begin{itemize}\color{ink2}\footnotesize}{\end{itemize}}
+
+% big-number tile: value, label
+\newcommand{\stat}[2]{%
+  \begin{minipage}[t]{\linewidth}\raggedright
+    {\fontsize{21}{23}\selectfont\firasemibold #1}\par\vspace{1.2mm}
+    {\footnotesize\color{ink2}#2}
+  \end{minipage}}
+
+\newcommand{\sectionslide}[3]{%
+  \begin{frame}[c,plain]
+    \hspace*{4mm}\begin{minipage}{0.86\linewidth}\raggedright
+      {\color{accent}\fontsize{10}{12}\selectfont\firasemibold #1}\par\vspace{2mm}
+      {\fontsize{22}{26}\selectfont\firasemibold #2}\par\vspace{3mm}
+      {\color{accent}\rule{14mm}{1.6pt}}\par\vspace{3mm}
+      {\color{ink2}\normalsize #3}
+    \end{minipage}
+  \end{frame}}
+
+\title{C3: Committed Confidence Calibration}
+\author{Abhiraj Ratna · Ayush SM · Ojas Kataria · Parth Sharma}
+
+\begin{document}
+
+% ================================================================ 1 title
+\begin{frame}[c,plain]
+  \hspace*{4mm}\begin{minipage}{0.9\linewidth}\raggedright
+    {\color{accent}\fontsize{9.5}{12}\selectfont\firasemibold FINAL VIVA · ANLP MONSOON 2026}\par
+    \vspace{4mm}
+    {\fontsize{24}{28}\selectfont\firasemibold C3: Committed Confidence\\[1mm] Calibration}\par
+    \vspace{3mm}
+    {\color{ink2}\large Selection bias and two sources of error in confidence-based\\[0.6mm]
+      token commitment in diffusion language models}\par
+    \vspace{5mm}
+    {\color{accent}\rule{14mm}{1.6pt}}\par
+    \vspace{5mm}
+    {\normalsize Abhiraj Ratna · Ayush SM · Ojas Kataria · Parth Sharma}\par
+    \vspace{1.2mm}
+    {\small\color{ink2}Team DuckDuckDuckGoose}
+  \end{minipage}
+\end{frame}
+
+% ================================================================ 2 motivation (mid-eval, unchanged)
+\begin{frame}{Diffusion LMs commit the tokens they are most confident about}
+  \framesubtitle{One forward pass scores every masked position; the decoder keeps the top-$k$}
+  \vspace{0.5mm}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.56\textwidth}
+      \centering
+      % illustrative toy, not data
+      \begin{tikzpicture}[x=0.98cm, y=0.8cm,
+          tok/.style={draw=base, line width=0.5pt, rounded corners=1.5pt,
+            minimum width=0.86cm, minimum height=0.52cm, inner sep=0pt, font=\footnotesize},
+          obs/.style={tok, fill=plane, text=ink},
+          msk/.style={tok, fill=white, text=muted},
+          win/.style={tok, fill=wash, draw=accent, line width=0.8pt, text=ink}]
+        \node[obs] at (1,2.7) {The};
+        \node[win] at (2,2.7) {[M]};
+        \node[msk] at (3,2.7) {[M]};
+        \node[obs] at (4,2.7) {on};
+        \node[win] at (5,2.7) {[M]};
+        \node[msk] at (6,2.7) {[M]};
+        \node[msk] at (7,2.7) {[M]};
+        \node[obs] at (8,2.7) {.};
+        \foreach \x in {2,5} \node[font=\scriptsize\firasemibold, text=accentdark] at (\x,3.24) {commit};
+        \draw[base, line width=0.5pt] (0.5,0) -- (8.5,0);
+        \foreach \x/\c/\w/\col in {2/0.91/cat/accent, 3/0.42/sat/base, 5/0.97/the/accent,
+                                   6/0.30/red/base, 7/0.77/mat/base} {
+          \fill[\col] (\x-0.17,0) rectangle (\x+0.17,{1.85*\c});
+          \node[font=\scriptsize, text=ink] at (\x,{1.85*\c+0.17}) {\c};
+          \node[font=\footnotesize\itshape, text=ink2] at (\x,-0.25) {\w};
+        }
+        \node[font=\scriptsize, text=muted, anchor=west] at (0.4,-0.68)
+          {candidate $v_i$ with confidence $c_i = \max_v p_\theta(v \mid x_{\mathrm{obs}})$; top $k = 2$ committed};
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.41\textwidth}
+      \begin{itemize}
+        \item LLaDA-8B and Dream-7B keep the most confident positions (MaskGIT-style);
+              Fast-dLLM puts one global threshold on the same number.
+        \item A committed token \alert{won}: its confidence was the largest of $m$ noisy
+              estimates. That is the setting of the \alert{winner's curse}
+              (Efron 2011; Andrews et al.\ 2024).
+      \end{itemize}
+    \end{column}
+  \end{columns}
+  \vspace{2mm}
+  \begin{takeaway}
+    \textbf{Question.} Once a token has won, is its confidence still an honest probability of
+    being right? And when several tokens win in one step, which error dominates?
+  \end{takeaway}
+\end{frame}
+
+% ================================================================ 3 two error sources
+\begin{frame}{Two separate ways parallel decoding goes wrong}
+  \framesubtitle{For a set $S$ committed in one step, given the observed context $x_{\mathrm{obs}}$}
+  \vspace{-2.5mm}
+  \[
+    \mathrm{KL}\Big(p^{*} \,\Big\|\, \prod_{i\in S} p_{\theta,i}\Big)
+    \;=\; \underbrace{\mathrm{TC}(x_S \mid x_{\mathrm{obs}})}_{\text{(A) dependency}}
+    \;+\; \underbrace{\sum_{i\in S} \mathrm{KL}\big(p^{*}_i \,\big\|\, p_{\theta,i}\big)}_{\text{(B) estimation}}
+  \]
+  \vspace{-1mm}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.4\textwidth}
+      \begin{itemize}
+        \item \A Marginals, never the joint: tokens can each be plausible yet jointly
+              nonsensical.
+        \item \B The marginals themselves are wrong. The dependency literature treats \B as
+              fixed.
+        \item C2 measures both where $p^{*}$ is known; C1 audits calibration under selection.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.57\textwidth}
+      \scriptsize
+      \renewcommand{\arraystretch}{1.12}
+      \arrayrulecolor{base}
+      \begin{tabularx}{\linewidth}{@{}p{2.9cm} >{\centering\arraybackslash}X >{\centering\arraybackslash}X@{}}
+        \toprule
+        {\color{ink2}Work} & {\color{ink2}Calibrated under selection?} & {\color{ink2}Separates (A) and (B)?} \\
+        \midrule
+        Fast-dLLM; OSDT             & no              & no \\
+        KLASS; SWD; LESS            & no              & no \\
+        PC-Sampler                  & positional only & no \\
+        DAPD; DEMASK; PUNT          & no              & (A) only \\
+        ParallelBench               & no              & (A) only \\
+        Tang et al.\ (2026)         & no              & identifies \\
+        \rowcolor{wash}
+        \textbf{This work}          & \textbf{yes}    & \textbf{both} \\
+        \bottomrule
+      \end{tabularx}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ================================================================ 4 contributions
+\begin{frame}{Three contributions}
+  \vspace{2mm}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.315\textwidth}
+      \begin{panel}[height=40mm]
+        {\color{accent}\fontsize{16}{18}\selectfont\firasemibold C1}\par\vspace{0.8mm}
+        \paneltitle{Selection-conditional calibration audit}
+        Is a token that \emph{won} its pool overconfident? On LLaDA-8B, Dream-7B (Base and
+        Instruct) and a 110M masked diffusion LM we trained with our evaluation documents held
+        out. Pre-registered; numbers from a held-out report half.
+      \end{panel}
+    \end{column}
+    \begin{column}{0.315\textwidth}
+      \begin{panel}[height=40mm]
+        {\color{accent}\fontsize{16}{18}\selectfont\firasemibold C2}\par\vspace{0.8mm}
+        \paneltitle{Both terms of the KL split}
+        Exactly, in nats, on a synthetic JSON probe where $p^{*}$ is known. On real text,
+        where it is not, proxies whose behaviour we first check on the probe: a direction,
+        not a split in nats.
+      \end{panel}
+    \end{column}
+    \begin{column}{0.315\textwidth}
+      \begin{panel}[height=40mm]
+        {\color{accent}\fontsize{16}{18}\selectfont\firasemibold C3}\par\vspace{0.8mm}
+        \paneltitle{A recalibrated commit rule}
+        A threshold on recalibrated confidence, built only from what the decoder already
+        computes (no extra forward passes), against six decoders at matched tokens per
+        step on GSM8K and MBPP.
+      \end{panel}
+    \end{column}
+  \end{columns}
+  \vspace{3mm}
+  \begin{takeaway}
+    \textbf{Order of the talk.} Theory and the instrument, then C1, C2 and C3 in turn,
+    then what we got wrong and what remains open.
+  \end{takeaway}
+\end{frame}
+
+% ================================================================ 5 propositions (mid-eval)
+\begin{frame}{Theory: where a winner's curse can and cannot come from}
+  \framesubtitle{State $s$: a document with masked set $M$. Teacher forcing makes correctness $a_i = \mathbb{1}\{v_i = x_{0,i}\}$ observable}
+  \vspace{1.5mm}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.485\textwidth}
+      \begin{panel}[height=40mm]
+        \paneltitle{Proposition 1 · Winning adds nothing given confidence and context}
+        If the pairs $(\ell_j, a_j)$ are independent across $j \in M$ given $s$, and the pool
+        $P$ is drawn independently of them, the winner $i$ of $P$ satisfies
+        \[
+          \Pr\big(a_i = 1 \mid \ell_i,\, s,\, i = \arg\max_{j\in P} \ell_j\big) = \pi(\ell_i, s).
+        \]
+        \fnote{However unequal the noise scales: heteroskedastic noise alone cannot bias
+        committed confidence. This corrected the proposal's argument.}
+      \end{panel}
+    \end{column}
+    \begin{column}{0.485\textwidth}
+      \begin{panel}[height=40mm]
+        \paneltitle{Proposition 2 · Exact split of the committed-token gap}
+        \[
+          \Delta(m) =
+          \underbrace{\mathbb{E}_m[\sigma(\ell) - \pi(\ell)]}_{\text{own miscalibration}}
+          + \underbrace{\mathbb{E}_m[\pi(\ell) - \pi(\ell, s)]}_{\text{field term}}
+        \]
+        \fnote{$\pi(\ell)$: ordinary calibration curve; $\pi(\ell,s)$: its context-aware
+        version. With a pool of one, winners are random, so the field term is exactly 0.}
+      \end{panel}
+    \end{column}
+  \end{columns}
+  \vspace{2.5mm}
+  \begin{takeaway}
+    The field term is nonzero only when accuracy at fixed confidence depends on context: the
+    \textbf{winner's curse in a corrected, testable form}. Proofs in the backup.
+  \end{takeaway}
+\end{frame}
+
+% ================================================================ 6 estimands
+\begin{frame}{C1: what we measure, and when we declare an effect}
+  \framesubtitle{Sign: confidence $-$ accuracy, so positive means overconfident (the proposal used the opposite)}
+  \vspace{0.5mm}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.315\textwidth}
+      \begin{panel}[height=23mm]
+        \paneltitle{E1 · committed-token gap}
+        $\Delta(m) = \mathbb{E}_m[c_i - a_i]$ over tokens that win pools of size
+        $m \in \{\VivaPoolSizes\}$. Primary contrast $\Delta(\VivaPoolMax) - \Delta(1)$.
+      \end{panel}
+    \end{column}
+    \begin{column}{0.315\textwidth}
+      \begin{panel}[height=23mm]
+        \paneltitle{E2 · field effect}
+        Observed $\Delta(m)$ minus the gap predicted by $\hat\pi(\ell)$, which sees only the
+        token's own confidence. A context-aware $\hat\pi(\ell, s)$ should cover the rest.
+      \end{panel}
+    \end{column}
+    \begin{column}{0.315\textwidth}
+      \begin{panel}[height=23mm]
+        \paneltitle{E3 · trajectory shift}
+        Training uses uniform masks; decoders fill easy positions first. Are decoder states
+        less calibrated at equal confidence and matched mask rate?
+      \end{panel}
+    \end{column}
+  \end{columns}
+  \vspace{2.5mm}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.5\textwidth}
+      \footnotesize\raggedright
+      \textbf{Hypotheses.} \lbl{H1} $\Delta(\VivaPoolMax) - \Delta(1) > 0$;
+      \lbl{H2} the field term at $m = \VivaPoolMax$ is positive;
+      \lbl{H3} decoder states are more overconfident than uniform ones.\par\vspace{1.5mm}
+      \textbf{Declare rule.} The 95\% interval excludes zero \emph{and} the estimate exceeds
+      twice the non-determinism floor. The floor is \VivaLladaFloor{} for all three model
+      families, so $\delta_{\min} = \VivaDeltaMin$, fixed in advance, sets power. Holm across
+      models $\times$ datasets.
+    \end{column}
+    \begin{column}{0.47\textwidth}
+      \footnotesize\raggedright
+      \textbf{Diagnostics} fitted on winning tokens:
+      \[
+        \Pr(a_i{=}1) = \sigma\big(\alpha\,[+\alpha_s] + f(\ell_i) + \beta_z z_{r,m}\big),
+      \]
+      or rank dummies $\gamma_k$ in place of $z_{r,m}$; $f$ a \VivaKnots-knot spline fixed in
+      advance. State effects $\alpha_s$ absorb the field term: $\beta_z < 0$ without them and
+      $\approx 0$ with them signals a field effect.
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ================================================================ 7 C1 sweep
+\begin{frame}{C1: the trace sweep}
+  \framesubtitle{Collect once on GPU, one row per (masked state, position); draw pools and fit on CPU}
+  \vspace{0.5mm}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.53\textwidth}
+      \scriptsize
+      \setlength{\tabcolsep}{3.2pt}
+      \renewcommand{\arraystretch}{1.02}
+      \arrayrulecolor{base}
+      \begin{tabular}{@{}l l l r r r@{}}
+        \toprule
+        {\color{ink2}Model} & {\color{ink2}Text} & {\color{ink2}Prec.} & {\color{ink2}Docs}
+          & {\color{ink2}Rows (M)} & {\color{ink2}GPU-h} \\
+        \midrule
+        LLaDA-8B Base & FineWeb-Edu & \VivaLladaBasePrecision & \VivaLladaBaseDocs & \VivaLladaBaseRowsM & \VivaLladaBaseGpuH \\
+        Dream-7B Base & FineWeb-Edu & \VivaDreamBasePrecision & \VivaDreamBaseDocs & \VivaDreamBaseRowsM & \VivaDreamBaseGpuH \\
+        Our 110M MDLM & FineWeb-Edu & \VivaMdlmPrecision & \VivaMdlmDocs & \VivaMdlmRowsM & \VivaMdlmGpuH \\
+        LLaDA-8B Instruct & GSM8K & \VivaLladaInstructGsmPrecision & \VivaLladaInstructGsmDocs & \VivaLladaInstructGsmRowsM & \VivaLladaInstructGsmGpuH \\
+        LLaDA-8B Instruct & MBPP & \VivaLladaInstructMbppPrecision & \VivaLladaInstructMbppDocs & \VivaLladaInstructMbppRowsM & \VivaLladaInstructMbppGpuH \\
+        Dream-7B Instruct & GSM8K & \VivaDreamInstructGsmPrecision & \VivaDreamInstructGsmDocs & \VivaDreamInstructGsmRowsM & \VivaDreamInstructGsmGpuH \\
+        Dream-7B Instruct & MBPP & \VivaDreamInstructMbppPrecision & \VivaDreamInstructMbppDocs & \VivaDreamInstructMbppRowsM & \VivaDreamInstructMbppGpuH \\
+        \midrule
+        {\color{ink2}LLaDA-8B Base} & {\color{ink2}time-split} & \VivaLladaBaseTimeSplitPrecision & \VivaLladaBaseTimeSplitDocs & \VivaLladaBaseTimeSplitRowsM & \VivaLladaBaseTimeSplitGpuH \\
+        {\color{ink2}Dream-7B Base} & {\color{ink2}time-split} & \VivaDreamBaseTimeSplitPrecision & \VivaDreamBaseTimeSplitDocs & \VivaDreamBaseTimeSplitRowsM & \VivaDreamBaseTimeSplitGpuH \\
+        {\color{ink2}Our 110M MDLM} & {\color{ink2}time-split} & \VivaMdlmTimeSplitPrecision & \VivaMdlmTimeSplitDocs & \VivaMdlmTimeSplitRowsM & \VivaMdlmTimeSplitGpuH \\
+        {\color{ink2}LLaDA-8B Base} & {\color{ink2}FineWeb-Edu} & 4-bit & \VivaLladaBaseFourBitDocs & \VivaLladaBaseFourBitRowsM & \VivaLladaBaseFourBitGpuH \\
+        \bottomrule
+      \end{tabular}
+      \par\vspace{0.8mm}
+      \fnote{Top: the pre-registered arms. Grey: the unseen time-split set and the 4-bit
+      control (T8). RTX 2080 Ti: \VivaCOneGpuH{} GPU-hours, \VivaCOneRowsB{} billion rows.}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{itemize}\scriptsize
+        \item \textbf{States per document}: uniform masks at rates
+              \VivaMaskRateMin–\VivaMaskRateMax; teacher-forced confidence top-$k$
+              trajectories, $k \in \{\VivaDecoderK\}$; uniform masks matched to them
+              (\VivaPassesPerDoc{} passes per document).
+        \item \textbf{Per row}: candidate, confidence, logit, correctness, $p$(true), entropy,
+              margin, top-\VivaTopK.
+        \item \textbf{Halves}: \VivaNFit{} fit / \VivaNReport{} report documents. Calibrators
+              and splines from the fit half; every number from the report half.
+        \item \textbf{Deterministic}: repeats are bitwise identical, so the floor is
+              \VivaLladaFloor{} for every family.
+        \item \textbf{Frozen first}: analysis commands tagged \texttt{prereg-v1} before any
+              report-half number; changes go to \texttt{prereg/deviations.md}.
+      \end{itemize}
+    \end{column}
+  \end{columns}
+  \note{The pre-registration tag prereg-v1 was due Sat 24 Oct evening. Check in pass 2 that it
+  exists (git tag -l prereg-v1) and add the OSF link to the backup.}
+\end{frame}
+
+% ================================================================ 8 T0 validation
+\begin{frame}{The instrument recovers known truth (T0)}
+  \framesubtitle{Four simulated worlds · fit half $\rightarrow$ report half · document bootstrap}
+  \centering\includegraphics[width=0.88\linewidth]{t0_scenarios}\par
+  \vspace{1.5mm}\raggedright
+  \begin{takeaway}
+    \textbf{Why ECE is not enough.} When miscalibration depends on context, ECE is
+    \pct{\TZeroECEContext}\pp but $\Delta(32) - \Delta(1) = \pct{\TZeroContrastContext}$\pp.
+    Known weakness: the field-term estimator reads high (\pct{\TZeroFieldContext}\pp against a
+    true \pct{\TZeroFieldTrueContext}\pp).
+  \end{takeaway}
+\end{frame}
+
+% ================================================================ 9 C1 results: E1/E2 (placeholder)
+\begin{frame}{C1 results: does winning make a token overconfident? (E1, E2)}
+  \vspace{2mm}
+  \begin{pending}{TUE 27 OCT}{Report-half analysis: \texttt{C3\_REPORT\_HALF\_OK=1 bash prereg/analysis\_commands.sh}
+    at tag \texttt{prereg-v1} (8B arms: Abhiraj; 110M arms: Ojas). Macros: \texttt{results/c1/<Label>/macros.tex}, prefix \texttt{COne<Label>}.}
+    \begin{stubs}
+      \item Figure: $\Delta(m)$ against field size $m$, one panel per model (LLaDA-8B, Dream-7B,
+            110M), primary arms \texttt{uniform} and \texttt{decoder:topk\_conf:k4}.
+      \item Table: $\Delta(32) - \Delta(1)$ with 95\% interval and the Holm verdict per arm
+            (models $\times$ datasets); ECE beside it.
+      \item E2: field term at $m = 32$ from the own and the context-aware calibrator.
+      \item One-line answer to H1 and H2, with the null stated plainly if that is what we get.
+    \end{stubs}
+  \end{pending}
+  \note{Pass 2: replace the box with the Delta(m) figure from results/c1/*/ and a table of
+  COne<Label> macros. Backup: knots 5 and 13 panel, contamination-clean arms, Eq. 2/3
+  beta\_z and gamma\_k.}
+\end{frame}
+
+% ================================================================ 10 C1 results: E3/T8 (placeholder)
+\begin{frame}{C1 results: decoder states, tasks and controls (E3, T8)}
+  \vspace{2mm}
+  \begin{pending}{TUE 27 OCT}{Same run: \texttt{scripts/analyze\_e3.py} (prefix \texttt{EThree<Label>})
+    and \texttt{scripts/run\_controls.py} (prefix \texttt{TEight<Label>}).}
+    \begin{stubs}
+      \item E3: decoder-induced states against matched-uniform states at equal confidence,
+            per model; answer to H3.
+      \item Instruct models on GSM8K and MBPP: is the committed-token gap larger on tasks
+            than on web text?
+      \item T8 ablation table: position, token type, per-step temperature; LLaDA-8B-Base
+            4-bit against fp16 on the precision subset.
+      \item Time-split arms: the same contrasts on text the 8B models cannot have seen.
+    \end{stubs}
+  \end{pending}
+\end{frame}
+
+% ================================================================ 11 C2 probe
+\begin{frame}{C2: a JSON probe where the true joint $p^{*}$ is known}
+  \framesubtitle{Our 110M model, fine-tuned on the probe; both terms computed exactly at every decoding step}
+  \vspace{1mm}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.5\textwidth}
+      \begin{itemize}\footnotesize
+        \item \textbf{Instances}: the simple fields of \VivaProbeSchemas{} SchemaStore schemas,
+              \VivaProbeFieldsMin–\VivaProbeFieldsMax{} per schema, single-token values with
+              seeded Dirichlet marginals.
+        \item \textbf{Dependency knob $\rho$}: fields are paired. With probability $\rho$,
+              stated in a marker at the start, the follower is a fixed function of its leader;
+              otherwise an independent draw. So $p^{*}$ is exact.
+        \item \textbf{Model}: our 110M fine-tuned on \VivaProbeTrainK k instances; evaluated
+              on \CTwoProbeNInstances{} (\CTwoProbeNInstancesPerRho{} per $\rho$).
+        \item \textbf{Decoding}: all values masked; each step a rule picks $k$ fields, the most
+              confident or at random, and we fill them with the true values.
+        \item \textbf{Check}: \A + \B equals the directly computed KL; largest error
+              \CTwoIdentityMaxErrAll{} nats (bar \CTwoIdentityTol).
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \vspace{1mm}
+      % instance text: artifacts/probe/eval_instances.jsonl, schema "tsd", rho = 1; values masked
+      \begin{panel}[colback=plane, colframe=plane]
+        {\color{ink2}\scriptsize one evaluation instance ($\rho = 1$), values masked}\par\vspace{1mm}
+        \ttfamily\scriptsize
+        \{{\color{accentdark}"\_rho":"1.00"},\\
+        \hspace*{2mm}"bundle":{\color{muted}[M]}, "path":{\color{muted}[M]},\\
+        \hspace*{2mm}"ref":{\color{muted}[M]}, "repo":{\color{muted}[M]},\\
+        \hspace*{2mm}"stats":{\color{muted}[M]}, "version":{\color{muted}[M]}\}
+      \end{panel}
+      \vspace{1.5mm}
+      \begin{panel}
+        \paneltitle{Per step, for the committed set $S$}
+        \A $= \sum_{i\in S} H(p^{*}_i) - H(p^{*}_S)$: zero unless a leader and its follower
+        are committed together.\par\vspace{0.6mm}
+        \B $= \sum_{i\in S}\mathrm{KL}(p^{*}_i \,\|\, p_{\theta,i})$: mass off the allowed values
+        counts against \B.\par\vspace{0.6mm}
+        Summed over steps, per field, bootstrapped over instances.
+      \end{panel}
+    \end{column}
+  \end{columns}
+  % rho grid {0, .25, .5, .75, 1}: artifacts/probe/spec.json (rhos); k {1, 2, 4, 8}: T9 grid.
+\end{frame}
+
+% ================================================================ 12 C2 crossover
+\begin{frame}{C2: dependency overtakes estimation only at high $\rho$ and $k$}
+  \vspace{0.5mm}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.53\textwidth}
+      \centering\includegraphics[height=58mm]{c2_crossover_ft110m-v3-visible}
+    \end{column}
+    \begin{column}{0.45\textwidth}
+      \vspace{1mm}
+      \begin{itemize}\footnotesize
+        \item \A is zero at $k = 1$ and at $\rho = 0$, and grows with both.
+        \item For $\rho \ge \CTwoConfCrossRhoMin$, \A overtakes \B at
+              $k = \CTwoRandCrossKatRhoOne$; at $\rho = 1$ under confidence top-$k$ already at
+              $k = \CTwoConfCrossKatRhoOne$. Each crossover is also where the 95\% interval of
+              \A$-$\B clears zero.
+        \item For $\rho \le 0.25$, \B dominates up to $k = 8$.
+      \end{itemize}
+      \vspace{1.5mm}
+      \begin{panel}[colback=wash, colframe=wash]
+        \paneltitle{$\rho = 1$, $k = 8$, confidence top-$k$}
+        \A \CTwoConfAatRhoOneKEight{} \ci{\CTwoConfAatRhoOneKEightLo, \CTwoConfAatRhoOneKEightHi}
+        and \B \CTwoConfBatRhoOneKEight{} \ci{\CTwoConfBatRhoOneKEightLo, \CTwoConfBatRhoOneKEightHi}
+        nats per field: \A is \CTwoConfShareAatRhoOneKEight\% of the total.
+      \end{panel}
+      \src{Main model: the fine-tune that never saw the $\rho$ marker masked (choice in the
+      backup). \CTwoProbeNBoot{} bootstrap resamples over instances.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ================================================================ 13 C2 corrections
+\begin{frame}{C2: three findings that correct our plan}
+  \vspace{1mm}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.5\textwidth}
+      \begin{panel}[fontupper=\scriptsize, before skip=0pt, after skip=1.2mm]
+        \paneltitle{1 · Confidence selection raises \A, not \B}
+        {\color{muted}Planned: ranking on noisy confidences inflates \B.}\par
+        Where \B is higher than at random, the intervals overlap. \A rises instead
+        ($\rho = 1$, $k = 2$): \CTwoConfAatRhoOneKTwo{} \ci{\CTwoConfAatRhoOneKTwoLo,
+        \CTwoConfAatRhoOneKTwoHi} against \CTwoRandAatRhoOneKTwo{} \ci{\CTwoRandAatRhoOneKTwoLo,
+        \CTwoRandAatRhoOneKTwoHi} at random.
+      \end{panel}
+      \begin{panel}[fontupper=\scriptsize, before skip=0pt, after skip=1.2mm]
+        \paneltitle{2 · \B depends on $\rho$}
+        {\color{muted}Planned: $\rho$ moves only \A.}\par
+        At $k = 1$, \B rises from \CTwoConfBatRhoZeroKOne{} at $\rho = 0$ to
+        \CTwoConfBatRhoOneKOne{} at $\rho = 1$: the model reads the marker only in part.
+      \end{panel}
+      \begin{panel}[fontupper=\scriptsize, before skip=0pt, after skip=1.2mm]
+        \paneltitle{3 · \A and \B trade off along $k$}
+        At $\rho = 1$, from $k = 1$ to $8$, \B falls from \CTwoConfBatRhoOneKOne{} to
+        \CTwoConfBatRhoOneKEight{} while \A rises from 0 to \CTwoConfAatRhoOneKEight: a
+        follower decoded with its leader shows its error as \A, not \B.
+      \end{panel}
+    \end{column}
+    \begin{column}{0.47\textwidth}
+      \centering\includegraphics[width=\linewidth]{c2_untuned_vs_tuned}\par
+      \vspace{1mm}\raggedright
+      \begin{itemize}\footnotesize
+        \item Without fine-tuning, \B dominates everywhere: \A is at most
+              \CTwoUntunedConfShareAMax\% of the total.
+        \item The ranking commits leaders together with their followers more often than
+              chance, which brings the crossover forward.
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ================================================================ 14 C2 real text
+\begin{frame}{C2 on real text: the dependency proxy is near zero}
+  \framesubtitle{\CTwoTTenNDocs{} fit-half FineWeb-Edu documents, one state per mask rate; the proxy is first checked on the probe}
+  \vspace{0.5mm}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.42\textwidth}
+      \paneltitle{Proxies}
+      {\scriptsize\raggedright
+      For \A: \textbf{parallel--sequential disagreement}, the fraction of the $k$ most
+      confident positions whose token changes when committed one at a time rather than in one
+      pass. For \B: the gap $\Delta = c - a$ and the cross-entropy (CE) of the true token.\par}
+      \vspace{1.5mm}
+      \paneltitle{On the probe, it tracks \A weakly}
+      {\scriptsize\raggedright
+      Spearman with the exact \A over the \CTwoTTenProbeNCells{} confidence cells with
+      $k \ge 2$: \CTwoTTenProbeSpearman{} \ci{\CTwoTTenProbeSpearmanLo,
+      \CTwoTTenProbeSpearmanHi}; \CTwoTTenAltProbeSpearman{} for the other fine-tune. It rises
+      with $k$, barely with $\rho$: at $k = 8$, \CTwoTTenProbeDisatRhoZeroKEight{} at
+      $\rho = 0$, where \A is zero, and \CTwoTTenProbeDisatRhoOneKEight{} at $\rho = 1$.\par}
+    \end{column}
+    \begin{column}{0.55\textwidth}
+      \scriptsize
+      \setlength{\tabcolsep}{4pt}
+      \renewcommand{\arraystretch}{1.12}
+      \arrayrulecolor{base}
+      % per_k_rates_below_1: mask rates 0.1-0.9 (rate 1 is one shared all-[MASK] state; backup)
+      \begin{tabular}{@{}l l l@{}}
+        \toprule
+        {\color{ink2}mask rates 0.1–0.9} & {\color{ink2}110M (fp32)} & {\color{ink2}LLaDA-8B Base (fp16)} \\
+        \midrule
+        disagreement, $k = 4$ & \CTwoTTenDisKFour & \CTwoTTenLladaDisKFour \\
+        disagreement, $k = 8$ & \CTwoTTenDisKEight & \CTwoTTenLladaDisKEight \\
+        CE (nats), $k = 1 \rightarrow 8$ & \CTwoTTenCEKOne{} $\rightarrow$ \CTwoTTenCEKEight
+          & \CTwoTTenLladaCEKOne{} $\rightarrow$ \CTwoTTenLladaCEKEight \\
+        $\Delta$, $k = 1$ & \CTwoTTenDeltaKOne{} \ci{\CTwoTTenDeltaKOneLo, \CTwoTTenDeltaKOneHi}
+          & \CTwoTTenLladaDeltaKOne{} \ci{\CTwoTTenLladaDeltaKOneLo, \CTwoTTenLladaDeltaKOneHi} \\
+        $\Delta$, $k = 8$ & \CTwoTTenDeltaKEight{} \ci{\CTwoTTenDeltaKEightLo, \CTwoTTenDeltaKEightHi}
+          & \CTwoTTenLladaDeltaKEight{} \ci{\CTwoTTenLladaDeltaKEightLo, \CTwoTTenLladaDeltaKEightHi} \\
+        \bottomrule
+      \end{tabular}
+      \par\vspace{0.8mm}
+      \fnote{CE includes the text's own entropy, and lower ranks are harder positions.}
+      \vspace{1.5mm}
+      \begin{takeaway}[fontupper=\scriptsize]
+        At 2–8 tokens per step, real text looks like the probe's \textbf{low-$\rho$ regime,
+        where \B dominates}. But the proxy sees only dependence the model has learned:
+        near-zero disagreement does not show that \A is small.
+      \end{takeaway}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ================================================================ 15 C3 (placeholder)
+\begin{frame}{C3: a recalibrated commit rule against six decoders}
+  \vspace{2mm}
+  \begin{pending}{THU 29 OCT}{T11 (the C3a policy and its calibrator, \texttt{artifacts/c3/}) and the T12
+    sweep (Parth). Macros from the T12 scoring outputs.}
+    \begin{stubs}
+      \item C3a: commit every masked position in the active block whose recalibrated
+            confidence clears $1 - \alpha$, and at least one. Calibrator fitted on the fit half
+            of the LLaDA-8B-Instruct GSM8K and MBPP traces, then frozen.
+      \item Matched-speed table: accuracy against tokens per step for top-$k$, the Fast-dLLM
+            threshold, entropy-bounded, margin, KLASS, PC-Sampler and C3a, on the GSM8K and
+            MBPP report halves; wall-clock beside it.
+      \item Sanity row: top-$k$ and the threshold decoder against their published numbers.
+      \item The answer in one line, including ``no gain at matched speed'' if that is the result.
+    \end{stubs}
+  \end{pending}
+  \note{T12 settings (final-plan.md, Parth items 3-5): LLaDA-8B-Instruct free-running through
+  c3/decode/loop.py, generation length 256, block 32, greedy, one seed, three speeds per
+  decoder. If T12 is not done at the Fri 30 freeze, this slide becomes "C3: future work".}
+\end{frame}
+
+% ================================================================ 16 summary
+\begin{frame}{Summary}
+  \vspace{2mm}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.485\textwidth}
+      \begin{panel}[height=25mm]
+        \paneltitle{1 · Theory}
+        Selection alone cannot bias a calibrated posterior (Proposition 1). Any bias lives in
+        the field term (Proposition 2), which the instrument measures and which T0 shows it
+        can see where ECE cannot.
+      \end{panel}
+      \vspace{1.5mm}
+      \begin{panel}[height=25mm, colback=wash, colframe=accent!40]
+        \paneltitle{2 · C1 audit}
+        {\color{ink2}Placeholder: the answers to H1–H3 on three model families, from the
+        report half (Tue 27).}
+      \end{panel}
+    \end{column}
+    \begin{column}{0.485\textwidth}
+      \begin{panel}[height=25mm]
+        \paneltitle{3 · C2: (A) and (B) separated}
+        On the probe, \A overtakes \B only for $\rho \ge \CTwoConfCrossRhoMin$ and larger $k$;
+        confidence selection raises \A, not \B. On real text at 2–8 tokens per step, the
+        \A proxy is near zero: the \B-dominated regime.
+      \end{panel}
+      \vspace{1.5mm}
+      \begin{panel}[height=25mm, colback=wash, colframe=accent!40]
+        \paneltitle{4 · C3 decoding}
+        {\color{ink2}Placeholder: C3a against six decoders at matched tokens per step
+        (Thu 29).}
+      \end{panel}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ================================================================ 17 limitations
+\begin{frame}{What we got wrong, and the limits of these results}
+  \vspace{2mm}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.485\textwidth}
+      \begin{panel}[height=56mm]
+        \paneltitle{Claims we withdrew}
+        \begin{itemize}\scriptsize
+          \item Heteroskedastic noise alone makes winners overconfident (proposal):
+                false, Proposition 1.
+          \item Selection on confidence inflates \B (proposal, mid report): on the probe it
+                raises \A instead.
+          \item $\rho$ moves only \A (plan v2): \B rises with $\rho$ too.
+          \item C2 on an 8B model (plan v2): not run. The probe results are for our 110M only.
+          \item Real-text C2 as identified contrasts (mid deck): they are proxies, with a
+                direction but no split in nats.
+        \end{itemize}
+      \end{panel}
+    \end{column}
+    \begin{column}{0.485\textwidth}
+      \begin{panel}[height=56mm]
+        \paneltitle{Limits}
+        \begin{itemize}\scriptsize
+          \item C2's exact values hold for one synthetic distribution and one 110M model.
+          \item The main probe model was chosen by a fallback (lower validation NELBO) after
+                neither fine-tune met a bar that was itself written down with the results:
+                \textbf{not pre-registered}. The other model's crossovers are in the backup.
+          \item The disagreement proxy tracks \A weakly, and mostly through $k$.
+          \item 8B models in fp16, not bfloat16 (no bfloat16 on our GPUs); E3 for top-$k$
+                decoders only (\texttt{prereg/deviations.md}).
+          \item {\color{ink2}C1 and C3 limits: pass 2.}
+        \end{itemize}
+      \end{panel}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ================================================================ 18 thanks
+\begin{frame}[c,plain]
+  \hspace*{4mm}\begin{minipage}{0.86\linewidth}\raggedright
+    {\fontsize{24}{28}\selectfont\firasemibold Thank you. Questions?}\par
+    \vspace{3mm}
+    {\color{accent}\rule{14mm}{1.6pt}}\par
+    \vspace{4mm}
+    \small\color{ink2}
+    \begin{tabular}{@{}ll@{}}
+      Code              & github.com/abhirajratna/ANLP-Project \\
+      Weights \& Biases & wandb.ai/ANLP-project/c3-dllm-calibration \\
+      Hugging Face      & huggingface.co/ANLP-project \\
+      Paper             & DuckDuckDuckGoose-Final.zip \\
+    \end{tabular}
+  \end{minipage}
+\end{frame}
+
+% ================================================================ backup
+\appendix
+
+\begin{frame}{Backup: proofs}
+  \framesubtitle{$W_i$: the event that $i \in P$ wins, $i = \arg\max_{j\in P}\ell_j$; ties broken by independent randomness $U$}
+  \vspace{1.5mm}
+  \footnotesize
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.485\textwidth}\raggedright
+      \paneltitle{Proposition 1}
+      Suppose, given $s$, each pair $(\ell_i, a_i)$ is independent of
+      $\ell_{-i} = (\ell_j)_{j \in M\setminus\{i\}}$. Let $Z = (\ell_i, s)$ and
+      $Y = (\ell_{-i}, P, U)$.\par\vspace{1mm}
+      Given $s$, $(\ell_i, a_i) \perp \ell_{-i}$ and $(P, U) \perp (\ell_j, a_j)_{j\in M}$, so
+      $(\ell_i, a_i) \perp Y \mid s$, and by weak union $a_i \perp Y \mid Z$, i.e.\
+      $\mathbb{E}[a_i \mid Y, Z] = \pi(\ell_i, s)$.\par\vspace{1mm}
+      $W_i$ is determined by $(Y, Z)$, so for every bounded measurable $h$
+      \[
+        \mathbb{E}[a_i h(Z) \mathbb{1}_{W_i}] = \mathbb{E}[\pi(\ell_i, s) h(Z) \mathbb{1}_{W_i}].
+      \]
+      Dividing by $\Pr(W_i) > 0$ gives $\mathbb{E}[a_i \mid Z, W_i] = \pi(\ell_i, s)$ a.s.
+    \end{column}
+    \begin{column}{0.485\textwidth}\raggedright
+      \paneltitle{Proposition 2}
+      Exactly one $W_i$ holds. Applying the display with $h \equiv 1$, summing over $i$ and
+      averaging over $s$:
+      \[
+        \mathbb{E}_m[a] = \textstyle\sum_i \mathbb{E}_m[a_i \mathbb{1}_{W_i}]
+        = \textstyle\sum_i \mathbb{E}_m[\pi(\ell_i, s)\mathbb{1}_{W_i}]
+        = \mathbb{E}_m[\pi(\ell, s)],
+      \]
+      so $\Delta(m) = \mathbb{E}_m[\sigma(\ell) - \pi(\ell, s)]$; add and subtract
+      $\pi(\ell)$.\par\vspace{1mm}
+      At $m = 1$, $\mathbb{E}_1[\pi(\ell)] = \mathbb{E}_1[a]$ by the tower property and
+      $\mathbb{E}_1[\pi(\ell, s)] = \mathbb{E}_1[a]$ by the display, so the field term is 0.
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Backup: how the main probe model was chosen}
+  \framesubtitle{Recorded in \texttt{artifacts/probe/main\_variant.json}}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.5\textwidth}
+      \footnotesize
+      \renewcommand{\arraystretch}{1.12}
+      \arrayrulecolor{base}
+      \scriptsize
+      \begin{tabularx}{\linewidth}{@{}L r r@{}}
+        \toprule
+        & {\color{ink2}\CTwoVariant} & {\color{ink2}\CTwoAltVariant} \\
+        \midrule
+        $\rho$ marker in fine-tuning & never masked & masked \\
+        Fine-tuning tokens (M) & \CTwoFtTokensM & \CTwoAltFtTokensM \\
+        Marker effect on copy & \CTwoMarkerEffect & \CTwoAltMarkerEffect \\
+        Val.\ NELBO (nats/tok.) & \CTwoValNelbo & \CTwoAltValNelbo \\
+        First $k$ with \A $>$ \B ($\rho{=}1$) & \CTwoConfCrossKatRhoOne & \CTwoAltConfCrossKatRhoOne \\
+        \bottomrule
+      \end{tabularx}
+      \par\vspace{1mm}
+      \begin{itemize}\scriptsize
+        \item The bar for the main result, a marker effect of \CTwoMarkerBar, was first written
+              down \emph{with} these results. Neither model meets it.
+        \item The fallback, the lower validation NELBO, is stated as a rule in no committed
+              file; it was applied when the choice was made. \textbf{Not pre-registered.}
+        \item The other model crosses over at $k = \CTwoAltConfCrossKatRhoOne$ for every
+              $\rho \ge \CTwoAltConfCrossRhoMin$ under both rules: the qualitative picture
+              holds.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.47\textwidth}
+      \centering\includegraphics[height=48mm]{c2_crossover_ft110m-v3}\par
+      \fnote{As the main figure, for \CTwoAltVariant. Hatched: \A $>$ \B in mean only.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Backup: disagreement by mask rate (T10)}
+  \framesubtitle{Disagreement at $k = 8$ per mask rate; one state per document per rate}
+  \vspace{2mm}
+  \centering\footnotesize
+  \renewcommand{\arraystretch}{1.1}
+  \arrayrulecolor{base}
+  % mask rates 0.1 ... 1: config.rates in both T10 JSONs
+  \begin{tabular}{@{}l r r r r r r r r r r@{}}
+    \toprule
+    {\color{ink2}Mask rate} & 0.1 & 0.2 & 0.3 & 0.4 & 0.5 & 0.6 & 0.7 & 0.8 & 0.9 & 1 \\
+    \midrule
+    110M & \CTwoTTenDisKEightRatePtOne & \CTwoTTenDisKEightRatePtTwo & \CTwoTTenDisKEightRatePtThree
+      & \CTwoTTenDisKEightRatePtFour & \CTwoTTenDisKEightRatePtFive & \CTwoTTenDisKEightRatePtSix
+      & \CTwoTTenDisKEightRatePtSeven & \CTwoTTenDisKEightRatePtEight & \CTwoTTenDisKEightRatePtNine
+      & \CTwoTTenDisKEightRateOne \\
+    LLaDA-8B-Base & \CTwoTTenLladaDisKEightRatePtOne & \CTwoTTenLladaDisKEightRatePtTwo & \CTwoTTenLladaDisKEightRatePtThree
+      & \CTwoTTenLladaDisKEightRatePtFour & \CTwoTTenLladaDisKEightRatePtFive & \CTwoTTenLladaDisKEightRatePtSix
+      & \CTwoTTenLladaDisKEightRatePtSeven & \CTwoTTenLladaDisKEightRatePtEight & \CTwoTTenLladaDisKEightRatePtNine
+      & \CTwoTTenLladaDisKEightRateOne \\
+    \bottomrule
+  \end{tabular}
+  \par\vspace{4mm}\raggedright
+  \begin{itemize}\footnotesize
+    \item At rate 1 every input is the same all-\texttt{[MASK]} sequence. That one state gives
+          the 110M model nearly all of its disagreement (\CTwoTTenDisAllRatesKEight{} at $k = 8$
+          over all ten rates); LLaDA does not disagree there. The main slide reads rates
+          0.1–0.9.
+    \item Documents under 256 tokens are skipped (a deviation from the plan); at least
+          \CTwoTTenMinMasked{} masked positions per state; \CTwoTTenNBoot{} document-bootstrap
+          resamples.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Backup: data, contamination and our 110M model}
+  \vspace{1.5mm}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.5\textwidth}
+      \begin{itemize}\footnotesize
+        \item \textbf{\VivaCorpusDocs{} calibration documents}, reservoir-sampled from
+              FineWeb-Edu with a fixed seed and excluded from our 110M's training stream;
+              \VivaNFit{} fit / \VivaNReport{} report.
+        \item \textbf{Tasks}: GSM8K and MBPP test sets, split 50/50 the same way, as
+              teacher-forced documents.
+        \item \textbf{Contamination screen (T4)}: prompt with \VivaLladaContamPrefix{} tokens,
+              continue greedily, flag a verbatim run $\ge \VivaContamThreshold$ tokens.
+              Flagged: \VivaLladaContamFlagged/\VivaLladaContamDocs{} (LLaDA),
+              \VivaDreamContamFlagged/\VivaDreamContamDocs{} (Dream); the 8B arms are also
+              analysed without them.
+        \item \textbf{Time-split set}: text written after the 8B models were trained.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \footnotesize
+      \renewcommand{\arraystretch}{1.08}
+      \arrayrulecolor{base}
+      \begin{tabularx}{\linewidth}{@{}l L@{}}
+        \toprule
+        Model     & bidirectional transformer: \VivaMdlmLayers{} layers, width \VivaMdlmWidth,
+                    \VivaMdlmHeads{} heads; sequence length \VivaMdlmSeqLen \\
+        Objective & MDLM (weighted masked cross-entropy), GPT-2 BPE + [MASK] \\
+        Training  & \VivaMdlmSteps{} steps, \VivaMdlmTokensB{}B tokens of FineWeb-Edu \\
+        \bottomrule
+      \end{tabularx}
+      \par\vspace{2mm}
+      \begin{columns}[T,onlytextwidth]
+        \begin{column}{0.48\textwidth}
+          \begin{panel}[colback=wash, colframe=wash, height=22mm]
+            \stat{\VivaMdlmPplBound}{perplexity \emph{bound} on the \VivaMdlmEvalDocs{} held-out
+              docs \ci{\VivaMdlmPplBoundLo, \VivaMdlmPplBoundHi}}
+          \end{panel}
+        \end{column}
+        \begin{column}{0.48\textwidth}
+          \begin{panel}[height=22mm]
+            \stat{\VivaGptTwoPpl}{GPT-2 small, \emph{exact} perplexity, same docs
+              \ci{\VivaGptTwoPplLo, \VivaGptTwoPplHi}}
+          \end{panel}
+        \end{column}
+      \end{columns}
+      \fnote{MDLM gives only an upper bound, and GPT-2 saw other data with far more compute.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Backup: references}
+  \vspace{1.5mm}
+  \scriptsize
+  \setlength{\parskip}{2.4pt}
+  \raggedright\color{ink2}
+  Andrews, Kitagawa \& McCloskey (2024). Inference on winners. \emph{Quarterly Journal of Economics} 139(1).\par
+  Azangulov et al.\ (2026). Parallel sampling from masked diffusion models via conditional independence. \emph{ICLR}.\par
+  Ben-Hamu et al.\ (2025). Accelerated sampling from masked diffusion models via entropy bounded unmasking. \emph{NeurIPS}.\par
+  Chang et al.\ (2022). MaskGIT: masked generative image transformer. \emph{CVPR}.\par
+  Cobbe et al.\ (2021). Training verifiers to solve math word problems. arXiv:2110.14168.\par
+  Efron (2011). Tweedie's formula and selection bias. \emph{JASA} 106(496).\par
+  Guo et al.\ (2017). On calibration of modern neural networks. \emph{ICML}.\par
+  Kang et al.\ (2026). ParallelBench: understanding the trade-offs of parallel decoding in diffusion LLMs. \emph{ICLR}.\par
+  Kim et al.\ (2026). DAPD: dependency-aware parallel decoding via attention for diffusion LLMs. \emph{ICML}.\par
+  Nie et al.\ (2025). Large language diffusion models. \emph{NeurIPS}.\par
+  Penedo et al.\ (2024). The FineWeb datasets: decanting the web for the finest text data at scale. arXiv:2406.17557.\par
+  Ringel, Ali \& Romano (2026). Dependency-guided parallel decoding in discrete diffusion language models. arXiv:2604.02560.\par
+  Sahoo et al.\ (2024). Simple and effective masked diffusion language models. \emph{NeurIPS}.\par
+  SchemaStore contributors (2026). SchemaStore. github.com/SchemaStore/schemastore.\par
+  Tang et al.\ (2026). Is your diffusion sampler actually correct? \emph{ICML}.\par
+  Wu et al.\ (2025). Fast-dLLM: training-free acceleration of diffusion LLM. arXiv:2505.22618.\par
+\end{frame}
+
+\end{document}
