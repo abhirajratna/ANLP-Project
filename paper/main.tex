@@ -27,6 +27,12 @@
 % paper/figures/ is only for figures that are not.
 \graphicspath{{../artifacts/probe/figures/}{figures/}}
 
+% C3 macros (\CThreeTEleven... \CThreeTTwelve...): scripts/c3_paper_outputs.py (parth; names on
+% the team bus, msg 20261025T143320Z-parth-6800).  Absent until T11/T12 are scored; 06_c3.tex
+% then prints a bold ? for each number (\Cres).  booktabs: the generated t12 tables.
+\usepackage{booktabs}
+\IfFileExists{../artifacts/c3/macros_c3.tex}{\input{../artifacts/c3/macros_c3.tex}}{}
+
 \title{C$^3$: Committed Confidence Calibration\\
   Selection Bias in Confidence-Based Token Commitment in Diffusion Language Models}
 

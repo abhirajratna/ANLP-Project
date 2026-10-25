@@ -1,3 +1,142 @@
-\section{C3}
+% =====================================================================================
+% Sec. 6  A recalibrated commit rule (C3).  Owner: parth.  FALLBACK skeleton by ojas
+% (branch ojas/paper-c3): parth fills in or approves every TODO(results) below once the
+% T12 report-half numbers exist, and may rewrite any of it.
+%
+% NO RESULTS EXIST YET.  Every number is a macro from artifacts/c3/macros_c3.tex (written by
+% scripts/c3_paper_outputs.py, parth's names on the team bus, msg 20261025T143320Z-parth-6800;
+% main.tex \inputs it when it exists) or a design macro (\Viva...).  Result macros are called
+% through \Cres{<name>} / \CresCI{<name>}, which print a bold ? while the macro is undefined, so
+% the paper builds before the results land.  \Cres, \CresCI, \Cfit are \providecommand'ed here
+% exactly as in 04_c1.tex (PR #28), so loading both is harmless.
+%
+% Macro names (letters only; Lo/Hi suffix for the ends of a CI):
+%   Task = Gsm | Mbpp.   Dec = TopK | Threshold | Margin | Entropy | Klass | PcSampler | CThreeA.
+%   Speed = SpeedOne | SpeedTwo | SpeedThree (the grid's order, slow to fast).
+%   CThreeTEleven<Task>{FitDocs,MonotoneShare,DevECERaw,DevECECal}       T11, fit half only
+%   CThreeTTwelve<Task>N                                                 report-half problems
+%   CThreeTTwelve<Task><Dec><Speed>{Acc[Lo|Hi],TPS,NFE,Sec}
+%   CThreeTTwelve<Task>MatchedDiff<Dec><Speed>[Lo|Hi]    C3a minus that decoder at matched TPS
+%   CThreeTTwelve<Task>OutsideShare                      C3a steps outside the fit range
+%   CThreeTTwelveSanity{TopK,Threshold}{Acc[Lo|Hi]}, CThreeTTwelveSanityN        (appendix_c3.tex)
+% Files: artifacts/t12/t12_matched_speed.tex (tab:c3-speed, below), t12_sanity_cost.tex
+% (tab:c3-sanity) and figures/t12_matched_speed.pdf (fig:c3-speed), both in appendix_c3.tex.
+%
+% Slots:  % TODO(results): ...  wording that depends on a sign or a decision; the phrasings
+%                               are written out; keep one, delete the rest.
+%         % TODO(outputs): ...  a number or fact the paper wants that no macro or file has yet.
+%         % TODO(check): ...    a fact taken from branch code that may still change.
+%
+% Design sources: C3a, c3/decode/policies.py (PR #7, origin/parth/t12-driver); calibrator fit,
+% scripts/fit_c3a_calibrator.py (PR #6, origin/parth/t11-c3a); driver, scripts/run_t12.py;
+% plan v2 T11-T12.  Labels defined: sec:c3, tab:c3-speed.  Used: sec:estimands, sec:models,
+% sec:setup, sec:c3-app (appendix_c3.tex).  Needs booktabs (the generated tables).
+% =====================================================================================
+
+\providecommand{\Cres}[1]{\ifcsname #1\endcsname\csname #1\endcsname\else\textbf{?}\fi}
+\providecommand{\CresCI}[1]{\ensuremath{\Cres{#1}\;[\Cres{#1Lo},\,\Cres{#1Hi}]}}
+% \Cfit{<table>}: the table at its natural width, shrunk to the line only if it is wider.
+\ifdefined\Cfitbox\else\newsavebox{\Cfitbox}\fi
+\providecommand{\Cfit}[1]{\sbox{\Cfitbox}{#1}%
+  \ifdim\wd\Cfitbox>\linewidth\resizebox{\linewidth}{!}{\usebox{\Cfitbox}}\else\usebox{\Cfitbox}\fi}
+% \CthreePending{<what>}: the box a generated table or figure is replaced by until it exists.
+\providecommand{\CthreePending}[1]{\fbox{\parbox{0.9\linewidth}{\centering\small #1: pending
+  results (\texttt{scripts/c3\_paper\_outputs.py})}}}
+
+\section{A recalibrated commit rule (C3)}
 \label{sec:c3}
-% owner: parth; placeholder
+
+\begin{table*}[t]
+  \centering
+  \IfFileExists{../artifacts/t12/t12_matched_speed.tex}%
+    {\Cfit{\input{../artifacts/t12/t12_matched_speed.tex}}}%
+    {\CthreePending{T12 matched-speed table}}
+  \caption{T12 at matched speed: each decoder at the setting closest in tokens per step to
+    C3a's primary $\alpha$ (within 10\%; --- if none). Accuracy with its 95\% interval, and
+    the paired difference C3a $-$ decoder with a 95\% bootstrap interval; positive favours C3a.}
+  \label{tab:c3-speed}
+\end{table*}
+
+\paragraph{The rule.}
+A top-$k$ decoder fixes the number of tokens per step in advance; C3a lets calibrated
+confidence set it. At each step it computes $\hat c_i=\hat\pi(\ell_i,s)$ for every masked
+position, with the context-aware calibrator of \S\ref{sec:estimands} on three field
+features (median $\ell$, mask rate, $\log|M|$), and commits every position with
+$\hat c_i\ge 1-\alpha$, at least one. So $\alpha$ is an expected error rate per committed
+token, and the one speed knob. Positions are taken in the model's own order of $\ell$, so
+C3a changes \emph{how many} tokens are committed, not \emph{which}. It needs no extra
+forward pass.
+
+\paragraph{T11: the calibrator.}
+One calibrator per task is fitted on teacher-forced decoder states ($k\in\{2,4,8\}$) of the
+fit-half LLaDA-8B-Instruct traces (\Cres{CThreeTElevenGsmFitDocs} GSM8K and
+\Cres{CThreeTElevenMbppFitDocs} MBPP documents) and frozen. A check inside the fit half (not
+a result) puts its ECE against the raw $\sigma(\ell)$ at \Cres{CThreeTElevenGsmDevECECal} from
+\Cres{CThreeTElevenGsmDevECERaw} on GSM8K and \Cres{CThreeTElevenMbppDevECECal} from
+\Cres{CThreeTElevenMbppDevECERaw} on MBPP. It is then applied to free generation, which starts
+from 256 masks; its fit states lie inside a reference answer. \Cres{CThreeTTwelveGsmOutsideShare}
+of C3a's GSM8K steps and \Cres{CThreeTTwelveMbppOutsideShare} of its MBPP steps have features
+outside the fitted range.
+% TODO(outputs): units of OutsideShare and the DevECE macros (share 0-1 or percent) are not in
+%   parth's message; match the text.  If the dev ECE does not fall (Cal >= Raw), say "does not
+%   improve on" instead of "from", and say the gain, if any, is not from better calibration.
+% TODO(outputs): MonotoneShare (share of fit states where c-hat never falls with ell) is
+%   available as \CThreeTElevenGsmMonotoneShare / ...Mbpp...; add a clause if it is below 1:
+%   "in \Cres{...} of fit states $\hat c$ is non-decreasing in $\ell$; elsewhere the count
+%   and the order disagree".
+
+\paragraph{T12: matched speed.}
+LLaDA-8B-Instruct generates freely on the report halves of GSM8K
+(\Cres{CThreeTTwelveGsmN} problems) and MBPP (\Cres{CThreeTTwelveMbppN}): zero-shot chat prompt,
+256 tokens in blocks of 32, greedy, one seed, fp16.
+% TODO(check): precision.  run_t12.py defaults to fp16 and jarvis_t12.sh / t12.sbatch force
+%   it (the calibrator's traces are fp16); documents/final-plan.md still says bf16 on the
+%   A100.  Read "precision" in the runs' meta.json; if bf16, write "in bf16, while the
+%   calibrator was fitted on fp16 traces" and say so in the limitations (C3 paragraph).
+C3a is compared with confidence top-$k$, Fast-dLLM's threshold \citep{wu2025fastdllm},
+margin, entropy-bounded \citep{benhamu2025entropy}, KLASS and PC-Sampler
+\citep{huang2025pcsampler}.
+% TODO(check): citations for margin (J. Kim et al. 2025, arXiv:2502.06768) and KLASS (S. H. Kim
+%   et al. 2025, arXiv:2511.05664) are not in refs.bib; add them.  PC-Sampler runs
+%   position-only unless the background corpus was supplied (policies.py PCSampler.variant,
+%   jarvis_t12.sh): say which in this sentence.
+Each decoder runs at three settings of its own speed knob ($k$, $\tau$, $\gamma$, $\alpha$,
+\dots), and speed is measured as mean tokens per step. For each C3a setting, each decoder is
+taken at the setting closest in mean tokens per step, within $\pm10\%$, or left out
+(Table~\ref{tab:c3-speed}). The accuracy difference is paired on the shared problems, with a
+2,000-resample bootstrap interval over problems. This rule was fixed before any report-half
+number was read. The sanity check, cost and curves are in Appendix~\ref{sec:c3-app}.
+
+% TODO(outputs): the value of C3a's primary alpha (and which of the three settings it is) has
+%   no macro; add one (e.g. \CThreeTTwelveAlpha) and state it in the caption.
+% TODO(outputs): the accuracy intervals are Wilson (score_t12.py `ci95`) per configuration, the
+%   differences bootstrap; say so in the caption if the table does not.
+
+\paragraph{Result.}
+% TODO(results): first, the sanity check (appendix_c3.tex): if top-k or the threshold misses its
+%   published number by more than 2 points, say that here before anything else ("The harness
+%   misses the published <decoder> by <...>, so the comparison below is not comparable to
+%   published numbers; the decoders share the harness, so the differences are still paired") and
+%   keep only the claims that survive; if both are within 2 points, no sentence is needed.
+% TODO(results): keep the sentence that matches \CThreeTTwelve<Task>MatchedDiff<Dec>SpeedTwo
+%   (Lo/Hi) across the six decoders in tab:c3-speed, per task; do not pool tasks.
+%   if the interval excludes 0 and is positive against every decoder with a value:
+%     "At matched speed C3a is more accurate than <all / these> decoders on <task>, by
+%      \CresCI{CThreeTTwelveGsmMatchedDiffThresholdSpeedTwo} against the Fast-dLLM threshold,
+%      the closest competitor."
+%   if it is positive against some and holds 0 against others: name each group, with the
+%     strongest and weakest difference as intervals.
+%   if every interval holds 0:
+%     "At matched speed C3a is not distinguishable from the other decoders on <task>: the
+%      intervals in Table~\ref{tab:c3-speed} bound its gain at <upper end> points or less."
+%   if C3a is worse for some decoder (interval below 0): say so as plainly as a gain.
+%   Then which: the largest speed at which C3a keeps within <x> points of top-k (curve,
+%   appendix), and the wall-clock (\CThreeTTwelve<Task>CThreeASpeedTwoSec against
+%   \CThreeTTwelve<Task>TopKSpeedTwoSec): fewer forward passes need not mean less time.
+% TODO(results): the T11/T12 link.  Because the calibrator keeps the model's ranking, any
+%   gain over top-k comes from how many tokens it commits per step; if the intervals are
+%   positive say "the gain is in the count, not the order".  If they hold 0 say "calibrating
+%   the count did not help at matched speed", and if the share outside the fit range
+%   (OutsideShare) is large, add "C3a is applied to states unlike those it was fitted on;
+%   this may be why" as a possibility, not a finding.
+Results pending.
