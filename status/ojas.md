@@ -1,6 +1,6 @@
 ---
 member: ojas
-updated: 2026-10-25T13:00:54Z
-branch: main
+updated: 2026-10-25T13:10:26Z
+branch: ojas/paper-limitations
 ---
-prereg-v1 tag 21:00 IST (PR #19); agents: Limitations+budget, §4 skeleton (fallback), code ZIP; merged #23 #25
+Limitations draft + page budget: PR #26 (ojas/paper-limitations); §7 Related: PR #24
