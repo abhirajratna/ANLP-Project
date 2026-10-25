@@ -345,6 +345,18 @@ ensure_uv() {
     command -v uv >/dev/null 2>&1 || die "uv is not on PATH after its installer"
 }
 
+# retry N CMD...: a dropped connection mid-download is common; uv keeps what it fetched.
+retry() {
+    local n="$1" t
+    shift
+    for ((t = 1; t <= n; t++)); do
+        "$@" && return 0
+        echo "[retry] try $t/$n of: $*" >&2
+        sleep 15
+    done
+    die "failed $n times: $*"
+}
+
 py_ok() { "$PY" -c 'import sys; sys.exit(sys.version_info[:2] != (3, 12))' 2>/dev/null; }
 
 do_setup() {
@@ -366,9 +378,9 @@ do_setup() {
     # so setup would pass and the run would die at the first kernel.  The constraint file keeps
     # the later installs from moving it.  The rest as pinned in pyproject.toml [models]
     # (transformers==4.46.3: do not move it).
-    timeout 3600 uv pip install --python "$PY" "torch==$TORCH_PIN" --index-url https://download.pytorch.org/whl/cu128
+    retry 3 timeout 3600 uv pip install --python "$PY" "torch==$TORCH_PIN" --index-url https://download.pytorch.org/whl/cu128
     printf 'torch==%s\n' "$TORCH_PIN" > "$VENV/constraints.txt"
-    timeout 1800 uv pip install --python "$PY" -c "$VENV/constraints.txt" -e ".[models]"
+    retry 3 timeout 1800 uv pip install --python "$PY" -c "$VENV/constraints.txt" -e ".[models]"
     uv pip freeze --python "$PY" | grep -Ei '^(torch|transformers|datasets|numpy|tokenizers|huggingface-hub)==' || true
     # Fail fast, before the 16 GB model download is paid for.
     do_verify_gpu
