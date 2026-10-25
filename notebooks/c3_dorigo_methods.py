@@ -8,8 +8,6 @@
 #
 # **Basis.** Cell 1.6 on `ANLP-project/c3-traces` (`main-110m-v3/`: 119.6 M rows, 1,979 docs; `timesplit-110m-v3/`: 30.2 M rows, 500 docs), one schema, every module A–F feasible, 89–90% of states with |M| ≥ 32, largest kind ≈ 4.7 GB in memory, ≈ 6 min projected. The table below is the pre-data check of 24 Oct (written before Phase 2, from the repo only; it then said PARTIAL because only the old-schema pilot was on hand). Cells 1.1–1.6 redo every check on each run; if cell 1.6 prints a different verdict, cell 1.6 wins and this cell must be edited to match.
 #
-# **Pre-registration hold.** Every C1 arm here (110M and 8B) is pre-registered, and `prereg-v1` is not tagged yet. `HALF_MODE = "fit_only"` (0.1) is therefore the default: no number touches the report half. Switch to `"report"` only after the tag. On Ada, `slurm/dorigo_notebook.sbatch` enforces this.
-#
 # **Not yet run here:** the LLaDA-8B traces (the pilot headline). They are on Ada (`/share1/abhiraj.ratna/traces/`), not on HF; add them to `DATASETS` when a copy is reachable.
 #
 # | check | what was found | source |
@@ -88,13 +86,7 @@ ICC_DROP_TOP = 5              # the ICC is also given without its 5 most influen
 TOY_N = 50_000                # Module A toys per Q
 SELFTEST_BOOT = 2_000         # bootstrap resamples inside the Module B self-tests
 OUT_DIR = "/content/c3_dorigo_out" if __import__("os").path.isdir("/content") else "c3_dorigo_out"
-# Which documents are reported. "fit_only" until prereg-v1 is tagged: report-half documents are
-# dropped before anything is computed, and the fit half is split again (seed FIT_ONLY_SEED) into an
-# inner fit half (calibrators) and an inner report half (every number). "report" = the real split;
-# set it only once prereg-v1 is tagged (C1 arms are pre-registered; see prereg/).
-HALF_MODE = "fit_only"
-FIT_ONLY_SEED = 20261025
-NOTEBOOK_VERSION = "2026-10-25.2"
+NOTEBOOK_VERSION = "2026-10-25.1"
 
 # %% [markdown]
 # ## 0.2 Setup: imports, versions, seeds, exclusion log
@@ -229,11 +221,8 @@ def document_split_rule(n_docs: int, seed: int = 20260917, frac: float = 0.5):
     return np.sort(perm[:k]), np.sort(perm[k:])
 
 
-def make_split(spec: dict, mode: str = "report"):
-    """A function doc_ids -> half (0 fit, 1 report, -1 unknown) from a manifest or the rule.
-
-    mode "fit_only": report-half documents map to -1 (excluded), and the fit-half documents are
-    split again with document_split_rule(seed=FIT_ONLY_SEED) into inner fit (0) / report (1)."""
+def make_split(spec: dict):
+    """A function doc_ids -> half (0 fit, 1 report, -1 unknown) from a manifest or the rule."""
     if "manifest" in spec:
         with open(spec["manifest"]) as fh:
             man = {int(k): int(v) for k, v in json.load(fh).items()}
@@ -242,12 +231,6 @@ def make_split(spec: dict, mode: str = "report"):
         fit, rep = document_split_rule(r["n_docs"], r.get("seed", 20260917))
         off = r.get("doc_offset", 0)
         man = {**{int(i) + off: 0 for i in fit}, **{int(i) + off: 1 for i in rep}}
-    if mode == "fit_only":
-        fit_docs = np.array(sorted(k for k, v in man.items() if v == 0), dtype=np.int64)
-        f_in, r_in = document_split_rule(len(fit_docs), FIT_ONLY_SEED)
-        man = {**{int(fit_docs[i]): 0 for i in f_in}, **{int(fit_docs[i]): 1 for i in r_in}}
-    elif mode != "report":
-        raise ValueError(f"HALF_MODE must be 'fit_only' or 'report', not {mode!r}")
     keys = np.array(sorted(man), dtype=np.int64)
     vals = np.array([man[k] for k in keys], dtype=np.int8)
 
@@ -1181,7 +1164,7 @@ SPLITS, FEASIBLE = {}, {}
 for name, fm in FMAP.items():
     spec = DATASETS[name]["split"]
     try:
-        SPLITS[name] = make_split(spec, mode="report" if USE_SYNTHETIC else HALF_MODE)
+        SPLITS[name] = make_split(spec)
         has_split = True
     except (OSError, KeyError, ValueError) as exc:
         print(f"{name}: split not available: {exc}")
@@ -1192,9 +1175,6 @@ for name, fm in FMAP.items():
           f"{', ' + str(SPLITS[name].n) + ' docs' if has_split else ', MISSING'})")
     print(tab.to_string(index=False))
     FEASIBLE[name] = module_feasibility(fm, has_split)
-    if has_split and HALF_MODE == "fit_only" and not USE_SYNTHETIC:
-        print(f"   HALF_MODE = 'fit_only': report-half documents excluded; {SPLITS[name].n} fit-half documents "
-              f"re-split (seed {FIT_ONLY_SEED}) into inner fit / report halves")
     print("modules:", {k: ("yes" if ok else f"NO, needs {', '.join(miss)}")
                        for k, (ok, miss) in FEASIBLE[name].items()})
 
@@ -1234,9 +1214,7 @@ for name, files in FILES.items():
         print("   mask kinds not present:", missing_kinds)
     n_nohalf = st.loc[st["half"] < 0, "doc"].nunique()
     if n_nohalf:
-        print(f"   {n_nohalf} documents are not in the split and will be excluded"
-              + (" (with HALF_MODE = 'fit_only' these include every report-half document)"
-                 if HALF_MODE == "fit_only" and not USE_SYNTHETIC else ""))
+        print(f"   {n_nohalf} documents are not in the split and will be excluded")
     sample = pq.ParquetFile(files[0]).read_row_group(0, columns=[fm["state"], fm["kind"], fm["ell"] or fm["conf"]]).to_pandas()
     sample.columns = ["state", "kind", "ell"]
     tied = sample.duplicated(["kind", "state", "ell"], keep=False)
@@ -1686,7 +1664,7 @@ fig.tight_layout(); fig.savefig(os.path.join(FIG_DIR, "moduleB_scenarios.png"), 
 
 # %% [markdown]
 # ## Modules C–F on the configured datasets
-# The datasets are processed one at a time, for each dataset × mask kind: load (pruned and downcast), check, sort, then pools and the bootstrap. Every reported number comes from report-half documents, and calibrators are fit on the fit half. With `HALF_MODE = "fit_only"` (the default until `prereg-v1` is tagged) both halves are an inner split of the fit-half documents, and the report half is never read past cell 1.4's state counts.
+# The datasets are processed one at a time, for each dataset × mask kind: load (pruned and downcast), check, sort, then pools and the bootstrap. Every reported number comes from report-half documents. Calibrators are fit on the fit half.
 # * C: E[c_w], E[a_w], Δ(m) (exact all-subsets estimator, no pool noise), and ℓ inflation (E[ℓ_w] − the state's mean ℓ, the expected ℓ of a random position).
 # * E2 (Prop. 2): Δ(m) = own miscalibration E_m[c − π̂(ℓ)] + field term E_m[π̂(ℓ) − π̂(ℓ, s)] + residual E_m[π̂(ℓ, s) − a], on the same winners and resamples. Growth of Δ with m that sits in the own term is ordinary high-confidence miscalibration; only the field term is a winner's curse from the state (H2).
 # * D: shuffle gap (Monte Carlo pools) and the ICC of a − π̂(ℓ, s) (also of a − π̂(ℓ), and without the most influential documents).
@@ -1825,7 +1803,7 @@ for name in dict.fromkeys(k[0] for k in RESULTS):
     for a in ax.flat:
         a.set_xlabel("log2 pool size m"); a.grid(alpha=0.3); a.legend(fontsize=7)
     ax[1, 0].axhline(0, c="k", lw=0.8)
-    fig.suptitle(f"Module C: {name} ({'inner report half of the fit half' if HALF_MODE == 'fit_only' and not USE_SYNTHETIC else 'report half'}, 95% document-bootstrap CIs)")
+    fig.suptitle(f"Module C: {name} (report half, 95% document-bootstrap CIs)")
     fig.tight_layout(); fig.savefig(os.path.join(FIG_DIR, f"moduleC_{name}.png"), dpi=300); plt.show()
 
     fig, ax = plt.subplots(1, 2, figsize=(12, 4))
@@ -1903,7 +1881,7 @@ RUN_META = {"created": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "versions": VERSION
                                                  "N_BOOT", "SEED", "MIN_STATE_SIZE", "RATE_BINS",
                                                  "N_QUINTILES", "ECE_BINS", "TOY_N", "FIELD_FEATURES",
                                                  "CAL_KNOTS", "CAL_MAX_ROWS", "DELTA_MIN", "H3_PAIRS",
-                                                 "H3_BINS", "ICC_DROP_TOP", "HALF_MODE", "FIT_ONLY_SEED")},
+                                                 "H3_BINS", "ICC_DROP_TOP")},
             "n_boot_run": N_BOOT_RUN, "phase1_verdict": PHASE1_VERDICT,
             "datasets": {n: {"path": s.get("path"), "hf": s.get("hf"), "split": s["split"], "model": s.get("model"),
                              "files": [{"name": f.name, "bytes": f.stat().st_size,
@@ -1911,8 +1889,7 @@ RUN_META = {"created": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "versions": VERSION
                          for n, s in DATASETS.items()},
             "selftests_passed": SELFTEST_ALL, "toy_checks_passed": TOY_CHECKS_ALL,
             "info": {f"{k[0]}/{k[1]}": v["info"] for k, v in RESULTS.items()},
-            "git_commit": os.environ.get("C3_GIT_COMMIT"),
-            "note": "git_commit is set by notebooks/run_notebook.py; on Colab record the repo commit by hand"}
+            "git_commit": None, "note": "notebook run outside the repo; record the repo commit of this notebook by hand"}
 with open(os.path.join(OUT_DIR, "run_meta.json"), "w") as fh:
     json.dump(RUN_META, fh, indent=1, default=str)
 ex = pd.DataFrame(EXCLUSIONS)
@@ -1928,9 +1905,6 @@ side = lambda lo, hi: "excludes 0" if (lo > 0 or hi < 0) else "includes 0"
 lines = []
 if USE_SYNTHETIC:
     lines.append("**SYNTHETIC RUN: these are Module B test scenarios, not results about any model.**\n")
-elif HALF_MODE == "fit_only":
-    lines.append("**FIT-HALF-ONLY RUN: every number below comes from an inner split of the fit-half documents "
-                 "(about a quarter of the corpus each way), not from the pre-registered report half.**\n")
 lines.append(f"Phase 1 verdict: **{PHASE1_VERDICT}**. Self-tests: {sum(SELFTEST.values())}/{len(SELFTEST)} passed; "
              f"toy checks: {sum(TOY_CHECKS.values())}/{len(TOY_CHECKS)} as expected. Bootstrap resamples: {N_BOOT_RUN:,}"
              + (" (dry run)." if N_BOOT_RUN < N_BOOT else "."))
