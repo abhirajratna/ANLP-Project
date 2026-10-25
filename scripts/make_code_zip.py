@@ -6,8 +6,8 @@ in, and everything sits under one top-level folder, ``c3/``.  Files that are not
 code or small documents a grader needs are left out, each with a reason:
 
 * anything over ``--max-file-mb`` (default 5);
-* model and data blobs: ``*.pt``, ``*.safetensors``, ``*.gguf``, ``*.npz``,
-  ``*.parquet``, ``*.arrow``;
+* model weights: ``*.pt``, ``*.safetensors``, ``*.gguf`` (small parquet and JSON
+  artifacts stay, since the analysis scripts read them);
 * ``.claude/``, ``.github/`` and any ``coord-bus`` path (the bus lives on a branch,
   so it should not be in the archive at all; this is a second check);
 * symlinks and other non-regular files.
@@ -35,7 +35,7 @@ sys.path.insert(0, str(ROOT))
 from c3.provenance import collect as provenance
 
 TOP = "c3"
-BAD_SUFFIXES = (".pt", ".safetensors", ".gguf", ".npz", ".parquet", ".arrow")
+BAD_SUFFIXES = (".pt", ".safetensors", ".gguf")
 BAD_DIRS = (".claude", ".github")
 
 
@@ -48,7 +48,7 @@ def exclusion_reason(path: str, size: int, max_bytes: int) -> str | None:
     if any("coord-bus" in p for p in parts):
         return "coord-bus material"
     if path.lower().endswith(BAD_SUFFIXES):
-        return f"{Path(path).suffix.lower()} blob"
+        return f"{Path(path).suffix.lower()} model weights"
     if size > max_bytes:
         return f"over size limit ({size / 2**20:.1f} MB > {max_bytes / 2**20:g} MB)"
     return None

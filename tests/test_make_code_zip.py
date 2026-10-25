@@ -51,9 +51,10 @@ def test_included_and_excluded(repo, tmp_path, capsys):
     assert rc == 0
     names = set(zipfile.ZipFile(out).namelist())
     assert names == {"c3/c3/core.py", "c3/scripts/run.py", "c3/paper/main.tex",
-                     "c3/artifacts/small.json", "c3/MANIFEST.txt"}
+                     "c3/artifacts/small.json", "c3/artifacts/table.parquet",
+                     "c3/MANIFEST.txt"}
     text = capsys.readouterr().out
-    for gone in ("big.json", "weights.pt", "table.parquet", ".claude/settings.json",
+    for gone in ("big.json", "weights.pt", ".claude/settings.json",
                  "tests.yml", "coord-bus/note.txt", "link.py"):
         assert gone in text
 
@@ -66,7 +67,7 @@ def test_manifest(repo, tmp_path):
     assert f"commit: {commit}" in man and "ref: HEAD" in man
     assert f'"git_commit": "{commit}"' in man
     assert "c3/core.py" in man
-    assert "artifacts/weights.pt  [.pt blob]" in man
+    assert "artifacts/weights.pt  [.pt model weights]" in man
     assert "artifacts/big.json  [over size limit" in man
 
 
