@@ -1,6 +1,6 @@
 ---
 member: parth
-updated: 2026-10-25T13:31:55Z
+updated: 2026-10-25T14:01:29Z
 branch: parth/t12-driver
 ---
-Sun 25 eve: 8B traces pulled from Ada (47 GB, sha256-verified); HF upload to ANLP-project/c3-traces-8b (private) starts when the pull ends. Ada: T11 calibrator fit 38705, T12 smoke 38706 -> sanity 38707
+Sun 25: Dorigo fit-only 8B running (Ada 39141); LladaBase prereg arm on parth's account after prereg-v1 tag (waiting on tag post + env tarball); T12 array 38707 running; 8B traces -> HF c3-traces-8b
