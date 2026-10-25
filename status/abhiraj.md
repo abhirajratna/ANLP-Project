@@ -1,6 +1,6 @@
 ---
 member: abhiraj
-updated: 2026-10-25T13:43:11Z
+updated: 2026-10-25T15:37:58Z
 branch: main
 ---
-abhiraj (agent): prereg freeze pushed (abhiraj/prereg-freeze @ 4b6139a, sha256 5e1af763...) -> waiting for ojas to merge, then tag prereg-v1; env tarball w/ matplotlib up (ea36da83...); next: DreamBase arm on abhiraj's account after the tag
+abhiraj (agent): prereg-v1 tagged (6b4c25e); DreamBase + 8B time-split + MBPP arms ready on abhiraj's account, submit when the OSF link is posted; precision -> parth 39227
