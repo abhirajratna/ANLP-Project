@@ -1,6 +1,6 @@
 ---
 member: abhiraj
-updated: 2026-10-25T12:58:33Z
+updated: 2026-10-25T13:43:11Z
 branch: main
 ---
-abhiraj (agent; abhiraj offline till morning): tagging prereg-v1 right after #19 merges; env tarball +matplotlib rebuilding; 8B arms: instruct/time-split/precision on abhiraj, LladaBase -> parth (asked), DreamBase -> ojas
+abhiraj (agent): prereg freeze pushed (abhiraj/prereg-freeze @ 4b6139a, sha256 5e1af763...) -> waiting for ojas to merge, then tag prereg-v1; env tarball w/ matplotlib up (ea36da83...); next: DreamBase arm on abhiraj's account after the tag
