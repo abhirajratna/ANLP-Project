@@ -1,3 +1,47 @@
+% =====================================================================================
+% Sec. 7  Related work.  Owner: ayush.  First draft by ojas (branch ojas/paper-related) for
+% ayush to edit and own.  Every citation is on documents/lit-review-list.md; the keys are in
+% refs.bib under "Sec. 7".  Descriptions of other work follow the list and the proposal's
+% Sec. 3; check each against the paper itself during the citation pass (final plan, Ayush 5).
+% Budget (plan v2 Sec. 8): Sec. 7 + limitations = 1 page; this draft is ~0.6 of a column.
+% Cut for length; their refs.bib entries are kept for Sec. 1 / limitations or a longer Sec. 7:
+%   ho2020ddpm, austin2021d3pm (foundations); wu2026swd, mohamed2026less, chen2026stdec (stability family); chen2026dparallel (learned
+%   policy); cai2026confidence (theory, marginals taken as given); frkovic2026remasking
+%   (remasking on par with confidence unmasking); olausson2026temperatures (per-step
+%   temperature, a T8 control); israel2025apd, bansal2025joint (dependency);
+%   schuster2022calm, jazbec2024fast, angelopoulos2024conformal (risk control: stopping and
+%   acceptance, not commitment; deferred, so it belongs in limitations/future work).
+% Not cited: the survey (#1; our sources give no author list), MDPO and TRIMS (#26-27).
+% =====================================================================================
+
 \section{Related work}
 \label{sec:related}
-% owner: ayush; placeholder
+
+\paragraph{Masked diffusion LMs.}
+LLaDA and Dream \citep{nie2025llada,ye2025dream} scale masked diffusion \citep{sahoo2024mdlm}
+to 7--8B parameters and commit the most confident positions, as MaskGIT did
+\citep{chang2022maskgit}. We audit that rule; we propose no model.
+
+\paragraph{Parallel and confidence-based decoders.}
+Decoders replace top-1 probability, which can misstate uncertainty \citep{kim2025ordering},
+with entropy, margin or stability \citep{benhamu2025entropy,kim2025ordering,kim2025klass},
+tune the cutoff \citep{wu2025fastdllm,shen2025osdt} or learn the policy
+\citep{jazbec2026learning}. They evaluate speed and accuracy, not the calibration of the
+tokens they commit, which C1 measures; C3a thresholds a recalibrated probability instead
+(\S\ref{sec:c3}).
+
+\paragraph{Calibration and the winner's curse.}
+Calibration is usually measured over all predictions \citep{guo2017calibration}. The closest
+work, PC-Sampler \citep{huang2025pcsampler}, recalibrates the commit statistic for a
+positional bias; we add its weight as a covariate. Keeping the largest of noisy estimates
+biases it upward \citep{andrews2024winners} but leaves a correct posterior unbiased
+\citep{efron2011tweedie}, which confines our winner's curse to the field term
+(\S\ref{sec:setup}).
+% TODO(ayush): confirm the PC-Sampler covariate (T8) made it into Sec. 4; else cut the clause.
+
+\paragraph{Dependency between tokens.}
+Dependency-aware decoders \citep{kim2026dapd,ringel2026demask,azangulov2026punt} and
+ParallelBench \citep{kang2026parallelbench} target term (A) of Eq.~\ref{eq:decomp} and take
+the marginals as accurate. The split is not ours: EB-Sampler uses the same two terms
+\citep{benhamu2025entropy}, and \citet{tang2026sampler} note that sampler and model error
+stay entangled. C2 computes both in nats where $p^*$ is known (\S\ref{sec:c2}).
