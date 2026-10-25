@@ -1,2 +1,73 @@
+% =====================================================================================
+% Limitations (unnumbered; ACL puts it before the references, outside the 8-page count, and
+% the course guidelines allow nothing but limitations / future work in it).
+% Owner: ayush (writing lead).  Draft by ojas (branch ojas/paper-limitations).
+%
+% No result numbers.  Sources, one per paragraph:
+%   Scope: Sec. 3 (Table 1); prereg/deviations.md (fp16, not bfloat16); plan v2 T8/T13.
+%   Measurement: Sec. 3.2; deviations.md (E3 for top-k only); Sec. 5.3.
+%   Estimands: Sec. 3.3-3.5 (T0: estimator reads high; FE do not fully clean beta_z; shared
+%     errors flip its sign; floors bitwise 0); deviations.md (per-family floors).
+%   Contamination: plan v2 T4; proposal Sec. 3 ("Claims about levels rest on the 110M arm;
+%     the 8B arm carries claims about the gradient only").
+%   Pre-registration: deviations.md items 1, 7, 8 and the T8 temperature entry, as on PR #19's
+%     branch origin/ojas/prereg-eqboot (its items 7-8 may be renumbered 15-16 before merge, so
+%     no item numbers are cited here).
+%   C3: PR #6 (C3a fitted on teacher-forced fit-half decoder states; `step` dropped), PR #7
+%     (length 256, blocks of 32, greedy), plan v2 T11 and PR #6's C3a docstring (ranks by ell;
+%     the calibrator sets only how many),
+%     documents/final-plan.md (one seed; C3b and HumanEval only if time and credit remain).
+% Numbers are macros (documents/viva-slides/macros_setup.tex) or design constants of Sec. 3.
+% =====================================================================================
+
 \section*{Limitations}
-% owner: ayush; placeholder
+
+\paragraph{Scope.}
+We audit two 8B-scale families and one 110M MDLM of our own, on 256-token FineWeb-Edu
+documents, GSM8K and MBPP. Base models read only web text and Instruct models only the tasks,
+so model type and text type are confounded. The 8B models run in fp16, as our GPUs lack the
+planned bfloat16; the precision control compares 4-bit with fp16 on
+\VivaLladaBaseFourBitDocs{} documents, so the step to bfloat16 is not measured.
+
+\paragraph{What is measured.}
+C1 is teacher-forced: decoder states are those of a top-$k$ decoder that is always right,
+not the states that follow a free-running decoder's own mistakes. A token is correct only if
+it equals the reference, so a valid rewording counts as an error. E3 covers confidence top-$k$ trajectories only. C2's exact terms hold for one synthetic
+distribution and one 110M fine-tune; on real text we have proxies (\S\ref{sec:c2-text}).
+
+\paragraph{Estimands.}
+The field term is only as context-aware as $\hat\pi(\ell,s)$, which sees a state through four
+features; on simulated traces its estimator read high (\S\ref{sec:validation}), and E2
+intervals are conditional on the fit-half calibrators. $\beta_z$ is a diagnostic, not an
+endpoint: in simulation, fixed effects did not fully remove the field term, and shared errors
+gave $\beta_z$ the opposite sign. Repeats were bitwise identical on one GPU type, and Instruct
+models reuse their Base family's floor, so the zero floor says nothing about other hardware.
+
+\paragraph{Contamination.}
+The screen flags only verbatim recall ($\ge\VivaContamThreshold$ of 50 tokens); lighter
+exposure to undisclosed 8B training data goes undetected. The time-split set is unseen by date
+but is Wikipedia, so its contrast with FineWeb-Edu mixes exposure with domain; only the 110M
+model, which saw neither set, isolates the domain part. Claims about levels therefore rest on
+the 110M arm, as proposed, and the 8B arms carry claims about trends in field size; 110M
+levels need not transfer to 8B models.
+% TODO(results): check that Sec. 4 keeps to this levels/trends split (proposal Sec. 3); if it
+%   reads levels off the 8B arms, change this sentence rather than Sec. 4.
+
+\paragraph{Pre-registration.}
+Of the departures from the plan listed with the pre-registration (\S\ref{sec:prereg}),
+three matter: the contamination threshold, the plan's value, was coded after the screen counts
+were seen; the primary temperature control was switched after a fit-half development run;
+and an exploratory notebook computed report-half statistics on both 110M arms before the tag.
+Eq.~2/3 intervals use 1,000 resamples (knot panels 200, read as descriptive).
+
+\paragraph{C3.}
+The C3a calibrator is fitted on teacher-forced states and applied to free-running generation,
+whose states it has not seen. It keeps the model's ranking by $\ell$, so it changes how many
+tokens are committed, not which. The comparison uses one model, greedy decoding with one seed,
+256-token outputs and two tasks.
+% TODO(results): name the T12 precision (bf16 on an A100 or fp16 on Ada; PR #7 allows both),
+%   which differs from the fp16 traces C3a is fitted on if bf16.  Say whether C3b and HumanEval
+%   ran; if not, add "C3b, which can reorder positions, and HumanEval were not run."  If T12 is
+%   not done at the freeze, replace this paragraph with one sentence saying C3 is untested.
+% TODO(results): the trace release (8B traces ~64 GB; final-plan.md: a subset or aggregates)
+%   is a limitation on repeating the audit if only part of it is public by 31 Oct.
