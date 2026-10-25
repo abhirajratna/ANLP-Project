@@ -1,0 +1,59 @@
+% C3 final paper.  Build: `make` in this directory (tectonic main.tex).
+% Layout (ayush): one file per section under sections/; macros come from committed artifacts.
+% Course format (documents/project_guidelines.pdf, Sec. 4): ACL style, at most 8 pages excluding
+% references, plus an optional 2 pages of appendices.  Limitations goes in its own section just
+% before the references and holds nothing but limitations / future work; it is outside the count.
+% The guidelines do not ask for anonymity, so this uses the (default) final mode with authors.
+\documentclass[11pt]{article}
+\usepackage{acl}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{microtype}
+
+% ---- macros from committed artifacts (numbers are never typed by hand) ----
+\input{../artifacts/probe/macros_t9.tex}    % \CTwo...      scripts/figures_t9.py   (T9)
+\input{../artifacts/c2/macros_t10.tex}      % \CTwoTTen...  scripts/macros_t10.py   (T10)
+% \input{../documents/viva-slides/macros_setup.tex}   % Sec. 2 setup macros: enable once PR #20 is on main
+% C1 macros: written by the report-half run (slurm/prereg_analysis.sbatch) to
+% results/c1/<arm>/macros.tex, one file per arm.  Enable each \input once the run has been
+% committed; the macro names carry no arm word unless the file says so (check its header).
+% \input{../results/c1/<arm>/macros.tex}
+
+% Figures that are committed artifacts are referenced from artifacts/ (see 05_c2.tex);
+% paper/figures/ is only for figures that are not.
+\graphicspath{{../artifacts/probe/figures/}{figures/}}
+
+\title{C$^3$: Committed Confidence Calibration\\
+  Selection Bias in Confidence-Based Token Commitment in Diffusion Language Models}
+
+\author{Abhiraj Ratna \and Ayush SM \and Ojas Kataria \and Parth Sharma \\
+  Team DuckDuckDuckGoose}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+% owner: ayush; placeholder
+Abstract to be written.
+\end{abstract}
+
+\input{sections/01_intro}
+\input{sections/02_setup}
+\input{sections/03_instrument}
+\input{sections/04_c1}
+\input{sections/05_c2}
+\input{sections/06_c3}
+\input{sections/07_related}
+
+\input{sections/limitations}
+
+\bibliography{refs}
+
+\appendix
+\input{sections/appendix}
+
+\end{document}
