@@ -433,7 +433,7 @@
        0.06384209631714703
       ],
       "se": 0.05259698684601326,
-      "p_boot": 0.8571428571428571,
+      "p_boot": 0.0001,
       "n_failed_draws": 0,
       "point_converged": true,
       "point_iters": 10
@@ -445,7 +445,7 @@
        0.18245754628676042
       ],
       "se": 0.07964946733296716,
-      "p_boot": 0.9523809523809523,
+      "p_boot": 0.2,
       "n_failed_draws": 0,
       "point_converged": true,
       "point_iters": 10
@@ -457,7 +457,7 @@
        0.05373888844602326
       ],
       "se": 0.03833353153626007,
-      "p_boot": 0.8571428571428571,
+      "p_boot": 0.6,
       "n_failed_draws": 0,
       "point_converged": true,
       "point_iters": 10
@@ -471,7 +471,7 @@
        27460.712117224677
       ],
       "se": 9239.663162100607,
-      "p_boot": 0.5714285714285714,
+      "p_boot": 0.0001,
       "n_failed_draws": 0,
       "point_converged": false,
       "point_iters": 100
@@ -483,7 +483,7 @@
        218755.30662501225
       ],
       "se": 79587.07414051959,
-      "p_boot": 0.5714285714285714,
+      "p_boot": 0.2,
       "n_failed_draws": 0,
       "point_converged": false,
       "point_iters": 100
@@ -495,7 +495,7 @@
        971508.7213110435
       ],
       "se": 979826.518188474,
-      "p_boot": 0.38095238095238093,
+      "p_boot": 0.6,
       "n_failed_draws": 0,
       "point_converged": false,
       "point_iters": 100
@@ -905,7 +905,7 @@
        0.08778816585169155
       ],
       "se": 0.0556443631797986,
-      "p_boot": 0.7619047619047619,
+      "p_boot": 0.0001,
       "n_failed_draws": 0,
       "point_converged": true,
       "point_iters": 9
@@ -917,7 +917,7 @@
        0.017842973334816735
       ],
       "se": 0.04876667809995857,
-      "p_boot": 0.38095238095238093,
+      "p_boot": 0.2,
       "n_failed_draws": 0,
       "point_converged": true,
       "point_iters": 9
@@ -929,7 +929,7 @@
        0.13277011754476786
       ],
       "se": 0.09323814885795516,
-      "p_boot": 0.9523809523809523,
+      "p_boot": 0.6,
       "n_failed_draws": 0,
       "point_converged": true,
       "point_iters": 9
@@ -943,7 +943,7 @@
        16360.15708475944
       ],
       "se": 5556.48185829988,
-      "p_boot": 0.9523809523809523,
+      "p_boot": 0.0001,
       "n_failed_draws": 0,
       "point_converged": false,
       "point_iters": 100
@@ -955,7 +955,7 @@
        926136.0763327482
       ],
       "se": 715597.3916309279,
-      "p_boot": 0.6666666666666666,
+      "p_boot": 0.2,
       "n_failed_draws": 0,
       "point_converged": false,
       "point_iters": 100
@@ -967,7 +967,7 @@
        4957.593684698347
       ],
       "se": 9065.752408169466,
-      "p_boot": 0.8571428571428571,
+      "p_boot": 0.6,
       "n_failed_draws": 0,
       "point_converged": false,
       "point_iters": 100
@@ -1377,7 +1377,7 @@
        0.20508759400219617
       ],
       "se": 0.17345326815288734,
-      "p_boot": 0.5714285714285714,
+      "p_boot": 0.0001,
       "n_failed_draws": 0,
       "point_converged": true,
       "point_iters": 12
@@ -1389,7 +1389,7 @@
        0.10249812078418027
       ],
       "se": 0.10960766678124377,
-      "p_boot": 0.7619047619047619,
+      "p_boot": 0.2,
       "n_failed_draws": 0,
       "point_converged": true,
       "point_iters": 12
@@ -1401,7 +1401,7 @@
        0.23213227507954418
       ],
       "se": 0.08505573370099093,
-      "p_boot": 0.5714285714285714,
+      "p_boot": 0.6,
       "n_failed_draws": 0,
       "point_converged": true,
       "point_iters": 12
@@ -1415,7 +1415,7 @@
        0.20966489310171765
       ],
       "se": 0.17933561046386384,
-      "p_boot": 0.5714285714285714,
+      "p_boot": 0.0001,
       "n_failed_draws": 0,
       "point_converged": true,
       "point_iters": 46
@@ -1427,7 +1427,7 @@
        0.09937840361651795
       ],
       "se": 0.11519863032299929,
-      "p_boot": 0.7619047619047619,
+      "p_boot": 0.2,
       "n_failed_draws": 0,
       "point_converged": true,
       "point_iters": 46
@@ -1439,7 +1439,7 @@
        0.22650107268469669
       ],
       "se": 0.08943783047535074,
-      "p_boot": 0.6666666666666666,
+      "p_boot": 0.6,
       "n_failed_draws": 0,
       "point_converged": true,
       "point_iters": 46
@@ -1849,7 +1849,7 @@
        0.1452801015640586
       ],
       "se": 0.07053722814636826,
-      "p_boot": 0.5714285714285714,
+      "p_boot": 0.0001,
       "n_failed_draws": 0,
       "point_converged": true,
       "point_iters": 14
@@ -1861,7 +1861,7 @@
        0.03691157619466746
       ],
       "se": 0.06835191931608627,
-      "p_boot": 0.38095238095238093,
+      "p_boot": 0.2,
       "n_failed_draws": 0,
       "point_converged": true,
       "point_iters": 14
@@ -1873,7 +1873,7 @@
        0.09556829635412842
       ],
       "se": 0.07741415243371061,
-      "p_boot": 0.7619047619047619,
+      "p_boot": 0.6,
       "n_failed_draws": 0,
       "point_converged": true,
       "point_iters": 14
@@ -1887,7 +1887,7 @@
        0.15601897749666221
       ],
       "se": 0.0719697243096762,
-      "p_boot": 0.5714285714285714,
+      "p_boot": 0.0001,
       "n_failed_draws": 0,
       "point_converged": true,
       "point_iters": 78
@@ -1899,7 +1899,7 @@
        0.07545722729682569
       ],
       "se": 0.07329671794347663,
-      "p_boot": 0.6666666666666666,
+      "p_boot": 0.2,
       "n_failed_draws": 0,
       "point_converged": true,
       "point_iters": 78
@@ -1911,7 +1911,7 @@
        0.13706960027797874
       ],
       "se": 0.07866088705865289,
-      "p_boot": 0.7619047619047619,
+      "p_boot": 0.6,
       "n_failed_draws": 0,
       "point_converged": true,
       "point_iters": 78
@@ -2321,7 +2321,7 @@
        0.33921274471189394
       ],
       "se": 0.10143107264258856,
-      "p_boot": 0.09523809523809523,
+      "p_boot": 0.0001,
       "n_failed_draws": 0,
       "point_converged": true,
       "point_iters": 11
@@ -2333,7 +2333,7 @@
        0.3000740371468326
       ],
       "se": 0.05373455250251443,
-      "p_boot": 0.09523809523809523,
+      "p_boot": 0.2,
       "n_failed_draws": 0,
       "point_converged": true,
       "point_iters": 11
@@ -2345,7 +2345,7 @@
        0.20822052344498537
       ],
       "se": 0.07270110898267665,
-      "p_boot": 0.2857142857142857,
+      "p_boot": 0.6,
       "n_failed_draws": 0,
       "point_converged": true,
       "point_iters": 11
@@ -2359,7 +2359,7 @@
        0.28545177573989067
       ],
       "se": 0.08457288084809315,
-      "p_boot": 0.09523809523809523,
+      "p_boot": 0.0001,
       "n_failed_draws": 0,
       "point_converged": true,
       "point_iters": 37
@@ -2371,7 +2371,7 @@
        0.3287749852537719
       ],
       "se": 0.06475014490402803,
-      "p_boot": 0.09523809523809523,
+      "p_boot": 0.2,
       "n_failed_draws": 0,
       "point_converged": true,
       "point_iters": 37
@@ -2383,7 +2383,7 @@
        0.2014004689536457
       ],
       "se": 0.07013519918095157,
-      "p_boot": 0.2857142857142857,
+      "p_boot": 0.6,
       "n_failed_draws": 0,
       "point_converged": true,
       "point_iters": 37
