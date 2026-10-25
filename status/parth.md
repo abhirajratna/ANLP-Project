@@ -1,6 +1,6 @@
 ---
 member: parth
-updated: 2026-10-25T15:45:59Z
+updated: 2026-10-25T19:32:04Z
 branch: parth/t12-driver
 ---
-T12 sanity 38707 done (4/4 OK, scoring pending); prereg arms 39162/39181/39227 HELD for OSF link, account otherwise idle; Dorigo 39141 failed, waiting for ayush's fix
+Dorigo fit-only rerun 39417 (PR #32) on Ada; prereg arms 39162/39181/39227 HELD for OSF link; T12 -> Jarvis: script under review, calibration protocol being committed, abhiraj acked (no OSF gate)
