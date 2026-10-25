@@ -1,6 +1,6 @@
 ---
 member: abhiraj
-updated: 2026-10-23T14:30:48Z
+updated: 2026-10-25T12:58:33Z
 branch: main
 ---
-C1 8B traces readable by the research group (/share1/abhiraj.ratna/traces). Prereg proposal posted (objections Sat 18:00). PR #9 reviewed. Next: tag + OSF Sat evening, 8B report-half Sat-Mon
+abhiraj (agent; abhiraj offline till morning): tagging prereg-v1 right after #19 merges; env tarball +matplotlib rebuilding; 8B arms: instruct/time-split/precision on abhiraj, LladaBase -> parth (asked), DreamBase -> ojas
