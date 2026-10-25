@@ -106,4 +106,37 @@ Items 7-14 are reserved for the T13 ablation entries (branch `t13-ablations`).
 
 ## After the freeze
 
-(none yet)
+17. **T12 decoder sweep: protocol fixed before any report-half generation (26 Oct 2026).**
+    T12 is not a pre-registered endpoint (`documents/final-plan.md:55-56`) and `prereg-v1`
+    freezes no T12 number. Its choices are fixed here, before any T12 report-half problem is
+    decoded, so none can depend on a report-half result. Plan v2 T12 runs eight decoders on
+    GSM8K, MBPP and HumanEval in bfloat16; the final plan cuts C3b and HumanEval, leaving
+    seven decoders x three speeds on GSM8K and MBPP.
+    - Fixed settings: LLaDA-8B-Instruct, zero-shot chat prompt, gen 256, block 32, greedy,
+      fp16 (as item 2; the C3a calibrator's traces are fp16), on the report halves of
+      `artifacts/split_manifest_{gsm8k,mbpp}.json`.
+    - Platform: Jarvis Labs, 2x RTX PRO 6000 (Blackwell). A machine is not mixed within a
+      task. The fit-half sanity reference ran on Ada (2080 Ti, fp16, lm-eval 5-shot) and
+      scored 83.5 / 84.5 (top-k k=1 / threshold 0.9) against the published 79.3 / 79.2.
+    - Speed of a configuration = 256 N / sum(NFE) over its N problems (total generated
+      positions over total forward passes), not the mean of per-problem ratios.
+    - Knobs are calibrated per task, on fit-half problems only (GSM8K and MBPP each from
+      their own run of `prereg/t12_cal.json`, 25 configurations; 32 and 24 problems in
+      `scripts/jarvis_t12.sh calibrate`). `scripts/pick_knobs.py` refuses any report-half
+      record. top-k, margin and PC-Sampler are exact at k = 2, 4, 8 tokens per step.
+      Threshold, entropy-bounded, KLASS and C3a knobs are interpolated, in log(speed), to
+      2, 4 and 8 tokens per step. They are chosen by speed alone, never by fit-half accuracy.
+    - Matching: for each C3a setting, each baseline is taken at its setting whose tokens per
+      step is nearest, within +-10% of C3a's, else '---'. The difference is the paired
+      accuracy difference on the shared doc_ids, with a 95% percentile CI from 2,000
+      bootstrap resamples of problems. There is no Holm family and no declaration rule:
+      T12 numbers are exploratory.
+    - KLASS: if its fastest calibrated setting cannot reach 8 tokens per step within +-10%
+      (history 2 caps it at 32/3 = 10.7, and reaching 8 needs nearly every position stable
+      by step 3), that setting takes the speed-3 slot. `pick_knobs.py` records
+      `"unmatched_at_target": true` and the tokens per step achieved, and the speed-3
+      comparison reads '---'.
+    - Files: the calibration grid `prereg/t12_cal.json` and `scripts/pick_knobs.py` are at
+      branch `parth/t12-driver`, commit `daff750c251f8e49fb62c40f8fad12b80cb4ee04`. The final per-task grids
+      (`prereg/t12_grid_gsm8k.json`, `prereg/t12_grid_mbpp.json`) are committed before the
+      report-half run, and their hashes are recorded on the coordination bus.
