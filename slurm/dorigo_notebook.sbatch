@@ -11,15 +11,15 @@
 # E2 own/field split, H3 at equal confidence) headless on C1 traces held on Ada,
 # and saves the executed notebook, CSVs and figures. CPU only, no GPU.
 #
-# From a checkout of the branch that has the notebook (ayush/c3-dorigo-notebook
-# until PR #18 merges), on the Ada login node:
+# From a checkout that has this file (main once PRs #18 and #21 merge; until then the
+# branch ayush/dorigo-prereg-hold), on the Ada login node:
 #
-#   cd ~/c3 && git fetch origin && git checkout ayush/c3-dorigo-notebook   # or bring it over
+#   cd ~/c3 && git fetch origin && git checkout ayush/dorigo-prereg-hold   # or main after the merge
 #   mkdir -p /home2/$USER/c3/logs
 #   sbatch slurm/dorigo_notebook.sbatch                                     # 8B base runs, fit half only
 #   C3_RUNS="c1-llada-base" sbatch slurm/dorigo_notebook.sbatch             # one run
 #
-# Ada's ~/c3 has no remote; from a laptop: `git push ada:c3 ayush/c3-dorigo-notebook`.
+# Ada's ~/c3 has no remote; from a laptop: `git push ada:c3 ayush/dorigo-prereg-hold`.
 #
 # Pre-registration. Every C1 arm is pre-registered and the report half stays
 # unread until prereg-v1 is tagged. The default HALF_MODE=fit_only drops the
@@ -58,7 +58,7 @@ die() { echo "[dorigo] refusing: $*" >&2; exit 1; }
 
 REPO_DIR="${C3_REPO:-${SLURM_SUBMIT_DIR:-$PWD}}"
 NB="$REPO_DIR/notebooks/c3_dorigo_methods.ipynb"
-[ -f "$NB" ] || die "$NB not found: submit from a checkout that has the notebook (ayush/c3-dorigo-notebook)"
+[ -f "$NB" ] || die "$NB not found: submit from a checkout that has the notebook (ayush/dorigo-prereg-hold or main)"
 TAG=prereg-v1
 HALF_MODE="${HALF_MODE:-fit_only}"
 case "$HALF_MODE" in
