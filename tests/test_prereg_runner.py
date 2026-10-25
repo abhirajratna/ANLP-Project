@@ -174,6 +174,7 @@ def test_the_runner_stages_this_accounts_runs_and_runs_only_their_arms(job):
     assert got == sorted([("scripts/analyze_traces.py", "c1/Mdlm"),
                           ("scripts/analyze_traces.py", "c1/Mdlm_knots5"),
                           ("scripts/analyze_traces.py", "c1/Mdlm_knots13"),
+                          ("scripts/analyze_traces.py", "c1/Mdlm_additive"),
                           ("scripts/analyze_traces.py", "c1/MdlmTimeSplit"),
                           ("scripts/analyze_e3.py", "e3/Mdlm"),
                           ("scripts/run_controls.py", "t8/Mdlm")])
@@ -187,6 +188,8 @@ def test_the_runner_stages_this_accounts_runs_and_runs_only_their_arms(job):
     assert {_arg(c, "--floor") for c in e1} == {"0.0"}
     assert {_arg(c, "--manifest") for c in e1} == {"artifacts/split_manifest.json",
                                                    "artifacts/split_manifest_timesplit.json"}
+    add = next(c for c in e1 if _arg(c, "--out").endswith("Mdlm_additive"))
+    assert _arg(add, "--context-model") == "additive" and "--skip-regression" in add
     t8 = next(c for c in stub if c[0] == "scripts/run_controls.py")
     assert _arg(t8, "--tokenizer") == "gpt2" and _arg(t8, "--docs") == str(job.corpus)
     assert _arg(t8, "--half") == "report"
@@ -205,18 +208,18 @@ def test_the_runner_stages_this_accounts_runs_and_runs_only_their_arms(job):
 
 def test_a_resubmitted_job_keeps_the_steps_an_earlier_job_finished(job):
     rc, out, calls, stub = job()
-    assert rc == 0 and len(stub) == 6, out
+    assert rc == 0 and len(stub) == 7, out
     (job.out / "e3" / "Mdlm" / ".prereg-done").unlink()        # as if killed during E3
     rc, out, calls, stub = job(N_JOBS="7")                     # N_JOBS changes no number
     assert rc == 0, out
     assert [(c[0], _arg(c, "--out")) for c in stub] == [("scripts/analyze_e3.py",
                                                           str(job.out / "e3" / "Mdlm"))]
-    assert out.count("finished by an earlier job at this commit") == 5
+    assert out.count("finished by an earlier job at this commit") == 6
     # At another commit nothing is kept.
     (job.repo / "prereg" / "deviations.md").write_text("a later change\n")
     _git(job.repo, "commit", "-qam", "after the tag")
     rc, out, calls, stub = job(C3_PREREG_DRYRUN="1", OUT=str(job.out))
-    assert rc == 0 and len(stub) == 6 and "earlier job" not in out, out
+    assert rc == 0 and len(stub) == 7 and "earlier job" not in out, out
 
 
 @pytest.mark.parametrize("case", ["no-ok", "past-tag", "dirty", "dryrun-python"])
@@ -245,7 +248,7 @@ def test_a_dry_run_skips_the_tag_check_and_writes_apart(job):
     _git(job.repo, "commit", "-qam", "after the tag")
     rc, out, calls, stub = job(C3_PREREG_DRYRUN="1")
     assert rc == 0, out
-    assert "DRY RUN" in out and len(stub) == 6
+    assert "DRY RUN" in out and len(stub) == 7
     assert all("/prereg-dryrun/" in c[c.index("--out") + 1] for c in stub)
     assert not job.out.exists()
 

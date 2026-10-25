@@ -98,6 +98,11 @@ for row in "${ARMS[@]}"; do
         --out "$OUT/c1/${LABEL}_knots5" --macro-prefix "COne${LABEL}KnotsFive"
     "$PY" scripts/analyze_traces.py "${COMMON[@]}" --knots 13 --eq-boot 200 --no-figures \
         --out "$OUT/c1/${LABEL}_knots13" --macro-prefix "COne${LABEL}KnotsThirteen"
+    # Context-calibrator sensitivity: plan v2 T6(2)'s additive form (the interacted form is
+    # primary).  The calibrator enters only the field term, so E1/E2 only.
+    "$PY" scripts/analyze_traces.py "${COMMON[@]}" --knots 9 --context-model additive \
+        --skip-regression --no-figures \
+        --out "$OUT/c1/${LABEL}_additive" --macro-prefix "COne${LABEL}Additive"
     # Contamination (T4): the 8B FineWeb arms without the documents flagged at
     # c3.CONTAM_THRESHOLD = 32 of 50 tokens.  The 110M was trained with the calibration
     # documents excluded (artifacts/exclusion_manifest.json), so it has no such variant.

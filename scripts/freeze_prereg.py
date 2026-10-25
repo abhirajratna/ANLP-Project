@@ -218,7 +218,8 @@ def frozen() -> dict:
                              "contamination-clean and time-split runs are robustness checks outside "
                              "the families; gamma_2..gamma_4 Holm within each arm",
             "context_calibrator": "the interacted form (ell x field features, the code default); "
-                                  "plan v2 T6(2)'s additive form is the sensitivity check",
+                                  "plan v2 T6(2)'s additive form is the sensitivity check (the "
+                                  "<label>_additive runs, E1/E2 only)",
             "task_splits": {"rule": "c3.data.fineweb.document_split (seed 20260917) on every set",
                             "manifests": {m: _sha(f"artifacts/split_manifest_{m}.json")
                                           for m in ("gsm8k", "mbpp", "timesplit")}},
@@ -230,8 +231,8 @@ def frozen() -> dict:
                                "documents_sha256": "3374de4de746df125e6bbf888eccf32d0a16859789725b6663c370f93abfcfca"},
             "claim_rule": "an E1 or E2 effect in a Holm family is claimed only if it is declared (c3.stats.declare: interval excludes 0 and |effect| > 2 x floor) AND rejected by Holm within its family at alpha = 0.05; with every floor 0 the floor half is vacuous, so this equals the Holm rejection alone. Each family's size is fixed at every label x primary arm (7 x 2 = 14); a missing member or non-finite p counts as p = 1. scripts/summarize_c1.py applies both halves (field 'claimed') and stars only claimed effects. beta_z (Eq. 2, with and without state FE) is a diagnostic: reported with its interval, outside the Holm families, never a claim. Effects outside the families (other decoder arms, uniform_matched, E3, T8, clean and time-split runs) are reported with their intervals and labelled exploratory; gamma_2..gamma_4 use Holm within each arm",
             "eq23_bootstrap": "1,000 resamples in the primary run and the T8 precision beta_z, 200 "
-                              "in the knot runs, none in the contamination-clean and time-split "
-                              "runs (prereg/deviations.md 15)"},
+                              "in the knot runs, none in the contamination-clean, time-split and "
+                              "additive-calibrator runs (prereg/deviations.md 15)"},
         "open": [],
         "provenance": provenance(),
         "generated_at": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds"),

@@ -65,8 +65,9 @@ Items 7-14 are reserved for the T13 ablation entries (branch `t13-ablations`).
     takes ~8-12 h and a whole FineWeb arm ~2.2-3.3 days. The knot runs are sensitivity
     panels and their intervals are descriptive: at 200 resamples an endpoint's Monte Carlo
     error is ~0.19 SE and p resolves only to 1/200, so nothing is declared from them. The
-    contamination-clean and time-split runs report E1/E2 only (`--skip-regression`). Every
-    other interval, including the E1 and E2 contrasts in the Holm families, stays at 10,000.
+    contamination-clean, time-split and additive-calibrator runs report E1/E2 only
+    (`--skip-regression`). Every other interval, including the E1 and E2 contrasts in the
+    Holm families, stays at 10,000.
 
 16. **Report-half rows read before the tag (disclosure).** On 24 Oct an exploratory
     notebook (`notebooks/c3_dorigo_methods.py`, PR #18; not part of this pre-registration)
