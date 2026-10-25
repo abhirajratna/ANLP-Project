@@ -65,12 +65,13 @@ def primary_arms() -> list[str]:
 def floors() -> dict:
     out = {}
     for fam, path in (("llada", "artifacts/t2_pilot/floor_llada_base_fp16.json"),
-                      ("dream", "artifacts/t2_pilot/floor_dream-7b-base_fp16.json")):
+                      ("dream", "artifacts/t2_pilot/floor_dream-7b-base_fp16.json"),
+                      ("local-110m", "artifacts/t2_pilot/floor_local-110m-v3_fp32.json")):
         p = ROOT / path
         out[fam] = ({"floor_delta": json.loads(p.read_text())["plan_v2"]["floor_delta"],
                      "source": path, "sha256": _sha(path)} if p.exists() else
-                    {"floor_delta": "PENDING: slurm/submit_c1.sh floor dream-7b-base, then "
-                                    "scripts/measure_floor.py, before any Dream arm is analysed",
+                    {"floor_delta": f"PENDING: scripts/measure_floor.py on the {fam} repeats, "
+                                    f"before any {fam} arm is analysed",
                      "source": path})
     out["rule"] = ("one floor per model family, measured on the Base checkpoint (20 reserve "
                    "documents x 5 repeats, t2-pilot design); the Instruct arms use their family's")
