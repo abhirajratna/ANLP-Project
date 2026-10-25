@@ -217,8 +217,9 @@ def frozen() -> dict:
                                "sha256": _sha("artifacts/timesplit_manifest.json"),
                                "documents_sha256": "3374de4de746df125e6bbf888eccf32d0a16859789725b6663c370f93abfcfca"},
             "claim_rule": "an E1 or E2 effect in a Holm family is claimed only if it is declared (c3.stats.declare: interval excludes 0 and |effect| > 2 x floor) AND rejected by Holm within its family at alpha = 0.05; with every floor 0 the floor half is vacuous. Effects outside the families (other decoder arms, uniform_matched, E3, T8, clean and time-split runs) are reported with their intervals and labelled exploratory; gamma_2..gamma_4 use Holm within each arm",
-            "eq23_bootstrap": "1,000 resamples in the primary run, 200 in the knot runs, none in "
-                              "the contamination-clean and time-split runs (prereg/deviations.md 7)"},
+            "eq23_bootstrap": "1,000 resamples in the primary run and the T8 precision beta_z, 200 "
+                              "in the knot runs, none in the contamination-clean and time-split "
+                              "runs (prereg/deviations.md 7)"},
         "open": [],
         "provenance": provenance(),
         "generated_at": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds"),

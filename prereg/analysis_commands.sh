@@ -164,7 +164,7 @@ if have c1-llada-base && have c1t8-llada-base-4bit; then
     "$PY" scripts/run_controls.py --traces "$TRACES/c1-llada-base/c1-llada-base.dataset.json" \
         --precision-trace "$TRACES/c1t8-llada-base-4bit/c1t8-llada-base-4bit.dataset.json" \
         --controls precision --split half --half report --manifest artifacts/split_manifest.json \
-        "${BOOT[@]}" --eq-boot 10000 --n-jobs "$N_JOBS" --knots 9 \
+        "${BOOT[@]}" --eq-boot 1000 --n-jobs "$N_JOBS" --knots 9 \
         --out "$OUT/t8/LladaBasePrecision" --macro-prefix "TEightLladaBasePrecision"
 fi
 
