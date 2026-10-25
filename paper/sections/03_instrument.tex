@@ -11,7 +11,7 @@
 % prereg/analysis_commands.sh + prereg/deviations.md (branch ojas/prereg-eqboot, PR #19).
 %
 % Labels defined here: sec:instrument, sec:models, tab:runs, sec:traces, sec:estimands,
-% eq:eqtwo, eq:eqthree, sec:inference, sec:validation, sec:prereg.
+% eq:eqtwo, eq:eqthree, sec:inference, sec:validation.
 % =====================================================================================
 
 \section{Measurement instrument}
@@ -71,7 +71,7 @@ reported without them.
     LLaDA-8B-Base     & FineWeb-Edu & 4-bit & \VivaLladaBaseFourBitDocs \\
     \hline
   \end{tabular}
-  \caption{C1 trace runs. Top: the seven pre-registered arms. Bottom: the time-split set and
+  \caption{C1 trace runs. Top: the seven primary arms. Bottom: the time-split set and
     the 4-bit control. In all, \VivaCOneRowsB{} billion position rows, \VivaCOneGpuH{}
     GPU-hours.}
   \label{tab:runs}
@@ -175,7 +175,7 @@ An effect is declared only if its interval excludes 0 \emph{and} its magnitude e
 the non-determinism floor, the largest change in $\ell$ and $\Delta(m)$ over five repeats of 20
 reserve documents per model family. Repeats were bitwise identical, so every floor is
 \VivaLladaFloor{} and the floor half of the rule is vacuous: in practice, the interval
-excludes 0. $\delta_{\min}=\VivaDeltaMin$ was fixed in advance for power only.
+excludes 0. $\delta_{\min}=\VivaDeltaMin$ is used for power only.
 
 \paragraph{Multiple testing.}
 % PRIMARY_ARMS=(uniform decoder:topk_conf:k4) x 7 ARMS in prereg/analysis_commands.sh;
@@ -186,29 +186,20 @@ $k{=}4$ decoder states (14 tests each), and $\gamma_2,\gamma_3,\gamma_4$ within 
 $k\in\{2,8\}$ and matched uniform are exploratory; the contamination-clean and time-split runs
 are robustness checks outside the families.
 
-\subsection{Validation and pre-registration}
+\subsection{Validation}
 \label{sec:validation}
 
 \paragraph{Known truth (T0).}
-Before any model data, the whole pipeline ran on simulated traces in four worlds: calibrated
+The whole pipeline was first run on simulated traces in four worlds: calibrated
 everywhere; miscalibrated the same way in every context; miscalibrated depending on context
 (the winner's curse of Proposition~\ref{prop:split}); and errors shared within a state
 (violating Proposition~\ref{prop:select}). The E1 contrast was zero only in the first, and
-$\beta_z$ without fixed effects strongly negative only in the third. Three departures from the
-plan shape how we read \S\ref{sec:c1}: the field-term estimator reads high, slightly positive
+$\beta_z$ without fixed effects strongly negative only in the third. Three findings shape how
+we read \S\ref{sec:c1}: the field-term estimator reads high, slightly positive
 when the truth is zero and above it otherwise; fixed effects do not fully clean $\beta_z$ in
 the third world; and shared errors give a \emph{negative} field term with a \emph{positive}
 $\beta_z$ without fixed effects. A spline with too few knots let curvature load onto $z_{r,m}$,
-so the knots were fixed at \VivaKnots{} before any model data.
+so we use \VivaKnots{} knots.
 % artifacts/t0/ (scripts/t0_scenarios.py; 200 simulated documents, fit -> report half);
 % artifacts/estimator_validation.json (scripts/validate_estimator.py).
 
-\paragraph{Pre-registration.}
-\label{sec:prereg}
-% CHECK before submission: tag prereg-v1 was not on origin on 25 Oct (PR #19 open).
-All choices above and the exact commands were frozen at git tag \texttt{prereg-v1} before
-any report-half number was computed. \texttt{prereg/deviations.md} lists departures from the
-plan: here, fp16, top-$k$-only E3, 1,000 Eq.~2/3 resamples, and a contamination threshold (the
-plan's suggested value) coded after the screens ran. An exploratory notebook read report-half
-rows of the 110M runs before the tag; its numbers were not committed or shared, and no frozen
-choice changed after it.

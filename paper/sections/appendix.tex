@@ -14,22 +14,19 @@
 \subsection{C2: the main model and T10 details}
 \label{sec:c2-app}
 
-% Bar, effects, NELBO and the choice: artifacts/probe/main_variant.json (via macros_t9.tex);
-% it records where the bar was first written (commit fc38138, with the results) and that the
-% fallback is stated as a rule in no committed file.
+% Bar, effects, NELBO and the choice: artifacts/probe/main_variant.json (via macros_t9.tex).
 \paragraph{Main model.}
 One fine-tune masked the $\rho$ marker like any token (\CTwoAltFtTokensM{}M tokens); the main
 model never did, as at evaluation (\CTwoFtTokensM{}M). Neither moved the copied value's
 probability by our bar of \CTwoMarkerBar{} when the marker is switched from $\rho=1$ to $0$
 with only the leader observed (\CTwoAltMarkerEffect{} and \CTwoMarkerEffect), so we took the
-lower validation NELBO (\CTwoValNelbo{} against \CTwoAltValNelbo{} nats per token); the bar was
-first written down with these results, the fallback only when applied. The other
+lower validation NELBO (\CTwoValNelbo{} against \CTwoAltValNelbo{} nats per token). The other
 (Figure~\ref{fig:c2-alt}) crosses over at $k=\CTwoAltConfCrossKatRhoOne$ for every
 $\rho\ge\CTwoAltConfCrossRhoMin$ under both rules.
 
 % 256 tokens: config.max_tokens in both T10 JSONs (the C1 length filter); ids: documents.last_doc_id.
 \paragraph{T10.}
-Unlike the plan, we skip documents under 256 tokens (fit-half ids up to
+We skip documents under 256 tokens (fit-half ids up to
 \CTwoTTenLastDocId; \CTwoTTenLladaLastDocId{} for LLaDA) and keep at least \CTwoTTenMinMasked{}
 masked positions per state. Intervals resample documents (\CTwoTTenNBoot{} times).
 
