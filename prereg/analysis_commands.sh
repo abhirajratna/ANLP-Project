@@ -19,9 +19,10 @@
 # ~310-475 s (extrapolated) with one worker on a whole FineWeb run (~120M rows, fit and report halves;
 # slurm/prereg_analysis.sbatch), so it runs at 1,000 resamples (deviation 15).
 #
-# Nothing here is fitted on the report half: calibrators, splines, knots, ell bins
-# and temperatures come from the fit half (manifest value 0); every number comes
-# from the report half (value 1).  Intervals: 10,000 document-bootstrap resamples
+# Every nuisance choice comes from the fit half (manifest value 0): calibrators, knots,
+# ell bins, temperatures and the f(ell) offset of Eq. 2/3.  Every reported number, and
+# the coefficients and curves behind it (beta_z, gamma, the E3 type terms, ECE bin
+# edges), is estimated on the report half (value 1).  Intervals: 10,000 document-bootstrap resamples
 # (Eq. 2/3: 1,000, deviation 15), percentile; declared only if the interval excludes 0 and |effect| > 2 x floor.
 set -euo pipefail
 

@@ -149,8 +149,12 @@ def main() -> int:
         if not tag.isalpha():
             continue        # a model label LaTeX cannot name; its numbers are in summary.json
         for key, nm in (("contrast", "Contrast"), ("field_contrast", "Field")):
+            if "p_holm" not in r[key]:
+                continue    # exploratory: no Holm p
             mac.append(f"\\newcommand{{\\{a.macro_prefix}{nm}Holm{tag}}}"
-                       f"{{{r[key].get('p_holm', float('nan')):.4f}}}")
+                       f"{{{r[key]['p_holm']:.4f}}}")
+            mac.append(f"\\newcommand{{\\{a.macro_prefix}{nm}Claimed{tag}}}"
+                       f"{{{'yes' if r[key]['claimed'] else 'no'}}}")
     (out / "macros.tex").write_text("\n".join(mac) + "\n")
     print(f"[summary] {len(rows)} rows -> {out}")
     return 0

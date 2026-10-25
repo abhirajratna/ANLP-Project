@@ -147,8 +147,11 @@ def frozen() -> dict:
                       "eq23_resamples": "1,000 (knot runs 200): settled.eq23_bootstrap",
                       "interval": "percentile, 95%"},
         "split": {"manifest": "artifacts/split_manifest.json", "fit_half": 0, "report_half": 1,
-                  "rule": "everything fitted (calibrators, splines, temperatures, C3) uses the "
-                          "fit half; every reported number comes from the report half",
+                  "rule": "every nuisance choice (calibrators, knots, ell bins, temperatures, "
+                          "the f(ell) offset of Eq. 2/3, C3) comes from the fit half; every "
+                          "reported number, and the coefficients and curves behind it (beta_z, "
+                          "gamma, the E3 type terms, ECE bin edges), is estimated on the report "
+                          "half",
                   "manifests": {p: _sha(p) for p in (
                       "artifacts/split_manifest.json", "artifacts/split_manifest_gsm8k.json",
                       "artifacts/split_manifest_mbpp.json",
