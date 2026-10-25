@@ -1,6 +1,6 @@
 ---
 member: ojas
-updated: 2026-10-25T13:10:26Z
-branch: ojas/paper-limitations
+updated: 2026-10-25T21:01:50Z
+branch: main
 ---
-Limitations draft + page budget: PR #26 (ojas/paper-limitations); §7 Related: PR #24
+paper/slides audit against frozen prereg-v1 (ojas/paper-prereg-audit)
