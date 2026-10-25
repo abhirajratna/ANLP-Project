@@ -104,8 +104,7 @@ Each decoder runs at three settings of its own speed knob ($k$, $\tau$, $\gamma$
 \dots), and speed is measured as mean tokens per step. For each C3a setting, each decoder is
 taken at the setting closest in mean tokens per step, within $\pm10\%$, or left out
 (Table~\ref{tab:c3-speed}). The accuracy difference is paired on the shared problems, with a
-2,000-resample bootstrap interval over problems. This rule was fixed before any report-half
-number was read. The sanity check, cost and curves are in Appendix~\ref{sec:c3-app}.
+2,000-resample bootstrap interval over problems. The sanity check, cost and curves are in Appendix~\ref{sec:c3-app}.
 
 % TODO(outputs): the value of C3a's primary alpha (and which of the three settings it is) has
 %   no macro; add one (e.g. \CThreeTTwelveAlpha) and state it in the caption.
