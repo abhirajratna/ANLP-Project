@@ -1,6 +1,6 @@
 ---
 member: ayush
-updated: 2026-10-24T20:43:43Z
+updated: 2026-10-25T07:06:29Z
 branch: ayush/c3-dorigo-notebook
 ---
-ayush: Dorigo notebook (PR #18) ran on 110M v3 traces; adding E2 split + H3 equal-confidence; next paper/ skeleton
+ayush: Dorigo notebook PR #18 @ 2b72e12: fit_only prereg mode + slurm/dorigo_notebook.sbatch; asked abhiraj for 8B (HF upload or Ada run); next paper/ skeleton
