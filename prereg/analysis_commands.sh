@@ -16,13 +16,13 @@
 # 21 min and 38 GB; E3, 3 min and 21 GB; T8, 80 min and 52 GB (all at 200 resamples).
 # Run each on a CPU job with >= 64 GB (u22 gives one CPU per 3 GB: slurm/CLUSTER.md).
 # The Eq. 2/3 bootstrap refits per resample, ~3.7 s each on 150 documents with 8 CPUs, and
-# ~310-475 s with one worker on a whole FineWeb run (~120M rows, fit and report halves;
-# slurm/prereg_analysis.sbatch), so it runs at 1,000 resamples (deviation 7).
+# ~310-475 s (extrapolated) with one worker on a whole FineWeb run (~120M rows, fit and report halves;
+# slurm/prereg_analysis.sbatch), so it runs at 1,000 resamples (deviation 15).
 #
 # Nothing here is fitted on the report half: calibrators, splines, knots, ell bins
 # and temperatures come from the fit half (manifest value 0); every number comes
 # from the report half (value 1).  Intervals: 10,000 document-bootstrap resamples
-# (Eq. 2/3: 1,000, deviation 7), percentile; declared only if the interval excludes 0 and |effect| > 2 x floor.
+# (Eq. 2/3: 1,000, deviation 15), percentile; declared only if the interval excludes 0 and |effect| > 2 x floor.
 set -euo pipefail
 
 if [ "${C3_REPORT_HALF_OK:-}" != "1" ]; then
