@@ -98,6 +98,14 @@ def select_records(records, manifest, half, limit, shard, num_shards):
     return [r for r in records if int(r["doc_id"]) % num_shards == shard]
 
 
+def shard_contexts(task, all_records, records, pool, k) -> dict:
+    """The lm-eval few-shot contexts of this shard's ``records``.  The draws run once, in
+    doc_id order, over the unsharded selection ``all_records``: drawing over a shard's own
+    records would give each problem different examples at a different ``--num-shards``."""
+    ctx = lmeval_contexts(task, all_records, pool, k)
+    return {int(r["doc_id"]): ctx[int(r["doc_id"])] for r in records}
+
+
 def repair_tail(path: Path) -> None:
     """Cut a torn last line (a killed write) so the next record starts on its own line."""
     if not path.exists() or path.stat().st_size == 0:

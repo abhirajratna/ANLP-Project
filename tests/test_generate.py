@@ -79,6 +79,21 @@ def test_lmeval_contexts_follow_lm_eval_gsm8k():
     assert lmeval_prompt(ctx[0], tok) == tok("<user>" + ctx[0] + "<assistant>")["input_ids"]
 
 
+def test_lmeval_contexts_do_not_depend_on_the_number_of_shards():
+    pool = [{"question": f"P{i}", "answer": f"step {i}\n#### {i}"} for i in range(20)]
+    recs = [{"doc_id": i, "question": "q" * (i + 1)} for i in range(12)]
+    full = run_t12.select_records(recs, None, "all", 10, 0, 1)
+    one = run_t12.shard_contexts("gsm8k", full, full, pool, 3)
+    two = {}
+    for shard in (0, 1):
+        mine = run_t12.select_records(recs, None, "all", 10, shard, 2)
+        two.update(run_t12.shard_contexts("gsm8k", full, mine, pool, 3))
+    assert one == two and sorted(two) == list(range(10))
+    # what the driver did before: draws over the shard's own records change the examples
+    own = lmeval_contexts("gsm8k", run_t12.select_records(recs, None, "all", 10, 1, 2), pool, 3)
+    assert own[1] != one[1]
+
+
 def test_driver_selects_the_half_limit_and_shard(tmp_path):
     recs = [{"doc_id": i} for i in range(20)]
     man = tmp_path / "split.json"
