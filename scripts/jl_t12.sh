@@ -64,7 +64,9 @@ JL_REGION="${JL_REGION:-IN1}"
 JL_STORAGE="${JL_STORAGE:-100}"
 JL_TEMPLATE="${JL_TEMPLATE:-pytorch}"
 JL_LIFECYCLE="${JL_LIFECYCLE:-keep}"
-export PATH="$HOME/.local/bin:$PATH"
+export PATH="$PATH:$HOME/.local/bin"
+# Git Bash would rewrite the instance paths we pass to jl (/home/... -> C:/Program Files/Git/home/...)
+export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL="*"
 KNOBS=(BUDGET_HOURS NEW_BUDGET CAL_GRID CAL_MAX_HOURS CHECK_LIMIT CHECK_MAX_HOURS CHECK_MAX_SPF
        MAX_RESTARTS RUN_ARGS PRECISION NGPU ALLOW_BF16 POLL_SECONDS STOP_GRACE)
 
@@ -261,7 +263,7 @@ except ValueError:
 for i in (d.get("instances", []) if isinstance(d, dict) else d):
     if i.get("name") == sys.argv[1]:
         print(i["machine_id"], i["status"])
-' "$1" | tail -n 1
+' "$1" | tr -d '\r' | tail -n 1
 }
 
 # The latest local run record of an instance.
@@ -274,7 +276,7 @@ except ValueError:
     sys.exit(0)
 if d:
     print(d[0]["run_id"])
-'
+' | tr -d '\r'
 }
 
 # running | succeeded | failed | unknown | none (no run was ever started on the instance)
@@ -287,7 +289,7 @@ try:
     print(json.load(sys.stdin).get("state", "unknown"))
 except ValueError:
     print("unknown")
-'
+' | tr -d '\r'
 }
 
 pause_instance() {
@@ -387,7 +389,7 @@ cmd_launch() {
         done
         info "commit $short is on origin with both per-task grids"
     fi
-    if [ "$(timeout 120 jl ssh-key list --json 2>/dev/null | "$PYJ" -c 'import json, sys; d = json.load(sys.stdin); print(len(d.get("ssh_keys", d) if isinstance(d, dict) else d))' 2>/dev/null || echo ?)" = 0 ]; then
+    if [ "$(timeout 120 jl ssh-key list --json 2>/dev/null | "$PYJ" -c 'import json, sys; d = json.load(sys.stdin); print(len(d.get("ssh_keys", d) if isinstance(d, dict) else d))' 2>/dev/null | tr -d '\r' || echo ?)" = 0 ]; then
         die "no SSH key on the Jarvis account: jl ssh-key add ~/.ssh/id_ed25519.pub --name laptop (jl run needs one)"
     fi
     if [ -z "${ON:-}" ]; then
@@ -399,15 +401,18 @@ except ValueError:
     print("?"); sys.exit(0)
 rows = d.get("gpus", d) if isinstance(d, dict) else d
 want, reg = sys.argv[1].lower(), sys.argv[2].upper()
-for r in rows:
-    if str(r.get("gpu_type", "")).lower() == want and str(r.get("region", "")).upper() == reg:
-        print(r.get("effective_num_free_devices", r.get("num_free_devices")), r.get("price_per_hour"))
-        break
+same = [r for r in rows if str(r.get("gpu_type", "")).lower() == want]
+hit = [r for r in same if str(r.get("region", "")).upper() == reg]
+if hit:
+    print(hit[0].get("effective_num_free_devices", hit[0].get("num_free_devices")), hit[0].get("price_per_hour"))
+elif same:
+    print("noregion", ",".join(sorted({str(r.get("region")) for r in same})))
 else:
     print("absent", ",".join(sorted({str(r.get("gpu_type")) for r in rows})))
-' "$JL_GPU" "$JL_REGION")"
+' "$JL_GPU" "$JL_REGION" | tr -d '\r')"
         case "$row" in
             "?") info "warning: could not read \`jl gpus --json\`; jl run will say if the GPU is unavailable" ;;
+            noregion*) info "warning: $JL_GPU is listed only in ${row#noregion }, not in $JL_REGION; jl run will say if it cannot be created" ;;
             absent*) die "GPU type $JL_GPU is not offered in $JL_REGION (offered: ${row#absent }); see \`jl gpus\`, set JL_GPU/JL_REGION" ;;
             *) info "$JL_GPU in $JL_REGION: ${row%% *} free, price ${row#* } per hour (per GPU?)"
                [ "${row%% *}" -ge "$JL_NUM_GPUS" ] 2>/dev/null || die "only ${row%% *} $JL_GPU free in $JL_REGION, need $JL_NUM_GPUS" ;;
@@ -420,7 +425,7 @@ d = json.load(sys.stdin)
 for i in (d.get("instances", []) if isinstance(d, dict) else d):
     if str(i.get("machine_id")) == sys.argv[1] and i.get("status") == "Running":
         print(i["name"])
-' "$ON")"
+' "$ON" | tr -d '\r')"
         [ -n "$name" ] || die "instance $ON is not a Running instance of this account (jl resume $ON first)"
     else
         name="t12-$phase-$short-$(date +%m%d%H%M)"
@@ -449,9 +454,9 @@ EOF
     LAUNCH_PHASE="$phase"
     trap 'launch_exit' EXIT
     trap 'echo "[jl_t12] interrupted"; exit 130' INT TERM
-    local rc=0
-    (cd "$dir" && jl run "${args[@]}" --yes) 2>&1 | tee -a "$dir/launch.log" || rc="${PIPESTATUS[0]}"
-    info "jl run returned $rc"
+    JOB_RC=0
+    (cd "$dir" && jl run "${args[@]}" --yes) 2>&1 | tee -a "$dir/launch.log" || JOB_RC="${PIPESTATUS[0]}"
+    info "jl run returned $JOB_RC"
     return 0
 }
 
@@ -459,6 +464,7 @@ EOF
 launch_exit() {
     local rc=$?
     trap - EXIT INT TERM
+    [ "${JOB_RC:-0}" = 0 ] || rc="$JOB_RC"
     finalize "$LAUNCH_PHASE" || rc=$?
     exit "$rc"
 }
