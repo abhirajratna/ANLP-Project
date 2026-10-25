@@ -7,8 +7,8 @@ Values are read from the code that applies them (c3 constants, the G1/G2 gates,
 the trace design, the declaration rule), not retyped, so the frozen file cannot
 drift from what runs.  Run it on a clean tree right before tagging: the git
 commit it records is the one the pre-registration points at, and a dirty tree
-is recorded as such.  Items the plan leaves open are listed under ``open``
-rather than decided here.
+is recorded as such.  Choices plan v2 leaves open are recorded under ``settled``,
+with who settled them and when (``settled_by``); ``open`` must be empty at the tag.
 """
 from __future__ import annotations
 
@@ -144,10 +144,14 @@ def frozen() -> dict:
             "implementation": "c3.stats.declare",
             "source": inspect.getsource(stats.declare)},
         "bootstrap": {"unit": "document", "resamples": consts["N_BOOT"],
+                      "eq23_resamples": "1,000 (knot runs 200): settled.eq23_bootstrap",
                       "interval": "percentile, 95%"},
         "split": {"manifest": "artifacts/split_manifest.json", "fit_half": 0, "report_half": 1,
-                  "rule": "everything fitted (calibrators, splines, temperatures, C3) uses the "
-                          "fit half; every reported number comes from the report half",
+                  "rule": "every nuisance choice (calibrators, knots, ell bins, temperatures, "
+                          "the f(ell) offset of Eq. 2/3, C3) comes from the fit half; every "
+                          "reported number, and the coefficients and curves behind it (beta_z, "
+                          "gamma, the E3 type terms, ECE bin edges), is estimated on the report "
+                          "half",
                   "manifests": {p: _sha(p) for p in (
                       "artifacts/split_manifest.json", "artifacts/split_manifest_gsm8k.json",
                       "artifacts/split_manifest_mbpp.json",
@@ -198,16 +202,41 @@ def frozen() -> dict:
                                       for m in ("llada-8b-base", "dream-7b-base")},
                           "deviation": "the threshold was fixed in code after the 29 Sep "
                                        "screens were seen (prereg/deviations.md)"},
-        "open": [
-            "CONFIRM the E1/E2 Holm-family arms: " + ", ".join(primary_arms()) + " (decoder "
-            "k = 2, 8 and uniform_matched exploratory)",
-            "CONFIRM the interacted context calibrator (code default) over plan v2 T6(2)'s "
-            "additive form; the additive fit is the sensitivity check",
-            "CONFIRM the GSM8K/MBPP split: the FineWeb rule applied to the task test sets",
-            "CONFIRM log-odds temperature as the T8 primary (softmax with the even-tail "
-            "approximation is a sensitivity row; prereg/deviations.md)",
-            "CONFIRM the time-split set (artifacts/timesplit_manifest.json on branch "
-            "t3-110m-probe, sha256 3374de4d...)"],
+        # The items plan v2 left open, settled on the team bus (coord-bus message ids).
+        "settled_by": {
+            "holm_families, context_calibrator, task_splits, t8_temperature, time_split_set":
+                "abhiraj's proposal 20261023T141455Z-abhiraj-2a71 (23 Oct), no objection by "
+                "its Sat 24 Oct 18:00 IST deadline",
+            "eq23_bootstrap": "1,000 in the primary run: abhiraj, 23 Oct "
+                              "(20261023T141840Z-abhiraj-f715); 200 in the knot runs: proposed by "
+                              "ojas 23 Oct (20261023T205808Z-ojas-7051), accepted by abhiraj 25 Oct "
+                              "(20261025T125727Z-abhiraj-8b99); T8 precision at 1,000: ojas, 25 Oct",
+            "claim_rule": "ojas, 25 Oct (reviewed by abhiraj, 20261025T130122Z-abhiraj-f88f)",
+            "note": "the 25 Oct choices postdate the 24 Oct report-half exposure "
+                    "(prereg/deviations.md 16); none depends on data"},
+        "settled": {
+            "holm_families": "E1 Delta(32)-Delta(1) and E2 field(32)-field(1), each across the "
+                             "models x datasets arms of analysis_commands.sh on " + " and ".join(primary_arms())
+                             + "; decoder k = 2, 8 and uniform_matched exploratory; the "
+                             "contamination-clean and time-split runs are robustness checks outside "
+                             "the families; gamma_2..gamma_4 Holm within each arm",
+            "context_calibrator": "the interacted form (ell x field features, the code default); "
+                                  "plan v2 T6(2)'s additive form is the sensitivity check (the "
+                                  "<label>_additive runs, E1/E2 only)",
+            "task_splits": {"rule": "c3.data.fineweb.document_split (seed 20260917) on every set",
+                            "manifests": {m: _sha(f"artifacts/split_manifest_{m}.json")
+                                          for m in ("gsm8k", "mbpp", "timesplit")}},
+            "t8_temperature": "log-odds per mask-rate bin, c = sigma(ell / T), is the primary row; "
+                              "softmax (top-20 plus an even tail) is a sensitivity row",
+            "time_split_set": {"manifest": "artifacts/timesplit_manifest.json",
+                               "sha256": _sha("artifacts/timesplit_manifest.json"),
+                               "documents": "runs/corpus/t3/timesplit_docs.jsonl (not in git)",
+                               "documents_sha256": "3374de4de746df125e6bbf888eccf32d0a16859789725b6663c370f93abfcfca"},
+            "claim_rule": "an E1 or E2 effect in a Holm family is claimed only if it is declared (c3.stats.declare: interval excludes 0 and |effect| > 2 x floor) AND rejected by Holm within its family at alpha = 0.05; with every floor 0 the floor half is vacuous, so this equals the Holm rejection alone. Each family's size is fixed at every label x primary arm (7 x 2 = 14); a missing member or non-finite p counts as p = 1. scripts/summarize_c1.py applies both halves (field 'claimed') and stars only claimed effects. beta_z (Eq. 2, with and without state FE) is a diagnostic: reported with its interval, outside the Holm families, never a claim. Effects outside the families (other decoder arms, uniform_matched, E3, T8, clean and time-split runs) are reported with their intervals and labelled exploratory; gamma_2..gamma_4 use Holm within each arm",
+            "eq23_bootstrap": "1,000 resamples in the primary run and the T8 precision beta_z, 200 "
+                              "in the knot runs, none in the contamination-clean, time-split and "
+                              "additive-calibrator runs (prereg/deviations.md 15)"},
+        "open": [],
         "provenance": provenance(),
         "generated_at": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds"),
     }

@@ -1,4 +1,5 @@
 """Phase C: the split manifest, gate G1, and the frozen pre-registration config."""
+import importlib.util
 import json
 import subprocess
 import sys
@@ -121,7 +122,30 @@ def test_summarize_c1_applies_holm(tmp_path):
         assert r["contrast"]["holm_family"] == "E1" and 0 <= r["contrast"]["p_holm"] <= 1
         assert r["contrast"]["p_holm"] >= r["contrast"]["p_boot"]
         assert r["gamma"]["gamma_2"] is None or "p_holm" in r["gamma"]["gamma_2"]
+        assert r["contrast"]["claimed"] == (r["contrast"]["holm_reject"]
+                                            and r["contrast"]["declared"])
     assert (tmp_path / "sum" / "table.tex").exists()
+    # A family member with no results still counts (p = 1), so the family cannot shrink.
+    arm = s["rows"][0]["arm"]
+    _run("scripts/summarize_c1.py", "--results", f"Ctx={tmp_path / 'Ctx'}",
+         f"Cal={tmp_path / 'Cal'}", "--primary-arms", arm, "decoder:not_run",
+         "--out", tmp_path / "sum2")
+    s2 = json.loads((tmp_path / "sum2" / "c1_summary.json").read_text())
+    assert s2["holm_missing"] == ["Ctx:decoder:not_run", "Cal:decoder:not_run"]
+    for r, r2 in zip(s["rows"], s2["rows"]):
+        assert r2["contrast"]["holm_m"] == 4
+        assert r2["contrast"]["p_holm"] >= r["contrast"]["p_holm"]
+
+
+def test_summarize_c1_macro_tags_are_letters_only():
+    spec = importlib.util.spec_from_file_location("summarize_c1",
+                                                  ROOT / "scripts" / "summarize_c1.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert mod.arm_tag("uniform") == "Uni"
+    assert mod.arm_tag("decoder:topk_conf:k4") == "DecTopkConfKFour"   # the primary decoder arm
+    assert mod.arm_tag("decoder:topk_conf:k2") != mod.arm_tag("decoder:topk_conf:k8")
+    assert all(mod.arm_tag(a).isalpha() for a in ("uniform_matched", "decoder:topk_conf:k8"))
 
 
 def test_frozen_config_records_the_new_choices(tmp_path):

@@ -67,11 +67,13 @@
 #     T8: 4-6 h, 105 GB.  The 30M-row time-split run: ~15 min, 20 GB.
 #   - Eq. 2/3: 118 s per resample at 30M rows with one worker (two resamples 2,408 s in
 #     all, six 2,882 s), i.e. ~310-475 s at 120M (work grows with rows^0.7-1.0), summed
-#     over the 7 mask kinds and 4 fits.  With --eq-boot 1000 and 3 workers that is
-#     29-44 h per run, and the primary and the two knot runs make three: ~90-130 h, more
-#     than the 4-day limit with E3 and T8 added.  Submit it again: a step that finished
-#     is kept, but one that was killed starts over, so a single step (~45 h) must fit
-#     in a job.  --skip-regression runs (clean, time-split) cost minutes.
+#     over the 7 mask kinds and 4 fits (extrapolated, not measured at 120M).  With 3
+#     workers that is 29-45 h for the primary run (--eq-boot 1000) and ~7-10 h for each
+#     knot run (--eq-boot 200), so a whole FineWeb arm (primary, two knot runs, the
+#     additive and clean runs, E3, T8) takes ~50-76 h: it fits the 4-day limit, and two
+#     such arms on one account do not fit one job.  Submit it again: a step that finished
+#     is kept, but one that was killed starts over, so a single step (~45 h) must fit in a
+#     job.  --skip-regression runs (clean, time-split, additive) cost ~45 min each.
 # A 40-CPU, 120,000 MB, 4-day job is the most the account can ask for; no --constraint:
 # nothing here uses a GPU, and 2080 Ti nodes are rarely free of other jobs' CPUs.
 #

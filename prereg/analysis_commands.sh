@@ -15,12 +15,15 @@
 # 21625, development only; the report half is the same size): E1/E2 without Eq. 2/3,
 # 21 min and 38 GB; E3, 3 min and 21 GB; T8, 80 min and 52 GB (all at 200 resamples).
 # Run each on a CPU job with >= 64 GB (u22 gives one CPU per 3 GB: slurm/CLUSTER.md).
-# The Eq. 2/3 bootstrap refits per resample, ~3.7 s each on 150 documents with 8 CPUs.
+# The Eq. 2/3 bootstrap refits per resample, ~3.7 s each on 150 documents with 8 CPUs, and
+# ~310-475 s (extrapolated) with one worker on a whole FineWeb run (~120M rows, fit and report halves;
+# slurm/prereg_analysis.sbatch), so it runs at 1,000 resamples (deviation 15).
 #
-# Nothing here is fitted on the report half: calibrators, splines, knots, ell bins
-# and temperatures come from the fit half (manifest value 0); every number comes
-# from the report half (value 1).  Intervals: 10,000 document-bootstrap resamples,
-# percentile; declared only if the interval excludes 0 and |effect| > 2 x floor.
+# Every nuisance choice comes from the fit half (manifest value 0): calibrators, knots,
+# ell bins, temperatures and the f(ell) offset of Eq. 2/3.  Every reported number, and
+# the coefficients and curves behind it (beta_z, gamma, the E3 type terms, ECE bin
+# edges), is estimated on the report half (value 1).  Intervals: 10,000 document-bootstrap resamples
+# (Eq. 2/3: 1,000, deviation 15), percentile; declared only if the interval excludes 0 and |effect| > 2 x floor.
 set -euo pipefail
 
 if [ "${C3_REPORT_HALF_OK:-}" != "1" ]; then
@@ -84,18 +87,23 @@ for row in "${ARMS[@]}"; do
     read -r LABEL RUN MANIFEST FLOOR DATA <<<"$row"
     have "$RUN" || continue
     T="$TRACES/$RUN/$RUN.dataset.json"
-    COMMON=(--traces "$T" --split half --manifest "$MANIFEST" "${BOOT[@]}" --eq-boot 10000
+    COMMON=(--traces "$T" --split half --manifest "$MANIFEST" "${BOOT[@]}" --eq-boot 1000
             --floor "$FLOOR" --n-jobs "$N_JOBS")
     # Primary: Delta(m), Delta(32) - Delta(1), ECE and smooth ECE, the Prop. 2
     # decomposition (isotonic own, interacted context calibrator), ICC, Eq. 2/3 with
     # and without state FE, the native gap; 9 knots.
     "$PY" scripts/analyze_traces.py "${COMMON[@]}" --knots 9 \
         --out "$OUT/c1/$LABEL" --macro-prefix "COne$LABEL"
-    # Knot sensitivity panel (reported alongside, never instead).
-    "$PY" scripts/analyze_traces.py "${COMMON[@]}" --knots 5 --no-figures \
+    # Knot sensitivity panel (reported alongside, never instead); Eq. 2/3 at 200 resamples.
+    "$PY" scripts/analyze_traces.py "${COMMON[@]}" --knots 5 --eq-boot 200 --no-figures \
         --out "$OUT/c1/${LABEL}_knots5" --macro-prefix "COne${LABEL}KnotsFive"
-    "$PY" scripts/analyze_traces.py "${COMMON[@]}" --knots 13 --no-figures \
+    "$PY" scripts/analyze_traces.py "${COMMON[@]}" --knots 13 --eq-boot 200 --no-figures \
         --out "$OUT/c1/${LABEL}_knots13" --macro-prefix "COne${LABEL}KnotsThirteen"
+    # Context-calibrator sensitivity: plan v2 T6(2)'s additive form (the interacted form is
+    # primary).  The calibrator enters only the field term, so E1/E2 only.
+    "$PY" scripts/analyze_traces.py "${COMMON[@]}" --knots 9 --context-model additive \
+        --skip-regression --no-figures \
+        --out "$OUT/c1/${LABEL}_additive" --macro-prefix "COne${LABEL}Additive"
     # Contamination (T4): the 8B FineWeb arms without the documents flagged at
     # c3.CONTAM_THRESHOLD = 32 of 50 tokens.  The 110M was trained with the calibration
     # documents excluded (artifacts/exclusion_manifest.json), so it has no such variant.
@@ -106,7 +114,7 @@ for row in "${ARMS[@]}"; do
     esac
     if [ -n "$MODEL" ]; then
         "$PY" scripts/analyze_traces.py "${COMMON[@]}" --knots 9 \
-            --exclude-docs "artifacts/contamination_$MODEL.json" \
+            --exclude-docs "artifacts/contamination_$MODEL.json" --skip-regression \
             --out "$OUT/c1/${LABEL}_clean" --macro-prefix "COne${LABEL}Clean"
     fi
 done
@@ -124,7 +132,7 @@ for row in "LladaBaseTimeSplit c1ts-llada-base $FLOOR_LLADA" "DreamBaseTimeSplit
     T="$TRACES/$RUN/$RUN.dataset.json"
     [ -e "$T" ] || { echo "[prereg] $RUN not collected; skipped"; continue; }
     "$PY" scripts/analyze_traces.py --traces "$T" --split half \
-        --manifest artifacts/split_manifest_timesplit.json "${BOOT[@]}" --eq-boot 10000 \
+        --manifest artifacts/split_manifest_timesplit.json "${BOOT[@]}" --skip-regression \
         --floor "$FLOOR" --n-jobs "$N_JOBS" --knots 9 \
         --out "$OUT/c1/$LABEL" --macro-prefix "COne$LABEL"
 done
@@ -162,7 +170,7 @@ if have c1-llada-base && have c1t8-llada-base-4bit; then
     "$PY" scripts/run_controls.py --traces "$TRACES/c1-llada-base/c1-llada-base.dataset.json" \
         --precision-trace "$TRACES/c1t8-llada-base-4bit/c1t8-llada-base-4bit.dataset.json" \
         --controls precision --split half --half report --manifest artifacts/split_manifest.json \
-        "${BOOT[@]}" --eq-boot 10000 --n-jobs "$N_JOBS" --knots 9 \
+        "${BOOT[@]}" --eq-boot 1000 --n-jobs "$N_JOBS" --knots 9 \
         --out "$OUT/t8/LladaBasePrecision" --macro-prefix "TEightLladaBasePrecision"
 fi
 
