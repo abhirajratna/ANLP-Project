@@ -91,7 +91,7 @@ case "$HALF_MODE" in
         echo "[dorigo] report half: $TAG = ${TAGGED:0:12} is an ancestor of HEAD ${HEAD:0:12}, clean tree" ;;
     *) die "HALF_MODE must be fit_only or report, not $HALF_MODE" ;;
 esac
-[[ -z "${N_BOOT:-}" || "$N_BOOT" =~ ^[0-9]+$ ]] || die "N_BOOT must be an integer, not '$N_BOOT'"
+[[ -z "${N_BOOT:-}" || "$N_BOOT" =~ ^[1-9][0-9]*$ ]] || die "N_BOOT must be a positive integer, not '$N_BOOT'"
 
 # ---------------------------------------------------------------- environment
 if ! type module >/dev/null 2>&1; then
@@ -127,6 +127,9 @@ flock 8
 if ! nbenv_ok "$NBENV" 2>/dev/null; then
     echo "[dorigo] building $NBENV on top of $C3_SITE"
     TMPENV="$NBENV.build.$$"
+    # leftovers of earlier builds: failed builds, and old venvs no kernel uses any more (> 1 day)
+    find "$C3_SCRATCH" -maxdepth 1 \( -name "$(basename "$NBENV").build.*" -o -name "$(basename "$NBENV").old.*" \) \
+        -mmin +1440 -exec rm -rf {} + 2>/dev/null || true
     rm -rf "$TMPENV"
     "$C3_PY" -m venv "$TMPENV"
     echo "$C3_SITE" > "$("$TMPENV/bin/python" -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/_c3env.pth"
@@ -191,6 +194,7 @@ done
 
 # ---------------------------------------------------------------- run
 OUT="${OUT:-$C3_PERSIST/dorigo/$HALF_MODE-${SLURM_JOB_ID:-$$}}"
+[[ "$OUT" =~ ^[A-Za-z0-9_./-]+$ ]] || die "OUT may hold only letters, digits and _ . / - (it is passed to the notebook as Python)"
 mkdir -p "$OUT"
 # One notebook DATASETS entry per run: a per-job view holding only the listed parts
 # (the run directory may hold other files), and the run's fit/report manifest.

@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import sys
 import tempfile
 import time
@@ -67,6 +68,7 @@ def main() -> int:
         ok = False
     finally:
         nbformat.write(nb, out)
+        shutil.rmtree(spec_root, ignore_errors=True)
     print(f"[run_notebook] {'OK' if ok else 'FAILED'} in {time.time() - t0:.0f} s -> {out}")
     return 0 if ok else 1
 

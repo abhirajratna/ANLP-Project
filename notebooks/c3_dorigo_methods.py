@@ -1240,7 +1240,7 @@ for name, files in FILES.items():
 # %%
 SPLITS, FEASIBLE = {}, {}
 PREREG_TAG = report_half_gate() if (HALF_MODE == "report" and not USE_SYNTHETIC) else None
-for name, fm in FMAP.items():
+for name, fm in list(FMAP.items()):
     spec = DATASETS[name]["split"]
     try:
         SPLITS[name] = make_split(spec, mode="report" if USE_SYNTHETIC else HALF_MODE)
@@ -1248,6 +1248,11 @@ for name, fm in FMAP.items():
     except (OSError, KeyError, ValueError) as exc:
         print(f"{name}: split not available: {exc}")
         has_split = False
+        if HALF_MODE == "fit_only" and not USE_SYNTHETIC:
+            # without the split no row can be told fit from report: drop the dataset entirely
+            print(f"   HALF_MODE = 'fit_only': {name} dropped (its report half cannot be filtered out)")
+            FMAP.pop(name); FILES.pop(name, None)
+            continue
     tab = pd.DataFrame([{"field": FIELD_LABEL[k], "canonical": k, "column": fm[k] or "missing",
                          "used by": USED_BY.get(k, "-")} for k in CANON])
     print(f"== {name}  (split: {'manifest' if 'manifest' in spec else 'rule'}"
