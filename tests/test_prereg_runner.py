@@ -330,3 +330,42 @@ def test_e1e2_only_refuses_the_full_root_and_lets_the_summary_through(job):
     assert [c[0] for c in stub] == ["scripts/summarize_c1.py"]
     assert "--skip-regression" not in stub[0] and _arg(stub[0], "--out") == str(root / "c1" / "summary")
     assert "skipped" not in out
+
+
+def test_a_later_prereg_tag_changes_the_out_root_and_keeps_the_gates(job):
+    (job.repo / "prereg" / "deviations.md").write_text("warm start\n")
+    _git(job.repo, "commit", "-qam", "warm start")
+    rc, out, calls, stub = job(C3_PREREG_TAG="prereg-v1.1")
+    assert rc != 0 and "no tag prereg-v1.1" in out and stub == []
+    _git(job.repo, "tag", "prereg-v1.1")
+    rc, out, calls, stub = job(C3_PREREG_TAG="prereg-v1.1")
+    assert rc == 0 and "[prereg] prereg-v1.1 = " in out, out
+    assert all(Path(_arg(c, "--out")).is_relative_to(job.out.parent / "prereg-v1.1") for c in stub)
+    assert not job.out.exists()
+    rc, out, calls, stub = job(C3_PREREG_TAG="prereg-v1.1", C3_E1E2_ONLY="1")
+    assert rc == 0 and [Path(_arg(c, "--out")) for c in stub] == [
+        job.out.parent / "prereg-v1.1-e1e2" / "c1" / "Mdlm"], out
+    rc, out, calls, stub = job(C3_PREREG_TAG="prereg-v1.1", C3_E1E2_ONLY="1",
+                               OUT=str(job.out.parent / "prereg-v1.1"))
+    assert rc != 0 and "full prereg-v1.1 root" in out
+    rc, out, calls, stub = job(C3_PREREG_TAG="prereg-v1.1", C3_PREREG_DRYRUN="1")
+    assert rc == 0 and stub, out
+    # HEAD must be the chosen tag: prereg-v1 is now behind HEAD.
+    rc, out, calls, stub = job()
+    assert rc != 0 and "is not prereg-v1" in out
+
+
+def test_a_later_tag_must_descend_from_prereg_v1(job):
+    _git(job.repo, "checkout", "-q", "--orphan", "other")
+    (job.repo / "prereg" / "deviations.md").write_text("unrelated\n")
+    _git(job.repo, "add", "-A")
+    _git(job.repo, "commit", "-qm", "unrelated root")
+    _git(job.repo, "tag", "prereg-v1.2")
+    rc, out, calls, stub = job(C3_PREREG_TAG="prereg-v1.2")
+    assert rc != 0 and "does not descend from prereg-v1" in out and stub == []
+
+
+@pytest.mark.parametrize("tag", ["v2", "prereg-v1x", "prereg-v2", "prereg-v1."])
+def test_a_bogus_prereg_tag_is_refused(job, tag):
+    rc, out, calls, stub = job(C3_PREREG_TAG=tag, C3_PREREG_DRYRUN="1")
+    assert rc != 0 and "only prereg-v1 or prereg-v1.<digits>" in out and calls == [] and stub == []
