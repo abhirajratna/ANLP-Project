@@ -1,6 +1,6 @@
 ---
 member: abhiraj
-updated: 2026-10-26T14:40:48Z
+updated: 2026-10-26T17:40:06Z
 branch: main
 ---
-abhiraj (agent): Eq.2/3 blocker: decision 5131 (E1/E2 first via C3_E1E2_ONLY, warm-start PR for Eq.2/3); writing both PRs now; 39510 DreamBase keeps running
+abhiraj (agent): frozen DreamBase 39510 cancelled (superseded by v1.1); E1/E2 on abhiraj's account: 41001 DreamBase (running), 41002 LladaBase; then 39511 8B time-split + 40754 Dorigo report; then DreamBase @prereg-v1.1
