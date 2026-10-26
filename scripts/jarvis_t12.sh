@@ -17,18 +17,27 @@
 #   report   setup, verify-gpu, then the report-half sweep of GSM8K (prereg/t12_grid_gsm8k.json)
 #            and MBPP (prereg/t12_grid_mbpp.json), one run_t12.py per GPU each, in that order;
 #            report-gsm8k / report-mbpp run one task
-#   smoke    setup without the model, verify-gpu, inputs: a few minutes on a cheap GPU to prove
-#            the jl/bootstrap/uv/torch chain before the 2-GPU instance is paid for
+#   smoke    ONE GPU, a hard 20 min cap: setup (with the model), verify-gpu, then a handful of
+#            fit-half GSM8K problems (CHECK_LIMIT, default 4).  It rehearses the whole chain
+#            AND the instance's watchdog: kill the laptop terminal mid-run and the instance
+#            must pause itself (scripts/t12_watchdog.sh, log /home/t12-watchdog.log)
 #
 # THE JOB ALWAYS ENDS, so that the instance can be paused.  One global deadline per phase
-# (BUDGET_HOURS: 6 for calib, 11 for report, 1 for smoke) is written once, into
+# (BUDGET_HOURS: 2.5 for calib, 9.5 for report, 1/3 for smoke) is written once, into
 # runs/t12/.deadline-<phase>, and never moves unless NEW_BUDGET=1; every supervise() stops at
 # the earlier of its own cap and that deadline, and the whole job runs under `timeout` at the
-# deadline plus 15 min, so a hung pip, download or GPU cannot keep it alive.  At the end, in
-# every case (success, failure, deadline, SIGTERM), the outputs are packed to
+# deadline plus 15 min, so a hung pip, download or GPU cannot keep it alive.  The clock of the
+# budget starts when the laptop starts to provision (T12_BUDGET_REMAINING_S, from the laptop:
+# the budget minus the time spent creating the instance), not when this job starts.  At the
+# end, in every case (success, failure, deadline, SIGTERM), the outputs are packed to
 # runs/t12-out/<phase>.tgz with a status line.  Exit codes: 0 done, 3 stopped by the budget
-# (incomplete, resumable), anything else a failure.  There is no self-pause here: the
-# instance has no API token (a secret on a rented box), and /home survives a pause anyway.
+# (incomplete, resumable), anything else a failure.
+#
+# Pausing is NOT done here: the instance's watchdog (scripts/t12_watchdog.sh, started by the
+# upload's bootstrap, detached from this job) waits for this job to exit, gives the laptop a
+# grace (T12_FETCH_GRACE_MIN, 20 min) to fetch the outputs, then pauses the instance through the
+# Jarvis API with the dedicated key in /home/.t12.env; and it pauses at the global deadline
+# + 30 min whatever this job is doing.  This script never reads that key.
 #
 # Runs go to runs/t12/<tag>/ and are resumable: run_t12 appends and fsyncs every record, cuts
 # a torn last line and skips every (problem, configuration) already recorded.  A worker that
@@ -138,14 +147,31 @@ detect_gpus() {
     [ "${#GPU_IDS[@]}" -ge 1 ] || die "no visible GPU"
 }
 
+# phase_hours PHASE: the default budget (BUDGET_HOURS overrides; jl_t12.sh's default_hours
+# says the same, a test compares them).  2.5 h + 9.5 h at 416 INR/h is what the wallet covers.
+phase_hours() {
+    case "$1" in
+        calib) echo 2.5 ;;
+        smoke) echo 0.34 ;;
+        report|report-gsm8k|report-mbpp) echo 9.5 ;;
+        *) return 1 ;;
+    esac
+}
+
 # start_budget KEY DEFAULT_HOURS: the global deadline of this job, written once (a rerun on
 # the same instance keeps it; NEW_BUDGET=1 starts a new one) into runs/t12/.deadline-KEY.
+# T12_BUDGET_REMAINING_S (the laptop's budget minus the provisioning time, uploaded with the
+# watchdog's secret) caps a new deadline AND an existing one: the clock includes provisioning.
 start_budget() {
-    local f="runs/t12/.deadline-$1" now left
+    local f="runs/t12/.deadline-$1" now left cap
     mkdir -p runs/t12
     now=$(date +%s)
     if [ ! -s "$f" ] || [ "${NEW_BUDGET:-0}" = 1 ]; then
         awk -v n="$now" -v h="${BUDGET_HOURS:-$2}" 'BEGIN { printf "%d\n", n + h * 3600 }' > "$f"
+    fi
+    if [ -n "${T12_BUDGET_REMAINING_S:-}" ]; then
+        cap=$((now + T12_BUDGET_REMAINING_S))
+        if [ "$(cat "$f")" -gt "$cap" ]; then echo "$cap" > "$f"; fi
     fi
     DEADLINE_FILE="$f"
     left=$(($(cat "$f") - now))
@@ -378,7 +404,7 @@ do_setup() {
     # so setup would pass and the run would die at the first kernel.  The constraint file keeps
     # the later installs from moving it.  The rest as pinned in pyproject.toml [models]
     # (transformers==4.46.3: do not move it).
-    retry 3 timeout 3600 uv pip install --python "$PY" "torch==$TORCH_PIN" --index-url https://download.pytorch.org/whl/cu128
+    retry 3 timeout 900 uv pip install --python "$PY" "torch==$TORCH_PIN" --index-url https://download.pytorch.org/whl/cu128
     printf 'torch==%s\n' "$TORCH_PIN" > "$VENV/constraints.txt"
     retry 3 timeout 1800 uv pip install --python "$PY" -c "$VENV/constraints.txt" -e ".[models]"
     uv pip freeze --python "$PY" | grep -Ei '^(torch|transformers|datasets|numpy|tokenizers|huggingface-hub)==' || true
@@ -394,13 +420,17 @@ do_setup() {
     done
     verify_inputs all tasks
     # The pinned LLaDA-8B-Instruct revision (c3.traces.models.KNOWN_MODELS), ~16 GB, once.
-    timeout 3600 "$PY" - <<'PYEOF'
+    # snapshot_download keeps what it fetched, so a retry continues; each try has a timeout.
+    local dl
+    dl="$(cat <<'PYEOF'
 from huggingface_hub import snapshot_download
 from c3.traces.models import KNOWN_MODELS
 spec = KNOWN_MODELS["llada-8b-instruct"]
 path = snapshot_download(spec["path"], revision=spec["revision"])
 print("[setup] model at", path)
 PYEOF
+)"
+    retry 3 timeout 1800 "$PY" -c "$dl"
     df -h . | tail -n 1
     echo "[setup] done; HF_HOME=$HF_HOME"
 }
@@ -453,8 +483,9 @@ do_check() {
     SUMMARY_MANIFEST=artifacts/split_manifest_gsm8k.json summarize "$OUT" | tee "$OUT/summary.txt"
     echo "[check] Ada sanity run 38707 (2x 2080 Ti, lm-eval 5-shot, same two policies): 0.80 s/forward;"
     echo "[check]   accuracy top-k k=1 83.5, threshold 0.9 84.5; published 79.3 / 79.2 (Fast-dLLM)."
-    echo "[check] NOT one to one: Ada drew its few-shot examples over 4 shards of the problems, this run draws"
-    echo "[check]   over the unsharded selection (run_t12.shard_contexts), so the examples differ; ${limit} problems"
+    echo "[check] NOT one to one: Ada drew its few-shot examples over 4 shards of the problems; run_t12 now draws"
+    echo "[check]   them over the unsharded selection (lmeval_shard_contexts), the same at any GPU count, but"
+    echo "[check]   that is a different draw from Ada's, so the examples differ; ${limit} problems"
     echo "[check]   give +-10 points.  Read this as a timing check (s/forward at the 5-shot prompt length)"
     echo "[check]   plus a rough accuracy check (tens of points off means a broken pipeline, not noise)."
     if [ -n "${CHECK_MAX_SPF:-}" ]; then
@@ -554,7 +585,8 @@ finish_job() {
     cat <<EOF
 ================================================================================
  JOB '$PHASE' ENDED with exit code $rc ($what).
- The instance bills until it is paused: the laptop's jl_t12.sh fetches the outputs and pauses it.
+ The instance bills until it is paused: the laptop's jl_t12.sh fetches the outputs and pauses it;
+ if the laptop is gone, the watchdog (/home/t12-watchdog.log) pauses it after the fetch grace.
 ================================================================================
 EOF
     exit "$rc"
@@ -565,13 +597,11 @@ EOF
 do_job() {
     PHASE="${1:?phase: calib|smoke|report|report-gsm8k|report-mbpp}"
     local hours left tasks=()
+    hours="$(phase_hours "$PHASE")" || die "unknown phase $PHASE"
     case "$PHASE" in
-        calib) hours=6 ;;
-        smoke) hours=1 ;;
-        report) hours=11; tasks=(gsm8k mbpp) ;;
-        report-gsm8k) hours=11; tasks=(gsm8k) ;;
-        report-mbpp) hours=11; tasks=(mbpp) ;;
-        *) die "unknown phase $PHASE" ;;
+        report) tasks=(gsm8k mbpp) ;;
+        report-gsm8k) tasks=(gsm8k) ;;
+        report-mbpp) tasks=(mbpp) ;;
     esac
     start_budget "$PHASE" "$hours"
     left=$BUDGET_LEFT_S
@@ -588,8 +618,10 @@ do_job() {
     JOBRC=0
     case "$PHASE" in
         smoke)
-            SKIP_MODEL=1 do_setup
-            verify_inputs gsm8k
+            # one GPU and a few problems: setup (its verify-gpu included), the model, then the
+            # fit-half check; the caps keep it inside its 20 min
+            do_setup
+            CHECK_LIMIT="${CHECK_LIMIT:-4}" CHECK_MAX_HOURS="${CHECK_MAX_HOURS:-0.1}" do_check
             ;;
         calib)
             do_setup
