@@ -8,7 +8,7 @@
 #
 # **Basis.** Cell 1.6 on `ANLP-project/c3-traces` (`main-110m-v3/`: 119.6 M rows, 1,979 docs; `timesplit-110m-v3/`: 30.2 M rows, 500 docs), one schema, every module A–F feasible, 89–90% of states with |M| ≥ 32, largest kind ≈ 4.7 GB in memory, ≈ 6 min projected. The table below is the pre-data check of 24 Oct (written before Phase 2, from the repo only; it then said PARTIAL because only the old-schema pilot was on hand). Cells 1.1–1.6 redo every check on each run; if cell 1.6 prints a different verdict, cell 1.6 wins and this cell must be edited to match.
 #
-# **Pre-registration hold.** Every C1 arm here (110M and 8B) is pre-registered, and `prereg-v1` is not tagged yet. `HALF_MODE = "fit_only"` (0.1) is therefore the default: no number touches the report half. Switch to `"report"` only after the tag. On Ada, `slurm/dorigo_notebook.sbatch` enforces this.
+# **Report-half gate.** `prereg-v1` is tagged (`6b4c25e`, 25 Oct). `HALF_MODE = "fit_only"` (0.1) stays the default: no row of the report half is read. `"report"` needs `C3_REPORT_HALF_OK=1` set on purpose (and, in a checkout, `prereg-v1` as an ancestor of HEAD); the notebook and `slurm/dorigo_notebook.sbatch` both enforce this. The paper's C1 numbers come from `prereg/analysis_commands.sh`; numbers from this notebook are exploratory.
 #
 # **Not yet run here:** the LLaDA-8B traces (the pilot headline). They are on Ada (`/share1/abhiraj.ratna/traces/`), not on HF; add them to `DATASETS` when a copy is reachable.
 #
@@ -84,7 +84,7 @@ CAL_KNOTS = 9                 # spline knots on ℓ in π(ℓ, s)   (= c3.DEFAUL
 CAL_MAX_ROWS = 1_000_000      # fit-half rows sampled (pool weights kept) to fit π(ℓ, s) (~19 parameters)
 CAL_C = 1e3                   # sklearn inverse ridge on mean-1 weights; C = 1 shrank π̂(ℓ, s) at the top on small fits
 CAL_REFIT_CHECK = True        # refit both calibrators on each half of the fit documents: field-term fit noise
-DELTA_MIN = 0.02              # pre-registered smallest effect worth reporting (= c3.DELTA_MIN)
+DELTA_MIN = 0.02              # smallest effect treated as worth reporting (= c3.DELTA_MIN)
 H3_PAIRS = [("decoder", "uniform_matched")]   # H3: compared at equal winner confidence
 H3_BINS = 20                  # H3: equal-mass bins on ℓ, edges from both arms' pooled winner mass at each m
 H3_ELL_GRID = (-15.0, 25.0, 400)  # fine ℓ grid the per-document H3 sums are kept on (edges come from it)
@@ -102,7 +102,7 @@ OUT_DIR = "/content/c3_dorigo_out" if __import__("os").path.isdir("/content") el
 # pre-registered ones come from prereg/analysis_commands.sh.
 HALF_MODE = "fit_only"
 FIT_ONLY_SEED = 20261025
-NOTEBOOK_VERSION = "2026-10-26.1"
+NOTEBOOK_VERSION = "2026-10-26.2"
 
 # %% [markdown]
 # ## 0.2 Setup: imports, versions, seeds, exclusion log
@@ -2065,6 +2065,9 @@ d1 = TOY_DEC[(TOY_DEC.L == 6) & (TOY_DEC.Q == 1)].iloc[0]
 lines.append(f"\n**Toy (Module A).** In the Gaussian matched filter, Q × local bias reaches {tl.Qbias_cv:.3f} ± {1.96 * tl.Qbias_cv_se:.3f} at Q = {int(tl.Q)} "
              f"(theory 0.5). At Q = 1 the global search adds a remote term of {d1.B_remote:.3f} to the local bias of {d1.B_local:.3f}, and "
              f"the remote side wins {d1.P_remote_wins:.0%} of the time (L = 6). This checks the code; it says nothing about language models.")
+# The calibrator's own bias: the largest |field(M)| on this run's synthetic scenarios that have no field
+# term (Module B: calibrated, flat_miscal, context). A field term no bigger than that is not told from 0.
+FIELD_NULL_FLOOR = max(abs(float(erow(sc, M).field_est)) for sc in ("calibrated", "flat_miscal", "context"))
 for (name, kind), r in RESULTS.items():
     t = r["main"].set_index("m"); p = r["paired"].set_index("m"); e = r["e2"].set_index("m"); i = r["info"]
     a1, aM, eM, e1 = t.loc[1], t.loc[M], e.loc[M], e.loc[1]
@@ -2074,21 +2077,43 @@ for (name, kind), r in RESULTS.items():
     lines.append(f"- The calibrated gap Δ (exact estimator) goes from {a1.delta_x_est:+.4f} [{a1.delta_x_lo:+.4f}, {a1.delta_x_hi:+.4f}] at m = 1 to "
                  f"{aM.delta_x_est:+.4f} [{aM.delta_x_lo:+.4f}, {aM.delta_x_hi:+.4f}] at m = {M}. The change Δ({M}) − Δ(1) = "
                  f"{eM.delta_contrast_est:+.4f} [{eM.delta_contrast_lo:+.4f}, {eM.delta_contrast_hi:+.4f}] (CI {side(eM.delta_contrast_lo, eM.delta_contrast_hi)}); "
-                 + (f"its CI lies inside ±{DELTA_MIN}, so any change is smaller than the pre-registered smallest effect worth reporting."
+                 + (f"its CI lies inside ±{DELTA_MIN} (δ_min, the smallest effect we treat as worth reporting), so any change is smaller than that."
                     if eM.delta_contrast_within_dmin else f"its CI is not inside ±{DELTA_MIN}."))
     grows = eM.delta_contrast_lo > 0
     own_share = eM.own_contrast_est / eM.delta_contrast_est if grows else np.nan
-    if eM.field_lo > 0:
+    # Field-term verdict. A CI that excludes 0 is not enough: the CI treats the calibrators as fixed, so the
+    # sign must also survive refitting both calibrators on each half of the fit documents, and the size is
+    # read against δ_min.
+    refits = np.array([eM.field_refit_a, eM.field_refit_b], dtype=float)
+    has_refit = bool(np.isfinite(refits).all())
+    sign = 1 if eM.field_lo > 0 else -1 if eM.field_hi < 0 else 0
+    robust = sign != 0 and (not has_refit or bool((np.sign(refits) == sign).all()))
+    big = abs(eM.field_est) >= DELTA_MIN
+    if sign and robust and abs(eM.field_est) <= FIELD_NULL_FLOOR:
+        verdict = (f"The field term's CI excludes 0 and survives refitting, but at {eM.field_est:+.4f} it is no bigger than "
+                   f"the bias the same calibrator shows on synthetic data with no field term (up to {FIELD_NULL_FLOOR:.4f} "
+                   "in this run's self-tests): not distinguishable from 0.")
+    elif sign and not robust:
+        verdict = (f"The field term's CI excludes 0, but refitting the calibrators gives {refits[0]:+.4f} and {refits[1]:+.4f}, "
+                   "not both of the estimate's sign: its sign rests on the calibrator fit, so this is not evidence of a field term.")
+    elif sign > 0 and big:
         verdict = ("Part of the change is a winner's curse from the state: at equal own confidence, winners of larger "
                    "pools sit in states where the context-aware calibrator expects lower accuracy.")
-    elif eM.field_hi < 0:
+    elif sign > 0:
+        verdict = (f"A positive field term is detected, survives refitting and exceeds the calibrator's synthetic-null bias "
+                   f"({FIELD_NULL_FLOOR:.4f}), but at {eM.field_est:+.4f} it is far below "
+                   f"δ_min = {DELTA_MIN}: the state adds a detectable but negligible winner's curse.")
+    elif sign < 0 and big:
         verdict = ("The field term is negative: at equal own confidence, large-pool winners sit in states the "
                    "context-aware calibrator rates as more accurate, so the state works against the winner's curse here.")
-    elif grows and eM.own_contrast_lo > 0:
-        verdict = ("No field term is detected; the growth of Δ sits in the own term, which is ordinary high-confidence "
-                   "miscalibration seen through the maximum, not a winner's curse from the state.")
+    elif sign < 0:
+        verdict = (f"A negative field term is detected and survives refitting, but at {eM.field_est:+.4f} it is far below "
+                   f"δ_min = {DELTA_MIN}: negligible.")
     else:
         verdict = "No field term is detected."
+    if grows and eM.own_contrast_lo > 0 and np.isfinite(own_share) and own_share >= 0.5:
+        verdict += (f" The growth of Δ sits mainly in the own term ({own_share:.0%} of it): ordinary high-confidence "
+                    "miscalibration seen through the maximum, not a winner's curse from the state.")
     lines.append(f"- E2 split of that change: own miscalibration {eM.own_contrast_est:+.4f} [{eM.own_contrast_lo:+.4f}, {eM.own_contrast_hi:+.4f}], "
                  f"field term {eM.field_contrast_est:+.4f} [{eM.field_contrast_lo:+.4f}, {eM.field_contrast_hi:+.4f}], residual "
                  f"{eM.resid_contrast_est:+.4f} [{eM.resid_contrast_lo:+.4f}, {eM.resid_contrast_hi:+.4f}]"
