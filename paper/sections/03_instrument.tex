@@ -49,8 +49,9 @@ the next 50 (\VivaLladaContamFlagged/\VivaLladaContamDocs{} LLaDA,
 without them.
 % Seed 20260917: artifacts/split_manifest.meta.json; tasks: scripts/make_task_split.py.
 Every set is split 50/50 by document with one fixed seed (FineWeb: \VivaNFit{}/\VivaNReport{}
-before the length filter). Everything fitted (calibrators, splines, knots, temperatures) uses
-the fit half, every reported number the report half. 500 separate reserve documents served the
+before the length filter). Calibrators, the spline $f$ of Eq.~2/3, knots and temperatures are
+fitted on the fit half; every C1 number, including $\beta_z$, $\gamma_k$ and the E3 type terms, is
+estimated on the report half. 500 separate reserve documents served the
 pilot and the non-determinism floor.
 
 \begin{table}[t]
@@ -107,8 +108,9 @@ logistic in a restricted cubic spline of $\ell$ plus the state's field features 
 of its masked positions, mask rate, $\log|M|$, decoding step) and their products with $\ell$, so
 the slope varies too; the plan's additive form is a sensitivity check.
 Averages are taken within a document, every state weighing the same, then across documents;
-positions are weighted by $1/(|M_s|\times\text{states in their document})$ to match, which is the
-$m=1$ population of Proposition~\ref{prop:split}.
+positions are weighted by $1/(|M_s|\times\text{states in their document})$ to match. The
+calibrators are fitted on every state of the arm, while the averages use only states with at
+least \VivaPoolMax{} masked positions, so the estimated field term need not be zero at $m=1$, which is why E2 is a contrast.
 
 \paragraph{E1, E2 and the native gap.}
 E1 is $\Delta(m)$ \eqref{eq:gap}, with primary contrast $\Delta(\VivaPoolMax)-\Delta(1)$,
@@ -135,7 +137,7 @@ ${\approx}0$ with them points to a field effect, $\beta_z\neq0$ with them to sha
 This reading is approximate (\S\ref{sec:validation}), making $\beta_z$ a diagnostic.
 
 \paragraph{E3, trajectory shift.}
-For each decoder arm we fit, on its positions and a reference arm's,
+For each decoder arm we fit, on its positions (mask rate in $[0.05,0.95)$) and a reference arm's,
 $\Pr(a{=}1)=\sigma(\alpha_b+f(\ell)+\textit{dec}\cdot(g_0+f'(\ell)))$, with $\alpha_b$ an intercept
 per mask-rate bin (centred on $0.1,\dots,0.9$). The reference is the matched uniform arm
 (secondary: the uniform grid, reweighted to the decoder's rate mix). The endpoint is
@@ -144,13 +146,15 @@ decoder-state tokens are right less often at equal confidence and mask rate; $(g
 tested jointly by a sup-$t$ test on the difference curve.
 
 \paragraph{T8 controls.}
-Each control gives the E1 and E2 contrasts without and with it, and their paired difference.
+Each control gives the E1 and E2 contrasts (temperature: E1 only) without and with it, and their
+paired difference.
 \emph{Position} (absolute position, distance to the nearest unmasked token,
 PC-Sampler's position weight; \citealp{huang2025pcsampler}) and \emph{token type} (of the true
 token: punctuation, stop-word or content) are covariates $x$: $\E_m[\pi(\ell)-\pi(\ell,x)]$
 is removed from $\Delta(m)$ and $x$ enters both field-term calibrators. \emph{Temperature}
 fits $c=\sigma(\ell/T)$ per mask-rate bin on the fit half (a softmax temperature is a
-sensitivity row). \emph{Precision} compares 200 LLaDA-8B-Base documents in 4-bit NF4 and fp16.
+sensitivity row). \emph{Precision} compares 4-bit NF4 with fp16 on the report half of the
+\VivaLladaBaseFourBitDocs{} LLaDA-8B-Base documents of the 4-bit run (fit half for calibrators).
 
 \subsection{Inference}
 \label{sec:inference}
@@ -165,7 +169,7 @@ come from differenced draws. Eq.~2/3 refit per resample, so they use 1,000 (knot
 
 \paragraph{Declaring effects, multiple testing.}
 An effect is declared only if its interval excludes 0 \emph{and} its magnitude exceeds twice
-the non-determinism floor, the largest change in $\ell$ and $\Delta(m)$ over five repeats of 20
+the non-determinism floor, the largest change in $\Delta(m)$ over five repeats of 20
 reserve documents per model family. Repeats were bitwise identical, so every floor is
 \VivaLladaFloor{} and in practice the interval excludes 0. $\delta_{\min}=\VivaDeltaMin$ is
 used for power only.

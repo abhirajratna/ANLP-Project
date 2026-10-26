@@ -515,8 +515,8 @@
               (\VivaPassesPerDoc{} passes per document).
         \item \textbf{Per row}: candidate, confidence, logit, correctness, $p$(true), entropy,
               margin, top-\VivaTopK.
-        \item \textbf{Halves}: \VivaNFit{} fit / \VivaNReport{} report documents. Calibrators
-              and splines from the fit half; every number from the report half.
+        \item \textbf{Halves}: \VivaNFit{} fit / \VivaNReport{} report documents. Calibrators,
+              splines and knots from the fit half; every C1 number from the report half.
         \item \textbf{Deterministic}: repeats are bitwise identical, so the floor is
               \VivaLladaFloor{} for every family.
       \end{itemize}
@@ -630,7 +630,7 @@
 \end{frame}
 
 % ================================================================ 11 C1 diagnostic: beta_z
-\begin{frame}{C1 diagnostic: does a winner's rank in its field predict correctness? ($\beta_z$)}
+\begin{frame}{C1 diagnostic: does winning a larger field predict correctness? ($\beta_z$)}
   \framesubtitle{$\Pr(a_i{=}1)=\sigma(\alpha\,[+\alpha_s]+f(\ell_i)+\beta_z z_{r,m})$, without and with state effects $\alpha_s$}
   \vspace{0.5mm}
   \begin{columns}[T,onlytextwidth]

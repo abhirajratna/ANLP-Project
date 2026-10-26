@@ -14,12 +14,14 @@ exact terms cover one synthetic distribution and one 110M fine-tune.
 \paragraph{Design and estimators.}
 C1 is teacher-forced: its states are those of an always-right decoder, not those after a free
 decoder's own mistakes, and a valid rewording counts as an error. The field term is only as
-context-aware as the four state features of $\hat\pi(\ell,s)$.
+context-aware as the state features of $\hat\pi(\ell,s)$: up to four, three in uniform states,
+where the step is constant.
 
 \paragraph{Contamination.}
 The screen flags only verbatim recall, and the time-split set mixes exposure with domain. Only
-the 110M model isolates the domain part, so levels rest on it and the 8B arms carry claims
-about trends in field size.
+the 110M model isolates the domain part. Our claims are about change with field size (E1, E2),
+not levels; where we read levels we rely on the 110M arm, and 110M levels need not transfer to 8B
+models.
 % TODO(results): check that Sec. 4 keeps to this levels/trends split; if it reads levels off
 %   the 8B arms, change this paragraph rather than Sec. 4.
 

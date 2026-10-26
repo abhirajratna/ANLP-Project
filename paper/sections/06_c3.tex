@@ -70,9 +70,12 @@
 A top-$k$ decoder fixes the number of tokens per step in advance; C3a lets calibrated
 confidence set it. At each step it computes $\hat c_i=\hat\pi(\ell_i,s)$ for every masked
 position, with the context-aware calibrator of \S\ref{sec:estimands} on three field
-features (median $\ell$, mask rate, $\log|M|$), and commits every position with
-$\hat c_i\ge 1-\alpha$, at least one. So $\alpha$ bounds the calibrated error probability of each committed
-token, and is the one speed knob. Positions are taken in the model's own order of $\ell$, so
+features (median $\ell$, mask rate, $\log|M|$), and commits the $n$ positions with the highest $\ell$, $n$ being the number with
+$\hat c_i\ge 1-\alpha$ (at least one). Where $\hat c$ rises with $\ell$ these are exactly the
+positions with $\hat c_i\ge 1-\alpha$, so $\alpha$ bounds each committed token's calibrated error;
+with $\ell\times$feature terms that can fail (it holds in a fraction
+\Cres{CThreeTElevenGsmMonotoneShare} of GSM8K and \Cres{CThreeTElevenMbppMonotoneShare} of MBPP
+fit states). $\alpha$ is the one speed knob. Positions are taken in the model's own order of $\ell$, so
 C3a changes \emph{how many} tokens are committed, not \emph{which}. It needs no extra
 forward pass.
 
@@ -88,10 +91,6 @@ from 256 masks; its fit states lie inside a reference answer. A fraction
 \Cres{CThreeTTwelveMbppOutsideShare} of its MBPP steps have features outside the fitted range.
 % TODO(results): if the dev ECE does not fall (Cal >= Raw), say "does not improve on" instead
 %   of "from", and say the gain, if any, is not from better calibration.
-% TODO(results): MonotoneShare (fraction of fit states where c-hat never falls with ell;
-%   \CThreeTElevenGsmMonotoneShare / ...Mbpp...) is a macro; add a clause if it is below 1:
-%   "in a fraction \Cres{...} of fit states $\hat c$ is non-decreasing in $\ell$; elsewhere
-%   the count and the order disagree".
 
 \paragraph{T12: matched speed.}
 LLaDA-8B-Instruct generates freely on the report halves of GSM8K

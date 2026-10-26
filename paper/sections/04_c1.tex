@@ -71,14 +71,14 @@ We claim an E1 or E2 effect only if it is declared, its 95\% interval excluding 
 Holm rejects it at $\alpha=0.05$ within its family ($m=14$; a missing cell counts as $p=1$).
 Everything else is exploratory, reported with its interval and no claim: decoder states at
 $k\in\{2,8\}$, matched uniform states, $\beta_z$, $\gamma_k$, E3, T8, and the clean, time-split,
-additive-calibrator and knot runs (200 resamples; descriptive intervals).
+additive-calibrator and knot runs (knot runs: Eq.~2/3 at 200 resamples).
 
 % ------------------------------------------------------------------- floats
 \begin{table*}[t]
   \centering
   \IfFileExists{tables/c1/c1_main.tex}{\Cfit{\input{tables/c1/c1_main.tex}}}{\Cpending{C1 main table}}
   \caption{C1 primary endpoints. E1 $=\Delta(\VivaPoolMax)-\Delta(1)$ and E2 $=$
-    field$(\VivaPoolMax)-$field$(1)$, with 95\% intervals (\VivaNBoot{} document resamples).
+    field$(\VivaPoolMax)-$field$(1)$, with 95\% intervals (\VivaNBoot{} document resamples; $\beta_z$: 1,000).
     Holm: decision of the Holm step. $^\dagger$declared; $^*$claimed. $\beta_z$,
     $\beta_z^{\mathrm{FE}}$: Eq.~\ref{eq:eqtwo} without and with state fixed effects
     ($^\ddagger$interval excludes 0; $^\S$no convergence). TS: time-split set, outside the
@@ -93,7 +93,8 @@ additive-calibrator and knot runs (200 resamples; descriptive intervals).
     {\includegraphics[width=\columnwidth]{figures/c1/c1_delta_m_LladaBase}}%
     {\Cpending{Figure $\Delta(m)$, LLaDA-8B-Base}}
   \caption{LLaDA-8B-Base: $\Delta(m)$ (solid, 95\% band) and its field term (dashed)
-    against field size $m$. Solid minus dashed is own miscalibration (Eq.~\ref{eq:gapsplit}).}
+    against field size $m$. Solid minus dashed is own miscalibration plus the residual $\E_m[\hat\pi(\ell,s)-a]$
+    (Eq.~\ref{eq:gapsplit}).}
   \label{fig:c1-delta}
 \end{figure}
 
@@ -120,8 +121,9 @@ For E2 the counts are \Cres{COneHolmETwoReject}, \Cres{COneDeclaredETwo} and
 %      size; the intervals in Table~\ref{tab:c1-main} bound how large a change could be."
 
 For LLaDA-8B-Base in uniform states (Figure~\ref{fig:c1-delta}), $\Delta(1)$, the ordinary
-signed calibration error of a masked position, is \CresCI{COneLladaBaseGapOneUni}, beside a
-15-bin ECE of $\Cres{COneLladaBaseECEUni}$, and $\Delta(\VivaPoolMax)$ is
+signed calibration error of a masked position in states of at least \VivaPoolMax{} masked
+positions, is \CresCI{COneLladaBaseGapOneUni}, beside a 15-bin ECE of
+$\Cres{COneLladaBaseECEUni}$ over all masked positions, and $\Delta(\VivaPoolMax)$ is
 \CresCI{COneLladaBaseGapThirtyTwoUni}: E1 is \CresCI{COneLladaBaseContrastUni}. In $k{=}4$
 decoder states E1 is \CresCI{COneLladaBaseContrastDecTopkConfKFour}.
 % TODO(results): if the decoder and uniform E1 differ in sign or decision for most arms:
@@ -130,8 +132,8 @@ decoder states E1 is \CresCI{COneLladaBaseContrastDecTopkConfKFour}.
 
 \paragraph{How much is the field term?}
 At $m=\VivaPoolMax$ the gap splits into own miscalibration
-$\Cres{COneLladaBaseOwnThirtyTwoUni}$ and field term $\Cres{COneLladaBaseFieldThirtyTwoUni}$,
-and E2 is \CresCI{COneFieldContrastLladaBaseUni}
+$\Cres{COneLladaBaseOwnThirtyTwoUni}$, field term $\Cres{COneLladaBaseFieldThirtyTwoUni}$
+and a residual, and E2 is \CresCI{COneFieldContrastLladaBaseUni}
 (decoder states: \CresCI{COneFieldContrastLladaBaseDecTopkConfKFour}).
 % TODO(results): if COneConfirmedETwo > 0 (field term grows, E2 > 0):
 %   "Part of the growth is the winner's curse proper: at equal confidence, winners of large
@@ -162,8 +164,9 @@ at $m=\VivaPoolMax$, and the within-state ICC of residuals is \CresCI{COneLladaB
 \subsection{The selection diagnostic $\beta_z$}
 \label{sec:c1-beta}
 
-$\beta_z$ (Eq.~\ref{eq:eqtwo}) asks the same question by regression: does a winner's rank in
-its field predict correctness beyond its own log-odds? Negative without state fixed effects
+$\beta_z$ (Eq.~\ref{eq:eqtwo}) asks the same question by regression: does winning a larger field
+($z_{1,m}$, the expected maximum of $m$ standard normals) predict correctness beyond the winner's
+own log-odds? Negative without state fixed effects
 and near zero with them points to a field effect; nonzero with them, to shared errors
 (\S\ref{sec:estimands}). In simulation shared errors gave a \emph{positive} $\beta_z$
 without fixed effects and a \emph{negative} field term (\S\ref{sec:validation}), so we read
@@ -223,7 +226,8 @@ states (sup-$t$ $p=\Cres{EThreeLladaBaseTypeTestPTopkConfKFourMatched}$) and
 A change of $\Delta$ with $m$ could come from what winners are rather than from winning:
 where they sit, what kind of token they are, or a model over- or underconfident by mask
 rate. Each control removes one (\S\ref{sec:estimands}); Table~\ref{tab:c1-t8}
-(Appendix~\ref{sec:c1-app}) gives E1 and E2 without and with it and the paired difference. For LLaDA-8B-Base in uniform states the change in E1 is
+(Appendix~\ref{sec:c1-app}) gives E1 and E2 (temperature: E1 only) without and with it and the
+paired difference. For LLaDA-8B-Base in uniform states the change in E1 is
 \CresCI{TEightLladaBasePositionEOneUniDifference} for position,
 \CresCI{TEightLladaBaseTokenTypeEOneUniDifference} for token type and
 \CresCI{TEightLladaBaseTemperatureLogoddsEOneUniDifference} for a temperature per mask-rate
@@ -240,8 +244,8 @@ bin.
 \paragraph{Precision.}
 % 4-bit run: \VivaLladaBaseFourBitDocs documents (tab:runs); prereg: 200 listed in
 % artifacts/t8_precision_docs.json.
-Our 8B traces are fp16 (\S\ref{sec:models}). On the \VivaLladaBaseFourBitDocs{} documents
-of the 4-bit run, 4-bit NF4 in place of fp16 changes E1 by
+Our 8B traces are fp16 (\S\ref{sec:models}). On the report half of the \VivaLladaBaseFourBitDocs{} documents
+of the 4-bit run (fit half for calibrators), 4-bit NF4 in place of fp16 changes E1 by
 \CresCI{TEightLladaBasePrecisionPrecisionEOneUniDifference} in uniform states and by
 \CresCI{TEightLladaBasePrecisionPrecisionEOneDecTopkConfKFourDifference} in decoder states
 (Table~\ref{tab:c1-t8}, bottom).
@@ -281,8 +285,9 @@ Table~\ref{tab:c1-main}); a quarter of the documents, so wider intervals.
 \paragraph{Spline knots.}
 E1 uses no calibrator; E2 and $\beta_z$ do. E2 keeps its sign and declared flag with 5 and with
 13 knots, instead of the primary \VivaKnots{}, in \Cres{COneKnotsAgree} of \Cres{COneKnotsCells}
-cells (full table in the code archive). These runs are refit
-only 200 times, so their intervals are descriptive only.
+cells (full table in the code archive). These runs refit
+Eqs.~2 and 3 only 200 times, so their $\beta_z$ and $\gamma_k$ intervals are descriptive only;
+E2 keeps \VivaNBoot{} resamples.
 % TODO(results): if E2 at 5 and 13 knots keeps the sign of 9 knots, with its interval still
 %   excluding 0, in every claimed cell: "The knots do not change any claim."
 %   else: "<cell> depends on the knots:
