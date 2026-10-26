@@ -2,8 +2,8 @@
 resource: run:prereg-llada-precision
 owner: parth
 since: 2026-10-25T15:21:33Z
-updated: 2026-10-25T15:21:33Z
-expires: 2026-10-26T15:21:33Z
-note: parth: t8/LladaBasePrecision, afterany 39162, same OUT so the LladaBase steps are kept; held until the OSF link
+updated: 2026-10-26T04:28:19Z
+expires: 2026-10-30T04:28:19Z
+note: parth: LladaBase precision = Ada 39853, afterany:39851, same OUT
 ---
 
