@@ -505,6 +505,33 @@ def test_a_missing_additive_dir_is_a_dash_and_a_stderr_note(results, tmp_path, c
     assert not any(n.startswith("COneAdditive") or "Additive" in n for n in mine)
 
 
+def test_knots_agreement_macros_count_cells_with_both_knot_runs(results, tmp_path):
+    out = run(results, tmp_path, "--no-figures")
+    mine = macro_defs(out / "tables" / "c1" / "macros_c1.tex")
+
+    def fc(run_dir, mask):
+        r = json.loads((results / "c1" / run_dir / "results.json").read_text())
+        return r["by_mask_kind"][mask]["field_contrast"]
+
+    cells = agree = 0
+    for label in sorted(p.name for p in (results / "c1").iterdir() if p.name.endswith("_knots5")):
+        label = label[:-len("_knots5")]
+        if not (results / "c1" / f"{label}_knots13").exists():
+            continue                                    # one knot run only: not a cell
+        for mask in P.PRIMARY_MASKS:
+            prim = fc(label, mask)
+            runs = [fc(f"{label}_knots{k}", mask) for k in (5, 13)]
+            cells += 1
+            agree += all((x["value"] > 0) == (prim["value"] > 0)
+                         and bool(x.get("declared")) == bool(prim.get("declared")) for x in runs)
+    assert cells > 0
+    assert mine["COneKnotsCells"] == str(cells)
+    assert mine["COneKnotsAgree"] == str(agree)
+    shutil.rmtree(results / "c1" / "LladaBase_knots13")
+    again = macro_defs(run(results, tmp_path / "again", "--no-figures") / "tables" / "c1" / "macros_c1.tex")
+    assert "COneKnotsCells" not in again and "COneKnotsAgree" not in again
+
+
 def test_an_unreadable_additive_file_is_skipped_with_a_warning(results, tmp_path, capsys):
     (results / "c1" / "LladaBase_additive" / "results.json").write_text("{not json")
     out = run(results, tmp_path, "--no-figures")

@@ -591,9 +591,20 @@ def sensitivity_macros(R: Results, m: Macros) -> None:
               "COneFieldContrast<Label><Variant><Tag>[Lo|Hi], COneFieldDeclared...")
     cells = agree = 0
     runs = set()
+    k_cells = k_agree = 0
+
+    def same_as(fc, prim) -> bool:
+        return (fc["value"] > 0) == (prim["value"] > 0) and \
+            bool(fc.get("declared")) == bool(prim.get("declared"))
+
     for label in R.labels:
         for mask in PRIMARY_MASKS:
             tag = label + arm_tag(mask)
+            prim = (R.kind(label, mask) or {}).get("field_contrast")
+            knots = [(R.kind(label, mask, v) or {}).get("field_contrast") for v in ("knots5", "knots13")]
+            if prim and _ok(prim.get("value")) and all(k and _ok(k.get("value")) for k in knots):
+                k_cells += 1
+                k_agree += all(same_as(k, prim) for k in knots)
             for v, word in VARIANTS.items():
                 fc = (R.kind(label, mask, v) or {}).get("field_contrast")
                 if not fc or not _ok(fc.get("value")):
@@ -605,15 +616,18 @@ def sensitivity_macros(R: Results, m: Macros) -> None:
                 if v != "additive":
                     continue
                 runs.add(label)
-                prim = (R.kind(label, mask) or {}).get("field_contrast")
                 if not prim or not _ok(prim.get("value")):
                     continue
-                same = (fc["value"] > 0) == (prim["value"] > 0) and \
-                    bool(fc.get("declared")) == bool(prim.get("declared"))
+                same = same_as(fc, prim)
                 cells += 1
                 agree += same
                 m.add(f"{p}FieldAdditiveShift{tag}", f"{fc['value'] - prim['value']:.3f}")
                 m.add(f"{p}FieldAdditiveAgree{tag}", _yn(same))
+    if k_cells:
+        m.comment("5 and 13 knots vs the primary 9: cells with both runs, and the cells where E2 keeps "
+                  "its sign and its declared flag at both")
+        m.add(f"{p}KnotsCells", str(k_cells))
+        m.add(f"{p}KnotsAgree", str(k_agree))
     if runs:
         m.comment("additive vs interacted calibrator: runs present, cells compared, and the cells where "
                   "E2 keeps its sign and its declared flag")
