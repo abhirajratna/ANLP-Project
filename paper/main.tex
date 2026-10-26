@@ -60,7 +60,7 @@ C2 computes the two errors of committing several tokens at once, dependency and 
 exactly on a synthetic JSON probe: dependency overtakes estimation only for strongly coupled
 tokens committed several at a time, confidence ranking raises dependency error, not estimation
 error, and for coupled tokens the two trade off as tokens per step grow. On real text a dependency proxy is near zero. C3 is a commitment policy
-that commits every position whose recalibrated confidence is at least $1-\alpha$, with no extra
+that commits as many positions as have recalibrated confidence at least $1-\alpha$, with no extra
 forward pass.
 % TODO(results): C3 outcome, same wording as the C3 TODO in 01_intro.tex; if T12 is not done
 %   at the freeze, drop the C3 sentence and say "in two parts".
