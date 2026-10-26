@@ -23,7 +23,9 @@ $\gamma_2,\gamma_3,\gamma_4$ of Eq.~\ref{eq:eqthree} (\S\ref{sec:c1-beta}).
     a temperature per mask-rate bin (log-odds; it rescales confidence only, so its E2
     column is empty). $^\ddagger$the paired with-minus-without difference has a 95\% interval
     excluding 0. Bottom: LLaDA-8B-Base on the documents of the 4-bit run, fp16 against
-    4-bit NF4, with the difference and its interval. Exploratory.}
+    4-bit NF4, with the difference and its interval. T8's E2 uses logistic calibrators for both
+    $\hat\pi(\ell)$ and $\hat\pi(\ell,s)$, so that with and without differ only by the control;
+    its ``without'' value differs from the isotonic E2 of Table~\ref{tab:c1-main}. Exploratory.}
   \label{tab:c1-t8}
 \end{table*}
 
@@ -32,7 +34,8 @@ $\gamma_2,\gamma_3,\gamma_4$ of Eq.~\ref{eq:eqthree} (\S\ref{sec:c1-beta}).
   \IfFileExists{tables/c1/c1_gamma.tex}%
     {\Cfit{\input{tables/c1/c1_gamma.tex}}}{\Cpending{C1 $\gamma$ table}}
   \caption{$\gamma_2,\gamma_3,\gamma_4$ of Eq.~\ref{eq:eqthree} with state fixed effects: the
-    log-odds of the rank-$k$ winner being right against rank 1 at equal confidence, with the
+    log-odds of the pool member at rank $k$ being right, against the winner (rank 1), at equal
+    confidence, with the
     Holm-adjusted $p$ within the row (three tests per arm and kind of state).
     $^*$Holm-rejected within the row. A diagnostic: no claim rests on it.}
   \label{tab:c1-gamma}
