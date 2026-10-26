@@ -2,8 +2,8 @@
 resource: run:prereg-mdlm
 owner: ojas
 since: 2026-10-25T21:00:29Z
-updated: 2026-10-25T21:00:29Z
-expires: 2026-10-29T21:00:29Z
-note: ojas: Mdlm + MdlmTimeSplit, then LladaInstructGsm (abhiraj's split -f68d); submits when the OSF link is posted
+updated: 2026-10-26T15:20:22Z
+expires: 2026-10-28T15:20:22Z
+note: Ada 40856 Mdlm E1/E2 + MdlmTimeSplit (ojas)
 ---
 
