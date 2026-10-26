@@ -25,8 +25,9 @@
 % (as in C1); N and FitDocs are integers.  Acc intervals are 95% Wilson, MatchedDiff intervals
 % are paired 95% percentile bootstrap (2,000 resamples of problems).  T12 is exploratory: write
 % results as estimates with intervals, not as significant.
-% Files: artifacts/t12/t12_matched_speed.tex (tab:c3-speed, below), t12_sanity_cost.tex
-% (tab:c3-sanity) and figures/t12_matched_speed.pdf (fig:c3-speed), both in appendix_c3.tex.
+% Files: artifacts/t12/t12_matched_speed.tex (tab:c3-speed, below) and
+% figures/t12_matched_speed.pdf (fig:c3-speed, appendix_c3.tex).  t12_sanity_cost.tex and the
+% speed-1/3 rows go to the code archive's results README, not the paper.
 %
 % Slots:  % TODO(results): ...  wording that depends on a sign or a decision; the phrasings
 %                               are written out; keep one, delete the rest.
@@ -70,8 +71,8 @@ A top-$k$ decoder fixes the number of tokens per step in advance; C3a lets calib
 confidence set it. At each step it computes $\hat c_i=\hat\pi(\ell_i,s)$ for every masked
 position, with the context-aware calibrator of \S\ref{sec:estimands} on three field
 features (median $\ell$, mask rate, $\log|M|$), and commits every position with
-$\hat c_i\ge 1-\alpha$, at least one. So $\alpha$ is an expected error rate per committed
-token, and the one speed knob. Positions are taken in the model's own order of $\ell$, so
+$\hat c_i\ge 1-\alpha$, at least one. So $\alpha$ bounds the calibrated error probability of each committed
+token, and is the one speed knob. Positions are taken in the model's own order of $\ell$, so
 C3a changes \emph{how many} tokens are committed, not \emph{which}. It needs no extra
 forward pass.
 
@@ -98,8 +99,8 @@ LLaDA-8B-Instruct generates freely on the report halves of GSM8K
 256 tokens in blocks of 32, greedy, one seed, fp16, on two RTX PRO 6000 GPUs.
 C3a is compared with confidence top-$k$, Fast-dLLM's threshold \citep{wu2025fastdllm},
 margin \citep{kim2025worst}, entropy-bounded \citep{benhamu2025entropy},
-KLASS \citep{kim2025klass} and PC-Sampler \citep{huang2025pcsampler}, with its background
-frequencies estimated on held-out FineWeb-Edu text rather than C4.
+KLASS \citep{kim2025klass} and PC-Sampler \citep{huang2025pcsampler} (full variant, with
+background token frequencies from held-out FineWeb-Edu text rather than C4).
 Each decoder has one speed knob ($k$, $\tau$, $\gamma$, $\alpha$, \dots), calibrated per task on
 fit-half problems only to 2, 4 and 8 tokens per step (speeds 1 to 3). Top-$k$, margin and
 PC-Sampler are exact at $k=2,4,8$; the threshold, entropy-bounded, KLASS and C3a settings are
@@ -107,10 +108,13 @@ interpolated in $\log$ speed. Every knob is chosen by speed alone, never by accu
 aggregate tokens per step, $256N/\sum\mathrm{NFE}$ over a configuration's $N$ problems. If
 KLASS cannot reach 8 tokens per step within $\pm10\%$, its fastest setting fills the speed-3
 slot and that comparison reads ---. Table~\ref{tab:c3-speed} shows speed 2 (about 4 tokens
-per step); speeds 1 and 3 are in Appendix~\ref{sec:c3-app}, with the sanity check, cost and
-curves. The accuracy difference is paired on the shared problems, with a 95\% percentile
-bootstrap interval from 2,000 resamples of problems. T12 is exploratory, so differences are
-reported as estimates with intervals.
+per step); speeds 1 and 3 and the cost per decoder are in the code archive, and
+Appendix~\ref{sec:c3-app} has the sanity check and the speed curves. Each decoder is taken at
+its setting nearest to C3a's tokens per step, within $\pm10\%$ (else ---); the accuracy
+difference is paired on the shared problems, with a 95\% percentile bootstrap interval from
+2,000 resamples of problems. T12 is exploratory and outside the C1 analysis of
+\S\ref{sec:inference}: no multiple-testing correction is applied, and differences are reported
+as estimates with intervals.
 
 \paragraph{Result.}
 % TODO(results): first, the sanity check (appendix_c3.tex): if top-k or the threshold scores
