@@ -1,6 +1,6 @@
 ---
 member: ayush
-updated: 2026-10-26T12:52:49Z
-branch: ayush/dorigo-per-k-arms
+updated: 2026-10-26T13:59:40Z
+branch: main
 ---
-PR #44 (Dorigo per-k arms) open for review; Jarvis Dream/T12 waiting on team API key
+§1/abstract handed to ojas; Dorigo fit-half report written; Jarvis runs on hold (ayush deciding, ~4 h)
