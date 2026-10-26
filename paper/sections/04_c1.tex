@@ -2,7 +2,9 @@
 % Sec. 4  Selection and confidence (C1).  Owner: abhiraj.  FALLBACK skeleton by ojas
 % (branch ojas/paper-c1): abhiraj may rewrite any of it; his draft wins.
 %
-% NO RESULTS EXIST YET.  Every number is a macro from paper/tables/c1/macros_c1.tex (written
+% E1/E2 results are in (all 7 Holm arms + 3 time-split, HF prereg-v1-e1e2 / prereg-v1-results);
+% the beta_z, gamma, E3, T8, precision, clean, knots and additive slots wait for the
+% prereg-v1.1 runs.  Every number is a macro from paper/tables/c1/macros_c1.tex (written
 % by scripts/c1_paper_outputs.py from the report-half results; main.tex \inputs it when it
 % exists), or a design macro (\Viva...) of documents/viva-slides/macros_setup.tex.  Result
 % macros are called through \Cres{<name>} / \CresCI{<name>}, which print a bold ? while the
@@ -107,18 +109,14 @@ Table~\ref{tab:c1-main} gives both contrasts for every arm. Of the
 \Cres{COneDeclaredEOne} are declared; \Cres{COneConfirmedEOne} meet both and are claims.
 For E2 the counts are \Cres{COneHolmETwoReject}, \Cres{COneDeclaredETwo} and
 \Cres{COneConfirmedETwo}.
-% TODO(results): keep the sentence that matches COneConfirmedEOne and the signs in tab:c1-main.
-%   if COneConfirmedEOne > 0 and those contrasts are positive:
-%     "In these cells a token that wins a field of 32 is more overconfident than a random
-%      masked position: the gap grows with the field. Whether that is a winner's curse is
-%      the question of the field term below."
-%   if COneConfirmedEOne > 0 and those contrasts are negative:
-%     "In these cells the gap shrinks with the field: winners of large fields are less
-%      overconfident than a random masked position, the opposite of the winner's curse."
-%   if mixed signs: name the runs of each sign; no pooled statement.
-%   if COneConfirmedEOne = 0:
-%     "No cell meets the claim rule. We find no evidence that the gap changes with field
-%      size; the intervals in Table~\ref{tab:c1-main} bound how large a change could be."
+The signs differ, so we do not pool. E1 is positive and claimed in every decoder-state cell
+and in uniform states of Dream-7B-Instruct on both tasks: there a token that wins a field of
+\VivaPoolMax{} is more overconfident than a random masked position. It is negative and claimed
+in uniform states of both base models and of LLaDA-8B-Instruct on GSM8K, where the gap
+shrinks with the field. The two cells without a claim, uniform states of LLaDA-8B-Instruct on
+MBPP and of the 110M model, are positive with $p_{\mathrm{Holm}}=\Cres{COneHolmPEOneMdlmUni}$.
+Sizes differ as much as signs: $|\mathrm{E1}|\le0.015$ for the base and 110M models, up to
+0.26 for the instruct models on MBPP.
 
 For LLaDA-8B-Base in uniform states (Figure~\ref{fig:c1-delta}), $\Delta(1)$, the ordinary
 signed calibration error of a masked position in states of at least \VivaPoolMax{} masked
@@ -126,39 +124,36 @@ positions, is \CresCI{COneLladaBaseGapOneUni}, beside a 15-bin ECE of
 $\Cres{COneLladaBaseECEUni}$ over all masked positions, and $\Delta(\VivaPoolMax)$ is
 \CresCI{COneLladaBaseGapThirtyTwoUni}: E1 is \CresCI{COneLladaBaseContrastUni}. In $k{=}4$
 decoder states E1 is \CresCI{COneLladaBaseContrastDecTopkConfKFour}.
-% TODO(results): if the decoder and uniform E1 differ in sign or decision for most arms:
-%   "The decoder's own states change the picture: <...>." else: "Decoder states give the same
-%   picture as uniform ones."  (Row pairs of tab:c1-main.)
+The decoder's own states change the picture in five of the seven arms: in the states it
+leaves masked, the gap grows with the field in every arm, including the three whose uniform
+states show it shrinking.
 
 \paragraph{How much is the field term?}
 At $m=\VivaPoolMax$ the gap splits into own miscalibration
 $\Cres{COneLladaBaseOwnThirtyTwoUni}$, field term $\Cres{COneLladaBaseFieldThirtyTwoUni}$
 and a residual, and E2 is \CresCI{COneFieldContrastLladaBaseUni}
 (decoder states: \CresCI{COneFieldContrastLladaBaseDecTopkConfKFour}).
-% TODO(results): if COneConfirmedETwo > 0 (field term grows, E2 > 0):
-%   "Part of the growth is the winner's curse proper: at equal confidence, winners of large
-%    fields come from contexts where tokens are right less often."
-% if E2 is claimed but negative:
-%   "The field term falls with m, the opposite of a winner's curse: at equal confidence,
-%    winners of large fields come from contexts where tokens are right more often. In
-%    simulation a negative field term came from errors shared within a state
-%    (sec:validation), which sec:c1-beta checks."
-% if COneConfirmedETwo = 0:
-%   "The field term does not move with m: whatever change E1 shows is the model's own
-%    miscalibration reweighted towards where winners sit, not a winner's curse."
+E2 is claimed in all \Cres{COneHolmETwoFamily} cells and positive in 12. In those the field term
+grows with $m$, the winner's curse proper: at equal confidence, winners of large fields come
+from contexts where tokens are right less often. It is negative in uniform states of
+LLaDA-8B-Instruct on GSM8K and in decoder states of the 110M model. For the base and 110M
+models every E2 is below 0.005 in absolute value; for the instruct models it reaches
+\Cres{COneFieldContrastDreamInstructMbppUni} (Dream-7B-Instruct, MBPP, uniform states, where
+E1 is \Cres{COneDreamInstructMbppContrastUni}).
 The estimator is not neutral: on simulated traces it read slightly positive when the true
-field term was zero (\S\ref{sec:validation}), so a small positive E2 is weaker evidence
-than its interval suggests.
+field term was zero (\S\ref{sec:validation}), and its intervals condition on the fitted
+calibrators (\S\ref{sec:inference}), so a small positive E2 is weaker evidence than its
+interval suggests.
 The third term of the split, $\E_m[\hat\pi(\ell,s)-a]$, zero without shared errors, is
 \CresCI{COneLladaBaseResidualOneUni} at $m=1$ and \CresCI{COneLladaBaseResidualThirtyTwoUni}
 at $m=\VivaPoolMax$, and the within-state ICC of residuals is \CresCI{COneLladaBaseICCUni}
 (full table in the code archive).
-% TODO(results): if the ICC interval holds 0 and the residual intervals hold 0 in most rows:
-%   "Neither shows shared errors: Proposition 1 is a fair description of these states."
-% else (ICC > 0 with its interval excluding 0, or a residual excluding 0 at m = 32):
-%   "Positions of a state share errors in <arms>; the split has its third term there, and
-%    E2 and beta_z are read with that in mind (sec:c1-beta)."
-% (m = 1 and the other m: COne<Label>Residual{One,Two,Four,Eight,Sixteen}<Tag>[Lo|Hi].)
+Positions of a state share errors in every arm, the ICC interval excluding 0 throughout, but
+weakly in the base and 110M models (ICC at most 0.006, residual within 0.008 of 0) and
+clearly in the instruct models (ICC 0.036 to 0.056). On MBPP, and in uniform states of
+Dream-7B-Instruct on GSM8K, the residual at $m=\VivaPoolMax$ is 0.055 to 0.103, two-fifths of
+E1 or more: there the split has its third term, and E2 and $\beta_z$ are read with that in mind
+(\S\ref{sec:c1-beta}).
 
 % ------------------------------------------------------------------- beta_z
 \subsection{The selection diagnostic $\beta_z$}
@@ -276,11 +271,11 @@ LLaDA-8B-Base, \CresCI{COneDreamBaseTimeSplitContrastUni} for Dream-7B-Base and
 \CresCI{COneMdlmTimeSplitContrastUni} for the 110M model (E2: TS rows of
 Table~\ref{tab:c1-main}); a quarter of the documents, so wider intervals.
 % E2 macros if wanted: COneFieldContrast{LladaBase,DreamBase,Mdlm}TimeSplitUni[Lo|Hi].
-% TODO(results): if the time-split E1 has the sign of the main FineWeb E1 for each model:
-%   "Text the models cannot have seen gives the same sign, so memorised text does not drive
-%    the result." else: "On unseen text the contrast <changes sign / loses its interval>:
-%    <model>'s FineWeb result may owe something to text it has seen."
-% (time-split rows also appear as TS rows of tab:c1-main.)
+On unseen text the small negative E1 of the two 8B base models is not reproduced: both
+intervals hold 0, so their FineWeb result may owe something to text they have seen, or be too
+small to detect here. The 110M model's is larger than on FineWeb. In decoder states E1 stays
+positive, its interval excluding 0, for all three models, so the decoder-state result does
+not rest on memorised text.
 
 \paragraph{Spline knots.}
 E1 uses no calibrator; E2 and $\beta_z$ do. E2 keeps its sign and declared flag with 5 and with

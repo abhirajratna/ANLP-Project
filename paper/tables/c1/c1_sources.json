@@ -1,5 +1,5 @@
 {
- "results_root": "HF ANLP-project/c3-traces-8b:prereg-v1-e1e2 (results.json slimmed locally: calibrators removed)",
+ "results_root": "HF ANLP-project/c3-traces-8b: prereg-v1-e1e2 (7 Holm arms) + prereg-v1-results (time-split); results.json slimmed locally (calibrators removed)",
  "main_arm": "LladaBase",
  "arms_present": [
   "LladaBase",
@@ -8,7 +8,10 @@
   "LladaInstructMbpp",
   "DreamInstructGsm",
   "DreamInstructMbpp",
-  "Mdlm"
+  "Mdlm",
+  "LladaBaseTimeSplit",
+  "DreamBaseTimeSplit",
+  "MdlmTimeSplit"
  ],
  "arms_missing": [],
  "summary_present": true,
@@ -19,7 +22,10 @@
   "c1-LladaInstructMbpp",
   "c1-DreamInstructGsm",
   "c1-DreamInstructMbpp",
-  "c1-Mdlm"
+  "c1-Mdlm",
+  "c1-LladaBaseTimeSplit",
+  "c1-DreamBaseTimeSplit",
+  "c1-MdlmTimeSplit"
  ],
  "sources": {
   "c1/DreamBase/results.json": {
@@ -28,6 +34,14 @@
    "hf_path": "prereg-v1-e1e2/c1/DreamBase/results.json",
    "hf_sha256": "e9bff047d2fa78ae3b446c6e8694b538ba2d437f3d1eff90cd179d31970ce94b",
    "bytes": 1625438081,
+   "slim": "by_mask_kind.*.calibrators removed"
+  },
+  "c1/DreamBaseTimeSplit/results.json": {
+   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/DreamBaseTimeSplit/results.json",
+   "sha256": "2b8d36dd34bbf55bfaaaede5824199fa5319c1037fdcb8dda8437adea7df26a5",
+   "hf_path": "prereg-v1-results/c1/DreamBaseTimeSplit/results.json",
+   "hf_sha256": "a5bfd0343cd7f55c60b89f0e11e5d6385cfd5a05d3b8153d24868229e62fa3a6",
+   "bytes": 698008597,
    "slim": "by_mask_kind.*.calibrators removed"
   },
   "c1/DreamInstructGsm/results.json": {
@@ -54,6 +68,14 @@
    "bytes": 1125275039,
    "slim": "by_mask_kind.*.calibrators removed"
   },
+  "c1/LladaBaseTimeSplit/results.json": {
+   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/LladaBaseTimeSplit/results.json",
+   "sha256": "482c1db3c0bdb9262ce0089755a6695da85a022d09a58a847aafeb8074ed14fa",
+   "hf_path": "prereg-v1-results/c1/LladaBaseTimeSplit/results.json",
+   "hf_sha256": "15bac9276074e8d8da641674502a67b033c005db81da39b4d916e97f5656ac72",
+   "bytes": 548705149,
+   "slim": "by_mask_kind.*.calibrators removed"
+  },
   "c1/LladaInstructGsm/results.json": {
    "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/LladaInstructGsm/results.json",
    "sha256": "e0654c085a9747057cc2e63499038304adfa3a385d4a4ce27c54ade9c2c54166",
@@ -78,6 +100,14 @@
    "bytes": 1520803820,
    "slim": "by_mask_kind.*.calibrators removed"
   },
+  "c1/MdlmTimeSplit/results.json": {
+   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/MdlmTimeSplit/results.json",
+   "sha256": "ef6ca5d0194c53e17c1ed0a2bf7013f2237a8f591af547655367043549db7fae",
+   "hf_path": "prereg-v1-results/c1/MdlmTimeSplit/results.json",
+   "hf_sha256": "48a9de28a7f1e291b52af42594c85ebc12dba7e8a5d8c1a2b223aed4ffabccd1",
+   "bytes": 619024821,
+   "slim": "by_mask_kind.*.calibrators removed"
+  },
   "c1/summary/c1_summary.json": {
    "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/summary/c1_summary.json",
    "sha256": "73a7fe36cfe41c70e345adad62bc1527ddd14f5e8de12b06585ef16fb038495b"
@@ -85,6 +115,10 @@
   "macros/c1-DreamBase": {
    "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/DreamBase/macros.tex",
    "sha256": "ea99c456548e60b5c3a4de25c08b72144f601b18c703fcaab6d9c36fa583834e"
+  },
+  "macros/c1-DreamBaseTimeSplit": {
+   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/DreamBaseTimeSplit/macros.tex",
+   "sha256": "b0a2461f58add95f9e3e89d393555a59cabd7436b3ce84e21e9c0555d2cdd6ae"
   },
   "macros/c1-DreamInstructGsm": {
    "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/DreamInstructGsm/macros.tex",
@@ -98,6 +132,10 @@
    "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/LladaBase/macros.tex",
    "sha256": "4d2f37bf645ca12454198512938084673de102b721adf0bddb3ef145a1784a08"
   },
+  "macros/c1-LladaBaseTimeSplit": {
+   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/LladaBaseTimeSplit/macros.tex",
+   "sha256": "966bfcda4455840ff2d20549be6f264083b06d4e8cf7a0db159cd735d52ac2c9"
+  },
   "macros/c1-LladaInstructGsm": {
    "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/LladaInstructGsm/macros.tex",
    "sha256": "87f3676971f79a720737424d54f1ddddbf8ca2fc3c7859817418d477d316dd58"
@@ -109,6 +147,10 @@
   "macros/c1-Mdlm": {
    "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/Mdlm/macros.tex",
    "sha256": "014ee091009b2f413e5e7f46d442686fc030462fe83abe1351a005cf8553a9aa"
+  },
+  "macros/c1-MdlmTimeSplit": {
+   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/MdlmTimeSplit/macros.tex",
+   "sha256": "6d087db02a9642b02bb71a7a416d2e0dcfbf485272f3c385f24ea0695314546d"
   }
  },
  "outputs": [
@@ -132,8 +174,8 @@
   "macros_c1.tex"
  ],
  "provenance": {
-  "git_commit": "c44271b4ab3036bb995fbd367562c15aac9f5716",
-  "git_dirty": false,
+  "git_commit": "1b135d2dbfef882cd3ba003e9842229a775d868f",
+  "git_dirty": true,
   "python": "3.12.12",
   "platform": "Linux-7.2.11-arch1-1-x86_64-with-glibc2.44",
   "host": "arch",
