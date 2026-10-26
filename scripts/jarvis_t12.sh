@@ -23,7 +23,7 @@
 #            must pause itself (scripts/t12_watchdog.sh, log /home/t12-watchdog.log)
 #
 # THE JOB ALWAYS ENDS, so that the instance can be paused.  One global deadline per phase
-# (BUDGET_HOURS: 2.5 for calib, 9.5 for report, 1/3 for smoke) is written once, into
+# (BUDGET_HOURS: 2.5 for calib, 9.0 for report, 1/3 for smoke) is written once, into
 # runs/t12/.deadline-<phase>, and never moves unless NEW_BUDGET=1; every supervise() stops at
 # the earlier of its own cap and that deadline, and the whole job runs under `timeout` at the
 # deadline plus 15 min (smoke: 2 min), so a hung pip, download or GPU cannot keep it alive.  The clock of the
@@ -37,7 +37,7 @@
 # upload's bootstrap, detached from this job) waits for this job to exit, gives the laptop a
 # grace (T12_FETCH_GRACE_MIN, 20 min) to fetch the outputs, then pauses the instance through the
 # Jarvis API with the dedicated key in /home/.t12.env; and it pauses at the global deadline
-# + 30 min whatever this job is doing.  This script never reads that key.
+# + 20 min whatever this job is doing (and is restarted from here if it dies, see ensure_watchdog).  This script never reads that key.
 #
 # Runs go to runs/t12/<tag>/ and are resumable: run_t12 appends and fsyncs every record, cuts
 # a torn last line and skips every (problem, configuration) already recorded.  A worker that
@@ -148,20 +148,23 @@ detect_gpus() {
 }
 
 # phase_hours PHASE: the default budget (BUDGET_HOURS overrides; jl_t12.sh's default_hours
-# says the same, a test compares them).  2.5 h + 9.5 h at 416 INR/h is what the wallet covers.
+# says the same, a test compares them).  2.5 h + 9.0 h at 415 INR/h (2 x 207.36) is what the wallet covers.
 phase_hours() {
     case "$1" in
         calib) echo 2.5 ;;
         smoke) echo 0.34 ;;
-        report|report-gsm8k|report-mbpp) echo 9.5 ;;
+        report|report-gsm8k|report-mbpp) echo 9.0 ;;
         *) return 1 ;;
     esac
 }
 
 # start_budget KEY DEFAULT_HOURS: the global deadline of this job, written once (a rerun on
 # the same instance keeps it; NEW_BUDGET=1 starts a new one) into runs/t12/.deadline-KEY.
-# T12_BUDGET_REMAINING_S (the laptop's budget minus the provisioning time, uploaded with the
-# watchdog's secret) caps a new deadline AND an existing one: the clock includes provisioning.
+# T12_DEADLINE_EPOCH (an absolute time on THIS machine's clock, written by the laptop when it armed
+# the instance: its budget minus the provisioning time; the bootstrap reads it from
+# /home/.t12-deadline) caps a new deadline AND an existing one: the clock includes provisioning,
+# and the time `jl run` takes to start the job does not move it.  T12_BUDGET_REMAINING_S is the
+# older, relative form (kept for a manual run).
 start_budget() {
     local f="runs/t12/.deadline-$1" now left cap
     mkdir -p runs/t12
@@ -169,15 +172,41 @@ start_budget() {
     if [ ! -s "$f" ] || [ "${NEW_BUDGET:-0}" = 1 ]; then
         awk -v n="$now" -v h="${BUDGET_HOURS:-$2}" 'BEGIN { printf "%d\n", n + h * 3600 }' > "$f"
     fi
-    if [ -n "${T12_BUDGET_REMAINING_S:-}" ]; then
-        cap=$((now + T12_BUDGET_REMAINING_S))
-        if [ "$(cat "$f")" -gt "$cap" ]; then echo "$cap" > "$f"; fi
-    fi
+    cap=""
+    if [ -n "${T12_DEADLINE_EPOCH:-}" ]; then cap="$T12_DEADLINE_EPOCH"
+    elif [ -n "${T12_BUDGET_REMAINING_S:-}" ]; then cap=$((now + T12_BUDGET_REMAINING_S)); fi
+    if [ -n "$cap" ] && [ "$(cat "$f")" -gt "$cap" ]; then echo "$cap" > "$f"; fi
     DEADLINE_FILE="$f"
     left=$(($(cat "$f") - now))
     [ "$left" -gt 0 ] || die "the budget of '$1' is spent ($f); NEW_BUDGET=1 starts a new one"
     BUDGET_LEFT_S=$left
     echo "[budget] '$1': $((left / 60)) min left, until $(date -d "@$(cat "$f")" '+%F %T')"
+}
+
+# ensure_watchdog: the instance's watchdog (scripts/t12_watchdog.sh) is the only thing that pauses
+# an instance whose laptop is gone, so a dead one is restarted: from supervise's poll loop (every
+# 2 min at most) and from finish_job.  Only under the laptop's bootstrap (T12_WATCHED_PID = the pid
+# the watchdog watches, the process that execs into this job).  The restart reads the same
+# absolute deadline (/home/.t12-deadline), so it does not extend it.
+WD_LAST_TRY=0
+ensure_watchdog() {
+    [ -n "${T12_WATCHED_PID:-}" ] || return 0
+    local pf="${T12_WD_PIDFILE:-/home/.t12-watchdog.pid}" wd="${T12_WATCHDOG:-/home/.t12-watchdog.sh}" old now
+    old="$(cat "$pf" 2>/dev/null || true)"
+    if [ -n "$old" ] && kill -0 "$old" 2>/dev/null \
+        && tr '\0' ' ' < "/proc/$old/cmdline" 2>/dev/null | grep -q 't12.watchdog'; then
+        return 0
+    fi
+    now="$(date +%s)"
+    [ $((now - WD_LAST_TRY)) -ge "${T12_WD_RESTART_MIN_S:-120}" ] || return 0
+    WD_LAST_TRY="$now"
+    if [ ! -f "$wd" ] || [ ! -f "${T12_SECRET:-/home/.t12.env}" ]; then
+        echo "[watchdog] NOT RUNNING and cannot be restarted ($wd or the secret is missing)"
+        return 0
+    fi
+    echo "[watchdog] not running (pid '${old:-none}'): restarting it for pid $T12_WATCHED_PID"
+    setsid nohup bash "$wd" job "$T12_WATCHED_PID" "${PHASE:-}" >/dev/null 2>&1 </dev/null &
+    return 0
 }
 
 # check_shards DIR N: refuse to continue a run that was sharded differently.
@@ -314,6 +343,7 @@ supervise() {
             echo "[run] $kind limit reached: stopping the workers (every finished record is kept)"
             break
         fi
+        ensure_watchdog
         sleep "${POLL_SECONDS:-10}"
     done
     stop_workers
@@ -569,6 +599,7 @@ finish_job() {
     local rc=$? what
     trap - EXIT TERM INT
     stop_workers 2>/dev/null || true
+    ensure_watchdog
     mkdir -p runs/t12-out
     echo "phase=$PHASE rc=$rc end=$(date -u +%FT%TZ) commit=$(git rev-parse HEAD 2>/dev/null || echo unknown)" > "runs/t12/.job-$PHASE.status"
     if tar -czf "runs/t12-out/$PHASE.tgz" --exclude='.lock*' -C runs/t12 . 2>/dev/null; then

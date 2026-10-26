@@ -9,6 +9,7 @@ gpus.json, scenario.json ({"run": "ok" | "drop" | "fail", "polls_running": N, "n
 import hashlib
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -62,6 +63,17 @@ def main(argv):
     sc = load("scenario.json", {})
     cmd = argv[0]
     rest = argv[1:]
+    # scenario["fail"] = {"list": 3, "status": 2, "run list": 1, "upload": 3}: that many failing calls
+    # of the verb (an outage), counted in fails.json, then it works again
+    key = "run " + rest[0] if cmd == "run" and rest else cmd
+    fails = load("fails.json", dict(sc.get("fail", {})))
+    if fails.get(key, 0) > 0:
+        fails[key] -= 1
+        save("fails.json", fails)
+        log("FAILED " + key)
+        print("fake jl: simulated outage", file=sys.stderr)
+        sys.exit(1)
+    save("fails.json", fails)
     if os.environ.get("JL_API_KEY") in (None, ""):
         print("fake jl: no JL_API_KEY in the environment", file=sys.stderr)
     if cmd == "status":
@@ -96,7 +108,8 @@ def main(argv):
         j = rest.index("--")
         mid, c = rest[0], " ".join(rest[j + 1:])
         if "setsid" in c:
-            print("" if sc.get("no_armed") else "2026-10-26T00:00:00Z [watchdog 1 fetch] armed: x")
+            m = re.search(r"T12_WD_NONCE=(\S+?);", c)
+            print("" if sc.get("no_armed") else f"2026-10-26T00:00:00Z [watchdog 1 fetch] armed: x; nonce {m.group(1)}; y")
         elif "t12-hold" in c:
             pass
         elif "ls -1" in c:
@@ -111,6 +124,7 @@ def main(argv):
             print("ok")
     elif cmd == "download":
         mid, remote, local = rest[0], rest[1], rest[2]
+        time.sleep(sc.get("download_sleep", 0))
         Path(local).write_bytes((D / "outputs.tgz").read_bytes())
     elif cmd == "run":
         sub = rest[0]

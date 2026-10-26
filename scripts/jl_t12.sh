@@ -11,8 +11,9 @@
 #                                                        # then checks *.sh out with LF endings
 #   # Jarvis dashboard > Settings > API keys: create a DEDICATED key for this sweep (name it
 #   # t12-sweep).  In the shell you launch from:
-#   export JL_API_KEY=<that key>                         # launch refuses without it; never paste it
-#                                                        # into a file, a commit or a message
+#   read -rs JL_API_KEY; export JL_API_KEY                # hidden prompt: no literal key in the shell
+#                                                        # history; launch refuses without it; never put
+#                                                        # it in a file, a commit or a message
 #
 # THE SEQUENCE (every `launch` asks for `yes`; YES=1 skips that)
 #   1. bash scripts/jl_t12.sh prepare smoke <commit>   && bash scripts/jl_t12.sh launch smoke
@@ -20,7 +21,7 @@
 #        problems -- and the WATCHDOG: while it runs, close the laptop terminal (kill the launch)
 #        and confirm in the dashboard that the instance pauses itself after the job ends + the
 #        20 min grace (T12_FETCH_GRACE_MIN=2 shortens it for the rehearsal), or at the deadline +
-#        30 min.  Then `bash scripts/jl_t12.sh fetch smoke` (resumes with 1 GPU, fetches, pauses).
+#        20 min.  Then `bash scripts/jl_t12.sh fetch smoke` (resumes with 1 GPU, fetches, pauses).
 #   2. bash scripts/jl_t12.sh prepare calib <commit>   && bash scripts/jl_t12.sh launch calib
 #        2 x RTX-PRO6000 in IN1, <= 2.5 h.  Fetches and pauses by itself ->
 #        runs/t12/jl-calib-<sha7>/cal-grids/t12_grid_{gsm8k,mbpp}.json
@@ -31,7 +32,7 @@
 #        git add prereg && git commit && git push
 #   4. bash scripts/jl_t12.sh prepare report <pushed-commit> && bash scripts/jl_t12.sh launch report
 #        refuses unless the commit is an ancestor of the branch on origin (git ls-remote) with both
-#        grids.  <= 9.5 h.  -> runs/t12/jl-report-<sha7>/sweep-{gsm8k,mbpp}/ (then score_t12.py)
+#        grids.  <= 9.0 h.  -> runs/t12/jl-report-<sha7>/sweep-{gsm8k,mbpp}/ (then score_t12.py)
 #   5. If the report stopped by its budget (exit 3), a link dropped for good, or an instance died:
 #        a. SAME instance, first choice (its /home holds the venv, the model and the partial JSONLs):
 #             NEW_BUDGET=1 bash scripts/jl_t12.sh prepare report <same-commit>
@@ -45,6 +46,10 @@
 #           (needs the same commit and the same NGPU as the partial run: checked at prepare.)
 #   6. When the outputs are checked: `jl destroy <id>` by hand (nothing here destroys an
 #      instance), and REVOKE the dedicated API key in the Jarvis dashboard.
+#
+# IF THE LAPTOP CRASHES OR LOSES THE NETWORK DURING `launch`, before the watchdog is armed (the
+# 1-3 minutes between `jl create` returning and the guard watchdog reporting "armed" cannot be
+# closed), run `jl list` and pause anything named t12-* by hand: `jl pause <id> --yes`.
 #
 #   bash scripts/jl_t12.sh status|watch|fetch|pause <phase>    # see below
 #
@@ -64,11 +69,14 @@
 # lifecycle action, so a laptop-side pause can never be the only one.  Every instance therefore
 # carries its own watchdog (scripts/t12_watchdog.sh, log /home/t12-watchdog.log):
 #   * the job ends  -> T12_FETCH_GRACE_MIN (default 20) minutes for the laptop to fetch, then PAUSE;
-#   * always        -> PAUSE at the global deadline + 30 min, even if the job is still running;
-#   * resumes (fetch, ON=) start a fresh watchdog at once; a fetch in progress keeps /home/.t12-hold
-#     fresh so the pause waits for it (never past the hard limit).
+#   * always        -> PAUSE at the global deadline + 20 min, even if the job is still running;
+#   * the job's own supervisor restarts a watchdog that has died (ensure_watchdog, jarvis_t12.sh);
+#   * resumes (fetch, ON=) start a fresh watchdog at once; a fetch in progress touches /home/.t12-hold
+#     every 4 min so the pause waits for it (never past the hard limit).
 # The pause is a `POST misc/pause?machine_id=` to the instance's regional Jarvis backend with the
-# key in /home/.t12.env (looked up by NAME, the id changes on a resume), then `jl pause` as the fallback.
+# key in /home/.t12.env (looked up by NAME, the id changes on a resume), then `jl pause` as the fallback
+# (jarvislabs is pip-installed with --target into /home/.t12-jl when the instance is armed).  The
+# deadline is an absolute time on the instance's clock (/home/.t12-deadline, written when armed).
 # THE KEY: `launch` writes JL_API_KEY (from YOUR environment, nothing else) into a chmod-600 temp
 # file outside the repo, uploads it with `jl upload` and deletes the local copy at once (also on
 # Ctrl+C).  It lives on the instance's /home until you destroy the instance.  Therefore: use a
@@ -77,15 +85,24 @@
 # After a successful fetch the laptop pauses at once; the watchdog's later pause is then a no-op
 # (it finds the instance Paused, or is gone with the container).  If the link drops, `launch`
 # no longer exits: it falls through to `watch` (polls every 2 min, fetches when the job has ended,
-# pauses, and force-pauses 40 min after the job's budget).  `pause <phase>` pauses by hand (refuses
+# pauses, and force-pauses 40 min after the job's budget).  `watch` survives an outage of the laptop's
+# link or of the Jarvis API: a failed `jl list`/`jl status` is "unknown", never "nothing to pause";
+# it retries every minute until the budget + 1 h, and if it ever exits non-zero while an instance
+# might exist it prints a banner with the id/name and the exact `jl list` / `jl pause <id> --yes`.  `pause <phase>` pauses by hand (refuses
 # while the job runs, FORCE=1 overrides); `status <phase>` shows the instance, the run, the log and the
 # watchdog's log.  Fetching resumes a paused instance with ONE GPU (JL_FETCH_GPUS) so that it
 # is not stranded when IN1 has no 2 free, and pauses it again.  Nothing here ever destroys an
 # instance.  Every jl call has a timeout.
 #
-# Budget.  Defaults: calib 2.5 h, report 9.5 h, smoke 20 min (what the wallet covers at
-# 416 INR/h for 2 GPUs).  The clock starts when `launch` starts (provisioning counts); the job and
-# the watchdog get what is left.  Before creating anything, `launch` reads the balance (+ grants)
+# Budget.  Defaults: calib 2.5 h, report 9.0 h, smoke 20 min.  The clock starts when `launch`
+# starts (provisioning counts); the job and the watchdog get what is left.  Worst case at 207.36 INR
+# per GPU-hour (2 GPU = 414.72 INR/h), every phase running to its deadline and then waiting out the
+# watchdog's 20 min margin / fetch grace:
+#     smoke   1 GPU x (0.34 + 0.33) h             =  138 INR
+#     calib   2 GPU x (2.5  + 0.33) h             = 1175 INR
+#     report  2 GPU x (9.0  + 0.33) h             = 3871 INR      total 5184 INR
+#     + a 1-GPU fetch resume lasts <= 20 min (grace) = 69 INR each, 3 of them          5391 INR
+# (storage while paused not included).  Before creating anything, `launch` reads the balance (+ grants)
 # from `jl status --json` and the price from `jl gpus --json` (price_per_hour is PER GPU; the
 # row for a container) and refuses if balance < price x GPUs x (budget + 0.5 h).
 # T12_SKIP_WALLET_CHECK=1 overrides it, loudly.
@@ -93,7 +110,7 @@
 # Knobs, baked into the upload by `prepare`: BUDGET_HOURS, NEW_BUDGET, CAL_GRID, CAL_MAX_HOURS,
 # CHECK_LIMIT, CHECK_MAX_HOURS, CHECK_MAX_SPF, MAX_RESTARTS, RUN_ARGS, PRECISION, NGPU, ALLOW_BF16
 # (see scripts/jarvis_t12.sh), RESUME_FROM (a directory, see 5b).  At `launch`: JL_GPU (RTX-PRO6000),
-# JL_NUM_GPUS (2; smoke 1), JL_REGION (IN1), JL_STORAGE (100), JL_TEMPLATE (pytorch), JL_FETCH_GPUS (1),
+# JL_NUM_GPUS (2; smoke 1; must equal the baked NGPU / RESUME_FROM's), JL_REGION (IN1), JL_STORAGE (100), JL_TEMPLATE (pytorch), JL_FETCH_GPUS (1),
 # T12_FETCH_GRACE_MIN (20), T12_SKIP_WALLET_CHECK, ON=<machine id> (use an existing instance, resumed if
 # paused), YES=1, STAGE (the directory with artifacts/ and runs/ from Ada; default runs/jarvis-stage).
 set +x
@@ -128,7 +145,7 @@ check_phase() {
 }
 is_report() { case "$1" in report*) return 0 ;; *) return 1 ;; esac; }
 # (scripts/jarvis_t12.sh phase_hours says the same; a test compares them)
-default_hours() { case "$1" in calib) echo 2.5 ;; smoke) echo 0.34 ;; *) echo 9.5 ;; esac; }
+default_hours() { case "$1" in calib) echo 2.5 ;; smoke) echo 0.34 ;; *) echo 9.0 ;; esac; }
 default_gpus() { case "$1" in smoke) echo 1 ;; *) echo 2 ;; esac; }
 
 # ---- prepare: the upload -------------------------------------------------------------------
@@ -164,14 +181,16 @@ if [ "${T12_DRYRUN:-0}" != 1 ]; then
     [ -f "$SECRET" ] || { echo "[bootstrap] FATAL: no $SECRET: refusing to start a job that nothing would pause" >&2; exit 1; }
     [ -f "$WD" ] || { echo "[bootstrap] FATAL: no $WD: refusing to start a job that nothing would pause" >&2; exit 1; }
     chmod 600 "$SECRET"
-    setsid nohup bash "$WD" job "$$" "$PHASE" >/dev/null 2>&1 </dev/null &
+    nonce="$$.$(date +%s)"
+    T12_WD_NONCE="$nonce" setsid nohup bash "$WD" job "$$" "$PHASE" >/dev/null 2>&1 </dev/null &
     armed=0
     for _ in $(seq 1 "${T12_ARM_WAIT:-30}"); do
-        if tail -n 5 "${T12_WD_LOG:-/home/t12-watchdog.log}" 2>/dev/null | grep -q "job pid $$;"; then armed=1; break; fi
+        if tail -n 5 "${T12_WD_LOG:-/home/t12-watchdog.log}" 2>/dev/null | grep -q "nonce $nonce;"; then armed=1; break; fi
         sleep 1
     done
     [ "$armed" = 1 ] || { echo "[bootstrap] FATAL: the watchdog did not arm (see /home/t12-watchdog.log); no job" >&2; exit 1; }
     echo "[bootstrap] watchdog armed for pid $$"
+    export T12_WATCHED_PID=$$      # the job restarts the watchdog for this pid if it dies
 fi
 REPO="$BASE/ANLP-Project"
 SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
@@ -211,6 +230,9 @@ if [ "${T12_DRYRUN:-0}" != 1 ]; then
     # the budget left (provisioning counted); read in a subshell so the key never enters the job
     T12_BUDGET_REMAINING_S="$(set -a; . "$SECRET" >/dev/null 2>&1; printf '%s' "${T12_BUDGET_REMAINING_S:-}")"
     export T12_BUDGET_REMAINING_S
+    # the absolute deadline the laptop wrote when it armed the instance (this machine's clock)
+    DLF="${T12_DEADLINE_FILE:-/home/.t12-deadline}"
+    if [ -s "$DLF" ]; then T12_DEADLINE_EPOCH="$(cat "$DLF")"; export T12_DEADLINE_EPOCH; fi
 fi
 cd "$REPO"
 echo "[bootstrap] $PHASE at $(git rev-parse HEAD) in $REPO"
@@ -330,6 +352,7 @@ cmd_prepare() {
         [ -d "$RESUME_FROM" ] || die "RESUME_FROM=$RESUME_FROM is not a directory (runs/t12/jl-report-<sha7> of an earlier fetch)"
         mkdir -p "$dir/payload/resume"
         resume_pack "$RESUME_FROM" "$dir/payload/resume" "$full" "$ngpu" || die "RESUME_FROM refused (see above)"
+        echo "$ngpu" > "$dir/RESUME_NGPU"      # launch refuses another JL_NUM_GPUS before creating anything
     fi
 
     : > "$dir/payload/job.env"
@@ -373,10 +396,14 @@ cmd_prepare() {
 
 # ---- jl helpers ----------------------------------------------------------------------------
 
-need_jl() {
+need_tools() {
     command -v jl >/dev/null 2>&1 || die "jl is not installed: uv tool install jarvislabs (then put ~/.local/bin on PATH)"
     command -v ssh >/dev/null 2>&1 || die "ssh must be on PATH (jl uses it)"
     command -v scp >/dev/null 2>&1 || die "scp must be on PATH (jl uses it)"
+}
+
+need_jl() {
+    need_tools
     timeout 120 jl status --json >/dev/null 2>&1 || die "jl is not logged in (run: jl setup), JL_API_KEY is wrong, or the API is unreachable"
 }
 
@@ -393,14 +420,17 @@ phase_dir() {
     cat "$UP/.last-$1"
 }
 
-# "machine_id status" of the newest instance with this name, or nothing.
+# "machine_id status" of the newest instance with this name; nothing when the list is read and
+# has none; "? unknown" when `jl list` FAILED (API down, link down): never "no instance".
 find_instance() {
-    { timeout 120 jl list --json 2>/dev/null || true; } | "$PYJ" -c '
+    local out
+    out="$(timeout 120 jl list --json 2>/dev/null)" || { echo "? unknown"; return 0; }
+    printf '%s' "$out" | "$PYJ" -c '
 import json, sys
 try:
     d = json.load(sys.stdin)
 except ValueError:
-    sys.exit(0)
+    print("? unknown"); sys.exit(0)
 for i in (d.get("instances", []) if isinstance(d, dict) else d):
     if i.get("name") == sys.argv[1]:
         print(i["machine_id"], i["status"])
@@ -409,26 +439,30 @@ for i in (d.get("instances", []) if isinstance(d, dict) else d):
 
 # "name status num_gpus" of the instance with this machine id, or nothing.
 instance_by_id() {
-    { timeout 120 jl list --json 2>/dev/null || true; } | "$PYJ" -c '
+    local out
+    out="$(timeout 120 jl list --json 2>/dev/null)" || { echo "? unknown ?"; return 0; }
+    printf '%s' "$out" | "$PYJ" -c '
 import json, sys
 try:
     d = json.load(sys.stdin)
 except ValueError:
-    sys.exit(0)
+    print("? unknown ?"); sys.exit(0)
 for i in (d.get("instances", []) if isinstance(d, dict) else d):
     if str(i.get("machine_id")) == sys.argv[1]:
         print(i.get("name"), i.get("status"), i.get("num_gpus"))
 ' "$1" | tr -d '\r' | tail -n 1
 }
 
-# The latest local run record of an instance.
+# The latest local run record of an instance ("?" when `jl run list` failed).
 latest_run_id() {
-    { timeout 120 jl run list --json --machine "$1" --limit 1 2>/dev/null || true; } | "$PYJ" -c '
+    local out
+    out="$(timeout 120 jl run list --json --machine "$1" --limit 1 2>/dev/null)" || { echo "?"; return 0; }
+    printf '%s' "$out" | "$PYJ" -c '
 import json, sys
 try:
     d = json.load(sys.stdin)
 except ValueError:
-    sys.exit(0)
+    print("?"); sys.exit(0)
 if d:
     print(d[0]["run_id"])
 ' | tr -d '\r'
@@ -438,6 +472,7 @@ if d:
 run_state() {
     local id="$1" rid="$2"
     [ -n "$rid" ] || { echo none; return 0; }
+    [ "$rid" != "?" ] || { echo unknown; return 0; }
     { timeout 180 jl run status "$rid" --json 2>/dev/null || true; } | "$PYJ" -c '
 import json, sys
 try:
@@ -571,67 +606,104 @@ write_secret() {
     } > "$1"
 }
 
-# The command that (re)starts the watchdog in "fetch" mode (no job): a guard for the minutes
-# before the job's bootstrap starts its own, and for a resume that only fetches.
-GUARD_CMD='chmod 600 /home/.t12.env; if [ -f /home/.t12-watchdog.sh.new ]; then mv -f /home/.t12-watchdog.sh.new /home/.t12-watchdog.sh; fi; chmod 700 /home/.t12-watchdog.sh; (setsid nohup bash /home/.t12-watchdog.sh fetch </dev/null >/dev/null 2>&1 &); sleep 3; tail -n 3 /home/t12-watchdog.log'
+# guard_cmd NONCE GRACE_S SET_ID DEADLINE_IN_S: the command (run on the instance through `jl exec`)
+# that (re)starts the watchdog in "fetch" mode (no job): a guard for the minutes before the job's
+# bootstrap starts its own, and for a resume that only fetches.  The FIRST thing it does is chmod
+# the secret 600 (scp does not keep the mode).  With DEADLINE_IN_S it writes the absolute deadline
+# (the instance's clock) and installs jarvislabs for the fallback pause; with SET_ID it rewrites
+# T12_MACHINE_ID in the secret (the id changes on a resume).
+guard_cmd() {
+    local c="umask 077; chmod 600 /home/.t12.env"
+    [ -z "$4" ] || c="$c; echo \$((\$(date +%s) + $4)) > /home/.t12-deadline"
+    [ -z "$3" ] || c="$c; sed -i 's/^T12_MACHINE_ID=.*/T12_MACHINE_ID=$3/' /home/.t12.env"
+    c="$c; if [ -f /home/.t12-watchdog.sh.new ]; then mv -f /home/.t12-watchdog.sh.new /home/.t12-watchdog.sh; fi; chmod 700 /home/.t12-watchdog.sh"
+    [ -z "$2" ] || c="$c; T12_FETCH_GRACE_S=$2; export T12_FETCH_GRACE_S"
+    c="$c; T12_WD_NONCE=$1; export T12_WD_NONCE"
+    [ -z "$4" ] || c="$c; (nohup python3 -m pip install -q --target /home/.t12-jl jarvislabs >/home/.t12-jl-install.log 2>&1 </dev/null &)"
+    c="$c; (setsid nohup bash /home/.t12-watchdog.sh fetch </dev/null >/dev/null 2>&1 &); sleep 3; tail -n 3 /home/t12-watchdog.log"
+    printf '%s' "$c"
+}
 
-# start_guard ID [GRACE_S]: true when the watchdog says it is armed (3 tries: ssh may need a
-# moment after a create or a resume).  GRACE_S replaces the grace of the minutes before the
-# job's own watchdog takes over.
+# start_guard ID [GRACE_S [SET_ID [DEADLINE_AT]]]: true when THIS start of the watchdog reports
+# "armed" (it echoes a fresh nonce: an old log line cannot pass; 3 tries, ssh may need a moment
+# after a create or a resume).  GRACE_S replaces the grace of the minutes before the job's own
+# watchdog takes over.  DEADLINE_AT is the laptop's epoch of the budget's end; the remaining
+# seconds are computed again at every try.
 start_guard() {
-    local out t cmd="$GUARD_CMD"
-    [ -z "${2:-}" ] || cmd="T12_FETCH_GRACE_S=$2; export T12_FETCH_GRACE_S; $cmd"
+    local out t cmd nonce rem=""
+    nonce="$(date +%s)$RANDOM"
     for t in 1 2 3; do
+        [ -z "${4:-}" ] || rem=$(($4 - $(date +%s)))
+        cmd="$(guard_cmd "$nonce" "${2:-}" "${3:-}" "$rem")"
         out="$(timeout 120 jl exec "$1" -- sh -c "$cmd" 2>&1 || true)"
-        if printf '%s\n' "$out" | grep -q 'armed'; then return 0; fi
+        if printf '%s\n' "$out" | grep -q "nonce $nonce;"; then return 0; fi
         sleep "$NAP"
     done
     info "the watchdog did not report 'armed' on instance $1: $(printf '%s' "$out" | tail -n 2 | tr '\n' ' ')"
     return 1
 }
 
+# upload_try ID SRC DEST LOGDIR: jl upload, 3 tries.
+upload_try() {
+    local t
+    for t in 1 2 3; do
+        if timeout 300 jl upload "$1" "$2" "$3" >> "$4/launch.log" 2>&1; then return 0; fi
+        sleep "$NAP"
+    done
+    return 1
+}
+
 # arm_instance DIR ID NAME T0 HOURS: upload the secret (written with umask 077 in a private temp
-# directory OUTSIDE the repo, deleted at once) and the watchdog, start the guard watchdog.
+# directory OUTSIDE the repo, deleted at once) and the watchdog IN PARALLEL, then start the guard
+# watchdog: this is the first thing done to an instance, right after it exists.
 arm_instance() {
-    local dir="$1" id="$2" name="$3" t0="$4" hours="$5" rem sfile sarg t ok=0 wd
-    rem="$(awk -v t0="$t0" -v now="$(date +%s)" -v h="$hours" 'BEGIN { printf "%d", h * 3600 - (now - t0) }')"
+    local dir="$1" id="$2" name="$3" t0="$4" hours="$5" rem sfile sarg wsarg p1 p2 ok=1 dl
+    dl=$((t0 + $(awk -v h="$hours" 'BEGIN { printf "%d", h * 3600 }')))
+    rem=$((dl - $(date +%s)))
     [ "$rem" -ge 300 ] || die "the budget ($hours h) is used up by provisioning ($rem s left)"
     SECRET_DIR="$(umask 077; mktemp -d)" || die "mktemp -d failed"
     sfile="$SECRET_DIR/secret.env"
     (umask 077; write_secret "$sfile" "$name" "$id" "$rem")
     sarg="$sfile"
-    if command -v cygpath >/dev/null 2>&1; then sarg="$(cygpath -m "$sfile")"; fi
-    for t in 1 2 3; do
-        if timeout 300 jl upload "$id" "$sarg" /home/.t12.env >> "$dir/launch.log" 2>&1; then ok=1; break; fi
-        info "uploading the watchdog's secret failed (try $t/3)"
-        sleep "$NAP"
-    done
+    wsarg="$(cd "$dir" && pwd)/t12_watchdog.sh"
+    if command -v cygpath >/dev/null 2>&1; then sarg="$(cygpath -m "$sfile")"; wsarg="$(cygpath -m "$wsarg")"; fi
+    upload_try "$id" "$sarg" /home/.t12.env "$dir" & p1=$!
+    upload_try "$id" "$wsarg" /home/.t12-watchdog.sh.new "$dir" & p2=$!
+    wait "$p1" || ok=0
+    wait "$p2" || ok=0
     cleanup_secret
-    [ "$ok" = 1 ] || die "could not upload the watchdog's secret to instance $id: nothing would pause it; no job started"
-    wd="$dir/t12_watchdog.sh"
-    sarg="$wd"
-    if command -v cygpath >/dev/null 2>&1; then sarg="$(cygpath -m "$(cd "$(dirname "$wd")" && pwd)/$(basename "$wd")")"; fi
-    ok=0
-    for t in 1 2 3; do
-        if timeout 300 jl upload "$id" "$sarg" /home/.t12-watchdog.sh.new >> "$dir/launch.log" 2>&1; then ok=1; break; fi
-        sleep "$NAP"
-    done
-    [ "$ok" = 1 ] || die "could not upload the watchdog to instance $id; no job started"
-    start_guard "$id" 900 || die "the watchdog is not running on instance $id; no job started (the instance will be paused)"
-    info "watchdog armed on instance $id (pauses it ${T12_FETCH_GRACE_MIN:-20} min after the job, and at the budget + 30 min)"
+    [ "$ok" = 1 ] || die "could not upload the watchdog and its secret to instance $id: nothing would pause it; no job started (the instance will be paused)"
+    start_guard "$id" 900 "" "$dl" || die "the watchdog is not running on instance $id; no job started (the instance will be paused)"
+    info "watchdog armed on instance $id (pauses it ${T12_FETCH_GRACE_MIN:-20} min after the job, and at the budget + 20 min)"
 }
 
 # ---- fetch and finalize --------------------------------------------------------------------
 
 # fetch_outputs PHASE ID RID: runs/t12-out/<phase>.tgz and the job log, into runs/t12/jl-<phase>-<sha7>/
+# While it runs, a background loop touches /home/.t12-hold every 4 min (it counts as fresh for 10):
+# the watchdog's pause waits for a fetch in progress, and for nothing longer (the loop dies with this
+# shell; a laptop that vanishes lets the hold go stale).
 fetch_outputs() {
+    local holder rc=0
+    ( trap 'kill "$nap" 2>/dev/null; exit 0' TERM
+      while :; do
+          timeout 60 jl exec "$2" -- touch /home/.t12-hold >/dev/null 2>&1 || true
+          sleep "${T12_HOLD_EVERY_S:-240}" & nap=$!
+          wait "$nap"
+      done ) &
+    holder=$!
+    fetch_outputs_now "$@" || rc=$?
+    kill "$holder" 2>/dev/null || true
+    wait "$holder" 2>/dev/null || true
+    return "$rc"
+}
+
+fetch_outputs_now() {
     local phase="$1" id="$2" rid="$3" dir short out remote want got
     dir="$(phase_dir "$phase")"
     short="$(cut -c1-7 "$dir/COMMIT")"
     out="runs/t12/jl-$phase-$short"
     mkdir -p "$out"
-    # tell the watchdog a fetch is running: it does not pause under a fresh hold file
-    timeout 60 jl exec "$id" -- touch /home/.t12-hold >/dev/null 2>&1 || true
     remote="$(timeout 120 jl exec "$id" -- sh -lc "ls -1 /home/ANLP-Project/runs/t12-out/$phase.tgz /home/*/ANLP-Project/runs/t12-out/$phase.tgz 2>/dev/null | head -n 1" | tr -d '\r' | tail -n 1)" || true
     [ -n "$remote" ] || { info "no runs/t12-out/$phase.tgz on instance $id"; return 1; }
     want="$(timeout 120 jl exec "$id" -- sh -lc "cut -d' ' -f1 $remote.sha256" | tr -d '\r' | tail -n 1)" || true
@@ -645,31 +717,44 @@ fetch_outputs() {
     return 0
 }
 
-# finalize PHASE [resume]: after the job: fetch, then pause.  Returns 2 while the job still runs
-# (or the instance is changing state).
+# finalize PHASE [resume]: after the job: fetch, then pause.  Returns 2 while the job still runs, the
+# instance is changing state, or the instance list cannot be read (LOOKUP_DOWN=1): "unknown" is
+# never taken for "nothing to pause".
 finalize() {
     local phase="$1" resume="${2:-}" dir name id status rid state t
     dir="$(phase_dir "$phase")"
     name="$(cat "$dir/launch.name" 2>/dev/null)" || die "'$phase' was not launched from this checkout"
     read -r id status < <(find_instance "$name") || true
-    [ -n "${id:-}" ] || { info "no instance named $name: nothing to pause"; return 0; }
+    if [ "${id:-}" = "?" ]; then
+        # `jl list` failed: the link or the API is down.  That is NOT "no instance": keep trying.
+        LOOKUP_DOWN=1
+        info "cannot read the instance list (link or API down?): $name may still be billing; will keep trying"
+        return 2
+    fi
+    LOOKUP_DOWN=0
+    [ -n "${id:-}" ] || { info "no instance named $name in a good \`jl list\`: nothing to pause"; return 0; }
+    echo "$id" > "$dir/launch.id"
     if [ "$status" = Paused ]; then
         [ "$resume" = resume ] || { info "instance $id is paused; \`fetch $phase\` resumes it, fetches and pauses it again"; return 0; }
         # ONE GPU is enough to read /home, and it cannot be stranded when the region has no 2 free
         info "resuming the paused instance $id with $JL_FETCH_GPUS GPU to fetch the outputs (billed while it runs)"
         timeout 900 jl resume "$id" --num-gpus "$JL_FETCH_GPUS" --yes || die "jl resume failed (the outputs are safe on /home; retry \`fetch $phase\`)"
         read -r id status < <(find_instance "$name") || true
+        if [ "${id:-}" = "?" ]; then LOOKUP_DOWN=1; info "resumed, but cannot read the instance list: will keep trying"; return 2; fi
         [ "${status:-}" = Running ] || die "instance $name is ${status:-missing} after resume"
-        # a resumed container has no processes: a watchdog first, then the work
-        start_guard "$id" || info "WARNING: no watchdog on the resumed instance $id: fetch fast, the pause below is the only one"
+        echo "$id" > "$dir/launch.id"
+        # a resumed container has no processes: a watchdog first (with the new machine id in its
+        # secret), then the work
+        start_guard "$id" "" "$id" || info "WARNING: no watchdog on the resumed instance $id: fetch fast, the pause below is the only one"
     elif [ "$status" = Creating ] || [ "$status" = Resuming ]; then
         info "instance $id is $status: it will be Running soon and then bills; waiting"
         return 2
     elif [ "$status" != Running ]; then
         info "instance $id is $status"; return 0
     fi
-    rid="$(latest_run_id "$id")"
+    state=unknown
     for t in 1 2 3; do
+        rid="$(latest_run_id "$id")"
         state="$(run_state "$id" "$rid")"
         [ "$state" != unknown ] && break
         sleep "$NAP"
@@ -678,9 +763,9 @@ finalize() {
         running|unknown)
             cat >&2 <<EOF
 ================================================================================
- JOB '$phase' IS STILL RUNNING (state: $state) on instance $id: IT KEEPS BILLING.
+ JOB '$phase' IS STILL RUNNING or its state is unknown (state: $state) on instance $id: IT KEEPS BILLING.
  The job ends by itself at its deadline, and the instance's own watchdog pauses it after the
- job + the fetch grace (and at the deadline + 30 min), even if this laptop is gone.
+ job + the fetch grace (and at the deadline + 20 min), even if this laptop is gone.
  Re-attach:   bash scripts/jl_t12.sh watch $phase     (done automatically by \`launch\`)
  or look:   bash scripts/jl_t12.sh status $phase       pause by hand:   bash scripts/jl_t12.sh pause $phase
 ================================================================================
@@ -699,7 +784,7 @@ budget_on_instance() {
 }
 
 cmd_launch() {
-    local phase="${1:-}" dir full short name hours row price free t ans id status rid state ngpus T0 inst rest left
+    local phase="${1:-}" dir full short name hours row price free t ans id status rid state ngpus T0 inst rest left baked
     check_phase "$phase"
     dir="$(phase_dir "$phase")"
     full="$(cat "$dir/COMMIT")"
@@ -710,6 +795,13 @@ cmd_launch() {
     JL_NUM_GPUS="$ngpus"
     need_key
     need_jl
+    baked="$(sed -n 's/^export NGPU=//p' "$dir/payload/job.env" 2>/dev/null | tail -n 1 | tr -d '\r')"
+    if [ -n "$baked" ] && [ "$baked" != "$ngpus" ]; then
+        die "the upload has NGPU=$baked baked in but this launch has JL_NUM_GPUS=$ngpus: set JL_NUM_GPUS=$baked or prepare again"
+    fi
+    if [ -f "$dir/RESUME_NGPU" ] && [ "$(tr -d '\r\n' < "$dir/RESUME_NGPU")" != "$ngpus" ]; then
+        die "RESUME_FROM was packed for $(cat "$dir/RESUME_NGPU") shards but JL_NUM_GPUS=$ngpus: they must be equal (checked before anything is created)"
+    fi
     [ ! -f "$dir/launch.name" ] || info "note: $phase was launched before from this upload${ON:+ (on instance $ON)}"
     if is_report "$phase"; then
         origin_has_commit "$full" \
@@ -742,6 +834,7 @@ cmd_launch() {
         inst="$(instance_by_id "$ON")"
         [ -n "$inst" ] || die "no instance with machine id $ON on this account (jl list)"
         read -r name status rest <<< "$inst"
+        [ "$name" != "?" ] || die "cannot read the instance list (jl list failed): try again"
         case "$status" in Running|Paused) ;; *) die "instance $ON is $status: only a Running or Paused instance can be used" ;; esac
     else
         name="t12-$phase-$short-$(date +%m%d%H%M)"
@@ -751,9 +844,11 @@ cmd_launch() {
 ================================================================================
  LAUNCH '$phase' (commit $short) -- THIS BILLS: $ngpus x $JL_GPU in $JL_REGION, up to $hours h (provisioning included)
  instance name: $name   $([ -n "${ON:-}" ] && echo "existing instance $ON ($status; resumed with $ngpus GPU if paused)")
- It is paused by the instance's own watchdog ${T12_FETCH_GRACE_MIN:-20} min after the job (or at the budget + 30 min)
+ It is paused by the instance's own watchdog ${T12_FETCH_GRACE_MIN:-20} min after the job (or at the budget + 20 min)
  even if this terminal dies.  The dedicated JL_API_KEY goes to the instance's /home/.t12.env:
  revoke it in the dashboard after the sweep.
+ IF THIS LAPTOP CRASHES OR LOSES THE NETWORK in the next minutes (before "watchdog armed"), run
+ \`jl list\` and pause anything named t12-* by hand: \`jl pause <id> --yes\`.
 ================================================================================
 EOF
     if [ "${YES:-0}" != 1 ]; then
@@ -768,31 +863,20 @@ EOF
     trap 'launch_exit' EXIT
     trap 'echo "[jl_t12] interrupted"; exit 130' INT TERM
 
-    # 1. the instance
+    # 1. the instance, 2. the watchdog (secret + script + guard) AT ONCE, 3. the checks, 4. the job
     if [ -n "${ON:-}" ]; then
         id="$ON"
         if [ "$status" = Paused ]; then
             info "resuming the paused instance $id with $ngpus GPU (its /home keeps the venv, the model and the partial results)"
             timeout 900 jl resume "$id" --num-gpus "$ngpus" --yes 2>&1 | tee -a "$dir/launch.log" || true
             read -r id status < <(find_instance "$name") || true
+            [ "${id:-}" != "?" ] || die "instance $name was resumed (or not) but the instance list cannot be read: see \`jl list\`; \`watch\` keeps trying"
             [ "${status:-}" = Running ] || die "instance $name is ${status:-missing} after jl resume"
             info "instance $name is Running as machine $id"
-        fi
-        inst="$(instance_by_id "$id")"
-        read -r name status rest <<< "$inst"
-        case "${rest:-}" in
-            ''|None|null) ;;
-            *) [ "$rest" = "$ngpus" ] || die "instance $id has $rest GPU, this launch wants $ngpus (JL_NUM_GPUS); it will be paused again" ;;
-        esac
-        rid="$(latest_run_id "$id")"
-        state="$(run_state "$id" "$rid")"
-        [ "$state" != running ] || die "a run ($rid) is still running on instance $id: one job per instance"
-        left="$(budget_on_instance "$id" "$phase")"
-        if [ -n "$left" ]; then
-            info "the instance's budget file for '$phase': $((left / 60)) min left"
-            if [ "$left" -le 0 ] && ! grep -q '^export NEW_BUDGET=1$' "$dir/payload/job.env"; then
-                die "the budget on instance $id is spent: \`NEW_BUDGET=1 prepare $phase $short\` and launch again (the instance will be paused)"
-            fi
+        else
+            rid="$(latest_run_id "$id")"
+            state="$(run_state "$id" "$rid")"
+            [ "$state" != running ] && [ "$state" != unknown ] || die "a run (${rid:-?}) is running on instance $id, or its state cannot be read: one job per instance"
         fi
     else
         info "creating the instance"
@@ -802,15 +886,30 @@ EOF
         id="$(printf '%s' "$out" | "$PYJ" -c 'import json, sys; print(json.load(sys.stdin)["machine_id"])' 2>/dev/null | tr -d '\r' || true)"
         if [ -z "$id" ]; then
             read -r id status < <(find_instance "$name") || true
+            [ "${id:-}" != "?" ] || die "jl create gave no id and the instance list cannot be read: $name MAY EXIST and bill: see \`jl list\` (\`watch\` keeps trying)"
             [ -n "${id:-}" ] || die "jl create failed and no instance named $name exists (see $dir/launch.log)"
             info "jl create reported no id but instance $id ($name) exists: $status"
             [ "${status:-}" = Running ] || die "instance $id ($name) is ${status:-?}: check \`jl list\`; it will be paused when Running"
         fi
         info "instance $id ($name) is Running"
     fi
-
-    # 2. the watchdog (secret + script + guard), 3. the job
+    echo "$id" > "$dir/launch.id"
     arm_instance "$dir" "$id" "$name" "$T0" "$hours"
+    if [ -n "${ON:-}" ]; then
+        inst="$(instance_by_id "$id")"
+        read -r name status rest <<< "$inst"
+        case "${rest:-}" in
+            ''|None|null) ;;
+            *) [ "$rest" = "$ngpus" ] || die "instance $id has $rest GPU, this launch wants $ngpus (JL_NUM_GPUS); it will be paused again" ;;
+        esac
+        left="$(budget_on_instance "$id" "$phase")"
+        if [ -n "$left" ]; then
+            info "the instance's budget file for '$phase': $((left / 60)) min left"
+            if [ "$left" -le 0 ] && ! grep -q '^export NEW_BUDGET=1$' "$dir/payload/job.env"; then
+                die "the budget on instance $id is spent: \`NEW_BUDGET=1 prepare $phase $short\` and launch again (the instance will be paused)"
+            fi
+        fi
+    fi
     left="$(awk -v t0="$T0" -v now="$(date +%s)" -v h="$hours" 'BEGIN { printf "%d", h * 3600 - (now - t0) }')"
     info "starting the job; Ctrl+C or a dropped link only detaches this terminal"
     (cd "$dir" && timeout -k 30 "$((left + 3600))" jl run "$(cat NAME)" --on "$id" --yes) 2>&1 | tee -a "$dir/launch.log" || JOB_RC="${PIPESTATUS[0]}"
@@ -827,11 +926,42 @@ launch_exit() {
     cleanup_secret
     [ "${JOB_RC:-0}" = 0 ] || rc="$JOB_RC"
     info "launch is over: now fetching and pausing (\`watch\`); Ctrl+C again to leave, the instance's watchdog pauses it"
-    cmd_watch "$LAUNCH_PHASE" || rc=$?
+    # `watch` runs in a subshell: a `die` inside it (or Ctrl+C) ends only the subshell, and the
+    # banner below says so.  (An EXIT trap set from inside an EXIT trap does not run.)
+    trap ':' INT
+    if (cmd_watch "$LAUNCH_PHASE"); then :; else rc=$?; billing_banner "$LAUNCH_PHASE"; fi
     exit "$rc"
 }
 
 # ---- status, watch, fetch, pause -----------------------------------------------------------
+
+# billing_banner PHASE: said whenever watch/launch leaves with an instance that may not be paused.
+billing_banner() {
+    local dir name id
+    dir="$(cat "$UP/.last-$1" 2>/dev/null || true)"
+    name="$(cat "$dir/launch.name" 2>/dev/null || echo "t12-$1-*")"
+    id="$(cat "$dir/launch.id" 2>/dev/null || true)"
+    cat >&2 <<EOF
+================================================================================
+ INSTANCE $name (machine id ${id:-unknown}) MAY STILL BE BILLING.
+ This script could not confirm that it is paused.  Do this NOW:
+     jl list                                # find the t12-* instance and its status
+     jl pause ${id:-<id>} --yes             # (the id changes on a resume: take it from jl list)
+ or use the dashboard, https://jarvislabs.ai/.  The instance's own watchdog
+ (/home/t12-watchdog.log) is also trying, if it was armed.
+================================================================================
+EOF
+}
+
+# run_watch PHASE: `watch` as a command: a banner on any non-zero way out.
+run_watch() {
+    local p="${1:-}" rc=0
+    check_phase "$p"
+    trap ':' INT
+    (cmd_watch "$p") || rc=$?
+    [ "$rc" = 0 ] || billing_banner "$p"
+    return "$rc"
+}
 
 instance_of() {
     local dir name
@@ -845,33 +975,43 @@ cmd_status() {
     check_phase "$phase"; need_jl
     name="$(instance_of "$phase")"
     read -r id status < <(find_instance "$name") || true
+    [ "${id:-}" != "?" ] || die "cannot read the instance list (jl list failed)"
     [ -n "${id:-}" ] || die "no instance named $name"
     rid="$(latest_run_id "$id")"
     info "instance $id ($name): $status; run ${rid:-none}: $(run_state "$id" "$rid")"
     [ "$status" = Running ] || return 0
-    [ -z "$rid" ] || timeout 120 jl run logs "$rid" --tail 15 || true
+    { [ -z "$rid" ] || [ "$rid" = "?" ]; } || timeout 120 jl run logs "$rid" --tail 15 || true
     timeout 120 jl exec "$id" -- sh -lc 'tail -n 5 /home/t12-watchdog.log' || true
     # shellcheck disable=SC2016  # the loop runs on the instance
     timeout 180 jl exec "$id" -- sh -lc 'for d in /home/ANLP-Project /home/*/ANLP-Project; do [ -d "$d" ] && cd "$d" && exec bash scripts/jarvis_t12.sh status; done' || true
 }
 
 cmd_watch() {
-    local phase="${1:-}" dir hours start now rc
-    check_phase "$phase"; need_jl
+    local phase="${1:-}" dir hours start now rc giveup t_watch
+    check_phase "$phase"; need_tools
     dir="$(phase_dir "$phase")"
     hours="$(cat "$dir/HOURS")"
     start="$(cat "$dir/launch.epoch" 2>/dev/null || date +%s)"
+    t_watch="$(date +%s)"
+    # never give up before the budget + 1 h: an outage is what `watch` is for
+    giveup="$(awk -v s="$start" -v h="$hours" 'BEGIN { printf "%d", s + h * 3600 + 3600 }')"
+    [ -z "${T12_WATCH_GIVEUP_S:-}" ] || giveup=$((t_watch + T12_WATCH_GIVEUP_S))
+    LOOKUP_DOWN=0
     while :; do
         rc=0
         finalize "$phase" resume || rc=$?
         [ "$rc" = 2 ] || return "$rc"
         now="$(date +%s)"
-        if [ "$now" -ge "$(awk -v s="$start" -v h="$hours" 'BEGIN { printf "%d", s + h * 3600 + 2400 }')" ]; then
-            info "40 min past the job's budget and it still reports running: force-pausing"
-            FORCE=1 cmd_pause "$phase"
-            return $?
+        if [ "$now" -ge "$giveup" ]; then
+            info "giving up watching '$phase' after the budget + 1 h: the instance state could not be settled"
+            return 1
         fi
-        sleep "$WATCH_SLEEP"
+        if [ "$LOOKUP_DOWN" = 0 ] && [ "$now" -ge "$(awk -v s="$start" -v h="$hours" 'BEGIN { printf "%d", s + h * 3600 + 2400 }')" ]; then
+            info "40 min past the job's budget and it still reports running: force-pausing"
+            if (FORCE=1 cmd_pause "$phase"); then return 0; fi
+            info "the force-pause did not work: will try again"
+        fi
+        if [ "$LOOKUP_DOWN" = 1 ]; then sleep "${T12_RETRY_S:-60}"; else sleep "$WATCH_SLEEP"; fi
     done
 }
 
@@ -886,6 +1026,7 @@ cmd_pause() {
     check_phase "$phase"; need_jl
     name="$(instance_of "$phase")"
     read -r id status < <(find_instance "$name") || true
+    [ "${id:-}" != "?" ] || die "cannot read the instance list (jl list failed): try again, or pause by hand (jl list; jl pause <id> --yes)"
     [ -n "${id:-}" ] || die "no instance named $name"
     [ "$status" = Running ] || { info "instance $id is $status"; return 0; }
     rid="$(latest_run_id "$id")"
@@ -901,7 +1042,7 @@ main() {
         prepare) shift; cmd_prepare "$@" ;;
         launch) shift; cmd_launch "$@" ;;
         status) shift; cmd_status "$@" ;;
-        watch) shift; cmd_watch "$@" ;;
+        watch) shift; run_watch "$@" ;;
         fetch) shift; cmd_fetch "$@" ;;
         pause) shift; cmd_pause "$@" ;;
         *) echo "usage: jl_t12.sh prepare <phase> <commit> | launch|status|watch|fetch|pause <phase>   (phase: calib|smoke|report|report-gsm8k|report-mbpp)"; exit 2 ;;

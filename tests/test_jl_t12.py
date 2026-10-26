@@ -138,7 +138,11 @@ def test_launch_creates_arms_the_watchdog_then_runs_then_fetches_and_pauses(tmp_
     create, sec, wd, guard = idx(r"^create "), idx(r"^upload 901 .*/home/\.t12\.env"), \
         idx(r"^upload 901 .*\.t12-watchdog\.sh\.new"), idx(r"^exec 901 .*setsid")
     run = idx(r"^run t12-smoke-aaaaaaa\.sh --on 901 --yes")
-    assert create < sec < wd < guard < run
+    assert create < min(sec, wd) and max(sec, wd) < guard < run      # armed before anything else
+    # the guard's command: chmod 600 FIRST, the absolute deadline, jl for the fallback, a nonce
+    g = calls[guard]
+    assert g.index("chmod 600 /home/.t12.env") < g.index("setsid") and "/home/.t12-deadline" in g
+    assert "pip install -q --target /home/.t12-jl jarvislabs" in g and "T12_WD_NONCE=" in g
     assert "--gpu RTX-PRO6000 --num-gpus 1 --region IN1" in calls[create] and "--json --yes" in calls[create]
     pause = idx(r"^pause 901 --yes")
     assert run < idx(r"^download 901") < pause
@@ -233,7 +237,7 @@ def test_fetch_resumes_a_paused_instance_with_one_gpu_then_pauses(tmp_path):
     assert r.returncode == 0, (r.stdout, r.stderr)
     calls = w.calls()
     assert "resume 905 --num-gpus 1 --yes" in calls
-    assert any(c.startswith("exec 906") and "setsid" in c for c in calls)     # a guard watchdog first
+    assert any(c.startswith("exec 906") and "setsid" in c and "T12_MACHINE_ID=906" in c for c in calls)     # a guard first, with the new id
     assert w.verbs().index("resume") < w.verbs().index("download") < w.verbs().index("pause")
     assert "pause 906 --yes" in calls                                       # the id after the resume
     inst = w.get("instances.json")[0]
@@ -315,8 +319,8 @@ def test_wallet_check_cases(tmp_path):
 
 def test_default_hours_agree_between_the_laptop_and_the_job(tmp_path):
     w = World(tmp_path)
-    for phase, want in (("calib", "2.5"), ("smoke", "0.34"), ("report", "9.5"),
-                        ("report-gsm8k", "9.5"), ("report-mbpp", "9.5")):
+    for phase, want in (("calib", "2.5"), ("smoke", "0.34"), ("report", "9.0"),
+                        ("report-gsm8k", "9.0"), ("report-mbpp", "9.0")):
         laptop = sourced(w, f"default_hours {phase}").stdout.strip()
         job = run_bash(f'eval "$(sed -n "/^phase_hours() {{/,/^}}/p" scripts/jarvis_t12.sh)"; phase_hours {phase}',
                        cwd=ROOT).stdout.strip()
@@ -425,7 +429,7 @@ def test_the_bootstrap_refuses_a_job_nothing_would_pause(tmp_path):
     assert not (tmp_path / "base" / "ANLP-Project").exists()               # nothing was checked out
     # one that does: started with `job <bootstrap pid> <phase>`, then the bootstrap goes on (and
     # fails here, there is no payload)
-    stub(tmp_path, "wd.sh", 'echo "$@" > "$T12_WD_LOG.args"; echo "armed: job pid $2; x" >> "$T12_WD_LOG"; sleep 20')
+    stub(tmp_path, "wd.sh", 'echo "$@" > "$T12_WD_LOG.args"; echo "armed: nonce $T12_WD_NONCE; x" >> "$T12_WD_LOG"; sleep 20')
     r = run_bash(f'bash "{posix(boot)}"', {**w.env(), **env}, cwd=tmp_path, stubs=w.stubs, timeout=60)
     assert "watchdog armed for pid" in r.stdout
     args = (tmp_path / "wd.log.args").read_text().split()
@@ -470,3 +474,96 @@ def test_the_bootstrap_restores_partial_shards_only_where_the_instance_has_none(
     assert "keeping" in r.stdout and "t12.shard1of2.jsonl" in r.stdout
     assert (have / "t12.shard0of2.meta.json").exists()
     assert len((have / "t12.shard1of2.jsonl").read_text().splitlines()) == 3
+
+
+# --------------------------------------------------------------------------- #
+# an outage of the link or of the API must never be read as "nothing to pause"
+# --------------------------------------------------------------------------- #
+
+def _running_world(tmp_path, **sc):
+    w = World(tmp_path)
+    (w.up / "launch.name").write_text("t12-smoke-aaaaaaa-1\n")
+    (w.up / "launch.id").write_text("901\n")
+    (w.state / "run-started").write_text("1")
+    w.add_instance(901, "t12-smoke-aaaaaaa-1", "Running", num_gpus=1)
+    w.scenario(**sc)
+    return w
+
+
+def test_watch_keeps_retrying_through_a_jl_outage_and_finally_pauses(tmp_path):
+    # `jl status` fails 5 times (what the old `watch` died on) and `jl list` 3 times
+    w = _running_world(tmp_path, fail={"status": 5, "list": 3})
+    r = w.sh("watch smoke", T12_RETRY_S=1)
+    assert r.returncode == 0, (r.stdout, r.stderr)
+    out = r.stdout + r.stderr
+    assert "nothing to pause" not in out and "cannot read the instance list" in out
+    verbs = w.verbs()
+    assert verbs.count("FAILED") == 3 and "status" not in verbs        # watch does not need `jl status`
+    assert "pause 901 --yes" in w.calls()
+    assert max(i for i, v in enumerate(verbs) if v == "FAILED") < verbs.index("pause")
+    assert "MAY STILL BE BILLING" not in out                          # it ended well: no banner
+    assert w.get("instances.json")[0]["status"] == "Paused"
+
+
+def test_a_failing_run_lookup_is_unknown_not_a_reason_to_pause_the_job(tmp_path):
+    w = _running_world(tmp_path, fail={"run list": 4})
+    r = w.sh("watch smoke", T12_RETRY_S=1)
+    assert r.returncode == 0, (r.stdout, r.stderr)
+    verbs = w.verbs()
+    assert verbs.count("FAILED") == 4
+    assert max(i for i, v in enumerate(verbs) if v == "FAILED") < verbs.index("pause")
+    assert "download" in verbs and verbs.index("download") < verbs.index("pause")
+
+
+def test_watch_that_cannot_settle_says_loudly_that_the_instance_may_be_billing(tmp_path):
+    w = _running_world(tmp_path, fail={"list": 10000})
+    r = w.sh("watch smoke", T12_RETRY_S=1, T12_WATCH_GIVEUP_S=3)
+    assert r.returncode != 0
+    assert "nothing to pause" not in r.stdout + r.stderr
+    assert "MAY STILL BE BILLING" in r.stderr and "jl pause 901 --yes" in r.stderr and "jl list" in r.stderr
+    assert "t12-smoke-aaaaaaa-1" in r.stderr
+    assert not any(c.startswith("pause") for c in w.calls())
+
+
+def test_the_wifi_dropping_right_after_create_still_ends_with_a_pause(tmp_path):
+    # the secret cannot be uploaded (6 = 2 parallel uploads x 3 tries) and `jl list` is down for 2 calls
+    w = World(tmp_path)
+    w.scenario(fail={"upload": 6, "list": 2})
+    r = w.sh("launch smoke", T12_RETRY_S=1)
+    assert r.returncode != 0 and "could not upload the watchdog" in r.stderr
+    out = r.stdout + r.stderr
+    assert "nothing to pause" not in out
+    assert "pause 901 --yes" in w.calls()
+    assert not any(c.startswith("run t12") for c in w.calls())
+    assert w.get("instances.json")[0]["status"] == "Paused"
+    assert "MAY STILL BE BILLING" not in out
+
+
+def test_a_launch_that_dies_with_the_api_down_prints_the_banner(tmp_path):
+    w = World(tmp_path)
+    w.scenario(fail={"upload": 6, "list": 10000})
+    r = w.sh("launch smoke", T12_RETRY_S=1, T12_WATCH_GIVEUP_S=3)
+    assert r.returncode != 0
+    assert "MAY STILL BE BILLING" in r.stderr and "jl pause 901 --yes" in r.stderr
+
+
+def test_a_fetch_keeps_the_watchdogs_hold_fresh_while_it_downloads(tmp_path):
+    w = _running_world(tmp_path, download_sleep=3, phase="smoke")
+    r = w.sh("fetch smoke", T12_HOLD_EVERY_S=1)
+    assert r.returncode == 0, (r.stdout, r.stderr)
+    touches = [c for c in w.calls() if c.startswith("exec 901") and "t12-hold" in c]
+    assert len(touches) >= 3
+    verbs = w.verbs()
+    assert verbs.index("download") < verbs.index("pause")
+
+
+def test_the_gpu_count_is_checked_before_anything_is_created(tmp_path):
+    w = World(tmp_path, phase="calib", hours="2.5")
+    (w.up / "payload" / "job.env").write_text("export NGPU=1\n")
+    r = w.sh("launch calib")                                   # JL_NUM_GPUS defaults to 2
+    assert r.returncode == 1 and "NGPU=1" in r.stderr
+    (w.up / "payload" / "job.env").write_text("")
+    (w.up / "RESUME_NGPU").write_text("1\n")
+    r = w.sh("launch calib")
+    assert r.returncode == 1 and "RESUME_FROM was packed for 1 shards" in r.stderr
+    assert not any(c.startswith(("create", "resume", "upload")) for c in w.calls())

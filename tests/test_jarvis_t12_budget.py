@@ -48,3 +48,10 @@ def test_the_laptops_remaining_budget_caps_an_existing_deadline(tmp_path):
     body = ('mkdir -p runs/t12; echo $(( $(date +%s) + 20000 )) > runs/t12/.deadline-report\n'
             'start_budget report 9.5 >/dev/null; echo BUDGET_LEFT_S=$BUDGET_LEFT_S\n')
     assert abs(left(budget(tmp_path, body, T12_BUDGET_REMAINING_S="3600")) - 3600) <= 5
+
+
+def test_the_absolute_deadline_epoch_caps_the_budget(tmp_path):
+    import time
+    r = budget(tmp_path, 'start_budget report 9 >/dev/null; echo BUDGET_LEFT_S=$BUDGET_LEFT_S',
+               T12_DEADLINE_EPOCH=str(int(time.time()) + 5000))
+    assert abs(left(r) - 5000) <= 5, r.stderr

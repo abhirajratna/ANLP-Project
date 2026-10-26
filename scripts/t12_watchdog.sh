@@ -6,7 +6,7 @@
 #   t12_watchdog.sh job PID PHASE   PID is the job's process (the upload's bootstrap, which execs
 #                                   into the job): when it has exited, wait the fetch grace so the
 #                                   laptop can download the outputs, then pause this instance.
-#                                   Whatever the job does, pause at the global deadline + 30 min.
+#                                   Whatever the job does, pause at the global deadline + 20 min.
 #   t12_watchdog.sh fetch           no job: pause after the grace.  Started right after a create,
 #                                   a resume for fetching and a resume for a continued run, so
 #                                   that there is never a minute without a watchdog.
@@ -18,7 +18,8 @@
 # The secret.  /home/.t12.env (chmod 600, uploaded by the laptop; /home survives a pause) holds
 # JL_API_KEY -- a DEDICATED Jarvis API key, to be revoked after the sweep -- plus T12_INSTANCE_NAME,
 # T12_MACHINE_ID, T12_BUDGET_REMAINING_S (seconds of budget left when the file was written) and
-# T12_FETCH_GRACE_MIN (default 20).  The key is only ever sent as a header read from a chmod-600
+# T12_FETCH_GRACE_MIN (default 20).  The absolute deadline of the job is /home/.t12-deadline (an epoch
+# on THIS machine's clock, written when the laptop armed the instance; a restarted watchdog reads the same).  The key is only ever sent as a header read from a chmod-600
 # file (curl -H @file); it is never printed, logged or put on a command line.
 #
 # Pausing.  The machine id changes on a resume, so the instance is looked up BY NAME at the moment
@@ -29,8 +30,9 @@
 # that is already paused (or being paused) is left alone: pausing twice is harmless.
 #
 # Test knobs (tests/test_t12_watchdog.py): T12_WD_ENV, T12_WD_LOG, T12_WD_PIDFILE, T12_WD_HOLD,
-# T12_WD_POLL (15 s), T12_WD_MARGIN_S (1800), T12_FETCH_GRACE_S (overrides the minutes),
-# T12_WD_HOLD_FRESH_S (600), T12_WD_CONFIRM_S (90), T12_WD_RETRY_S (5), T12_WD_SLOW_S (300), T12_WD_PY, T12_WD_TMP.
+# T12_WD_POLL (15 s), T12_WD_MARGIN_S (1200), T12_FETCH_GRACE_S (overrides the minutes),
+# T12_WD_HOLD_FRESH_S (600), T12_WD_CONFIRM_S (90), T12_WD_RETRY_S (5), T12_WD_SLOW_S (300), T12_WD_STUCK_S (600),
+# T12_DEADLINE_FILE, T12_WD_NONCE (echoed in the "armed" line), T12_WD_PY, T12_WD_TMP.
 set +x
 set -u
 umask 077
@@ -47,10 +49,12 @@ LOG="${T12_WD_LOG:-/home/t12-watchdog.log}"
 PIDF="${T12_WD_PIDFILE:-/home/.t12-watchdog.pid}"
 HOLD="${T12_WD_HOLD:-/home/.t12-hold}"
 POLL="${T12_WD_POLL:-15}"
-MARGIN="${T12_WD_MARGIN_S:-1800}"
+MARGIN="${T12_WD_MARGIN_S:-1200}"      # the job itself ends by deadline + 15 min
 HOLD_FRESH="${T12_WD_HOLD_FRESH_S:-600}"
 CONFIRM="${T12_WD_CONFIRM_S:-90}"
 TMPD="${T12_WD_TMP:-/home}"
+DLF="${T12_DEADLINE_FILE:-/home/.t12-deadline}"
+STUCK="${T12_WD_STUCK_S:-600}"
 
 # sleep that a TERM interrupts at once (a plain `sleep` would delay the trap)
 nap() { sleep "$1" & wait $! 2>/dev/null || true; }
@@ -166,25 +170,30 @@ sys.exit(0 if (str(v).lower() == "true" or v is True) else 1)'; then
     return 1
 }
 
-# jl_pause ID: the fallback, `jl pause` from a venv installed on demand (JL_API_KEY is exported).
+# jl_pause ID: the fallback, `jl pause` (JL_API_KEY is exported).  The laptop's `launch` installs
+# jarvislabs with `pip install --target $TMPD/.t12-jl` when it arms the instance (no venv, which
+# needs ensurepip); if that is missing it is installed the same way now.
 jl_pause() {
     local id="$1" jl
     jl="$(command -v jl || true)"
-    if [ -z "$jl" ]; then
-        jl="$TMPD/.t12-jl/bin/jl"
-        if [ ! -x "$jl" ]; then
-            log "installing jarvislabs into $TMPD/.t12-jl for the fallback pause"
-            { "$PYB" -m venv "$TMPD/.t12-jl" && "$TMPD/.t12-jl/bin/pip" install -q jarvislabs; } >> "$LOG" 2>&1 || { log "could not install jl"; return 1; }
-        fi
+    if [ -n "$jl" ]; then
+        timeout 120 "$jl" pause "$id" --yes >> "$LOG" 2>&1
+        return $?
     fi
-    timeout 120 "$jl" pause "$id" --yes >> "$LOG" 2>&1
+    if [ ! -d "$TMPD/.t12-jl/jarvislabs" ]; then
+        log "installing jarvislabs into $TMPD/.t12-jl for the fallback pause"
+        { "$PYB" -m pip install -q --target "$TMPD/.t12-jl" jarvislabs \
+            || { command -v uv >/dev/null 2>&1 && uv pip install -q --python "$PYB" --target "$TMPD/.t12-jl" jarvislabs; }; } >> "$LOG" 2>&1 \
+            || { log "could not install jl"; return 1; }
+    fi
+    PYTHONPATH="$TMPD/.t12-jl${PYTHONPATH:+:$PYTHONPATH}" timeout 120 "$PYB" -c 'from jarvislabs.cli.app import main; main()' pause "$id" --yes >> "$LOG" 2>&1
 }
 
 # pause_self: look this instance up by name and pause it; loop until it is paused (or we are
 # killed because it is).  After 8 rounds it keeps trying every 5 minutes: a watchdog that gives
 # up is worse than one that nags a refusing API.
 pause_self() {
-    local round=0 row id status region fails=0 retry="${T12_WD_RETRY_S:-5}"
+    local round=0 row id status region fails=0 retry="${T12_WD_RETRY_S:-5}" since=0 st
     while :; do
         round=$((round + 1))
         if [ "$round" -gt 8 ]; then
@@ -194,10 +203,21 @@ pause_self() {
         row="$(find_self)" || row=""
         if [ -n "$row" ]; then
             read -r id status region <<< "$row"
-            case "$(printf '%s' "$status" | tr '[:upper:]' '[:lower:]')" in
-                paused|pausing|stopped|stopping|destroyed|destroying|deleted)
+            st="$(printf '%s' "$status" | tr '[:upper:]' '[:lower:]')"
+            case "$st" in
+                paused|stopped|destroyed|destroying|deleted)
                     log "instance $id ($NAME) is $status: nothing to do"
                     return 0 ;;
+                pausing|stopping)
+                    # on its way down: wait and look again; only a pause stuck for STUCK s is retried
+                    [ "$since" != 0 ] || since="$(date +%s)"
+                    if [ $(($(date +%s) - since)) -lt "$STUCK" ]; then
+                        log "instance $id ($NAME) is $status: waiting for it to be paused"
+                        round=$((round - 1)); nap "$retry"
+                        continue
+                    fi
+                    log "instance $id ($NAME) has been $status for over ${STUCK}s: pausing again" ;;
+                *) since=0 ;;
             esac
         else
             log "could not look up '$NAME' by name; using the recorded id ${T12_MACHINE_ID:-?}"
@@ -235,11 +255,13 @@ hold_fresh() {
 # ---- the clock ------------------------------------------------------------------------------------
 start="$(date +%s)"
 if [ "$MODE" = job ]; then
-    hard=$((start + REMAIN + MARGIN))
+    dl=$((start + REMAIN))                       # fallback: relative to this start
+    if [ -s "$DLF" ] && [ "$(cat "$DLF" 2>/dev/null)" -gt 0 ] 2>/dev/null; then dl="$(cat "$DLF")"; fi
+    hard=$((dl + MARGIN))
 else
     hard=$((start + 3 * 3600))
 fi
-log "armed: $NAME (machine ${T12_MACHINE_ID:-?}), phase ${PHASE:-none}, job pid ${JOBPID:-none}; grace ${GRACE}s; pause unconditionally at $(date -u -d "@$hard" +%FT%TZ) (in $((hard - start))s)"
+log "armed: $NAME (machine ${T12_MACHINE_ID:-?}), phase ${PHASE:-none}, job pid ${JOBPID:-none}; nonce ${T12_WD_NONCE:-none}; grace ${GRACE}s; pause unconditionally at $(date -u -d "@$hard" +%FT%TZ) (in $((hard - start))s)"
 
 if [ "$MODE" = job ]; then
     while kill -0 "$JOBPID" 2>/dev/null; do

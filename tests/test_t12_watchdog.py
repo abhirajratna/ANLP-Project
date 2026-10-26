@@ -45,7 +45,7 @@ case "$method $url" in
         id="${url##*machine_id=}"
         if [ -e "$D/fail_pause" ]; then printf '{"success":false}\nHTTP 500\n'; exit 0; fi
         if grep -q "\"machine_id\": $id[,}]" "$D/instances.json"; then
-            sed -i 's/"status": "Running"/"status": "Paused"/' "$D/instances.json"
+            sed -i 's/"status": "\(Running\|Pausing\)"/"status": "Paused"/' "$D/instances.json"
             echo "$(date +%s) PAUSED $id" >> "$D/curl.log"
             printf '{"success":"true"}\nHTTP 200\n'
         else
