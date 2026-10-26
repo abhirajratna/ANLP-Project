@@ -110,7 +110,9 @@
   },
   "c1/summary/c1_summary.json": {
    "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/summary/c1_summary.json",
-   "sha256": "73a7fe36cfe41c70e345adad62bc1527ddd14f5e8de12b06585ef16fb038495b"
+   "sha256": "73a7fe36cfe41c70e345adad62bc1527ddd14f5e8de12b06585ef16fb038495b",
+   "hf_path": "prereg-v1-e1e2/c1/summary/c1_summary.json",
+   "hf_commit": "acd9ee26b1ce1e2d602f9aaddeb8a5200ec2c847"
   },
   "macros/c1-DreamBase": {
    "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/DreamBase/macros.tex",
