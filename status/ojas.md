@@ -1,6 +1,6 @@
 ---
 member: ojas
-updated: 2026-10-25T21:01:50Z
+updated: 2026-10-26T07:53:01Z
 branch: main
 ---
-paper/slides audit against frozen prereg-v1 (ojas/paper-prereg-audit)
+ojas: Ada 39506 (Mdlm+MdlmTimeSplit) running, 39508 queued; reviewed #32 (merged) and #36; §6 updated (#33 bd15898); trimming §3 (ojas/paper-trim-3); page budget proposal 20261026T075234Z-ojas-67ba
