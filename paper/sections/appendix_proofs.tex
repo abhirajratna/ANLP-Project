@@ -8,55 +8,35 @@
 \subsection{Proofs of Propositions~\ref{prop:select} and~\ref{prop:split}}
 \label{sec:app-proofs}
 
-\paragraph{Setting.}
-Let $s$ be a state with masked set $M$, $\ell_{-i}=(\ell_j)_{j\in M\setminus\{i\}}$ and
-$\pi(\ell_i,s)=\Pr(a_i{=}1\mid\ell_i,s)$ (it may also depend on $i$; we suppress the index). A
-pool $P\subseteq M$ is drawn independently of $(\ell_j,a_j)_{j\in M}$ given $s$, ties are broken
-by independent randomness $U$, and $W_i$ is the event that $i\in P$ wins,
-$i=\arg\max_{j\in P}\ell_j$.
+Notation is as in \S\ref{sec:setup}, with $\ell_{-i}=(\ell_j)_{j\in M\setminus\{i\}}$,
+tie-break randomness $U$, and $W_i$ the event that $i\in P$ wins; $\pi(\ell_i,s)$ may depend on
+$i$ (suppressed).
 
 \paragraph{Proposition~\ref{prop:select}.}
-Suppose that, given $s$, $(\ell_i,a_i)$ is independent of $\ell_{-i}$. Then
-$\Pr(a_i{=}1\mid\ell_i,s,W_i)=\pi(\ell_i,s)$ almost surely on $W_i$.
-
-\emph{Proof.} Let $Z=(\ell_i,s)$ and $Y=(\ell_{-i},P,U)$. Given $s$, $(P,U)$ is independent of
-$(\ell_j,a_j)_{j\in M}$ and $(\ell_i,a_i)$ of $\ell_{-i}$, so the joint law of
-$(\ell_i,a_i,\ell_{-i},P,U)$ factorises as $p(P,U\mid s)\,p(\ell_i,a_i\mid s)\,p(\ell_{-i}\mid s)$:
-$(\ell_i,a_i)\perp Y\mid s$. By weak union $a_i\perp Y\mid Z$, that is,
-$\E[a_i\mid Y,Z]=\pi(\ell_i,s)$ a.s. The event $W_i$ is a function of $(Y,Z)$, so for every
-bounded measurable $h$,
+Let $Z=(\ell_i,s)$ and $Y=(\ell_{-i},P,U)$. Given $s$, $(P,U)$ is independent of
+$(\ell_j,a_j)_{j\in M}$ and $(\ell_i,a_i)$ of $\ell_{-i}$, so the law of
+$(\ell_i,a_i,\ell_{-i},P,U)$ given $s$ factorises as
+$p(P,U\mid s)\,p(\ell_i,a_i\mid s)\,p(\ell_{-i}\mid s)$, i.e.\ $(\ell_i,a_i)\perp Y\mid s$.
+By weak union $a_i\perp Y\mid Z$, so $\E[a_i\mid Y,Z]=\pi(\ell_i,s)$ a.s. As $W_i$ is a function
+of $(Y,Z)$, conditioning on $(Y,Z)$ gives, for every bounded measurable $h$,
 \begin{equation}
-  \begin{split}
-  \E[a_i\,h(Z)\,\1_{W_i}] &= \E\bigl[\E[a_i\mid Y,Z]\,h(Z)\,\1_{W_i}\bigr] \\
-                         &= \E[\pi(\ell_i,s)\,h(Z)\,\1_{W_i}] .
-  \end{split}
+  \E[a_i\,h(Z)\,\1_{W_i}] = \E[\pi(\ell_i,s)\,h(Z)\,\1_{W_i}],
   \label{eq:app-display}
 \end{equation}
-As $h$ ranges over bounded functions of $Z$, this says $\E[a_i\mid Z,W_i]=\pi(\ell_i,s)$ a.s.
-on $W_i$. Nothing requires the pairs to be identically distributed, so the result holds for
-any noise scales. \hfill$\square$
+which is the defining property of $\E[a_i\mid Z,W_i]=\pi(\ell_i,s)$ a.s.\ on $W_i$.\hfill$\square$
 
 \paragraph{Proposition~\ref{prop:split}.}
-Let $\E_m$ average over states (weighted by any function of $s$), pools of size $m$ and
-tie-breaks, and let $(\ell,a)$ be the winner's pair, so $\Delta(m)=\E_m[\sigma(\ell)-a]$. Let
-$\pi(\ell)=\Pr_1(a{=}1\mid\ell)$ be the calibration curve of the $m=1$ population, where the
-winner is a uniformly random masked position. Under the hypothesis of
-Proposition~\ref{prop:select},
-$\Delta(m)=\E_m[\sigma(\ell)-\pi(\ell)]+\E_m[\pi(\ell)-\pi(\ell,s)]$, and the second term is
-zero at $m=1$.
+Let $\E_m$ weight states by any function of $s$, let $(\ell,a)$ be the winner's pair, and take
+$\pi(\ell)$ as the calibration curve of the $m=1$ population under the same weights. Exactly one
+$W_i$ holds per pool, so $a=\sum_{i\in M}a_i\1_{W_i}$ and
+$\pi(\ell,s)=\sum_{i\in M}\pi(\ell_i,s)\1_{W_i}$. Summing \eqref{eq:app-display} with
+$h\equiv1$ over $i$ under the law of $\E_m$ (it holds given each $s$, so for any state
+weights) gives $\E_m[a]=\E_m[\pi(\ell,s)]$. Hence
+$\Delta(m)=\E_m[\sigma(\ell)-\pi(\ell,s)]$, and adding and subtracting $\pi(\ell)$ gives
+\eqref{eq:gapsplit}. At $m=1$, $\E_1[\pi(\ell)]=\E_1[a]$ by the tower property, $\pi$ being the
+calibration curve of this very population, and $\E_1[\pi(\ell,s)]=\E_1[a]$ as just shown, so
+the field term is zero. \hfill$\square$
 
-\emph{Proof.} Exactly one $W_i$ holds in each pool. Applying \eqref{eq:app-display} with
-$h\equiv1$, summing over $i\in M$ and averaging over states,
-\begin{align*}
-  \E_m[a] &= {\textstyle\sum_i} \E_m[a_i\1_{W_i}]
-          = {\textstyle\sum_i} \E_m[\pi(\ell_i,s)\1_{W_i}] \\
-          &= \E_m[\pi(\ell,s)] ,
-\end{align*}
-so $\Delta(m)=\E_m[\sigma(\ell)-\pi(\ell,s)]$; adding and subtracting $\pi(\ell)$ gives the
-split. At $m=1$, $\E_1[\pi(\ell)]=\E_1[a]$ by the tower property, since $\pi$ is the
-calibration curve of exactly this population, and $\E_1[\pi(\ell,s)]=\E_1[a]$ by the display
-above, so the field term is zero. \hfill$\square$
-
-The estimator inherits the last step only if $\hat\pi(\ell)$ is fitted on the $m=1$ population
-with the same state weights the averages use, which is why both calibrators are fitted with
-pool weights (\S\ref{sec:estimands}).
+The estimator inherits this last step only if $\hat\pi$ is fitted on the $m=1$ population with
+the averages' state weights, which is why both calibrators use pool weights
+(\S\ref{sec:estimands}).
