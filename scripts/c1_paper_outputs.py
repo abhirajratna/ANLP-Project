@@ -211,6 +211,12 @@ def est_ci(e, nd: int = 3, marks: str = "") -> str:
     lo, hi = _bare(ci[0], nd), _bare(ci[1], nd)
     if "---" in (lo, hi):
         return num(e["value"], nd) + marks
+    # More decimals (up to 5) where rounding misleads: an interval that excludes 0 printed with
+    # a 0.000 end, or a nonzero-width interval printed as [x, x].
+    while nd < 5 and ((ci_excludes_zero(e) and 0.0 in (float(lo), float(hi)))
+                      or (lo == hi and ci[0] != ci[1])):
+        nd += 1
+        lo, hi = _bare(ci[0], nd), _bare(ci[1], nd)
     return f"{num(e['value'], nd)}{marks} {{\\scriptsize[${lo}$, ${hi}$]}}"
 
 
@@ -715,9 +721,10 @@ def gamma_macros(R: Results, m: Macros) -> None:
                 reject += bool(g.get("holm_reject"))
                 any_rej = any_rej or bool(g.get("holm_reject"))
         rows_rej += any_rej
-    m.add(f"{p}HolmGammaFamily", str(family))
-    m.add(f"{p}HolmGammaReject", str(reject))
-    m.add(f"{p}HolmGammaRows", str(rows_rej))
+    if family:                                # no gamma results yet: leave the counts undefined (bold ?)
+        m.add(f"{p}HolmGammaFamily", str(family))
+        m.add(f"{p}HolmGammaReject", str(reject))
+        m.add(f"{p}HolmGammaRows", str(rows_rej))
 
 
 def summary_macros(R: Results, m: Macros) -> None:

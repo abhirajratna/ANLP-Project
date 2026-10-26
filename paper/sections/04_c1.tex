@@ -84,7 +84,7 @@ additive-calibrator and knot runs (knot runs: Eq.~2/3 at 200 resamples).
     Holm: decision of the Holm step. $^\dagger$declared; $^*$claimed. $\beta_z$,
     $\beta_z^{\mathrm{FE}}$: Eq.~\ref{eq:eqtwo} without and with state fixed effects
     ($^\ddagger$interval excludes 0; $^\S$no convergence). TS: time-split set, outside the
-    families. ---: absent.}
+    families. ---: absent or outside the families.}
   \label{tab:c1-main}
   \par\smallskip{\footnotesize\raggedright\Cres{COneHolmFootnote}\par}
 \end{table*}
@@ -109,12 +109,14 @@ Table~\ref{tab:c1-main} gives both contrasts for every arm. Of the
 \Cres{COneDeclaredEOne} are declared; \Cres{COneConfirmedEOne} meet both and are claims.
 For E2 the counts are \Cres{COneHolmETwoReject}, \Cres{COneDeclaredETwo} and
 \Cres{COneConfirmedETwo}.
-The signs differ, so we do not pool. E1 is positive and claimed in every decoder-state cell
-and in uniform states of Dream-7B-Instruct on both tasks: there a token that wins a field of
+The signs differ, so we do not pool. E1 is positive and claimed in every $k{=}4$ decoder-state
+cell and in uniform states of Dream-7B-Instruct on both tasks: there a token that wins a field of
 \VivaPoolMax{} is more overconfident than a random masked position. It is negative and claimed
 in uniform states of both base models and of LLaDA-8B-Instruct on GSM8K, where the gap
 shrinks with the field. The two cells without a claim, uniform states of LLaDA-8B-Instruct on
-MBPP and of the 110M model, are positive with $p_{\mathrm{Holm}}=\Cres{COneHolmPEOneMdlmUni}$.
+MBPP and of the 110M model, are both declared but not claimed
+($p_{\mathrm{Holm}}=\Cres{COneHolmPEOneLladaInstructMbppUni}$ and
+\Cres{COneHolmPEOneMdlmUni}).
 Sizes differ as much as signs: $|\mathrm{E1}|\le0.015$ for the base and 110M models, up to
 0.26 for the instruct models on MBPP.
 
@@ -124,36 +126,39 @@ positions, is \CresCI{COneLladaBaseGapOneUni}, beside a 15-bin ECE of
 $\Cres{COneLladaBaseECEUni}$ over all masked positions, and $\Delta(\VivaPoolMax)$ is
 \CresCI{COneLladaBaseGapThirtyTwoUni}: E1 is \CresCI{COneLladaBaseContrastUni}. In $k{=}4$
 decoder states E1 is \CresCI{COneLladaBaseContrastDecTopkConfKFour}.
-The decoder's own states change the picture in five of the seven arms: in the states it
-leaves masked, the gap grows with the field in every arm, including the three whose uniform
-states show it shrinking.
+Decoder states change the picture: E1 changes sign for both base models and
+LLaDA-8B-Instruct on GSM8K, and is claimed only in decoder states for LLaDA-8B-Instruct on MBPP
+and the 110M model. Uniform states matched to the decoder's mask counts keep the base models'
+negative sign (LLaDA: \CresCI{COneLladaBaseContrastUniMatchedTopkConfKFour}), so there the
+change comes from which positions the decoder leaves masked; for LLaDA-8B-Instruct on GSM8K
+they are already positive (\CresCI{COneLladaInstructGsmContrastUniMatchedTopkConfKFour}), so
+there it comes partly from how many.
 
 \paragraph{How much is the field term?}
 At $m=\VivaPoolMax$ the gap splits into own miscalibration
 $\Cres{COneLladaBaseOwnThirtyTwoUni}$, field term $\Cres{COneLladaBaseFieldThirtyTwoUni}$
 and a residual, and E2 is \CresCI{COneFieldContrastLladaBaseUni}
 (decoder states: \CresCI{COneFieldContrastLladaBaseDecTopkConfKFour}).
-E2 is claimed in all \Cres{COneHolmETwoFamily} cells and positive in 12. In those the field term
-grows with $m$, the winner's curse proper: at equal confidence, winners of large fields come
-from contexts where tokens are right less often. It is negative in uniform states of
-LLaDA-8B-Instruct on GSM8K and in decoder states of the 110M model. For the base and 110M
-models every E2 is below 0.005 in absolute value; for the instruct models it reaches
-\Cres{COneFieldContrastDreamInstructMbppUni} (Dream-7B-Instruct, MBPP, uniform states, where
-E1 is \Cres{COneDreamInstructMbppContrastUni}).
-The estimator is not neutral: on simulated traces it read slightly positive when the true
-field term was zero (\S\ref{sec:validation}), and its intervals condition on the fitted
-calibrators (\S\ref{sec:inference}), so a small positive E2 is weaker evidence than its
-interval suggests.
+E2 is claimed in all \Cres{COneHolmETwoFamily} cells and positive in 12. For the base and 110M
+models every $|\mathrm{E2}|$ is below 0.005, the size the estimator read on simulated traces
+with no field term (\S\ref{sec:validation}); we do not read these as a winner's curse. In seven
+of the eight instruct cells E2 is 0.013 to \Cres{COneFieldContrastDreamInstructMbppUni}
+(Dream-7B-Instruct, MBPP, uniform states, where E1 is \Cres{COneDreamInstructMbppContrastUni}):
+there the field term grows with $m$, as a winner's curse predicts. At equal confidence,
+winners of large fields come from contexts where tokens are right less often. The eighth,
+LLaDA-8B-Instruct on GSM8K in uniform states, is negative. E2 intervals condition on the
+fitted calibrators (\S\ref{sec:inference}).
 The third term of the split, $\E_m[\hat\pi(\ell,s)-a]$, zero without shared errors, is
 \CresCI{COneLladaBaseResidualOneUni} at $m=1$ and \CresCI{COneLladaBaseResidualThirtyTwoUni}
 at $m=\VivaPoolMax$, and the within-state ICC of residuals is \CresCI{COneLladaBaseICCUni}
 (full table in the code archive).
-Positions of a state share errors in every arm, the ICC interval excluding 0 throughout, but
-weakly in the base and 110M models (ICC at most 0.006, residual within 0.008 of 0) and
-clearly in the instruct models (ICC 0.036 to 0.056). On MBPP, and in uniform states of
-Dream-7B-Instruct on GSM8K, the residual at $m=\VivaPoolMax$ is 0.055 to 0.103, two-fifths of
-E1 or more: there the split has its third term, and E2 and $\beta_z$ are read with that in mind
-(\S\ref{sec:c1-beta}).
+Positions of a state share errors in every arm, the ICC interval excluding 0 throughout:
+weakly in the base and 110M models (ICC at most 0.006), clearly in the instruct models (0.036
+to 0.056). The residual at $m=\VivaPoolMax$ is near 0 in the base and 110M models except in
+LLaDA-8B-Base decoder states (\CresCI{COneLladaBaseResidualThirtyTwoDecTopkConfKFour}, larger
+in size than that cell's E1). It is 0.055 to 0.103 on MBPP and in uniform states of
+Dream-7B-Instruct on GSM8K, larger than E2 in four of these five cells: there the split has
+its third term, and E2 and $\beta_z$ are read with that in mind (\S\ref{sec:c1-beta}).
 
 % ------------------------------------------------------------------- beta_z
 \subsection{The selection diagnostic $\beta_z$}
@@ -274,8 +279,8 @@ Table~\ref{tab:c1-main}); a quarter of the documents, so wider intervals.
 On unseen text the small negative E1 of the two 8B base models is not reproduced: both
 intervals hold 0, so their FineWeb result may owe something to text they have seen, or be too
 small to detect here. The 110M model's is larger than on FineWeb. In decoder states E1 stays
-positive, its interval excluding 0, for all three models, so the decoder-state result does
-not rest on memorised text.
+positive, its interval excluding 0, for all three models, so the decoder-state result is not
+confined to text the models may have seen.
 
 \paragraph{Spline knots.}
 E1 uses no calibrator; E2 and $\beta_z$ do. E2 keeps its sign and declared flag with 5 and with
