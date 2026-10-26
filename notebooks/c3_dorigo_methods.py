@@ -107,7 +107,7 @@ OUT_DIR = "/content/c3_dorigo_out" if __import__("os").path.isdir("/content") el
 # pre-registered ones come from prereg/analysis_commands.sh.
 HALF_MODE = "fit_only"
 FIT_ONLY_SEED = 20261025
-NOTEBOOK_VERSION = "2026-10-26.3"
+NOTEBOOK_VERSION = "2026-10-26.4"
 
 # %% [markdown]
 # ## 0.2 Setup: imports, versions, seeds, exclusion log
@@ -1296,7 +1296,7 @@ for name, fm in list(FMAP.items()):
 
 # %% [markdown]
 # ## 1.4 Mask kinds, state sizes, and how many states allow m = 32
-# This cell reads only `doc_id`, `state_id` and `mask_kind` (plus `ell` on a sample, to count ties).
+# This cell reads only `doc_id`, `state_id`, `mask_kind`, and `policy` and `k` when present (plus `ell` on a sample, to count ties).
 
 # %%
 STATE_TABLE = {}
@@ -1445,9 +1445,14 @@ for name in DATASETS:
     elif no:
         partial.append(f"{name}: cannot run {', '.join(no)}")
     st = STATE_TABLE.get(name)
+    fm_ = FMAP.get(name) or {}
     if st is not None:
         for kind in MASK_KINDS_RUN:
             sk = st[(st["kind"] == kind) & (st["half"] == 1)]
+            if sk.empty and parse_arm(kind)[1] is not None and fm_.get("policy") and fm_.get("k"):
+                # a per-k arm the trace should hold: stop before Phase 2 reads report-half outcomes
+                raise RuntimeError(f"{name}: per-k arm '{kind}' has no report-half states, although the "
+                                   f"trace has policy/k columns; check the arm name against the trace's k values")
             if sk.empty:
                 partial.append(f"{name}: no '{kind}' states in the report half")
             elif (sk["n"] >= MIN_STATE_SIZE).sum() == 0:
@@ -2046,7 +2051,7 @@ for name in dict.fromkeys(k[0] for k in RESULTS):
         for a_ in ax:
             a_.grid(alpha=0.3); a_.legend(fontsize=7)
         fig.suptitle(f"{name}: {ka} vs {kb}"); fig.tight_layout()
-        fig.savefig(os.path.join(FIG_DIR, f"H3_{name}_{ka}_vs_{kb}.png"), dpi=300); plt.show()
+        fig.savefig(os.path.join(FIG_DIR, f"H3_{name}_{ka}_vs_{kb}.png".replace(":", "_")), dpi=300); plt.show()
 
 # %% [markdown]
 # ## Provenance and exclusions
