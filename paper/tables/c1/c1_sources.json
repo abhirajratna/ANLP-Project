@@ -174,8 +174,8 @@
   "macros_c1.tex"
  ],
  "provenance": {
-  "git_commit": "1b135d2dbfef882cd3ba003e9842229a775d868f",
-  "git_dirty": true,
+  "git_commit": "2b4a6b8a424afa27e37acb8db9331810a90b587f",
+  "git_dirty": false,
   "python": "3.12.12",
   "platform": "Linux-7.2.11-arch1-1-x86_64-with-glibc2.44",
   "host": "arch",
