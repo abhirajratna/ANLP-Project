@@ -59,3 +59,64 @@ def test_bootstrap_interval_orders_correctly():
     est = fit_and_report(fr, "eq2", n_knots=9, n_boot=200, cross_fit=False)["beta_z"]
     assert est.ci_low < est.value < est.ci_high
     assert est.excludes_zero and est.value < 0
+
+
+# ---- Eq. 2/3 bootstrap warm start -------------------------------------------------
+
+def _boot_frames():
+    fr, _ = simulate(dgp="direct_rank", tau=0.0, delta=-0.3, seed=5, n_docs=24,
+                     n_states_per_doc=3, n_positions=128, n_pools_per_size=6)
+    return {"eq2": fr.winners(), "eq3": fr}
+
+
+def _boots(frame, eq, fe, warm, n_boot=12, **kw):
+    return fit_and_report(frame, eq, n_knots=5, n_boot=n_boot, cross_fit=False, fe=fe,
+                          warm_start=warm, max_rank=4, **kw)
+
+
+@pytest.mark.parametrize("eq", ["eq2", "eq3"])
+@pytest.mark.parametrize("fe", [False, True])
+def test_warm_start_matches_cold_and_is_faster(eq, fe):
+    frame = _boot_frames()[eq]
+    cold, warm = _boots(frame, eq, fe, False), _boots(frame, eq, fe, True)
+    assert cold.keys() == warm.keys()
+    worst = 0.0
+    for k in cold:
+        assert cold[k].boot.shape == warm[k].boot.shape       # same draws survive
+        worst = max(worst, float(np.max(np.abs(cold[k].boot - warm[k].boot))))
+        assert cold[k].n_nonconverged_draws == 0 and warm[k].n_nonconverged_draws == 0
+    print(f"{eq} fe={fe}: max |warm - cold| = {worst:.2e}")
+    assert worst < 1e-8
+    k0 = next(iter(cold))
+    assert warm[k0].n_iter_median < cold[k0].n_iter_median
+    assert warm[k0].warm_start is True and cold[k0].warm_start is False
+
+
+def test_cold_start_reproduces_frozen_worker_exactly():
+    """warm_start=False must be bit-identical to the pre-change per-resample fit."""
+    from c3.logit import fit_fe_logit
+    from c3.regression import build_design
+    from c3.rng import generator
+
+    frame = _boot_frames()["eq2"]
+    est = _boots(frame, "eq2", True, False, n_boot=6)["beta_z"]
+    spline = Spline.fit(frame.ell, n_knots=5)
+    X, names = build_design(frame, spline, "eq2")
+    doc_idx, n_docs = frame.doc_index
+    ref = []
+    for b in range(6):
+        counts = generator(0, "bootstrap", str(b)).multinomial(n_docs, np.full(n_docs, 1.0 / n_docs))
+        w = counts[doc_idx].astype(float)
+        keep = w > 0
+        _, g = np.unique(frame.state_index[0][keep], return_inverse=True)
+        ref.append(fit_fe_logit(frame.agree[keep], X[keep], g, n_groups=int(g.max()) + 1,
+                                names=names, offset=np.zeros(keep.sum()), weights=w[keep]).coef("beta_z"))
+    assert np.array_equal(est.boot, np.array(ref))
+
+
+def test_nonconverged_draws_are_reported():
+    frame = _boot_frames()["eq2"]
+    ok = _boots(frame, "eq2", True, True)["beta_z"]
+    assert ok.n_nonconverged_draws == 0
+    bad = _boots(frame, "eq2", True, False, max_iter=2)["beta_z"]
+    assert bad.n_nonconverged_draws > 0 and bad.n_iter_max <= 2

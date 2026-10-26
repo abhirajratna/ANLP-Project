@@ -100,7 +100,7 @@ def fold_assignment(split: str, codes: np.ndarray, seed: int, manifest: str | No
 
 
 def regression_block(pools, report_docs, fit_docs, split, n_knots, n_boot, seed, n_jobs,
-                     ridge_beta=0.0):
+                     ridge_beta=0.0, warm_start=True):
     """Eq. 2 on winners and Eq. 3 on the retained top ranks, with and without FE."""
     out = {}
     keep = np.isin(pools.doc_id, report_docs if split != "half" else np.concatenate([fit_docs, report_docs]))
@@ -113,11 +113,15 @@ def regression_block(pools, report_docs, fit_docs, split, n_knots, n_boot, seed,
                 est = fit_and_report(frame, eq, n_knots=n_knots, n_boot=n_boot, seed=seed,
                                      n_jobs=n_jobs, cross_fit=cross, fe=fe,
                                      fit_docs=fit_docs if cross else None,
-                                     max_rank=RETAIN, ridge_beta=ridge_beta)
+                                     max_rank=RETAIN, ridge_beta=ridge_beta,
+                                     warm_start=warm_start)
                 out[key] = {name: {"value": e.value, "ci": [e.ci_low, e.ci_high], "se": e.se,
                                    "p_boot": (boot_pvalue(e.boot) if e.boot is not None
                                               and e.boot.size else None),
                                    "n_failed_draws": int(n_boot - (e.boot.size if e.boot is not None else 0)),
+                                   "n_nonconverged_draws": e.n_nonconverged_draws,
+                                   "boot_iter_median": e.n_iter_median, "boot_iter_max": e.n_iter_max,
+                                   "warm_start": e.warm_start,
                                    "point_converged": e.converged, "point_iters": e.n_iter}
                             for name, e in est.items()}
             except (ValueError, FloatingPointError, np.linalg.LinAlgError) as exc:
@@ -199,7 +203,8 @@ def analyze_kind(df_k, kind, codes, counts, args, fit_info):
     if not args.skip_regression:
         res["regression"] = regression_block(pools, report_docs, fit_docs, args.split,
                                              args.knots, args.eq_boot, args.seed, args.n_jobs,
-                                             ridge_beta=args.ridge)
+                                             ridge_beta=args.ridge,
+                                             warm_start=not args.eq_cold_start)
         if args.split != "half":
             res["regression"]["note"] = ("pooled fit on the reported documents (no half split): "
                                          "feasibility estimate, not a reported result")
@@ -353,6 +358,9 @@ def main() -> int:
                          "JSON list of doc ids")
     ap.add_argument("--n-boot", type=int, default=N_BOOT)
     ap.add_argument("--eq-boot", type=int, default=None, help="resamples for Eq. 2/3 (default: --n-boot)")
+    ap.add_argument("--eq-cold-start", action="store_true",
+                    help="start every Eq. 2/3 bootstrap resample's IRLS from zero (the frozen "
+                         "prereg-v1 behaviour); default warm-starts from the full-sample fit")
     ap.add_argument("--knots", type=int, default=DEFAULT_KNOTS)
     ap.add_argument("--floor", type=float, default=0.0, help="non-determinism floor, Delta units")
     ap.add_argument("--delta-min", type=float, default=DELTA_MIN)
@@ -409,6 +417,7 @@ def main() -> int:
         "delta_min": args.delta_min, "seed": args.seed, "native_k": args.native_k,
         "min_masked": args.min_masked, "context_model": args.context_model,
         "pools": args.pools, "ridge": args.ridge,
+        "eq_warm_start": not args.eq_cold_start,
         "calibrator_weighting": "pool (1 / (|state| x states per doc))",
         "sign": "conf - agree (positive = overconfident)",
         "resamples_shared_across": "all pool sizes, estimands and mask kinds"},
