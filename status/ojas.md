@@ -1,6 +1,6 @@
 ---
 member: ojas
-updated: 2026-10-26T15:16:35Z
+updated: 2026-10-26T15:27:05Z
 branch: main
 ---
-ojas: E1/E2 banking — LIG done on HF; Mdlm Ada 40856; 2 MBPP arms on Colab next
+ojas: E1/E2 on HF: LIG, LIM, DIM (Colab, stopped). Mdlm = Ada 40856 running; MdlmTimeSplit 40860 queued
