@@ -61,7 +61,11 @@ DATASETS = {**DATASETS_REAL,
     #                         "split": {"rule": {"n_docs": 2000, "seed": 20260917, "doc_offset": 0}}},
 }
 MOUNT_DRIVE = True            # Colab only; ignored elsewhere
-MASK_KINDS = ["uniform", "decoder", "uniform_matched"]   # "matched" is stored as uniform_matched
+# Arms: a bare mask kind pools every (policy, k) it holds; "kind:policy:kN" keeps one, as
+# prereg/analysis_commands.sh names arms (its primary decoder arm is decoder:topk_conf:k4).
+# Matched states copy policy and k from the decoder state they match.
+MASK_KINDS = ["uniform", "decoder", "uniform_matched",
+              "decoder:topk_conf:k4", "uniform_matched:topk_conf:k4"]   # "matched" is stored as uniform_matched
 M_GRID = [1, 2, 4, 8, 16, 32]
 POOLS_PER_STATE = 50          # Monte Carlo pools per state (shuffle test, pairing, quintiles); Δ itself is exact
 N_BOOT = 10_000
@@ -85,7 +89,8 @@ CAL_MAX_ROWS = 1_000_000      # fit-half rows sampled (pool weights kept) to fit
 CAL_C = 1e3                   # sklearn inverse ridge on mean-1 weights; C = 1 shrank π̂(ℓ, s) at the top on small fits
 CAL_REFIT_CHECK = True        # refit both calibrators on each half of the fit documents: field-term fit noise
 DELTA_MIN = 0.02              # smallest effect treated as worth reporting (= c3.DELTA_MIN)
-H3_PAIRS = [("decoder", "uniform_matched")]   # H3: compared at equal winner confidence
+H3_PAIRS = [("decoder", "uniform_matched"),     # H3: compared at equal winner confidence
+            ("decoder:topk_conf:k4", "uniform_matched:topk_conf:k4")]
 H3_BINS = 20                  # H3: equal-mass bins on ℓ, edges from both arms' pooled winner mass at each m
 H3_ELL_GRID = (-15.0, 25.0, 400)  # fine ℓ grid the per-document H3 sums are kept on (edges come from it)
 ICC_DROP_TOP = 5              # the ICC is also given without its 5 most influential documents
@@ -102,7 +107,7 @@ OUT_DIR = "/content/c3_dorigo_out" if __import__("os").path.isdir("/content") el
 # pre-registered ones come from prereg/analysis_commands.sh.
 HALF_MODE = "fit_only"
 FIT_ONLY_SEED = 20261025
-NOTEBOOK_VERSION = "2026-10-26.2"
+NOTEBOOK_VERSION = "2026-10-26.3"
 
 # %% [markdown]
 # ## 0.2 Setup: imports, versions, seeds, exclusion log
@@ -170,7 +175,7 @@ assert rng_for("x", 1).random() == rng_for("x", 1).random() != rng_for("x", 2).r
 # ---------------------------------------------------------------- schema / field map
 CANON = {  # canonical name -> candidate column names, in order of preference
     "doc": ["doc_id", "document_id"], "state": ["state_id"], "model": ["model"],
-    "kind": ["mask_kind"], "rate": ["mask_rate", "target_rate"], "n_masked": ["n_masked"],
+    "kind": ["mask_kind"], "policy": ["policy"], "k": ["k"], "rate": ["mask_rate", "target_rate"], "n_masked": ["n_masked"],
     "doc_len": ["doc_len"], "step": ["step"], "position": ["position"], "top1": ["top1"],
     "conf": ["conf", "confidence"], "ell": ["ell", "log_odds", "logodds"],
     "agree": ["agree", "correct"], "p_true": ["p_true"], "entropy": ["entropy"],
@@ -178,7 +183,7 @@ CANON = {  # canonical name -> candidate column names, in order of preference
     "delta_ell": ["delta_ell"], "commit_rank": ["commit_rank"], "half": ["half", "split"],
 }
 FIELD_LABEL = {
-    "doc": "document id", "state": "state id", "model": "model", "kind": "mask kind",
+    "doc": "document id", "state": "state id", "model": "model", "kind": "mask kind", "policy": "decoder policy", "k": "tokens per step",
     "rate": "mask rate", "n_masked": "number masked", "doc_len": "document length",
     "step": "step", "position": "position", "top1": "top-1 token id", "conf": "confidence",
     "ell": "log-odds", "agree": "correctness", "p_true": "p(true token)", "entropy": "entropy",
@@ -186,7 +191,7 @@ FIELD_LABEL = {
     "delta_ell": "delta-ell since previous step", "commit_rank": "commit rank",
     "half": "fit/report flag",
 }
-USED_BY = {"doc": "C D E F ICC", "state": "C D E F ICC", "kind": "C D E F", "rate": "D E2",
+USED_BY = {"doc": "C D E F ICC", "state": "C D E F ICC", "kind": "C D E F", "policy": "per-k arms", "k": "per-k arms", "rate": "D E2",
            "conf": "C D E F", "ell": "C D E F E2 ICC", "agree": "C D E F E2 ICC", "margin": "F",
            "step": "E2 (field feature)",
            "topk_p": "F (if no margin)", "half": "all (or split manifest)",
@@ -406,6 +411,27 @@ def _margin_from_topk(col) -> np.ndarray:
     return (arr[:, 0] - arr[:, 1]).astype(np.float32)
 
 
+def parse_arm(arm: str) -> tuple:
+    """'decoder' -> ('decoder', None, None); 'decoder:topk_conf:k4' -> ('decoder', 'topk_conf', 4)."""
+    kind, *rest = arm.split(":")
+    if not rest:
+        return kind, None, None
+    if len(rest) != 2 or not rest[1].startswith("k") or not rest[1][1:].isdigit():
+        raise ValueError(f"arm {arm!r}: expected 'kind' or 'kind:policy:kN'")
+    return kind, rest[0], int(rest[1][1:])
+
+
+def arm_filter(fmap: dict, arm: str):
+    """Row filter for one arm, or None when the file lacks the policy/k columns it needs."""
+    kind, policy, k = parse_arm(arm)
+    filt = pc.field(fmap["kind"]) == kind
+    if policy is not None:
+        if not (fmap.get("policy") and fmap.get("k")):
+            return None
+        filt = filt & (pc.field(fmap["policy"]) == policy) & (pc.field(fmap["k"]) == k)
+    return filt
+
+
 def read_kind(files, fmap: dict, kind: str, model: str | None = None,
               need_margin: bool = True, batch_rows: int = 2_000_000, doc_filter=None) -> dict:
     """The rows of one mask kind as pruned, downcast numpy columns (batched; no list columns
@@ -417,7 +443,10 @@ def read_kind(files, fmap: dict, kind: str, model: str | None = None,
     use_topk = need_margin and not fmap.get("margin") and fmap.get("topk_p")
     read_cols = list(cols.values()) + ([fmap["topk_p"]] if use_topk else [])
     dset = pads.dataset([str(f) for f in files], format="parquet")
-    filt = pc.field(fmap["kind"]) == kind
+    filt = arm_filter(fmap, kind)
+    if filt is None:
+        print(f"[skip] arm {kind}: no policy/k columns")
+        return {}
     if model is not None and fmap.get("model"):
         filt = filt & (pc.field(fmap["model"]) == model)
     if doc_filter is not None:
@@ -1275,7 +1304,8 @@ for name, files in FILES.items():
     fm = FMAP.get(name)
     if not fm or not fm["kind"]:
         continue
-    cols = [fm["doc"], fm["state"], fm["kind"]]
+    by_arm = [fm["kind"]] + [fm[c] for c in ("policy", "k") if fm.get(c)]
+    cols = [fm["doc"], fm["state"]] + by_arm
     dset = pads.dataset([str(f) for f in files], format="parquet")
     filt = (pc.field(fm["model"]) == DATASETS[name]["model"]) if DATASETS[name].get("model") and fm["model"] else None
     dfilt = doc_filter(name, fm["doc"])
@@ -1284,9 +1314,18 @@ for name, files in FILES.items():
     parts = []
     for b in dset.to_batches(columns=cols, filter=filt, batch_size=4_000_000):
         df = b.to_pandas()
-        parts.append(df.groupby([fm["kind"], fm["doc"], fm["state"]], observed=True).size())
-    st = pd.concat(parts).groupby(level=[0, 1, 2]).sum().rename("n").reset_index()
-    st.columns = ["kind", "doc", "state", "n"]
+        parts.append(df.groupby(by_arm + [fm["doc"], fm["state"]], observed=True).size())
+    lv = list(range(len(by_arm) + 2))
+    g = pd.concat(parts).groupby(level=lv).sum().rename("n").reset_index()
+    g.columns = ["kind"] + ["policy", "k"][:len(by_arm) - 1] + ["doc", "state", "n"]
+    arms = []
+    for arm in MASK_KINDS_RUN:  # pooled and per-k arms share rows; each arm is analysed on its own
+        kind, policy, k = parse_arm(arm)
+        sel = g["kind"] == kind
+        if policy is not None:
+            sel &= (g["policy"] == policy) & (g["k"] == k) if "k" in g else False
+        arms.append(g.loc[sel, ["doc", "state", "n"]].assign(kind=arm))
+    st = pd.concat(arms, ignore_index=True)[["kind", "doc", "state", "n"]]
     st["half"] = SPLITS[name](st["doc"].to_numpy()) if name in SPLITS else -1
     STATE_TABLE[name] = st
     summ = st.groupby("kind").agg(rows=("n", "sum"), docs=("doc", "nunique"), states=("n", "size"),
