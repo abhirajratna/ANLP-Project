@@ -5,7 +5,8 @@
 % Sanity design: prereg/t12_sanity.json (PR #7): Fast-dLLM's LLaDA-8B-Instruct GSM8K settings,
 % lm-eval 5-shot, 200 fit-half problems, top-k k=1 (published 79.3) and threshold 0.9
 % (published 79.2; Fast-dLLM Table 1, "+Parallel").  The published numbers are design constants
-% here, from that file; the plan's bar is 1-2 points.
+% here, from that file, written as fractions (0.793, 0.792) like every other number; the
+% plan's bar is 0.01--0.02.  Sanity intervals are 95% Wilson.
 % =====================================================================================
 
 \subsection{C3: sanity check, cost and curves}
@@ -14,21 +15,22 @@
 \paragraph{Sanity check.}
 Before the comparison, the harness decodes \Cres{CThreeTTwelveSanityN} fit-half GSM8K
 problems at Fast-dLLM's settings (5-shot, 256 tokens, blocks of 32). Top-$k$ at $k=1$ scores
-\CresCI{CThreeTTwelveSanityTopKAcc} against a published 79.3, and the threshold rule at
-$\tau=0.9$ \CresCI{CThreeTTwelveSanityThresholdAcc} against 79.2 \citep{wu2025fastdllm}.
-% TODO(outputs): units of SanityTopKAcc (fraction or percent): the published numbers are
-%   percent; make them agree.  Fast-dLLM's numbers are on the full test set, ours on 200
-%   fit-half problems, so the interval, not the point, is what to compare.
-% TODO(results): if both published numbers lie inside our intervals (and within the plan's
-%   1--2 points): "Both published numbers lie inside our intervals, so the harness reproduces
-%   the two decoders it can be checked on."  Else: "<Decoder> misses by <...>: <likely cause,
-%   e.g. prompt or stop-string difference, to be checked>; Sec. 6 is read with that in mind."
+\CresCI{CThreeTTwelveSanityTopKAcc} against a published 0.793, and the threshold rule at
+$\tau=0.9$ \CresCI{CThreeTTwelveSanityThresholdAcc} against 0.792 \citep{wu2025fastdllm}.
+Intervals are 95\% Wilson.
+% Fast-dLLM's numbers are on the full test set, ours on 200 fit-half problems, so compare the
+% interval, not the point.
+% TODO(results): if both published values lie inside our Wilson intervals: "Both published
+%   values lie inside our intervals, so the harness reproduces the two decoders it can be
+%   checked on" (add "although our points are above them" if so).  Else: "<Decoder> scores
+%   above/below the published value, which lies outside our interval: <likely cause, e.g.
+%   prompt or stop-string difference, to be checked>; Sec. 6 is read with that in mind."
 
 \paragraph{Cost.}
 Table~\ref{tab:c3-sanity} gives, per decoder and speed, tokens per step, forward passes and
 seconds per problem, and problems that failed to decode. Fewer forward passes need not mean
 less time: C3a computes the calibrator at every step.
-% TODO(results): keep one: "C3a's seconds per problem are <x>\% above top-k's at the same
+% TODO(results): keep one: "C3a's seconds per problem are a fraction <x> above top-k's at the same
 %   tokens per step, the cost of the per-step feature computation" / "C3a costs no measurable
 %   time beyond top-k" / if some decoder is slower in seconds than in forward passes, name it.
 %   (The "computes the calibrator at every step" clause: check it against the timings.)
@@ -38,8 +40,9 @@ less time: C3a computes the calibrator at every step.
   \IfFileExists{../artifacts/t12/t12_sanity_cost.tex}%
     {\Cfit{\input{../artifacts/t12/t12_sanity_cost.tex}}}%
     {\CthreePending{T12 sanity and cost table}}
-  \caption{T12 sanity rows against the published numbers, and cost per decoder and speed:
-    tokens per step, forward passes (NFE), seconds per problem, and failed problems.}
+  \caption{T12 sanity rows against the published numbers (accuracy with its 95\% Wilson
+    interval), and cost per decoder and speed: aggregate tokens per step, forward passes (NFE),
+    seconds per problem, and failed problems.}
   \label{tab:c3-sanity}
 \end{table}
 
@@ -48,9 +51,8 @@ less time: C3a computes the calibrator at every step.
   \IfFileExists{../artifacts/t12/figures/t12_matched_speed.pdf}%
     {\includegraphics[width=\columnwidth]{../artifacts/t12/figures/t12_matched_speed}}%
     {\CthreePending{Figure accuracy against tokens per step}}
-  \caption{Accuracy against tokens per step, one curve per decoder, for the three speeds each.
-    Up and to the right is better.}
+  \caption{Accuracy against aggregate tokens per step, one curve per decoder, for the three
+    speeds each, with 95\% Wilson intervals. Up and to the right is better.}
   \label{fig:c3-speed}
 \end{figure}
-% TODO(check): the intervals drawn in the figure (deck slide 16 says 95% Wilson); say so in the
-%   caption, and one panel per task if it has them.
+% TODO(check): one panel per task, if the figure has them (say so in the caption).
