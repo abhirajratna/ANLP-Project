@@ -128,6 +128,14 @@ Items 7-14 are reserved for the T13 ablation entries (branch `t13-ablations`).
     max_iter, its draws were not optimal (errors up to 9e-2 on synthetic hard cases);
     unconverged point fits and draws are now restarted once from their last iterate, and any
     still unconverged are counted and marked §. `--eq-cold-start` reproduces `prereg-v1`
-    output exactly. The library default stays cold, so other callers (`run_controls`,
+    output exactly. On real data (fit-half documents only; 50 and 200 documents of LladaBase
+    decoder:topk_conf:k2; full-sample fit plus 10 bootstrap resamples each, using each tag's
+    own code), the prereg-v1 cold start converged in every case but slowly: median 49 IRLS
+    iterations (max 58) and about 270-340 step-halvings per fit, 16 s and 63 s per fit.
+    Under prereg-v1.1 every resample converged in 5 iterations with no step-halving, 29-32
+    times faster, and coefficients agreed with the cold fits to within 1.3e-12; the
+    full-sample fits were identical. On the observed data the change is therefore a speed
+    change only. Non-convergence was seen in synthetic hard cases only. Diagnostic scripts
+    and output: ANLP-project/c3-traces-8b, diagnostics/fediag-2026-10-26/. The library default stays cold, so other callers (`run_controls`,
     `run_stage0`, `c3/sim`) are unchanged. Convergence of point fits and draws is now
     recorded (`point_converged`, `point_restarted`, `n_nonconverged_draws`).
