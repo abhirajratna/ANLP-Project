@@ -549,7 +549,7 @@ def test_a_launch_that_dies_with_the_api_down_prints_the_banner(tmp_path):
 
 def test_a_fetch_keeps_the_watchdogs_hold_fresh_while_it_downloads(tmp_path):
     w = _running_world(tmp_path, download_sleep=3, phase="smoke")
-    r = w.sh("fetch smoke", T12_HOLD_EVERY_S=1)
+    r = w.sh("fetch smoke", T12_HOLD_EVERY_S=1, T12_HOLD_CHECK_S=1)
     assert r.returncode == 0, (r.stdout, r.stderr)
     touches = [c for c in w.calls() if c.startswith("exec 901") and "t12-hold" in c]
     assert len(touches) >= 3
@@ -567,3 +567,58 @@ def test_the_gpu_count_is_checked_before_anything_is_created(tmp_path):
     r = w.sh("launch calib")
     assert r.returncode == 1 and "RESUME_FROM was packed for 1 shards" in r.stderr
     assert not any(c.startswith(("create", "resume", "upload")) for c in w.calls())
+
+
+# --------------------------------------------------------------------------- #
+# the hold loop, a resume or a pause that fails, unknown statuses
+# --------------------------------------------------------------------------- #
+
+def test_the_hold_loop_stops_when_its_parent_dies_and_at_its_lifetime_cap(tmp_path):
+    w = World(tmp_path)
+    env = w.env(T12_HOLD_EVERY_S=1, T12_HOLD_CHECK_S=1)
+    t0 = __import__("time").time()
+    r = run_bash('source scripts/jl_t12.sh\nsleep 3 & P=$!\nhold_loop 901 $P\necho STOPPED', env, cwd=tmp_path,
+                 stubs=w.stubs, timeout=60)
+    assert "STOPPED" in r.stdout and __import__("time").time() - t0 < 25          # the parent lived 3 s
+    touches = [c for c in w.calls() if "t12-hold" in c]
+    assert 2 <= len(touches) <= 6
+    n = len(touches)
+    # the parent outlives the cap: the loop stops by itself after T12_HOLD_MAX_S
+    r = run_bash('source scripts/jl_t12.sh\nsleep 60 & P=$!\nhold_loop 901 $P\necho CAPPED\nkill $P',
+                 {**env, "T12_HOLD_MAX_S": "3"}, cwd=tmp_path, stubs=w.stubs, timeout=60)
+    assert "CAPPED" in r.stdout
+    assert len([c for c in w.calls() if "t12-hold" in c]) - n <= 5
+
+
+def test_a_resume_that_worked_but_timed_out_is_found_running_and_guarded_first(tmp_path):
+    w = World(tmp_path)
+    (w.up / "launch.name").write_text("t12-smoke-aaaaaaa-1\n")
+    w.add_instance(905, "t12-smoke-aaaaaaa-1", "Paused", num_gpus=2)
+    w.scenario(resume_applies_then_fails=True)
+    r = w.sh("watch smoke", T12_RETRY_S=1)
+    assert r.returncode == 0, (r.stdout, r.stderr)
+    verbs = w.verbs()
+    assert verbs.count("resume") == 1 and "resume failed or timed out" in r.stdout
+    guards = [i for i, c in enumerate(w.calls()) if c.startswith("exec 905") and "setsid" in c and "T12_MACHINE_ID=905" in c]
+    assert guards and guards[0] < verbs.index("download") < verbs.index("pause")      # guard before the fetch
+    assert w.get("instances.json")[0]["status"] == "Paused"
+    assert not (w.up / "resume.pending").exists()
+
+
+def test_a_pause_that_fails_makes_watch_retry_not_exit(tmp_path):
+    w = _running_world(tmp_path, fail={"pause": 4})
+    r = w.sh("watch smoke", T12_RETRY_S=1)
+    assert r.returncode == 0, (r.stdout, r.stderr)
+    assert w.verbs().count("pause") == 5 and r.stderr.count("PAUSE FAILED") == 1
+    assert w.get("instances.json")[0]["status"] == "Paused"
+
+
+def test_an_unknown_status_is_kept_watching_not_taken_for_done(tmp_path):
+    w = _running_world(tmp_path)
+    ins = w.get("instances.json")
+    ins[0]["status"] = "Starting"
+    w.put("instances.json", ins)
+    r = w.sh("watch smoke", T12_RETRY_S=1, T12_WATCH_GIVEUP_S=3)
+    assert r.returncode != 0 and "will keep watching" in r.stdout and "MAY STILL BE BILLING" in r.stderr
+    r = w.sh("pause smoke")
+    assert r.returncode == 2 and "not paused yet" in r.stdout

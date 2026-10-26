@@ -681,20 +681,37 @@ arm_instance() {
 
 # fetch_outputs PHASE ID RID: runs/t12-out/<phase>.tgz and the job log, into runs/t12/jl-<phase>-<sha7>/
 # While it runs, a background loop touches /home/.t12-hold every 4 min (it counts as fresh for 10):
-# the watchdog's pause waits for a fetch in progress, and for nothing longer (the loop dies with this
-# shell; a laptop that vanishes lets the hold go stale).
+# the watchdog's pause waits for a fetch in progress, and for nothing longer.  A background job
+# ignores Ctrl+C, so the loop checks every few seconds that its parent still exists, stops after
+# T12_HOLD_MAX_S (1 h) whatever happens, and is killed by stop_holder (normal end, INT/TERM/HUP).
+HOLDER_PID=""
+stop_holder() {
+    [ -z "${HOLDER_PID:-}" ] || kill "$HOLDER_PID" 2>/dev/null || true
+    HOLDER_PID=""
+}
+
+# hold_loop ID PARENT_PID
+hold_loop() {
+    local end waited
+    end=$(($(date +%s) + ${T12_HOLD_MAX_S:-3600}))
+    while kill -0 "$2" 2>/dev/null && [ "$(date +%s)" -lt "$end" ]; do
+        timeout 60 jl exec "$1" -- touch /home/.t12-hold >/dev/null 2>&1 || true
+        waited=0
+        while [ "$waited" -lt "${T12_HOLD_EVERY_S:-240}" ] && kill -0 "$2" 2>/dev/null; do
+            sleep "${T12_HOLD_CHECK_S:-5}"
+            waited=$((waited + ${T12_HOLD_CHECK_S:-5}))
+        done
+    done
+}
+
 fetch_outputs() {
-    local holder rc=0
-    ( trap 'kill "$nap" 2>/dev/null; exit 0' TERM
-      while :; do
-          timeout 60 jl exec "$2" -- touch /home/.t12-hold >/dev/null 2>&1 || true
-          sleep "${T12_HOLD_EVERY_S:-240}" & nap=$!
-          wait "$nap"
-      done ) &
-    holder=$!
+    local parent=$BASHPID rc=0
+    ( hold_loop "$2" "$parent" ) &
+    HOLDER_PID=$!
+    trap 'stop_holder; exit 130' INT TERM HUP
     fetch_outputs_now "$@" || rc=$?
-    kill "$holder" 2>/dev/null || true
-    wait "$holder" 2>/dev/null || true
+    stop_holder
+    trap - INT TERM HUP
     return "$rc"
 }
 
@@ -738,19 +755,27 @@ finalize() {
         [ "$resume" = resume ] || { info "instance $id is paused; \`fetch $phase\` resumes it, fetches and pauses it again"; return 0; }
         # ONE GPU is enough to read /home, and it cannot be stranded when the region has no 2 free
         info "resuming the paused instance $id with $JL_FETCH_GPUS GPU to fetch the outputs (billed while it runs)"
-        timeout 900 jl resume "$id" --num-gpus "$JL_FETCH_GPUS" --yes || die "jl resume failed (the outputs are safe on /home; retry \`fetch $phase\`)"
+        # a resume that times out may still have worked on the server: remember that a guard
+        # watchdog is owed (below, before anything else), and keep watching instead of exiting
+        : > "$dir/resume.pending"
+        timeout 900 jl resume "$id" --num-gpus "$JL_FETCH_GPUS" --yes || { LOOKUP_DOWN=1; info "jl resume failed or timed out: it may have worked; will check and keep trying"; return 2; }
         read -r id status < <(find_instance "$name") || true
         if [ "${id:-}" = "?" ]; then LOOKUP_DOWN=1; info "resumed, but cannot read the instance list: will keep trying"; return 2; fi
-        [ "${status:-}" = Running ] || die "instance $name is ${status:-missing} after resume"
-        echo "$id" > "$dir/launch.id"
-        # a resumed container has no processes: a watchdog first (with the new machine id in its
-        # secret), then the work
-        start_guard "$id" "" "$id" || info "WARNING: no watchdog on the resumed instance $id: fetch fast, the pause below is the only one"
-    elif [ "$status" = Creating ] || [ "$status" = Resuming ]; then
-        info "instance $id is $status: it will be Running soon and then bills; waiting"
-        return 2
-    elif [ "$status" != Running ]; then
-        info "instance $id is $status"; return 0
+        [ "${status:-}" = Running ] || { LOOKUP_DOWN=1; info "instance $name is ${status:-missing} after resume: will keep watching"; return 2; }
+    elif [ "$status" = Running ]; then
+        :
+    else
+        case "$status" in
+            Destroyed|Destroying|Deleted|Terminated) info "instance $id is $status"; return 0 ;;
+            *) info "instance $id is $status (not Paused, not Running): will keep watching"; return 2 ;;
+        esac
+    fi
+    echo "$id" > "$dir/launch.id"
+    if [ -f "$dir/resume.pending" ]; then
+        # a resumed container has no processes: the guard watchdog (with the new machine id in
+        # its secret) comes before anything else
+        if start_guard "$id" "" "$id"; then rm -f "$dir/resume.pending"
+        else info "WARNING: no watchdog on the resumed instance $id: fetch fast, the pause below is the only one"; fi
     fi
     state=unknown
     for t in 1 2 3; do
@@ -773,7 +798,8 @@ EOF
             return 2 ;;
     esac
     fetch_outputs "$phase" "$id" "$rid" || info "FETCH FAILED: the outputs stay on the instance (/home/ANLP-Project/runs/t12-out); pausing anyway, \`fetch $phase\` retries"
-    pause_instance "$id" "$name"
+    pause_instance "$id" "$name" || { LOOKUP_DOWN=1; return 2; }
+    rm -f "$dir/resume.pending"
 }
 
 # ---- launch --------------------------------------------------------------------------------
@@ -856,12 +882,13 @@ EOF
         [ "$ans" = yes ] || die "not confirmed"
     fi
     echo "$name" > "$dir/launch.name"
+    rm -f "$dir/resume.pending"          # (a leftover would make `watch` replace the job's watchdog)
     T0="$(date +%s)"
     echo "$T0" > "$dir/launch.epoch"
     LAUNCH_PHASE="$phase"
     JOB_RC=0
     trap 'launch_exit' EXIT
-    trap 'echo "[jl_t12] interrupted"; exit 130' INT TERM
+    trap 'echo "[jl_t12] interrupted"; stop_holder; exit 130' INT TERM HUP
 
     # 1. the instance, 2. the watchdog (secret + script + guard) AT ONCE, 3. the checks, 4. the job
     if [ -n "${ON:-}" ]; then
@@ -1028,7 +1055,11 @@ cmd_pause() {
     read -r id status < <(find_instance "$name") || true
     [ "${id:-}" != "?" ] || die "cannot read the instance list (jl list failed): try again, or pause by hand (jl list; jl pause <id> --yes)"
     [ -n "${id:-}" ] || die "no instance named $name"
-    [ "$status" = Running ] || { info "instance $id is $status"; return 0; }
+    case "$status" in
+        Running) ;;
+        Paused|Destroyed|Destroying|Deleted|Terminated) info "instance $id is $status"; return 0 ;;
+        *) info "instance $id is $status: not paused yet"; return 2 ;;
+    esac
     rid="$(latest_run_id "$id")"
     state="$(run_state "$id" "$rid")"
     if [ "$state" = running ] && [ "${FORCE:-0}" != 1 ]; then

@@ -154,6 +154,9 @@ def main(argv):
         setstatus(rest[0], "Running", new_id=sc.get("new_id_on_resume"),
                   num_gpus=int(a.get("--num-gpus", 0)) or None)
         print("resumed")
+        if sc.get("resume_applies_then_fails") and not (D / "resume-failed-once").exists():
+            (D / "resume-failed-once").write_text("1")      # worked on the server, timed out here
+            sys.exit(1)
     elif cmd == "destroy":
         print("DESTROY CALLED", file=sys.stderr)
         sys.exit(9)
