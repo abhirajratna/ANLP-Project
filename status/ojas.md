@@ -1,6 +1,6 @@
 ---
 member: ojas
-updated: 2026-10-26T15:27:05Z
+updated: 2026-10-26T16:10:44Z
 branch: main
 ---
-ojas: E1/E2 on HF: LIG, LIM, DIM (Colab, stopped). Mdlm = Ada 40856 running; MdlmTimeSplit 40860 queued
+ojas: E1/E2 on HF: LIG, LIM, DIM, Mdlm. MdlmTimeSplit Ada 40860 running
