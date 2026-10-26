@@ -106,4 +106,28 @@ Items 7-14 are reserved for the T13 ablation entries (branch `t13-ablations`).
 
 ## After the freeze
 
-(none yet)
+### Added 26 Oct 2026, after the prereg-v1 tag (6b4c25e)
+
+18. **Step order: E1/E2 banked before Eq. 2/3 (scheduling only).** The Eq. 2/3 FE bootstrap
+    did not fit the 96 h Ada job cap on the 120M-row arms (measured: LladaBase job 39851,
+    eq2_fe 5-8 min per resample per worker; DreamBase job 39510, eq3_fe ~100 s per resample
+    per worker, first of 7 mask kinds still running after 16 h). Each arm's primary
+    `c1/<Label>` command is therefore first run with `--skip-regression` into
+    `prereg-v1-e1e2/` (`slurm/prereg_analysis.sbatch`, `C3_E1E2_ONLY=1`, PR #47). The E1/E2
+    Holm families come only from the 10,000-draw reweighting bootstrap
+    (`scripts/analyze_traces.py:154-196` at `prereg-v1`; bootstrap counts drawn once at
+    `:401`), so their numbers are identical to a full run; Eq. 2/3 follows separately. No
+    frozen choice changes.
+
+19. **Eq. 2/3 bootstrap warm start.** From commits cc9cc85 and 51657cb (branch
+    `abhiraj/eq23-warm-start`) each Eq. 2/3 bootstrap resample's IRLS starts from the
+    full-sample fit instead of zero; estimator, ridge, tolerance, max_iter and resample
+    seeds unchanged. The penalised objective is strictly concave, so a converged draw does
+    not depend on where it started; against an independent high-precision solver warm draws
+    are exact to <=2e-9 and CI endpoints move by <=3e-10. Where the frozen cold start hit
+    max_iter, its draws were not optimal (errors up to 9e-2 on synthetic hard cases);
+    unconverged point fits and draws are now restarted once from their last iterate, and any
+    still unconverged are counted and marked §. `--eq-cold-start` reproduces `prereg-v1`
+    output exactly. The library default stays cold, so other callers (`run_controls`,
+    `run_stage0`, `c3/sim`) are unchanged. Convergence of point fits and draws is now
+    recorded (`point_converged`, `point_restarted`, `n_nonconverged_draws`).
