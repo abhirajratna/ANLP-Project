@@ -111,6 +111,11 @@
 #       TRACES_SRC=/share1/abhiraj.ratna/traces C3_SCRATCH=/ssd_scratch/$USER/v2 HF_HUB_OFFLINE=0 \
 #       sbatch --cpus-per-task=38 --mem=120000M ~/c3/slurm/prereg_analysis.sbatch
 #
+# Later tag (the Eq. 2/3 warm start, deviations 18-19): C3_PREREG_TAG=prereg-v1.1 (any
+# prereg-v1.<digits> that descends from prereg-v1), C3_REPO a clean checkout at that tag,
+# normal mode; OUT defaults to $C3_PERSIST/prereg-v1.1 ($C3_PERSIST/$TAG-e1e2 with
+# C3_E1E2_ONLY=1).  Unset, the tag is prereg-v1 and everything above holds.
+#
 # Dry run of the runner itself, with a stub interpreter that reads no trace:
 #
 #   C3_PREREG_DRYRUN=1 PY=$PWD/tests/prereg_stub_py.sh C3_REPORT_HALF_OK=1 \
@@ -122,7 +127,8 @@
 set -euo pipefail
 die() { echo "[prereg] refusing: $*" >&2; exit 1; }
 REPO_DIR="${C3_REPO:-${SLURM_SUBMIT_DIR:-$PWD}}"
-TAG=prereg-v1
+TAG="${C3_PREREG_TAG:-prereg-v1}"
+[[ "$TAG" =~ ^prereg-v1(\.[0-9]+)?$ ]] || die "C3_PREREG_TAG=$TAG: only prereg-v1 or prereg-v1.<digits> are accepted"
 DRYRUN="${C3_PREREG_DRYRUN:-0}"
 E1E2="${C3_E1E2_ONLY:-0}"
 
@@ -141,6 +147,8 @@ if [ "$DRYRUN" = 1 ]; then
     echo "[prereg] DRY RUN at ${HEAD:0:12}: tag and clean-tree checks skipped; PY=$PY"
 else
     [ -n "$TAGGED" ] || die "no tag $TAG in $REPO_DIR (from the laptop: git push ada:c3 $TAG)"
+    [ "$TAG" = prereg-v1 ] || git -C "$REPO_DIR" merge-base --is-ancestor prereg-v1 "$TAG" \
+        || die "$TAG does not descend from prereg-v1 in $REPO_DIR"
     [ "$HEAD" = "$TAGGED" ] || die "HEAD ${HEAD:0:12} is not $TAG (${TAGGED:0:12}): git checkout --detach $TAG"
     [ -z "$DIRTY" ] || die "$REPO_DIR has uncommitted changes: $DIRTY"
     echo "[prereg] $TAG = ${HEAD:0:12}, clean checkout $REPO_DIR"
@@ -168,10 +176,10 @@ fi
 if [ "$DRYRUN" = 1 ]; then
     export OUT="${OUT:-$C3_PERSIST/prereg-dryrun$SFX/${SLURM_JOB_ID:-$$}}"
 else
-    export OUT="${OUT:-$C3_PERSIST/prereg-v1$SFX}"
+    export OUT="${OUT:-$C3_PERSIST/$TAG$SFX}"
 fi
-[ "$E1E2" != 1 ] || [ "$(realpath -m "$OUT")" != "$(realpath -m "$C3_PERSIST/prereg-v1")" ] \
-    || die "C3_E1E2_ONLY=1 would write into the full prereg-v1 root ($OUT); unset OUT"
+[ "$E1E2" != 1 ] || [ "$(realpath -m "$OUT")" != "$(realpath -m "$C3_PERSIST/$TAG")" ] \
+    || die "C3_E1E2_ONLY=1 would write into the full $TAG root ($OUT); unset OUT"
 [ "$E1E2" != 1 ] || echo "[prereg] C3_E1E2_ONLY=1: primary c1 steps only, --skip-regression, OUT=$OUT"
 export PY="${PY:-$C3_PY}"
 export CORPUS="${CORPUS:-$C3_PERSIST/corpus/calibration_docs.jsonl}"
