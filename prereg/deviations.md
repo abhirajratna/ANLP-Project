@@ -138,6 +138,11 @@ Items 7-14 are reserved for the T13 ablation entries (branch `t13-ablations`).
       by step 3), that setting takes the speed-3 slot. `pick_knobs.py` records
       `"unmatched_at_target": true` and the tokens per step achieved, and the speed-3
       comparison reads '---'.
+    - Main-text table (primary operating point, chosen by parth on 26 Oct 2026, before any
+      report-half generation): §6's matched-speed table shows, per task, the speed-2 slot
+      (target 4 tokens per step), at the C3a alpha that `scripts/pick_knobs.py` writes to
+      `prereg/t12_grid_<task>.json`; speeds 1 and 3 appear in full in the appendix table and
+      figure, and no slot is chosen after a report-half number is read.
     - Files: the calibration grid `prereg/t12_cal.json` and `scripts/pick_knobs.py` are at
       branch `parth/t12-driver`, commit `daff750c251f8e49fb62c40f8fad12b80cb4ee04`. The final per-task grids
       (`prereg/t12_grid_gsm8k.json`, `prereg/t12_grid_mbpp.json`) are committed before the
