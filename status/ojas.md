@@ -1,6 +1,6 @@
 ---
 member: ojas
-updated: 2026-10-26T16:10:44Z
+updated: 2026-10-26T16:31:23Z
 branch: main
 ---
-ojas: E1/E2 on HF: LIG, LIM, DIM, Mdlm. MdlmTimeSplit Ada 40860 running
+ojas: Mdlm + MdlmTimeSplit + 3 instruct arms on HF; waiting on LladaBase/DreamBase (parth), DreamInstructGsm (ayush)
