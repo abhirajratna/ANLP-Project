@@ -1,6 +1,6 @@
 ---
 member: parth
-updated: 2026-10-26T04:28:52Z
+updated: 2026-10-26T04:47:50Z
 branch: parth/t12-driver
 ---
-prereg arms RUNNING: 39851 LladaBase (gnode071) -> 39852 DreamInstructGsm, 39853 precision; T12 -> Jarvis via jl: launcher in final review; Dorigo JOB 2 offered to abhiraj
+Ada: 39851 LladaBase RUNNING (39852/39853 queued); handed DreamInstructGsm + T12 (Jarvis) to ayush; PR #37 deviation 17; T12 inputs on HF; jl launcher fixes in progress
