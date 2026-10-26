@@ -1,6 +1,6 @@
 ---
 member: ojas
-updated: 2026-10-26T07:53:01Z
+updated: 2026-10-26T12:01:22Z
 branch: main
 ---
-ojas: Ada 39506 (Mdlm+MdlmTimeSplit) running, 39508 queued; reviewed #32 (merged) and #36; §6 updated (#33 bd15898); trimming §3 (ojas/paper-trim-3); page budget proposal 20261026T075234Z-ojas-67ba
+ojas: Ada 39506 (Mdlm+TimeSplit) running, 39508 queued. Today merged #32 #36 #41 #33 #38 #39 #40 #42 (#28 pending CI). Appendix now ~1.85 pp. Applying 11 code-vs-text audit fixes (ojas/paper-audit-fixes). C1 gather pipeline ready.
