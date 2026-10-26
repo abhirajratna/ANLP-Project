@@ -1,6 +1,6 @@
 ---
 member: ojas
-updated: 2026-10-26T20:38:45Z
+updated: 2026-10-26T21:52:49Z
 branch: main
 ---
-ojas: C1 E1/E2 results PR #50 (Holm summary done, 12/14 E1, 14/14 E2); Mdlm v1.1 40945 running
+ojas: PR #50 (C1 E1/E2 results) merged; Colab running 4 instruct arms @v1.1; Mdlm v1.1 Ada 40945
