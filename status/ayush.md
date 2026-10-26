@@ -1,6 +1,6 @@
 ---
 member: ayush
-updated: 2026-10-26T04:45:33Z
-branch: ayush/dorigo-summary-wording
+updated: 2026-10-26T12:52:49Z
+branch: ayush/dorigo-per-k-arms
 ---
-ayush: 8B Dorigo fit-half read: Delta changes < delta_min, decoder growth = own term, H2 not supported; PR #36 fixes summary verdict; reviews asked
+PR #44 (Dorigo per-k arms) open for review; Jarvis Dream/T12 waiting on team API key
