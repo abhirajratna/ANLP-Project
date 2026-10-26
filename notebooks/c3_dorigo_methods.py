@@ -2099,9 +2099,13 @@ for (name, kind), r in RESULTS.items():
     if sign_c and sign_l and sign_c != sign_l:
         verdict = (f"The field term's contrast ({eM.field_contrast_est:+.4f}) and level ({eM.field_est:+.4f}) disagree in sign: "
                    "no field term is detected.")
-    elif sign_c != sign_l:
+    elif sign_c != sign_l and not big:
         verdict = (f"No field term of a size worth reporting: only one of the contrast ({eM.field_contrast_est:+.4f}) and the "
                    f"level ({eM.field_est:+.4f}) has a CI excluding 0, and both are far inside δ_min = {DELTA_MIN}.")
+    elif sign_c != sign_l:
+        verdict = (f"The field term is unsettled: only one of the contrast ({eM.field_contrast_est:+.4f}) and the level "
+                   f"({eM.field_est:+.4f}) has a CI excluding 0, and at least one reaches δ_min = {DELTA_MIN}; read the "
+                   "E2 table, not this sentence.")
     elif sign and not robust:
         verdict = (f"The field term's CIs exclude 0, but refitting the calibrators gives {refits[0]:+.4f} and {refits[1]:+.4f}, "
                    "not both of the estimate's sign: its sign rests on the calibrator fit, so this is not evidence of a field term.")
