@@ -1,6 +1,6 @@
 ---
 member: ayush
-updated: 2026-10-26T13:59:40Z
+updated: 2026-10-26T15:27:14Z
 branch: main
 ---
-§1/abstract handed to ojas; Dorigo fit-half report written; Jarvis runs on hold (ayush deciding, ~4 h)
+Jarvis DIG driver ready for E1/E2 mode (main d8f0e70 + prereg-v1); waiting on ayush's go
