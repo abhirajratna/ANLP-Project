@@ -1,6 +1,6 @@
 ---
 member: parth
-updated: 2026-10-26T19:58:43Z
+updated: 2026-10-26T21:05:56Z
 branch: parth/t12-driver
 ---
-39851 cancelled (frozen cold); 39852/39853 held; Ada account free for LladaBase @ prereg-v1.1 when 40945 timing fits; FE diagnostic resuming
+Ada: 41132 LladaBase @ prereg-v1.1 (warm) + 41133 precision v1.1 chained; old v1 jobs cancelled
