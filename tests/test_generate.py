@@ -94,6 +94,35 @@ def test_lmeval_contexts_do_not_depend_on_the_number_of_shards():
     assert own[1] != one[1]
 
 
+def test_main_draws_fewshot_examples_over_the_unsharded_selection(tmp_path):
+    """The function main() calls for --prompt lmeval: a doc_id has the same context at
+    --num-shards 1 and 2 (the sweep splits the problems over the GPUs; Ada's sanity run
+    split them over 4 shards and drew different examples)."""
+    import argparse
+    import inspect
+
+    assert "lmeval_shard_contexts(" in inspect.getsource(run_t12.main)      # wired in
+    pool = tmp_path / "pool.jsonl"
+    pool.write_text("\n".join(json.dumps({"question": f"P{i}", "answer": f"step {i}\n#### {i}"})
+                              for i in range(30)))
+    man = tmp_path / "split.json"
+    man.write_text(json.dumps({str(i): i % 2 for i in range(40)}))
+    tasks = [{"doc_id": i, "question": "q" * (i + 1), "answer": f"a #### {i}"} for i in range(40)]
+
+    def contexts(shard, num_shards, limit=9):
+        a = argparse.Namespace(task="gsm8k", manifest=str(man), half="fit", limit=limit,
+                               fewshot=4, fewshot_jsonl=str(pool))
+        mine = run_t12.select_records(tasks, a.manifest, a.half, a.limit, shard, num_shards)
+        return run_t12.lmeval_shard_contexts(a, tasks, mine)
+
+    one = contexts(0, 1)
+    two = {**contexts(0, 2), **contexts(1, 2)}
+    four = {}
+    for sh in range(4):
+        four.update(contexts(sh, 4))
+    assert sorted(one) == [0, 2, 4, 6, 8, 10, 12, 14, 16] and one == two == four
+
+
 def test_driver_selects_the_half_limit_and_shard(tmp_path):
     recs = [{"doc_id": i} for i in range(20)]
     man = tmp_path / "split.json"

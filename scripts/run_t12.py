@@ -106,6 +106,16 @@ def shard_contexts(task, all_records, records, pool, k) -> dict:
     return {int(r["doc_id"]): ctx[int(r["doc_id"])] for r in records}
 
 
+def lmeval_shard_contexts(a, tasks, records) -> dict:
+    """What ``main`` uses for ``--prompt lmeval``: the few-shot contexts of this shard's
+    ``records``, drawn over the UNSHARDED selection (same half and limit, one shard), so a
+    problem gets the same examples at any ``--num-shards``.  ``a`` is the parsed arguments,
+    ``tasks`` every record of the task."""
+    full = select_records(tasks, a.manifest, a.half, a.limit, 0, 1)
+    pool = load_fewshot_pool(a.task, a.fewshot_jsonl)
+    return shard_contexts(a.task, full, records, pool, a.fewshot)
+
+
 def repair_tail(path: Path) -> None:
     """Cut a torn last line (a killed write) so the next record starts on its own line."""
     if not path.exists() or path.stat().st_size == 0:
@@ -250,8 +260,8 @@ def main() -> int:
     from c3.traces.models import build_model, parse_max_memory, set_deterministic
 
     det = set_deterministic(0)
-    records = select_records(load_task(a.task, a.task_jsonl), a.manifest, a.half, a.limit,
-                             a.shard, a.num_shards)
+    tasks = load_task(a.task, a.task_jsonl)
+    records = select_records(tasks, a.manifest, a.half, a.limit, a.shard, a.num_shards)
     configs = load_configs(a.configs)
     calibrator = log_freq = None
     if a.calibrator:
@@ -270,7 +280,7 @@ def main() -> int:
 
     until = None
     if a.prompt == "lmeval":
-        ctx = lmeval_contexts(a.task, records, load_fewshot_pool(a.task, a.fewshot_jsonl), a.fewshot)
+        ctx = lmeval_shard_contexts(a, tasks, records)
         prompts = {d: lmeval_prompt(c, tok) for d, c in ctx.items()}
         until = list(LMEVAL[a.task]["until"])
         prompt_id = {"format": "lmeval", "fewshot": a.fewshot, "seed": LMEVAL[a.task]["seed"],
