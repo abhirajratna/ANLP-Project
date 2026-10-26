@@ -267,7 +267,8 @@ def beta(r, key: str):
     b = b.get("beta_z") if isinstance(b, dict) else None
     if not b or not _ok(b.get("value")):
         return None, ""
-    return b, ("" if b.get("point_converged", True) else "\\S")
+    ok = b.get("point_converged", True) and not (b.get("n_nonconverged_draws") or 0)
+    return b, ("" if ok else "\\S")
 
 
 # --------------------------------------------------------------------------- tables

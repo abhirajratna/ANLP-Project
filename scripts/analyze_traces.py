@@ -100,7 +100,7 @@ def fold_assignment(split: str, codes: np.ndarray, seed: int, manifest: str | No
 
 
 def regression_block(pools, report_docs, fit_docs, split, n_knots, n_boot, seed, n_jobs,
-                     ridge_beta=0.0, warm_start=True):
+                     ridge_beta=0.0, warm_start=False):
     """Eq. 2 on winners and Eq. 3 on the retained top ranks, with and without FE."""
     out = {}
     keep = np.isin(pools.doc_id, report_docs if split != "half" else np.concatenate([fit_docs, report_docs]))
@@ -122,7 +122,9 @@ def regression_block(pools, report_docs, fit_docs, split, n_knots, n_boot, seed,
                                    "n_nonconverged_draws": e.n_nonconverged_draws,
                                    "boot_iter_median": e.n_iter_median, "boot_iter_max": e.n_iter_max,
                                    "warm_start": e.warm_start,
-                                   "point_converged": e.converged, "point_iters": e.n_iter}
+                                   "point_converged": e.converged, "point_iters": e.n_iter,
+                                   "point_restarted": e.point_restarted,
+                                   "point_iters_total": e.point_iters_total}
                             for name, e in est.items()}
             except (ValueError, FloatingPointError, np.linalg.LinAlgError) as exc:
                 out[key] = {"error": str(exc)}

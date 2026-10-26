@@ -120,3 +120,49 @@ def test_nonconverged_draws_are_reported():
     assert ok.n_nonconverged_draws == 0
     bad = _boots(frame, "eq2", True, False, max_iter=2)["beta_z"]
     assert bad.n_nonconverged_draws > 0 and bad.n_iter_max <= 2
+
+
+def test_library_default_is_cold_and_bit_identical_to_explicit_cold():
+    frame = _boot_frames()["eq2"]
+    dflt = fit_and_report(frame, "eq2", n_knots=5, n_boot=6, cross_fit=False, fe=True, max_rank=4)["beta_z"]
+    cold = _boots(frame, "eq2", True, False, n_boot=6)["beta_z"]
+    assert dflt.warm_start is False and dflt.point_restarted is False
+    assert np.array_equal(dflt.boot, cold.boot) and dflt.value == cold.value
+    # ...and the cold path itself is the frozen worker (see test above).
+
+
+def test_unconverged_point_fit_is_restarted_once_when_warm():
+    frame = _boot_frames()["eq2"]
+    cold = _boots(frame, "eq2", True, False, max_iter=5)["beta_z"]
+    warm = _boots(frame, "eq2", True, True, max_iter=5)["beta_z"]
+    assert cold.converged is False and cold.point_restarted is False
+    assert warm.converged is True and warm.point_restarted is True
+    assert warm.point_iters_total > 5 and warm.n_iter <= 5
+    ref = _boots(frame, "eq2", True, False)["beta_z"]       # fully converged cold fit
+    assert abs(warm.value - ref.value) < 1e-8
+
+
+def test_unconverged_draws_are_retried_once_and_remaining_counted():
+    frame = _boot_frames()["eq2"]
+    cold = _boots(frame, "eq2", True, False, max_iter=4)["beta_z"]
+    warm = _boots(frame, "eq2", True, True, max_iter=4)["beta_z"]
+    assert cold.n_nonconverged_draws > 0
+    assert warm.n_nonconverged_draws == 0 and warm.n_iter_max > 4       # retried draws
+    ref = _boots(frame, "eq2", True, False)["beta_z"]
+    assert np.max(np.abs(warm.boot - ref.boot)) < 1e-6
+    hopeless = _boots(frame, "eq2", True, True, max_iter=1)["beta_z"]
+    assert hopeless.n_nonconverged_draws > 0
+
+
+def test_paper_marker_flags_nonconverged_draws():
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    import c1_paper_outputs as P
+    base = {"value": 0.1, "ci": [0.0, 0.2], "point_converged": True}
+
+    def reg(**kw):
+        return {"regression": {"eq2_fe": {"beta_z": {**base, **kw}}}}
+    assert P.beta(reg(n_nonconverged_draws=0), "eq2_fe")[1] == ""
+    assert P.beta(reg(n_nonconverged_draws=3), "eq2_fe")[1] == "\\S"
+    assert P.beta(reg(point_converged=False, n_nonconverged_draws=0), "eq2_fe")[1] == "\\S"
