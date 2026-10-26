@@ -47,8 +47,9 @@ We make three contributions.
   traces (\S\ref{sec:instrument}) from LLaDA-8B and Dream-7B, Base and Instruct, and a 110M
   masked diffusion model trained on data we control, we measure the committed-token gap as a
   function of how many candidates a token beat, its field term, and whether the states a
-  decoder visits are calibrated worse than random masks. Everything fitted uses one half of
-  each set's documents; every number we report comes from the held-out other half, and the
+  decoder visits are calibrated worse than random masks. Nuisance fits (calibrators, splines, knots,
+  temperatures) use one half of each set's documents; every C1 number we report is estimated on
+  the held-out other half, and the
   primary contrasts are tested in Holm-corrected families across models and data
   (\S\ref{sec:inference}).
   % TODO(results): one sentence on C1, from the Holm summary (claimed stars only), keeping to
@@ -72,9 +73,9 @@ We make three contributions.
   (B) falls as (A) rises. On real text, a proxy for (A) is near zero for the 110M model and
   LLaDA-8B-Base at 2--8 tokens per step, which looks like the probe's (B)-dominated regime,
   though the proxy sees only dependence the model has learned.
-\item \textbf{C3, a calibrated commitment policy} (\S\ref{sec:c3}). C3a commits every
-  position whose recalibrated confidence, fitted on the fit half, implies an error rate of at
-  most $\alpha$, so its threshold reads as an error rate, and it needs no extra forward pass. We
+\item \textbf{C3, a calibrated commitment policy} (\S\ref{sec:c3}). C3a commits as many
+  positions as have recalibrated confidence, fitted on the fit half, above $1-\alpha$, in the
+  model's own order, so its threshold reads as an error rate, and it needs no extra forward pass. We
   compare it with confidence decoders at matched tokens per step in free-running generation
   with LLaDA-8B-Instruct on GSM8K and MBPP.
   % TODO(results): the C3 sentence from the T12 matched-speed table (Sec. 6).  Name the
