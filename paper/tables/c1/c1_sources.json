@@ -1,0 +1,151 @@
+{
+ "results_root": "HF ANLP-project/c3-traces-8b:prereg-v1-e1e2 (results.json slimmed locally: calibrators removed)",
+ "main_arm": "LladaBase",
+ "arms_present": [
+  "LladaBase",
+  "DreamBase",
+  "LladaInstructGsm",
+  "LladaInstructMbpp",
+  "DreamInstructGsm",
+  "DreamInstructMbpp",
+  "Mdlm"
+ ],
+ "arms_missing": [],
+ "summary_present": true,
+ "macro_files": [
+  "c1-LladaBase",
+  "c1-DreamBase",
+  "c1-LladaInstructGsm",
+  "c1-LladaInstructMbpp",
+  "c1-DreamInstructGsm",
+  "c1-DreamInstructMbpp",
+  "c1-Mdlm"
+ ],
+ "sources": {
+  "c1/DreamBase/results.json": {
+   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/DreamBase/results.json",
+   "sha256": "fc97673e7513cbb9bfa9a96ddb901d3c407839f9d09eb1b2fcc4890434e24d0f",
+   "hf_path": "prereg-v1-e1e2/c1/DreamBase/results.json",
+   "hf_sha256": "e9bff047d2fa78ae3b446c6e8694b538ba2d437f3d1eff90cd179d31970ce94b",
+   "bytes": 1625438081,
+   "slim": "by_mask_kind.*.calibrators removed"
+  },
+  "c1/DreamInstructGsm/results.json": {
+   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/DreamInstructGsm/results.json",
+   "sha256": "3bc5dc12459453ef22625e9dcbe5a4be7773104b15618bcd51b963521f507b72",
+   "hf_path": "prereg-v1-e1e2/c1/DreamInstructGsm/results.json",
+   "hf_sha256": "acaa9f7232449bba142a2333c24637935ab097ffedec9c709fe953bfc2f5e142",
+   "bytes": 417239718,
+   "slim": "by_mask_kind.*.calibrators removed"
+  },
+  "c1/DreamInstructMbpp/results.json": {
+   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/DreamInstructMbpp/results.json",
+   "sha256": "688e98f96c2871b0b18ba33356c46ac50eed959a87911980b4231260fa105ad1",
+   "hf_path": "prereg-v1-e1e2/c1/DreamInstructMbpp/results.json",
+   "hf_sha256": "0f19732cd371bf4f3ab783e6bb60705ad00662680887532f06751eb94d624b6e",
+   "bytes": 89726538,
+   "slim": "by_mask_kind.*.calibrators removed"
+  },
+  "c1/LladaBase/results.json": {
+   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/LladaBase/results.json",
+   "sha256": "c46a7d3970d4aa870260b47b412e0263f5cfbba7d895d59a0d9e481975bb0d09",
+   "hf_path": "prereg-v1-e1e2/c1/LladaBase/results.json",
+   "hf_sha256": "a4eeb94cc0a911cdf29b6beb601f2aa700e8e617fab26aa669a7b43a4470d0f1",
+   "bytes": 1125275039,
+   "slim": "by_mask_kind.*.calibrators removed"
+  },
+  "c1/LladaInstructGsm/results.json": {
+   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/LladaInstructGsm/results.json",
+   "sha256": "e0654c085a9747057cc2e63499038304adfa3a385d4a4ce27c54ade9c2c54166",
+   "hf_path": "prereg-v1-e1e2/c1/LladaInstructGsm/results.json",
+   "hf_sha256": "f84363df0287cd87b09f070453927654971f2f9dbf1ada7a45b5dc075a9303c8",
+   "bytes": 427806445,
+   "slim": "by_mask_kind.*.calibrators removed"
+  },
+  "c1/LladaInstructMbpp/results.json": {
+   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/LladaInstructMbpp/results.json",
+   "sha256": "945eed39f7f77ccf8e69277d03b381bbb0d68e52b053cdb38cbc33275cc3fbca",
+   "hf_path": "prereg-v1-e1e2/c1/LladaInstructMbpp/results.json",
+   "hf_sha256": "1986785d2d383cfb77e4eb69b56b432c5b058aeb7bb112c1feead75159188f4a",
+   "bytes": 108836417,
+   "slim": "by_mask_kind.*.calibrators removed"
+  },
+  "c1/Mdlm/results.json": {
+   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/Mdlm/results.json",
+   "sha256": "24fff7378bd1607e4b11d246d70fe0cf86026f9b025b281bc586137696f5cd66",
+   "hf_path": "prereg-v1-e1e2/c1/Mdlm/results.json",
+   "hf_sha256": "1ce3f2ba2202bca0d65eb4cf827d9b1becea4b833271640319890f7c63f56890",
+   "bytes": 1520803820,
+   "slim": "by_mask_kind.*.calibrators removed"
+  },
+  "c1/summary/c1_summary.json": {
+   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/summary/c1_summary.json",
+   "sha256": "73a7fe36cfe41c70e345adad62bc1527ddd14f5e8de12b06585ef16fb038495b"
+  },
+  "macros/c1-DreamBase": {
+   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/DreamBase/macros.tex",
+   "sha256": "ea99c456548e60b5c3a4de25c08b72144f601b18c703fcaab6d9c36fa583834e"
+  },
+  "macros/c1-DreamInstructGsm": {
+   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/DreamInstructGsm/macros.tex",
+   "sha256": "f12ba6f81dc106ac9bdebc409615835ae5bc2eef51a14280eb59e073530ef3e9"
+  },
+  "macros/c1-DreamInstructMbpp": {
+   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/DreamInstructMbpp/macros.tex",
+   "sha256": "4e2d11cda7bb9445b27bac70cfec727b391257dcf8477cb1b712a78bb67bf41d"
+  },
+  "macros/c1-LladaBase": {
+   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/LladaBase/macros.tex",
+   "sha256": "4d2f37bf645ca12454198512938084673de102b721adf0bddb3ef145a1784a08"
+  },
+  "macros/c1-LladaInstructGsm": {
+   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/LladaInstructGsm/macros.tex",
+   "sha256": "87f3676971f79a720737424d54f1ddddbf8ca2fc3c7859817418d477d316dd58"
+  },
+  "macros/c1-LladaInstructMbpp": {
+   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/LladaInstructMbpp/macros.tex",
+   "sha256": "3272c5ca41d2c318ed1ae087603342cf65045659b9ec67274ca5197cf6f8b53b"
+  },
+  "macros/c1-Mdlm": {
+   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/e1e2/c1/Mdlm/macros.tex",
+   "sha256": "014ee091009b2f413e5e7f46d442686fc030462fe83abe1351a005cf8553a9aa"
+  }
+ },
+ "outputs": [
+  "c1_beta.tex",
+  "c1_delta_m_LladaBase.pdf",
+  "c1_delta_m_LladaBase.png",
+  "c1_delta_m_all.pdf",
+  "c1_delta_m_all.png",
+  "c1_e3.tex",
+  "c1_field_m_all.pdf",
+  "c1_field_m_all.png",
+  "c1_gamma.tex",
+  "c1_main.tex",
+  "c1_main_col.tex",
+  "c1_reliability_LladaBase.pdf",
+  "c1_reliability_LladaBase.png",
+  "c1_sensitivity.tex",
+  "c1_shared.tex",
+  "c1_t8.tex",
+  "c1_t8_precision.tex",
+  "macros_c1.tex"
+ ],
+ "provenance": {
+  "git_commit": "c44271b4ab3036bb995fbd367562c15aac9f5716",
+  "git_dirty": false,
+  "python": "3.12.12",
+  "platform": "Linux-7.2.11-arch1-1-x86_64-with-glibc2.44",
+  "host": "arch",
+  "slurm_job_id": null,
+  "packages": {
+   "numpy": "2.5.4",
+   "scipy": "1.18.1",
+   "pandas": "3.0.6",
+   "pyarrow": "26.0.0",
+   "torch": "2.14.1+cpu",
+   "transformers": "4.46.3",
+   "matplotlib": "3.11.2"
+  }
+ }
+}
