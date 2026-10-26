@@ -33,8 +33,10 @@
 %   Difference}[Lo|Hi];  TEightLladaBasePrecisionPrecision{EOne,ETwo}<Tag>...      t8
 %
 % Labels defined here: sec:c1, sec:c1-main, sec:c1-beta, sec:c1-e3, sec:c1-t8,
-% sec:c1-robust, tab:c1-main, fig:c1-delta; in appendix_c1.tex: sec:c1-app, tab:c1-e3,
-% tab:c1-t8, tab:c1-sens, tab:c1-gamma, tab:c1-shared (and tab:c1-beta, commented out there for space).  Used from Secs. 2-3: sec:setup, eq:gap, prop:select, prop:split,
+% sec:c1-robust, tab:c1-main, fig:c1-delta; in appendix_c1.tex: sec:c1-app, tab:c1-t8,
+% tab:c1-gamma.  The E3, robustness, shared-error and beta_z tables are not in the paper (space):
+% c1_paper_outputs.py still writes them, and the code archive carries them.
+% Used from Secs. 2-3: sec:setup, eq:gap, prop:select, prop:split,
 % eq:gapsplit, sec:instrument, tab:runs, sec:traces, sec:estimands, eq:eqtwo, eq:eqthree,
 % sec:inference, sec:validation.
 % Needs booktabs (the generated tables) and graphicx.
@@ -146,8 +148,9 @@ The estimator is not neutral: on simulated traces it read slightly positive when
 field term was zero (\S\ref{sec:validation}), so a small positive E2 is weaker evidence
 than its interval suggests.
 The third term of the split, $\E_m[\hat\pi(\ell,s)-a]$, zero without shared errors, is
-\CresCI{COneLladaBaseResidualThirtyTwoUni} at $m=\VivaPoolMax$, and the within-state ICC of
-residuals is \CresCI{COneLladaBaseICCUni} (Table~\ref{tab:c1-shared}, Appendix).
+\CresCI{COneLladaBaseResidualOneUni} at $m=1$ and \CresCI{COneLladaBaseResidualThirtyTwoUni}
+at $m=\VivaPoolMax$, and the within-state ICC of residuals is \CresCI{COneLladaBaseICCUni}
+(full table in the code archive).
 % TODO(results): if the ICC interval holds 0 and the residual intervals hold 0 in most rows:
 %   "Neither shows shared errors: Proposition 1 is a fair description of these states."
 % else (ICC > 0 with its interval excluding 0, or a residual excluding 0 at m = 32):
@@ -195,7 +198,7 @@ A decoder visits states whose masked positions are those it was least sure of. E
 whether, at equal confidence and mask rate, tokens in decoder states are right less often
 than in uniform states with as many masks (\S\ref{sec:estimands}); the decoder is
 teacher-forced, so this is the effect of which positions remain masked, not of its own
-mistakes. All E3 rows are exploratory (Table~\ref{tab:c1-e3}, Appendix~\ref{sec:c1-app}). For
+mistakes. All E3 rows are exploratory (full table in the code archive). For
 LLaDA-8B-Base at $k=4$ the difference, positive if decoder-state tokens are right less
 often, is \CresCI{EThreeLladaBaseTypeEffectTopkConfKFourMatched} against matched uniform
 states (sup-$t$ $p=\Cres{EThreeLladaBaseTypeTestPTopkConfKFourMatched}$) and
@@ -250,8 +253,8 @@ of the 4-bit run, 4-bit NF4 in place of fp16 changes E1 by
 \subsection{Robustness}
 \label{sec:c1-robust}
 
-Table~\ref{tab:c1-sens} (Appendix~\ref{sec:c1-app}) repeats E1 and E2 under four changes,
-none of them in a Holm family.
+E1 and E2 are repeated under four changes, none of them in a Holm family (full table in the
+code archive).
 
 \paragraph{Contamination.}
 Without the documents the screen flagged (\VivaLladaContamFlagged{} for LLaDA,
@@ -276,9 +279,10 @@ Table~\ref{tab:c1-main}); a quarter of the documents, so wider intervals.
 % (time-split rows also appear as TS rows of tab:c1-main.)
 
 \paragraph{Spline knots.}
-E1 uses no calibrator; E2 and $\beta_z$ do. Table~\ref{tab:c1-sens} gives E2 with 5 and
-13 knots beside the primary \VivaKnots{}. These runs refit Eqs.~\ref{eq:eqtwo} and
-\ref{eq:eqthree} only 200 times, so their intervals are descriptive only.
+E1 uses no calibrator; E2 and $\beta_z$ do. E2 keeps its sign and declared flag with 5 and with
+13 knots, instead of the primary \VivaKnots{}, in \Cres{COneKnotsAgree} of \Cres{COneKnotsCells}
+cells (full table in the code archive). These runs are refit
+only 200 times, so their intervals are descriptive only.
 % TODO(results): if E2 at 5 and 13 knots keeps the sign of 9 knots, with its interval still
 %   excluding 0, in every claimed cell: "The knots do not change any claim."
 %   else: "<cell> depends on the knots:
@@ -286,8 +290,8 @@ E1 uses no calibrator; E2 and $\beta_z$ do. Table~\ref{tab:c1-sens} gives E2 wit
 
 \paragraph{Context calibrator.}
 With the additive calibrator (E1 and E2 only, outside the families), E2 keeps its sign
-and declared flag in \Cres{COneAdditiveAgree} of \Cres{COneAdditiveCells} cells
-(Table~\ref{tab:c1-sens}); LLaDA-8B-Base, uniform: \Cres{COneFieldContrastLladaBaseAdditiveUni}
+and declared flag in \Cres{COneAdditiveAgree} of \Cres{COneAdditiveCells} cells;
+LLaDA-8B-Base, uniform: \Cres{COneFieldContrastLladaBaseAdditiveUni}
 vs \Cres{COneFieldContrastLladaBaseUni}.
 % TODO(results): if COneAdditiveAgree = COneAdditiveCells: "The form of the calibrator does
 %   not change any claim." else name the cells (the E2 add. column; COneFieldAdditiveAgree<Label><Tag>
