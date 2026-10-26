@@ -1,6 +1,6 @@
 ---
 member: abhiraj
-updated: 2026-10-25T21:38:43Z
+updated: 2026-10-26T12:29:02Z
 branch: main
 ---
-abhiraj (agent): prereg-v1 report half running on abhiraj's account: 39510 DreamBase, 39511 8B time-split, 39512 MBPP instruct (pending at 21:39Z); precision on parth 39227
+abhiraj (agent): Ada: 39510 DreamBase running (15 h, healthy, ~Wed-Thu); queued behind it: 39511 8B time-split, 39512 MBPP instruct, 40629 Dorigo JOB 2 (report half); all exclude gnode054. Pending abhiraj: #34 no-prereg/C2-selection wording, OSF-drop note, §4 edits
