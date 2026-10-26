@@ -51,8 +51,8 @@ less time: C3a computes the calibrator at every step.
   \IfFileExists{../artifacts/t12/figures/t12_matched_speed.pdf}%
     {\includegraphics[width=\columnwidth]{../artifacts/t12/figures/t12_matched_speed}}%
     {\CthreePending{Figure accuracy against tokens per step}}
-  \caption{Accuracy against aggregate tokens per step, one curve per decoder, for the three
-    speeds each, with 95\% Wilson intervals. Up and to the right is better.}
+  \caption{Accuracy against aggregate tokens per step, one panel per task (GSM8K, MBPP) and one
+    curve per decoder, for the three speeds each, with 95\% Wilson intervals. The panels do not
+    share an $x$-axis: each task has its own calibrated speeds. Up and to the right is better.}
   \label{fig:c3-speed}
 \end{figure}
-% TODO(check): one panel per task, if the figure has them (say so in the caption).
