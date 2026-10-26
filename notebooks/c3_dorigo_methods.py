@@ -2081,43 +2081,54 @@ for (name, kind), r in RESULTS.items():
                     if eM.delta_contrast_within_dmin else f"its CI is not inside ±{DELTA_MIN}."))
     grows = eM.delta_contrast_lo > 0
     own_share = eM.own_contrast_est / eM.delta_contrast_est if grows else np.nan
-    # Field-term verdict. A CI that excludes 0 is not enough: the CI treats the calibrators as fixed, so the
-    # sign must also survive refitting both calibrators on each half of the fit documents, and the size is
-    # read against δ_min.
+    # Field-term verdict, keyed to the E2 endpoint: the CONTRAST field(M) − field(1), which cancels any
+    # m-independent calibrator offset. The level field(M) must agree in sign. A CI that excludes 0 is not
+    # enough: the CIs treat the calibrators as fixed, so the level's sign must survive refitting both
+    # calibrators on each half of the fit documents. δ_min decides what is worth reporting; the
+    # synthetic-null floor (an exploratory label, not a test) only picks the wording below it.
     refits = np.array([eM.field_refit_a, eM.field_refit_b], dtype=float)
     has_refit = bool(np.isfinite(refits).all())
-    sign = 1 if eM.field_lo > 0 else -1 if eM.field_hi < 0 else 0
+    no_refit = "" if has_refit else " (no refit check)"
+    sgn = lambda lo, hi: 1 if lo > 0 else -1 if hi < 0 else 0   # noqa: E731
+    sign_c = sgn(eM.field_contrast_lo, eM.field_contrast_hi)
+    sign_l = sgn(eM.field_lo, eM.field_hi)
+    sign = sign_c if sign_c == sign_l else 0
     robust = sign != 0 and (not has_refit or bool((np.sign(refits) == sign).all()))
-    big = abs(eM.field_est) >= DELTA_MIN
-    if sign and robust and abs(eM.field_est) <= FIELD_NULL_FLOOR:
-        verdict = (f"The field term's CI excludes 0 and survives refitting, but at {eM.field_est:+.4f} it is no bigger than "
-                   f"the bias the same calibrator shows on synthetic data with no field term (up to {FIELD_NULL_FLOOR:.4f} "
-                   "in this run's self-tests): not distinguishable from 0.")
+    size = max(abs(eM.field_contrast_est), abs(eM.field_est))
+    big = size >= DELTA_MIN
+    if sign_c and sign_l and sign_c != sign_l:
+        verdict = (f"The field term's contrast ({eM.field_contrast_est:+.4f}) and level ({eM.field_est:+.4f}) disagree in sign: "
+                   "no field term is detected.")
+    elif sign_c != sign_l:
+        verdict = (f"No field term of a size worth reporting: only one of the contrast ({eM.field_contrast_est:+.4f}) and the "
+                   f"level ({eM.field_est:+.4f}) has a CI excluding 0, and both are far inside δ_min = {DELTA_MIN}.")
     elif sign and not robust:
-        verdict = (f"The field term's CI excludes 0, but refitting the calibrators gives {refits[0]:+.4f} and {refits[1]:+.4f}, "
+        verdict = (f"The field term's CIs exclude 0, but refitting the calibrators gives {refits[0]:+.4f} and {refits[1]:+.4f}, "
                    "not both of the estimate's sign: its sign rests on the calibrator fit, so this is not evidence of a field term.")
+    elif sign and not big and size <= FIELD_NULL_FLOOR:
+        verdict = (f"No field term of a size worth reporting (contrast {eM.field_contrast_est:+.4f}, level {eM.field_est:+.4f}, "
+                   f"both ≪ δ_min = {DELTA_MIN}). The CIs exclude 0{no_refit}, but the size is not distinguishable from the "
+                   f"calibrator's own bias on synthetic data with no field term (up to {FIELD_NULL_FLOOR:.4f} in this run's self-tests).")
     elif sign > 0 and big:
         verdict = ("Part of the change is a winner's curse from the state: at equal own confidence, winners of larger "
-                   "pools sit in states where the context-aware calibrator expects lower accuracy.")
-    elif sign > 0:
-        verdict = (f"A positive field term is detected, survives refitting and exceeds the calibrator's synthetic-null bias "
-                   f"({FIELD_NULL_FLOOR:.4f}), but at {eM.field_est:+.4f} it is far below "
-                   f"δ_min = {DELTA_MIN}: the state adds a detectable but negligible winner's curse.")
+                   f"pools sit in states where the context-aware calibrator expects lower accuracy{no_refit}.")
     elif sign < 0 and big:
         verdict = ("The field term is negative: at equal own confidence, large-pool winners sit in states the "
-                   "context-aware calibrator rates as more accurate, so the state works against the winner's curse here.")
-    elif sign < 0:
-        verdict = (f"A negative field term is detected and survives refitting, but at {eM.field_est:+.4f} it is far below "
-                   f"δ_min = {DELTA_MIN}: negligible.")
+                   f"context-aware calibrator rates as more accurate, so the state works against the winner's curse here{no_refit}.")
+    elif sign:
+        verdict = (f"A {'positive' if sign > 0 else 'negative'} field term is detected{no_refit} and is larger than the "
+                   f"calibrator's synthetic-null bias ({FIELD_NULL_FLOOR:.4f}), but at contrast {eM.field_contrast_est:+.4f} / "
+                   f"level {eM.field_est:+.4f} it is far below δ_min = {DELTA_MIN}: no field term of a size worth reporting.")
     else:
         verdict = "No field term is detected."
     if grows and eM.own_contrast_lo > 0 and np.isfinite(own_share) and own_share >= 0.5:
-        verdict += (f" The growth of Δ sits mainly in the own term ({own_share:.0%} of it): ordinary high-confidence "
-                    "miscalibration seen through the maximum, not a winner's curse from the state.")
+        verdict += (" The own term accounts for all of the growth of Δ (the field and residual terms together are "
+                    "negative here)" if own_share > 1 else f" The growth of Δ sits mainly in the own term ({own_share:.0%} of it)")
+        verdict += ": ordinary high-confidence miscalibration seen through the maximum, not a winner's curse from the state."
     lines.append(f"- E2 split of that change: own miscalibration {eM.own_contrast_est:+.4f} [{eM.own_contrast_lo:+.4f}, {eM.own_contrast_hi:+.4f}], "
                  f"field term {eM.field_contrast_est:+.4f} [{eM.field_contrast_lo:+.4f}, {eM.field_contrast_hi:+.4f}], residual "
                  f"{eM.resid_contrast_est:+.4f} [{eM.resid_contrast_lo:+.4f}, {eM.resid_contrast_hi:+.4f}]"
-                 + (f" (own share {own_share:.0%})." if np.isfinite(own_share) and 0 <= own_share <= 1.5 else ".")
+                 + (f" (own share {own_share:.0%})." if np.isfinite(own_share) and 0 <= own_share <= 1 else ".")
                  + f" The field term at m = {M} is {eM.field_est:+.4f} [{eM.field_lo:+.4f}, {eM.field_hi:+.4f}] (H2; CI {side(eM.field_lo, eM.field_hi)}; "
                  f"at m = 1 it is {e1.field_est:+.4f}, which should be ≈ 0"
                  + (f"; refitting both calibrators on each half of the fit documents gives {eM.field_refit_a:+.4f} and "
