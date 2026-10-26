@@ -68,15 +68,16 @@
 
 \paragraph{The rule.}
 A top-$k$ decoder fixes the number of tokens per step in advance; C3a lets calibrated
-confidence set it. At each step it computes $\hat c_i=\hat\pi(\ell_i,s)$ for every masked
-position, with the context-aware calibrator of \S\ref{sec:estimands} on three field
-features (median $\ell$, mask rate, $\log|M|$), and commits the $n$ positions with the highest $\ell$, $n$ being the number with
-$\hat c_i\ge 1-\alpha$ (at least one). Where $\hat c$ rises with $\ell$ these are exactly the
-positions with $\hat c_i\ge 1-\alpha$, so $\alpha$ bounds each committed token's calibrated error;
-with $\ell\times$feature terms that can fail (it holds in a fraction
-\Cres{CThreeTElevenGsmMonotoneShare} of GSM8K and \Cres{CThreeTElevenMbppMonotoneShare} of MBPP
-fit states). $\alpha$ is the one speed knob. Positions are taken in the model's own order of $\ell$, so
-C3a changes \emph{how many} tokens are committed, not \emph{which}. It needs no extra
+confidence set it. At each step it computes $\hat c_i=\hat\pi(\ell_i,s)$ with the
+context-aware calibrator of \S\ref{sec:estimands} on three field
+features (median $\ell$, mask rate, $\log|M|$), and commits the $n$ masked positions of the
+active block with the highest $\ell$, where $n$ is the number with $\hat c_i\ge 1-\alpha$, or
+one if none qualifies. If $\hat c$ is non-decreasing in $\ell$ across a step's positions, these
+are exactly the positions with $\hat c_i\ge 1-\alpha$, so every committed token except a forced
+single commit has calibrated error probability $1-\hat c_i\le\alpha$. The $\ell\times$feature
+terms do not guarantee this; it holds in a fraction \Cres{CThreeTElevenGsmMonotoneShare} of
+GSM8K and \Cres{CThreeTElevenMbppMonotoneShare} of MBPP fit states. $\alpha$ is the one speed
+knob. C3a changes \emph{how many} tokens are committed, not \emph{which}, and needs no extra
 forward pass.
 
 \paragraph{T11: the calibrator.}
