@@ -227,6 +227,10 @@ def test_number_formatting():
     assert P.num(1.8e6) == "$1.8{\\times}10^{6}$"
     assert P.est_ci({"value": 0.1, "ci": [None, 0.2]}) == "$0.100$"      # no half-interval
     assert P.est_ci(None) == P.DASH
+    # rounding that would mislead takes more decimals: an end of an interval excluding 0, or [x, x]
+    assert P.est_ci({"value": 0.0015, "ci": [0.00003, 0.003]}) == "$0.00150$ {\\scriptsize[$0.00003$, $0.00300$]}"
+    assert P.est_ci({"value": 0.0010, "ci": [0.00098, 0.00106]}) == "$0.0010$ {\\scriptsize[$0.0010$, $0.0011$]}"
+    assert P.est_ci({"value": 0.05, "ci": [-0.0002, 0.1]}) == "$0.050$ {\\scriptsize[$0.000$, $0.100$]}"
     assert P.sup("*", "", "\\dagger") == "$^{*,\\dagger}$" and P.sup("") == ""
     assert P.pval(0.0004) == "$<0.001$" and P.pval(0.0321) == "$0.032$"
 
@@ -401,6 +405,15 @@ def test_gamma_without_a_summary_is_dashes_and_no_macros(results, tmp_path):
     out = run(results, tmp_path, "--no-figures")
     assert all(r[2:] == [P.DASH] * 6 for r in rows(table(out, "c1_gamma")))
     assert not any("Gamma" in n for n in macro_defs(out / "tables" / "c1" / "macros_c1.tex"))
+
+
+def test_gamma_counts_undefined_when_the_summary_has_no_gamma(results, tmp_path):
+    summ = _summary(results)                               # E1/E2-only runs: gamma is None
+    for r in summ["rows"]:
+        r["gamma"] = {g: None for g in P.GAMMAS}
+    _write_summary(results, summ)
+    mine = macro_defs(run(results, tmp_path, "--no-figures") / "tables" / "c1" / "macros_c1.tex")
+    assert not any(n.startswith("COneHolmGamma") for n in mine)
 
 
 # ---------------------------------------------------------------- shared-error term and ICC
