@@ -26,7 +26,7 @@
 # (BUDGET_HOURS: 2.5 for calib, 9.5 for report, 1/3 for smoke) is written once, into
 # runs/t12/.deadline-<phase>, and never moves unless NEW_BUDGET=1; every supervise() stops at
 # the earlier of its own cap and that deadline, and the whole job runs under `timeout` at the
-# deadline plus 15 min, so a hung pip, download or GPU cannot keep it alive.  The clock of the
+# deadline plus 15 min (smoke: 2 min), so a hung pip, download or GPU cannot keep it alive.  The clock of the
 # budget starts when the laptop starts to provision (T12_BUDGET_REMAINING_S, from the laptop:
 # the budget minus the time spent creating the instance), not when this job starts.  At the
 # end, in every case (success, failure, deadline, SIGTERM), the outputs are packed to
@@ -596,7 +596,8 @@ EOF
 # re-executes itself under `timeout`; the second does the work.
 do_job() {
     PHASE="${1:?phase: calib|smoke|report|report-gsm8k|report-mbpp}"
-    local hours left tasks=()
+    local hours left slack=900 tasks=()
+    [ "$PHASE" != smoke ] || slack=120      # smoke: a hard 20 min cap (+ 2 min to pack and exit)
     hours="$(phase_hours "$PHASE")" || die "unknown phase $PHASE"
     case "$PHASE" in
         report) tasks=(gsm8k mbpp) ;;
@@ -606,8 +607,8 @@ do_job() {
     start_budget "$PHASE" "$hours"
     left=$BUDGET_LEFT_S
     if [ "${T12_JOB_WRAPPED:-0}" != 1 ]; then
-        echo "[job] $PHASE under a hard timeout of $(((left + 900) / 60)) min"
-        exec env T12_JOB_WRAPPED=1 NEW_BUDGET=0 timeout -k 60 "$((left + 900))" bash "$SELF" job "$PHASE"
+        echo "[job] $PHASE under a hard timeout of $(((left + slack) / 60)) min"
+        exec env T12_JOB_WRAPPED=1 NEW_BUDGET=0 timeout -k 60 "$((left + slack))" bash "$SELF" job "$PHASE"
     fi
     mkdir -p runs/t12
     exec 7>"runs/t12/.lock-job-$PHASE"
