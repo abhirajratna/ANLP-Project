@@ -1,6 +1,6 @@
 ---
 member: parth
-updated: 2026-10-26T14:10:58Z
+updated: 2026-10-26T19:58:43Z
 branch: parth/t12-driver
 ---
-BLOCKER raised: prereg Eq.2/3 FE bootstrap too slow (39851 LladaBase ≥7 d vs 96 h limit); awaiting abhiraj decision; T12 with ayush (waiting team API key)
+39851 cancelled (frozen cold); 39852/39853 held; Ada account free for LladaBase @ prereg-v1.1 when 40945 timing fits; FE diagnostic resuming
