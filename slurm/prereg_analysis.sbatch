@@ -87,7 +87,21 @@
 # summary.  OUT defaults to $C3_PERSIST/prereg-v1-e1e2 (never the full job's prereg-v1,
 # so a running full job's outputs are not touched).  A primary label is a directory
 # directly under c1/ whose name does not end in _knots5, _knots13, _additive, _clean or
-# TimeSplit.  Sizing: ~77 GB and ~45 min per FineWeb arm.  The analysis code stays fixed
+# TimeSplit.  The Holm summary (scripts/summarize_c1.py, c1/summary) passes the filter
+# unchanged.  Env interface of the mode:
+#   C3_E1E2_ONLY=1   switch it on (unset or 0: the normal job, unchanged).
+#   C3_REPO          clean checkout at prereg-v1; the script itself comes from main / the
+#                    branch that has it.
+#   OUT              default $C3_PERSIST/prereg-v1-e1e2; refused if it is the full
+#                    $C3_PERSIST/prereg-v1 root.
+#   C3_RUNS          one arm per job: c1-llada-base, c1-dream-base, c1-llada-instruct-gsm8k,
+#                    c1-llada-instruct-mbpp-v2, c1-dream-instruct-gsm8k,
+#                    c1-dream-instruct-mbpp (8B, TRACES_SRC=/share1/abhiraj.ratna/traces)
+#                    and main-110m-v3 (110M, ojas's account) = the 7 Holm arms.
+#   SUMMARY_ONLY=1  with C3_E1E2_ONLY=1 and OUT=<e1e2 root> holding all seven
+#                    c1/<Label>/results.json: the Holm summary alone (small job, no staging).
+#   Upload: HF repo ANLP-project/c3-traces-8b, under prereg-v1-e1e2/ (the c1/<Label> dirs).
+# Sizing: ~77 GB and ~45 min per FineWeb arm.  The analysis code stays fixed
 # at the tag: submit this script from main, with C3_REPO a clean checkout at prereg-v1
 # (the tag and clean-tree gates, analysis_commands.sh and activate_env.sh all come from
 # C3_REPO, not from the submit directory):
@@ -156,6 +170,8 @@ if [ "$DRYRUN" = 1 ]; then
 else
     export OUT="${OUT:-$C3_PERSIST/prereg-v1$SFX}"
 fi
+[ "$E1E2" != 1 ] || [ "$(realpath -m "$OUT")" != "$(realpath -m "$C3_PERSIST/prereg-v1")" ] \
+    || die "C3_E1E2_ONLY=1 would write into the full prereg-v1 root ($OUT); unset OUT"
 [ "$E1E2" != 1 ] || echo "[prereg] C3_E1E2_ONLY=1: primary c1 steps only, --skip-regression, OUT=$OUT"
 export PY="${PY:-$C3_PY}"
 export CORPUS="${CORPUS:-$C3_PERSIST/corpus/calibration_docs.jsonl}"
@@ -288,11 +304,14 @@ prereg_py() {
                 c1/*) ;;
                 *) label= ;;
             esac
-            if [ "$rel" = "$out" ] || [ -z "$label" ] || [ "$1" != scripts/analyze_traces.py ]; then
+            if [ "$1" = scripts/summarize_c1.py ] && [ "$rel" = c1/summary ]; then
+                :                       # the Holm summary: runs as is, takes no --skip-regression
+            elif [ "$rel" = "$out" ] || [ -z "$label" ] || [ "$1" != scripts/analyze_traces.py ]; then
                 echo "[prereg] C3_E1E2_ONLY: skipped $out"
                 return 0
+            else
+                case " ${args[*]} " in *" --skip-regression "*) ;; *) args+=(--skip-regression) ;; esac
             fi
-            case " ${args[*]} " in *" --skip-regression "*) ;; *) args+=(--skip-regression) ;; esac
         fi
         out= prev=
     fi

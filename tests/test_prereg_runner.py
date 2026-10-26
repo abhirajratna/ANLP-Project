@@ -315,3 +315,18 @@ def test_without_e1e2_only_the_commands_are_unchanged(job, flag):
                    ("scripts/analyze_traces.py", "c1/MdlmTimeSplit", 1),
                    ("scripts/analyze_e3.py", "e3/Mdlm", 0),
                    ("scripts/run_controls.py", "t8/Mdlm", 0)]
+
+
+def test_e1e2_only_refuses_the_full_root_and_lets_the_summary_through(job):
+    rc, out, calls, stub = job(C3_E1E2_ONLY="1", OUT=str(job.out))
+    assert rc != 0 and "would write into the full prereg-v1 root" in out and stub == []
+    root = job.out.parent / "prereg-v1-e1e2"
+    for label in ("LladaBase", "DreamBase", "LladaInstructGsm", "LladaInstructMbpp",
+                  "DreamInstructGsm", "DreamInstructMbpp", "Mdlm"):
+        (root / "c1" / label).mkdir(parents=True)
+        (root / "c1" / label / "results.json").write_text("{}")
+    rc, out, calls, stub = job(C3_E1E2_ONLY="1", SUMMARY_ONLY="1", OUT=str(root))
+    assert rc == 0, out
+    assert [c[0] for c in stub] == ["scripts/summarize_c1.py"]
+    assert "--skip-regression" not in stub[0] and _arg(stub[0], "--out") == str(root / "c1" / "summary")
+    assert "skipped" not in out
