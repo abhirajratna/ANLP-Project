@@ -1,6 +1,6 @@
 ---
 member: ayush
-updated: 2026-10-25T21:26:25Z
-branch: ayush/dorigo-fixes
+updated: 2026-10-26T04:45:33Z
+branch: ayush/dorigo-summary-wording
 ---
-ayush: 8B Dorigo fit_only done (parth 39417, HF c3-traces-8b dorigo/fit_only-39417, 53/53, GO); PR #32 awaiting ojas merge; job 2 (report half) waits for OSF link
+ayush: 8B Dorigo fit-half read: Delta changes < delta_min, decoder growth = own term, H2 not supported; PR #36 fixes summary verdict; reviews asked
