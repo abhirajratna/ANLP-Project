@@ -71,7 +71,7 @@ independently of all $(\ell_j,a_j)_{j\in M}$. Then the winner $i$ of $P$ satisfi
 \end{proposition}
 
 Winning depends only on the other scores, which say nothing about $a_i$, so selection does not
-bias a correct posterior \citep{efron2011tweedie}; it acts
+bias a correct posterior \citep{dawid1994selection,efron2011tweedie}; it acts
 only through context:
 
 \begin{proposition}[Exact split of the gap]
@@ -89,6 +89,7 @@ and the field term is exactly zero at $m=1$.
 
 Proofs are in Appendix~\ref{sec:app-proofs}. Own miscalibration, reweighted towards where
 winners sit, can make $\Delta(m)$ grow with $m$ with no winner's curse; the \emph{field term},
-nonzero only if accuracy at fixed confidence depends on context, is the winner's curse in a
+nonzero only if accuracy at fixed confidence depends on context (a signed, winner-weighted
+grouping loss; \citealp{kull2015decomp,perezlebel2023grouping}), is the winner's curse in a
 testable form. If positions of a state share errors, Proposition~\ref{prop:select} fails and
 \eqref{eq:gapsplit} gains a third term, $\E_m[\pi(\ell,s)-a]$ (\S\ref{sec:instrument}).

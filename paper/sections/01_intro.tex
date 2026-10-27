@@ -28,9 +28,9 @@ right, so on committed tokens it is a selected quantity. The largest of many noi
 tends to be one whose error pushed it up, the winner's curse \citep{andrews2024winners}, and
 a commit out of many masked positions is such a maximum.
 
-Calibration, where measured, is averaged over random masks, not over the positions the
-decoder picks. Nor is the bias automatic: selection does not bias a correct posterior
-\citep{efron2011tweedie}. We show that the gap between confidence and accuracy on committed
+Calibration of diffusion LMs, where measured, is over whole answers
+\citep{yadav2026bidirectional,jiang2026bayeser} or random masks, not per committed token. Nor is the bias automatic: selection does not bias a correct posterior
+\citep{dawid1994selection,efron2011tweedie}. We show that the gap between confidence and accuracy on committed
 tokens splits exactly, when positions' errors are independent given the state, into ordinary
 miscalibration and a \emph{field term}, nonzero only if
 accuracy at fixed confidence depends on context (Proposition~\ref{prop:split},

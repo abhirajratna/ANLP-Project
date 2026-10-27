@@ -34,9 +34,14 @@ tokens they commit, which C1 measures; C3a thresholds a recalibrated probability
 Calibration is usually measured over all predictions \citep{guo2017calibration}. The closest
 work, PC-Sampler \citep{huang2025pcsampler}, recalibrates the commit statistic for a
 positional bias; we add its weight as a covariate. Keeping the largest of noisy estimates
-biases it upward \citep{andrews2024winners} but leaves a correct posterior unbiased
-\citep{efron2011tweedie}, which confines our winner's curse to the field term
-(\S\ref{sec:setup}).
+biases it upward \citep{andrews2024winners}, more so as the pool grows, as in beam search
+\citep{dalal2026beam}, but leaves a correct posterior unbiased
+\citep{dawid1994selection,efron2011tweedie}, which confines our winner's curse to the field term
+(\S\ref{sec:setup}). Diffusion LMs are overconfident against autoregressive models
+\citep{yadav2026bidirectional}, entropy-based commit orders lower their sequence-level
+calibration error \citep{jiang2026bayeser}, and commit confidence tracks correctness on math
+\citep{asaria2026diffusiongemma}; none of these conditions on how many candidates a committed
+token beat.
 % TODO(ayush): confirm the PC-Sampler covariate (T8) made it into Sec. 4; else cut the clause.
 
 \paragraph{Dependency between tokens.}
