@@ -33,7 +33,7 @@ stream excludes the calibration and reserve documents and matches no time-split 
 \paragraph{Data.}
 % 200,000 qualifying documents of >= 1,200 characters: c3/data/fineweb.py (CorpusSpec).
 Base and 110M models read \VivaCorpusDocs{} FineWeb-Edu documents, reservoir-sampled
-from the first 200,000 of at least 1,200 characters, cut to 256 tokens per tokeniser. Instruct
+from the first 200,000 of at least 1,200 characters, cut to 256 tokens per tokeniser; shorter ones are left out. Instruct
 models read the GSM8K \citep{cobbe2021gsm8k} and MBPP \citep{austin2021mbpp} test sets with the
 question visible and only the reference answer maskable;
 % MBPP test 482 (3,986 tokens), --max-doc-tokens 1024: prereg/deviations.md item 6.
@@ -43,8 +43,9 @@ articles created after both 8B releases, unseen by every model, is a robustness 
 the next 50 (\VivaLladaContamFlagged/\VivaLladaContamDocs{} LLaDA,
 \VivaDreamContamFlagged/\VivaDreamContamDocs{} Dream); 8B FineWeb endpoints are also reported without them.
 % Seed 20260917: artifacts/split_manifest.meta.json; tasks: scripts/make_task_split.py.
-Every set is split 50/50 by document (FineWeb: \VivaNFit{}/\VivaNReport{}
-before the length filter). Calibrators, the spline $f$ of Eq.~2/3 and temperatures are fitted on the fit half; every C1 number comes from the report half.
+Every set is split 50/50 by document with one fixed seed (FineWeb: \VivaNFit{}/\VivaNReport{}
+before the length filter). Calibrators, the spline $f$ of Eq.~2/3, knots and temperatures are fitted on the fit half; every C1 number comes from the report half.
+500 separate reserve documents served the pilot and the non-determinism floor.
 
 \begin{table}[t]
   \centering\footnotesize
@@ -96,7 +97,8 @@ positions of those states.
 \paragraph{Calibrators.}
 Both are fitted on the fit half. $\hat\pi(\ell)$ is isotonic in $\ell$. $\hat\pi(\ell,s)$ is
 logistic in a restricted cubic spline of $\ell$ plus the state's field features (median $\ell$
-of its masked positions, mask rate, $\log|M|$, decoding step) and their products with $\ell$.
+of its masked positions, mask rate, $\log|M|$, decoding step) and their products with $\ell$, so
+the slope varies too; the plan's additive form is a sensitivity check.
 Averages are taken within a document, every state weighing the same, then across documents;
 positions are weighted by $1/(|M_s|\times\text{states in their document})$ to match. The
 calibrators are fitted on every state but the averages use only states with at
@@ -130,7 +132,7 @@ the reading is approximate (\S\ref{sec:validation}), so $\beta_z$ is a diagnosti
 \paragraph{E3, trajectory shift.}
 For each decoder arm we fit, on its positions (mask rate in $[0.05,0.95)$) and a reference arm's,
 $\Pr(a{=}1)=\sigma(\alpha_b+f(\ell)+\textit{dec}\cdot(g_0+f'(\ell)))$, with $\alpha_b$ an intercept
-per mask-rate bin. The reference is the matched uniform arm
+per mask-rate bin (centred on $0.1,\dots,0.9$). The reference is the matched uniform arm
 (secondary: the uniform grid, reweighted to the decoder's rate mix). The endpoint is
 $\E_{\mathrm{dec}}[\pi_{\mathrm{ref}}(\ell,b)-\pi_{\mathrm{dec}}(\ell,b)]$, positive if
 decoder-state tokens are right less often at equal confidence and mask rate; $(g_0,f')$ are
@@ -142,7 +144,7 @@ paired difference. \emph{Position} (absolute position, distance to the nearest u
 PC-Sampler's position weight; \citealp{huang2025pcsampler}) and \emph{token type} (of the true
 token: punctuation, stop-word or content) are covariates $x$: $\E_m[\pi(\ell)-\pi(\ell,x)]$
 is removed from $\Delta(m)$ and $x$ enters both field-term calibrators. \emph{Temperature}
-fits $c=\sigma(\ell/T)$ per mask-rate bin on the fit half. \emph{Precision} compares 4-bit NF4 with fp16 on the 4-bit run's
+fits $c=\sigma(\ell/T)$ per mask-rate bin on the fit half (a softmax temperature is a sensitivity row). \emph{Precision} compares 4-bit NF4 with fp16 on the 4-bit run's
 \VivaLladaBaseFourBitDocs{} LLaDA-8B-Base documents.
 
 \subsection{Inference}
