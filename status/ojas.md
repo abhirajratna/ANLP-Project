@@ -1,6 +1,6 @@
 ---
 member: ojas
-updated: 2026-10-27T19:31:26Z
+updated: 2026-10-27T19:40:18Z
 branch: main
 ---
-ojas: PRs #57 (C1 figures+native macros, review), #58 draft (§4 text + native para), #59 draft (slides C1 overview); Mdlm v1.1 40945 ETA Wed ~10Z; waiting on base arms + ayush structure call
+ojas: merged #57 (C1 overview + mechanism figures, native macros) and #60 (#24 review fixes); drafts #58 (§4 text + native para) and #59 (slides) wait for Thu regen; Mdlm v1.1 ETA Wed ~10Z
