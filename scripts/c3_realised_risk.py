@@ -495,6 +495,13 @@ def _plt():
     return plt
 
 
+def _tokens_axis(ax) -> None:
+    ax.set_yscale("log")
+    ax.set_yticks([1, 2, 4, 8, 16])
+    ax.set_yticklabels(["1", "2", "4", "8", "16"])
+    ax.minorticks_off()
+
+
 def _style(ax) -> None:
     ax.grid(axis="y", color=GRID, linewidth=0.5)
     ax.set_axisbelow(True)
@@ -546,9 +553,9 @@ def figures(res: dict, stem: Path) -> list:
             _line(bot, reg, "tokens_per_state", rule, ls="--", lw=0.9)
         top.set_title(f"{task.upper() if task == 'gsm8k' else 'MBPP'}  (arm k{PRIMARY_ARM}, "
                       f"{t['arms'][k]['n_states']:,} states, {t['n_docs']} docs)", loc="left")
-        top.set_ylabel("realised per-token error of committed tokens" if j == 0 else "")
-        bot.set_ylabel("committed tokens per state" if j == 0 else "")
-        bot.set_yscale("log")
+        top.set_ylabel("realised error (committed)" if j == 0 else "")
+        bot.set_ylabel("tokens per state" if j == 0 else "")
+        _tokens_axis(bot)
         bot.set_xlabel("alpha (nominal risk, 1 - threshold)")
     axes[0, 0].legend(frameon=False, loc="upper left")
     fig.suptitle(f"Realised risk of C3a vs the raw rule -- {STAMP}", fontsize=7.5, y=0.995)
@@ -569,7 +576,7 @@ def figures(res: dict, stem: Path) -> list:
             if key == "risk":
                 ax.plot([ALPHAS[0], ALPHAS[-1]], [ALPHAS[0], ALPHAS[-1]], color=INK2, lw=0.8, ls=":")
             else:
-                ax.set_yscale("log")
+                _tokens_axis(ax)
             for arm in t["arms"]:
                 for rule in RULES:
                     _line(ax, t["arms"][arm][variant]["rules"][rule], key, rule, ls=style[arm], lw=1.0 * shade[arm],
