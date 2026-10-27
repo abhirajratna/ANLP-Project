@@ -1,6 +1,6 @@
 ---
 member: ayush
-updated: 2026-10-27T21:45:50Z
+updated: 2026-10-27T22:03:40Z
 branch: main
 ---
-T12: fix on ayush/t12-grids 4435c13 (cal grid 25->32, tests 328 pass); relaunch waiting for 2 free RTX PRO containers in IN1 (only 1 free); instance now 550492, paused
+T12: calib re-run (ayush/t12-grids 4435c13, 32-config grid) running on 550499, 2 GPUs, since 22:05Z; ETA ~22:50Z
