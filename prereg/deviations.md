@@ -112,8 +112,8 @@ Items 7-14 are reserved for the T13 ablation entries (branch `t13-ablations`).
     T12 is not a pre-registered endpoint (`documents/final-plan.md:55-56`) and `prereg-v1`
     freezes no T12 number. Its choices are fixed here, before any T12 report-half problem is
     decoded, so none can depend on a report-half result. Plan v2 T12 runs eight decoders on
-    GSM8K, MBPP and HumanEval in bfloat16; the final plan cuts C3b and HumanEval, leaving
-    seven decoders x three speeds on GSM8K and MBPP.
+    GSM8K, MBPP and HumanEval in bfloat16; the final plan defers (not run here) C3b and
+    HumanEval, leaving seven decoders x three speeds on GSM8K and MBPP.
     - Fixed settings: LLaDA-8B-Instruct, zero-shot chat prompt, gen 256, block 32, greedy,
       fp16 (as item 2; the C3a calibrator's traces are fp16), on the report halves of
       `artifacts/split_manifest_{gsm8k,mbpp}.json`.
@@ -129,10 +129,12 @@ Items 7-14 are reserved for the T13 ablation entries (branch `t13-ablations`).
       Threshold, entropy-bounded, KLASS and C3a knobs are interpolated, in log(speed), to
       2, 4 and 8 tokens per step. They are chosen by speed alone, never by fit-half accuracy.
     - Matching: for each C3a setting, each baseline is taken at its setting whose tokens per
-      step is nearest, within +-10% of C3a's, else '---'. The difference is the paired
-      accuracy difference on the shared doc_ids, with a 95% percentile CI from 2,000
-      bootstrap resamples of problems. There is no Holm family and no declaration rule:
-      T12 numbers are exploratory.
+      step is nearest, within +-10% of C3a's, else '---'. The tokens per step matched is each
+      configuration's aggregate speed (256 N / sum(NFE)) in the report-half run of that
+      task. Per-configuration accuracy carries a 95% Wilson interval. The difference is the
+      paired accuracy difference on the shared doc_ids, with a 95% percentile CI from 2,000
+      bootstrap resamples of problems (seed 20261030). There is no Holm family and no
+      declaration rule: T12 numbers are exploratory.
     - KLASS: if its fastest calibrated setting cannot reach 8 tokens per step within +-10%
       (history 2 caps it at 32/3 = 10.7, and reaching 8 needs nearly every position stable
       by step 3), that setting takes the speed-3 slot. `pick_knobs.py` records
@@ -141,12 +143,13 @@ Items 7-14 are reserved for the T13 ablation entries (branch `t13-ablations`).
     - Main-text table (primary operating point, chosen by parth on 26 Oct 2026, before any
       report-half generation): §6's matched-speed table shows, per task, the speed-2 slot
       (target 4 tokens per step), at the C3a alpha that `scripts/pick_knobs.py` writes to
-      `prereg/t12_grid_<task>.json`; speeds 1 and 3 appear in full in the appendix table and
-      figure, and no slot is chosen after a report-half number is read.
+      `prereg/t12_grid_<task>.json`; speeds 1 and 3 appear in full in the appendix figure and
+      the code archive's results table, and no slot is chosen after a report-half number is read.
     - Files: the calibration grid `prereg/t12_cal.json` and `scripts/pick_knobs.py` are at
       branch `parth/t12-driver`, commit `daff750c251f8e49fb62c40f8fad12b80cb4ee04`. The final per-task grids
       (`prereg/t12_grid_gsm8k.json`, `prereg/t12_grid_mbpp.json`) are committed before the
       report-half run, and their hashes are recorded on the coordination bus.
+    - No T12 result changes any choice frozen in prereg-v1 or prereg-v1.1.
 
 18. **Step order: E1/E2 banked before Eq. 2/3 (scheduling only).** The Eq. 2/3 FE bootstrap
     did not fit the 96 h Ada job cap on the 120M-row arms (measured: LladaBase job 39851,
