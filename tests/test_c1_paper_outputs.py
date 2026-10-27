@@ -280,6 +280,20 @@ def test_native_panel_skips_thin_groups_and_contrast_is_32_minus_1():
     assert P._contrast(r, "residual") is None
 
 
+def test_native_macros_per_level_with_doc_counts():
+    rows = [{"level": 32, "delta": 0.0791, "ci_low": 0.07, "ci_high": 0.088, "n_docs": 651},
+            {"level": 256, "delta": 0.4, "ci_low": 0.1, "ci_high": 0.7, "n_docs": 2}]
+    R = type("R", (), {"labels": ["LladaInstructGsm"],
+                       "kind": lambda self, l, k, v=None: {"native": {"rows": rows}} if k.startswith("decoder") else None})()
+    m = P.Macros()
+    P.native_macros(R, m)
+    body = "\n".join(m.lines)
+    assert "\\newcommand{\\COneLladaInstructGsmNativeThirtyTwoDecTopkConfKFour}{0.079}" in body
+    assert "{\\COneLladaInstructGsmNativeDocsThirtyTwoDecTopkConfKFour}{651}" in body
+    assert "TwoFiftySix" not in body                     # 2 documents: below NATIVE_MIN_DOCS
+
+
+
 # ---------------------------------------------------------------- claimed, family footnote
 def _summary(results):
     return json.loads((results / "c1" / "summary" / "c1_summary.json").read_text())

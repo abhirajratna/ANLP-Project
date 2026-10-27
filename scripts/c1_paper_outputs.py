@@ -675,6 +675,23 @@ def shared_error_macros(R: Results, m: Macros) -> None:
             _est_macros(m, f"{p}{label}ICC{tag}", {"value": icc.get("icc"), "ci": icc.get("ci")})
 
 
+def native_macros(R: Results, m: Macros) -> None:
+    """The native gap c - a of the tokens the k = 4 decoder commits, per |M_t| group
+    (``native.rows``; level = 2^floor(log2 |M_t|)): COne<Label>Native<level><Tag>[Lo|Hi] and
+    COne<Label>NativeDocs<level><Tag>, for groups of at least NATIVE_MIN_DOCS documents."""
+    p, mask = "COne", "decoder:topk_conf:k4"
+    m.comment(f"native gap of committed tokens by |M_t| group (groups with >= {NATIVE_MIN_DOCS} documents)")
+    for label in R.labels:
+        r = R.kind(label, mask)
+        for w in ((r or {}).get("native") or {}).get("rows") or []:
+            level = w.get("level")
+            if level not in _WORDS or _native_at(r, level) is None:
+                continue
+            name = f"{p}{label}Native{_WORDS[level]}{arm_tag(mask)}"
+            _est_macros(m, name, {"value": w["delta"], "ci": [w.get("ci_low"), w.get("ci_high")]})
+            m.add(f"{p}{label}NativeDocs{_WORDS[level]}{arm_tag(mask)}", str(int(w["n_docs"])))
+
+
 def holm_footnote_macros(R: Results, m: Macros) -> None:
     """The Holm family size and its missing members, for the footnote of the starred tables."""
     p = "COne"
@@ -756,6 +773,7 @@ def summary_macros(R: Results, m: Macros) -> None:
                 m.add(f"{p}ContrastDeclared{tag}", _yn(r["contrast"]["declared"]))
     sensitivity_macros(R, m)
     shared_error_macros(R, m)
+    native_macros(R, m)
     if not R.summary:
         m.comment("no results/c1/summary/c1_summary.json yet: no Holm macros")
         return
