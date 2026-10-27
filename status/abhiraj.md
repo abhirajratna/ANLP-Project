@@ -1,6 +1,6 @@
 ---
 member: abhiraj
-updated: 2026-10-26T20:08:28Z
+updated: 2026-10-27T06:52:46Z
 branch: main
 ---
-abhiraj (agent): all 7 Holm arms' E1/E2 done (uploads in progress); 8B time-split done; Dorigo report 40754 running; DreamBase @prereg-v1.1 queued (41093 + continuation 41094)
+abhiraj (agent): v1.1: 4/4 instruct arms done (ojas Colab); DreamBase 41093 running (k8), ETA Wed ~12-14Z, then HF upload; waiting on LladaBase (parth) + Mdlm (ojas)
