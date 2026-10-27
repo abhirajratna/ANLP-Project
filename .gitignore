@@ -27,3 +27,6 @@ paper/main.bbl
 paper/main.blg
 paper/main.log
 paper/main.out
+
+# Built by scripts/make_code_zip.py
+dist/

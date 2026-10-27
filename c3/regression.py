@@ -47,6 +47,13 @@ class Estimate:
     boot: np.ndarray | None = field(default=None, repr=False)
     converged: bool | None = None     # did the point fit converge
     n_iter: int | None = None
+    # Bootstrap convergence record (None when not recorded).
+    n_nonconverged_draws: int | None = None   # draws that hit max_iter without converging
+    n_iter_median: float | None = None
+    n_iter_max: int | None = None
+    warm_start: bool | None = None
+    point_restarted: bool | None = None       # point fit re-run once from its own last iterate
+    point_iters_total: int | None = None
 
     @property
     def excludes_zero(self) -> bool:
@@ -79,7 +86,8 @@ def _boot_init(state: dict) -> None:
     _BOOT_STATE = state
 
 
-def _boot_worker(b: int) -> np.ndarray:
+def _boot_worker(b: int) -> tuple[np.ndarray, int, bool]:
+    """One resample: (coefficients, n_iter, converged).  n_iter=0 for a failed draw."""
     st = _BOOT_STATE
     rng = generator(st["seed"], st["label"], str(b))
     n_docs = st["n_docs"]
@@ -93,22 +101,50 @@ def _boot_worker(b: int) -> np.ndarray:
     # hit the iteration cap without converging, which is both slow and wrong.
     keep = w > 0
     if not keep.any():
-        return np.full(len(st["names"]), np.nan)
-    _, g_dense = np.unique(st["groups"][keep], return_inverse=True)
+        return np.full(len(st["names"]), np.nan), 0, False
+    uniq, g_dense = np.unique(st["groups"][keep], return_inverse=True)
+    # Warm start from the full-sample fit.  Groups present in the resample take
+    # their full-sample intercept (``uniq`` indexes the full-sample groups);
+    # groups absent were dropped above and need no value.
+    init_beta = init_alpha = None
+    warm = st.get("warm")
+    if warm is not None:
+        init_beta, init_alpha = warm["beta"], warm["alpha"][uniq]
     try:
-        return fit_fe_logit(st["y"][keep], st["X"][keep], g_dense,
-                            n_groups=int(g_dense.max()) + 1, names=st["names"],
-                            offset=st["off"][keep], weights=w[keep],
-                            ridge_beta=st.get("ridge_beta", 0.0)).beta
+        f = fit_fe_logit(st["y"][keep], st["X"][keep], g_dense,
+                         n_groups=int(g_dense.max()) + 1, names=st["names"],
+                         offset=st["off"][keep], weights=w[keep],
+                         ridge_beta=st.get("ridge_beta", 0.0),
+                         max_iter=st.get("max_iter", 100),
+                         init_beta=init_beta, init_alpha=init_alpha)
+        n_it = f.n_iter
+        if warm is not None and not f.converged:
+            # One retry from the draw's own last iterate (warm-start path only).
+            f = fit_fe_logit(st["y"][keep], st["X"][keep], g_dense,
+                             n_groups=int(g_dense.max()) + 1, names=st["names"],
+                             offset=st["off"][keep], weights=w[keep],
+                             ridge_beta=st.get("ridge_beta", 0.0),
+                             max_iter=st.get("max_iter", 100),
+                             init_beta=f.beta, init_alpha=f.alpha)
+            n_it += f.n_iter
+        return f.beta, n_it, f.converged
     except (FloatingPointError, np.linalg.LinAlgError):
-        return np.full(len(st["names"]), np.nan)
+        return np.full(len(st["names"]), np.nan), 0, False
 
 
-def _run_bootstrap(n_boot: int, n_jobs: int, state: dict) -> np.ndarray:
+def _stack(res: list, state: dict) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    if not res:
+        return np.empty((0, len(state["names"]))), np.zeros(0, int), np.zeros(0, bool)
+    return (np.array([r[0] for r in res]), np.array([r[1] for r in res], dtype=int),
+            np.array([r[2] for r in res], dtype=bool))
+
+
+def _run_bootstrap(n_boot: int, n_jobs: int, state: dict) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Return (draws, n_iter, converged), one row/entry per resample."""
     global _BOOT_STATE
     _BOOT_STATE = state
     if n_jobs == 1:
-        return np.array([_boot_worker(b) for b in range(n_boot)])
+        return _stack([_boot_worker(b) for b in range(n_boot)], state)
     import multiprocessing as mp
     import os
 
@@ -125,13 +161,45 @@ def _run_bootstrap(n_boot: int, n_jobs: int, state: dict) -> np.ndarray:
     try:
         ctx = mp.get_context("spawn")
         with ctx.Pool(n_jobs, initializer=_boot_init, initargs=(state,)) as pool:
-            return np.array(pool.map(_boot_worker, range(n_boot), chunksize=32))
+            return _stack(pool.map(_boot_worker, range(n_boot), chunksize=32), state)
     finally:
         for v, old_val in prev.items():
             if old_val is None:
                 os.environ.pop(v, None)
             else:
                 os.environ[v] = old_val
+
+
+def _point_fit(y, X, groups, n_groups, names, offset, ridge_beta, max_iter,
+               warm_start: bool) -> tuple[LogitFit, bool, int]:
+    """Full-sample fit.  With ``warm_start`` an unconverged fit is re-run once from
+    its own last iterate (it is also the bootstrap's starting point)."""
+    kw = dict(n_groups=n_groups, names=names, offset=offset, ridge_beta=ridge_beta,
+              max_iter=max_iter)
+    point = fit_fe_logit(y, X, groups, **kw)
+    total, restarted = point.n_iter, False
+    if warm_start and not point.converged:
+        point = fit_fe_logit(y, X, groups, init_beta=point.beta, init_alpha=point.alpha, **kw)
+        total, restarted = total + point.n_iter, True
+    return point, restarted, total
+
+
+def _warm_state(point: LogitFit, warm_start: bool) -> dict | None:
+    return {"beta": point.beta, "alpha": point.alpha} if warm_start else None
+
+
+def _annotate(out: dict[str, Estimate], point: LogitFit, n_it: np.ndarray,
+              conv: np.ndarray, warm_start: bool, restarted: bool = False,
+              total: int | None = None) -> None:
+    ran = n_it > 0                      # exceptions / empty resamples are n_failed_draws
+    for e in out.values():
+        e.converged, e.n_iter = point.converged, point.n_iter
+        e.n_nonconverged_draws = int(np.sum(ran & ~conv))
+        e.n_iter_median = float(np.median(n_it[ran])) if ran.any() else float("nan")
+        e.n_iter_max = int(n_it.max()) if n_it.size else 0
+        e.warm_start = warm_start
+        e.point_restarted = restarted
+        e.point_iters_total = point.n_iter if total is None else total
 
 
 def _percentiles(draws: np.ndarray, names: list[str], point: np.ndarray,
@@ -203,6 +271,8 @@ def cluster_bootstrap(
     report: list[str] | None = None,
     fe: bool = True,
     ridge_beta: float = 0.0,
+    warm_start: bool = False,
+    max_iter: int = 100,
 ) -> dict[str, Estimate]:
     """Percentile CIs from a document-clustered bootstrap.
 
@@ -210,6 +280,14 @@ def cluster_bootstrap(
     of its document.  Under-represented states fall back on the fixed-effect
     ridge, which keeps their intercepts finite without touching the reported
     block.
+
+    ``warm_start`` starts every resample's IRLS from the full-sample fit instead
+    of zero.  Same estimator and tolerance (the draws agree with a cold start to
+    ~1e-9 where the cold fit converges); only the number of iterations changes.
+    ``warm_start=False`` (the library default) is the frozen behaviour.  The number of draws that hit
+    ``max_iter`` is recorded on each Estimate (``n_nonconverged_draws``).  With
+    warm start, an unconverged point fit or draw is retried once from its own
+    last iterate; only draws still unconverged after the retry are counted.
     """
     X, names = build_design(frame, spline, equation, max_rank)
     groups, n_groups = _groups(frame, fe)
@@ -217,18 +295,18 @@ def cluster_bootstrap(
     y = frame.agree
     off = np.zeros(len(frame)) if offset is None else offset
 
-    point = fit_fe_logit(y, X, groups, n_groups=n_groups, names=names, offset=off,
-                         ridge_beta=ridge_beta)
+    point, restarted, total = _point_fit(y, X, groups, n_groups, names, off, ridge_beta,
+                                         max_iter, warm_start)
     wanted = report or [n for n in names if not n.startswith("f_ell")]
 
-    draws = _run_bootstrap(n_boot, n_jobs, {
+    draws, n_it, conv = _run_bootstrap(n_boot, n_jobs, {
         "seed": seed, "label": "bootstrap", "n_docs": n_docs, "doc_idx": doc_idx,
         "y": y, "X": X, "groups": groups, "n_groups": n_groups, "names": names,
-        "off": off, "ridge_beta": ridge_beta,
+        "off": off, "ridge_beta": ridge_beta, "max_iter": max_iter,
+        "warm": _warm_state(point, warm_start),
     })
     out = _percentiles(draws, names, point.beta, wanted, alpha)
-    for e in out.values():
-        e.converged, e.n_iter = point.converged, point.n_iter
+    _annotate(out, point, n_it, conv, warm_start, restarted, total)
     return out
 
 
@@ -246,6 +324,8 @@ def fit_and_report(
     fit_docs=None,
     alpha: float = 0.05,
     ridge_beta: float = 0.0,
+    warm_start: bool = False,
+    max_iter: int = 100,
 ) -> dict[str, Estimate]:
     """The pre-registered path: fit f(ell) on half 1, report from half 2.
 
@@ -260,7 +340,8 @@ def fit_and_report(
         spline = Spline.fit(frame.ell, n_knots=n_knots)
         return cluster_bootstrap(frame, spline, equation, n_boot, seed, alpha=alpha,
                                  max_rank=max_rank, n_jobs=n_jobs, fe=fe,
-                                 ridge_beta=ridge_beta)
+                                 ridge_beta=ridge_beta, warm_start=warm_start,
+                                 max_iter=max_iter)
 
     if fit_docs is not None:
         fit_half, eval_half = frame.split_by_documents(fit_docs)
@@ -286,15 +367,15 @@ def fit_and_report(
     groups, n_groups = _groups(eval_half, fe)
     doc_idx, n_docs = eval_half.doc_index
     y = eval_half.agree
-    point = fit_fe_logit(y, X, groups, n_groups=n_groups, names=names, offset=offset,
-                         ridge_beta=ridge_beta)
+    point, restarted, total = _point_fit(y, X, groups, n_groups, names, offset, ridge_beta,
+                                         max_iter, warm_start)
 
-    draws = _run_bootstrap(n_boot, n_jobs, {
+    draws, n_it, conv = _run_bootstrap(n_boot, n_jobs, {
         "seed": seed, "label": "bootstrap-xfit", "n_docs": n_docs, "doc_idx": doc_idx,
         "y": y, "X": X, "groups": groups, "n_groups": n_groups, "names": names,
-        "off": offset, "ridge_beta": ridge_beta,
+        "off": offset, "ridge_beta": ridge_beta, "max_iter": max_iter,
+        "warm": _warm_state(point, warm_start),
     })
     out = _percentiles(draws, names, point.beta, names, alpha)
-    for e in out.values():
-        e.converged, e.n_iter = point.converged, point.n_iter
+    _annotate(out, point, n_it, conv, warm_start, restarted, total)
     return out

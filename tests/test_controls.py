@@ -177,3 +177,26 @@ def test_cli_precision_on_identical_traces_differs_by_nothing(tmp_path):
         assert r["difference"]["value"] == 0.0 and r["difference"]["ci"] == [0.0, 0.0]
     pu = res["precision"]["paired_uniform"]
     assert pu["abs_ell_shift"]["value"] == 0.0 and pu["top1_agreement"]["value"] == 1.0
+
+
+def test_cli_precision_on_a_merged_dataset_trace(tmp_path):
+    """The precision step on a real (parquet-backed) trace, not a simulated one."""
+    pytest.importorskip("torch")
+    from c3.traces.collect import CollectConfig, Document, collect_shard
+    from c3.traces.models import ToyDiffusionLM
+    from c3.traces.shards import merge
+
+    rng = np.random.default_rng(0)
+    docs = [Document(i, rng.integers(0, 60, 80)) for i in range(12)]
+    collect_shard(ToyDiffusionLM(), docs, CollectConfig(topk=5), tmp_path / "run", 0, 1,
+                  part_docs=4, progress_every=0)
+    man = merge(tmp_path / "run", tmp_path / "run.dataset.json")
+    r = subprocess.run([sys.executable, "scripts/run_controls.py", "--traces", str(man),
+                        "--precision-trace", str(man), "--controls", "precision",
+                        "--split", "half", "--half", "report", "--n-boot", "20", "--knots", "3",
+                        "--out", str(tmp_path / "out")],
+                       capture_output=True, text=True, cwd=ROOT)
+    assert r.returncode == 0, r.stderr[-2000:]
+    res = json.loads((tmp_path / "out" / "ablation.json").read_text())
+    assert res["rows"] and all(x["difference"]["value"] == 0.0 for x in res["rows"])
+    assert res["precision"]["paired_uniform"]["top1_agreement"]["value"] == 1.0

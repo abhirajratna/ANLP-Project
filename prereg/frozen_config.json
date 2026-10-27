@@ -1,0 +1,352 @@
+{
+  "constants": {
+    "POOL_SIZES": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      32
+    ],
+    "N_POOLS": 20,
+    "RETAIN": 4,
+    "N_BOOT": 10000,
+    "DEFAULT_KNOTS": 9,
+    "DELTA_MIN": 0.02,
+    "CONTAM_THRESHOLD": 32,
+    "LEGACY_POOL_SIZES": [
+      2,
+      4,
+      8,
+      16,
+      32
+    ]
+  },
+  "knots": {
+    "primary": 9,
+    "sensitivity": [
+      5,
+      13
+    ]
+  },
+  "declaration_rule": {
+    "text": "an effect is declared only if its 95% document-bootstrap percentile interval excludes 0 AND |effect| > 2 x the non-determinism floor",
+    "implementation": "c3.stats.declare",
+    "source": "def declare(value: float, ci: tuple[float, float], floor: float) -> bool:\n    \"\"\"Plan v2 Sec. 5: the interval excludes zero AND |effect| > 2 x floor.\"\"\"\n    lo, hi = ci\n    if not (np.isfinite(lo) and np.isfinite(hi) and np.isfinite(value)):\n        return False\n    return bool((lo > 0 or hi < 0) and abs(value) > 2.0 * abs(floor))\n"
+  },
+  "bootstrap": {
+    "unit": "document",
+    "resamples": 10000,
+    "eq23_resamples": "1,000 (knot runs 200): settled.eq23_bootstrap",
+    "interval": "percentile, 95%"
+  },
+  "split": {
+    "manifest": "artifacts/split_manifest.json",
+    "fit_half": 0,
+    "report_half": 1,
+    "rule": "every nuisance choice (calibrators, knots, ell bins, temperatures, the f(ell) offset of Eq. 2/3, C3) comes from the fit half; every reported number, and the coefficients and curves behind it (beta_z, gamma, the E3 type terms, ECE bin edges), is estimated on the report half",
+    "manifests": {
+      "artifacts/split_manifest.json": "7561ccd09ebaaa30857c478c400846a32176a18139599793c3a8c3195eab99f5",
+      "artifacts/split_manifest_gsm8k.json": "b6d65073f57ebb3df0675469b2120b68eba14281ca811e59efdf40ac004603f6",
+      "artifacts/split_manifest_mbpp.json": "74e68dd64d5f24d509d93e90e13fd83969ae31a6be233115d48387211ae0001d",
+      "artifacts/split_manifest_timesplit.json": "ed5554c261974113efb65cae68752eb573fc12207376441ccc09abeddf2007a2"
+    },
+    "tasks": "scripts/make_task_split.py: the same document_split and seed",
+    "time_split": "scripts/make_split_manifest.py --any-ids on timesplit_docs.jsonl (same seed; doc_ids 200000-200499)"
+  },
+  "floors": {
+    "llada": {
+      "floor_delta": 0.0,
+      "source": "artifacts/t2_pilot/floor_llada_base_fp16.json",
+      "sha256": "a19a8bd481b838f388ef125b184df2523556e035a24aace78ed7c2767d2cdc7f"
+    },
+    "dream": {
+      "floor_delta": 0.0,
+      "source": "artifacts/t2_pilot/floor_dream-7b-base_fp16.json",
+      "sha256": "7e2eacbf1c935c9ef3e6db1071ead2f637254d572757685116af3b2802ca2dc1"
+    },
+    "local-110m": {
+      "floor_delta": 0.0,
+      "source": "artifacts/t2_pilot/floor_local-110m-v3_fp32.json",
+      "sha256": "be8f01782e420c2e625438aace2bdc4ed6564dd27d1319c4b9ba153f42912653"
+    },
+    "rule": "one floor per model family, measured on the Base checkpoint (20 reserve documents x 5 repeats, t2-pilot design); the Instruct arms use their family's"
+  },
+  "gates": {
+    "G1": {
+      "max_docs_full_plan": 1000,
+      "corpus_docs": 2000,
+      "outcomes": {
+        "full_plan": "N <= 1,000: run the full plan",
+        "fewer_8b_settings": "1,000 < N <= 2,000: use all 2,000 documents on fewer 8B settings",
+        "shift_to_110m_and_c2": "N > 2,000: even the whole corpus is underpowered; shift weight to the 110M model and C2"
+      },
+      "n_formula": "7.85 sigma_d^2 / delta_min^2",
+      "delta_min": 0.02,
+      "taken_on": "max N over mask arms and the two primary contrasts",
+      "implementation": "c3.gates"
+    },
+    "G2": {
+      "metric": "ema_val_nelbo",
+      "tail_fraction": 0.1,
+      "max_relative_change": 0.005,
+      "rule": "the metric is flat over the last tail_fraction of training",
+      "source": "scripts/check_g2.py"
+    }
+  },
+  "primary_endpoints": {
+    "E1": "Delta(32) - Delta(1), Delta(m) = E_m[conf - agree] over pool winners, document-first",
+    "E2": "field(32) - field(1), field(m) = E_m[pi_hat(l) - pi_hat(l, s)]"
+  },
+  "holm_families": {
+    "E1_contrast": "Delta(32) - Delta(1) across models x datasets",
+    "E2_field_contrast": "field(32) - field(1) across models x datasets",
+    "Eq3_rank_profile": "gamma_2..gamma_4 within each arm",
+    "primary_arms": [
+      "uniform",
+      "decoder:topk_conf:k4"
+    ],
+    "everything_else": "exploratory, labelled as such",
+    "implementation": "scripts/summarize_c1.py (c3.stats.holm on bootstrap p-values)"
+  },
+  "e3": {
+    "model": "a ~ alpha_rate_bin + f(ell) + type + f(ell) x type, f a restricted cubic spline (knots from the fit half), pool weights within each arm",
+    "rate_bin_centres": [
+      0.1,
+      0.2,
+      0.3,
+      0.4,
+      0.5,
+      0.6,
+      0.7,
+      0.8,
+      0.9
+    ],
+    "rate_bin_edges": [
+      0.05,
+      0.15,
+      0.25,
+      0.35,
+      0.45,
+      0.55,
+      0.65,
+      0.75,
+      0.85,
+      0.95
+    ],
+    "references": {
+      "primary": "uniform_matched (same |M| as each decoder state)",
+      "secondary": "uniform grid, reweighted to the decoder arm's rate-bin mix"
+    },
+    "endpoint": "type effect E_dec[pi_ref(l) - pi_dec(l)] (> 0: decoder states more overconfident at equal confidence)",
+    "joint_test": "sup-t test that the difference curve is zero (c3.endpoints.e3.sup_t)",
+    "difference_curve": {
+      "grid": "decoder-ell quantiles 2.5%..97.5%",
+      "grid_size": 25,
+      "bands": "pointwise percentile and simultaneous sup-t"
+    },
+    "n_ell_bins": 100,
+    "reliability_bins": 15,
+    "by_rate": "exploratory",
+    "implementation": "scripts/analyze_e3.py"
+  },
+  "t8": {
+    "rows": "E1 Delta(32) - Delta(1) and E2 field(32) - field(1), without and with each control, and their paired difference, on one resample matrix",
+    "position": {
+      "covariates": [
+        "abs_position",
+        "log1p_dist_unmasked",
+        "pc_sampler_weight"
+      ],
+      "pc_sampler": "exp(-0.25 i) (position-only: no unigram table)",
+      "with": "Delta - E_m[pi(l) - pi(l, x)]; field with x in both calibrators",
+      "strata": {
+        "distance_lower_edges": [
+          1,
+          2,
+          3,
+          5
+        ],
+        "position": "terciles of position / doc_len"
+      }
+    },
+    "token_type": {
+      "classes": [
+        "content",
+        "punct",
+        "stop"
+      ],
+      "of": "the slot's true token",
+      "stop_words": 125,
+      "rows": "covariates, per-class split, class-standardised contrast"
+    },
+    "temperature": {
+      "primary": "logodds: c = sigma(ell / T_bin), fitted by the NLL of correctness (exact from the trace)",
+      "sensitivity": "softmax: logits / T rebuilt from the top-20 and an even tail, fitted by true-token NLL",
+      "bins": [
+        0.0,
+        0.15,
+        0.25,
+        0.35,
+        0.45,
+        0.55,
+        0.65,
+        0.75,
+        0.85,
+        1.000000001
+      ],
+      "pools": "re-ranked on the tempered confidence"
+    },
+    "precision": {
+      "documents": "artifacts/t8_precision_docs.json",
+      "documents_sha256": "40be854bd7cf6ca60409137678121e6948c59ecc70f6bc4ad91d01886746e024",
+      "comparison": "LLaDA-8B-Base fp16 vs 4-bit NF4, same documents; E1, E2, beta_z (paired resamples) and the paired logit shift"
+    },
+    "implementation": "scripts/run_controls.py, c3/controls.py"
+  },
+  "analysis_commands": {
+    "path": "prereg/analysis_commands.sh",
+    "sha256": "976ec578378e18963d341ec54ad135ac2dbc2020372f552606cd3b75670337a1"
+  },
+  "deviations": {
+    "path": "prereg/deviations.md",
+    "sha256": "96a359134db1445c6c98fde5eb7423b27fbb7b35359a5f7e41f5ef1ae5554722"
+  },
+  "calibrators": {
+    "own": "isotonic in ell, pool-weighted",
+    "context": {
+      "features": [
+        "median_ell",
+        "mask_rate",
+        "log_n_masked",
+        "step"
+      ],
+      "interactions_default": true,
+      "ridge": 0.0001
+    },
+    "ece": {
+      "bins": 15,
+      "binning": "equal mass",
+      "also": "smooth ECE"
+    }
+  },
+  "trace_design": {
+    "schema_version": 2,
+    "main": {
+      "mask_rates": [
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        0.6,
+        0.7,
+        0.8,
+        0.9
+      ],
+      "masks_per_rate": 2,
+      "decoder_k": [
+        2,
+        4,
+        8
+      ],
+      "decoder_policies": [
+        "topk_conf"
+      ],
+      "decoder_states": null,
+      "min_masked": 1,
+      "uniform_min_masked": 1,
+      "include_uniform": true,
+      "include_decoder": true,
+      "include_uniform_matched": true,
+      "topk": 20,
+      "batch_size": 1,
+      "eps": 1e-06,
+      "seed": 20260917
+    },
+    "t2_pilot": {
+      "model": "llada-8b-base",
+      "mask_rates": [
+        0.1,
+        0.3,
+        0.5,
+        0.7,
+        0.9
+      ],
+      "masks_per_rate": 2,
+      "decoder_k": [
+        4
+      ],
+      "decoder_policies": [
+        "topk_conf"
+      ],
+      "decoder_states": null,
+      "min_masked": 1,
+      "uniform_min_masked": 1,
+      "include_uniform": true,
+      "include_decoder": true,
+      "include_uniform_matched": false,
+      "topk": 20,
+      "batch_size": 1,
+      "eps": 1e-06,
+      "seed": 20260917
+    }
+  },
+  "contamination": {
+    "threshold": 32,
+    "rule": "flag a document whose greedy 50-token continuation of its 50-token prefix matches the true text for a run of at least the threshold; report every FineWeb endpoint with and without flagged documents",
+    "screens": {
+      "llada-8b-base": "a55922c6bb4bfbf5af2fa988323380c07da7ed325ce3de571f859c7a94d13700",
+      "dream-7b-base": "1e60e035f07c1cebe3b64d37211dc97c5f9a467db8328f14cc212a3e145e2f9e"
+    },
+    "deviation": "the threshold was fixed in code after the 29 Sep screens were seen (prereg/deviations.md)"
+  },
+  "settled_by": {
+    "holm_families, context_calibrator, task_splits, t8_temperature, time_split_set": "abhiraj's proposal 20261023T141455Z-abhiraj-2a71 (23 Oct), no objection by its Sat 24 Oct 18:00 IST deadline",
+    "eq23_bootstrap": "1,000 in the primary run: abhiraj, 23 Oct (20261023T141840Z-abhiraj-f715); 200 in the knot runs: proposed by ojas 23 Oct (20261023T205808Z-ojas-7051), accepted by abhiraj 25 Oct (20261025T125727Z-abhiraj-8b99); T8 precision at 1,000: ojas, 25 Oct",
+    "claim_rule": "ojas, 25 Oct (reviewed by abhiraj, 20261025T130122Z-abhiraj-f88f)",
+    "note": "the 25 Oct choices postdate the 24 Oct report-half exposure (prereg/deviations.md 16); none depends on data"
+  },
+  "settled": {
+    "holm_families": "E1 Delta(32)-Delta(1) and E2 field(32)-field(1), each across the models x datasets arms of analysis_commands.sh on uniform and decoder:topk_conf:k4; decoder k = 2, 8 and uniform_matched exploratory; the contamination-clean and time-split runs are robustness checks outside the families; gamma_2..gamma_4 Holm within each arm",
+    "context_calibrator": "the interacted form (ell x field features, the code default); plan v2 T6(2)'s additive form is the sensitivity check (the <label>_additive runs, E1/E2 only)",
+    "task_splits": {
+      "rule": "c3.data.fineweb.document_split (seed 20260917) on every set",
+      "manifests": {
+        "gsm8k": "b6d65073f57ebb3df0675469b2120b68eba14281ca811e59efdf40ac004603f6",
+        "mbpp": "74e68dd64d5f24d509d93e90e13fd83969ae31a6be233115d48387211ae0001d",
+        "timesplit": "ed5554c261974113efb65cae68752eb573fc12207376441ccc09abeddf2007a2"
+      }
+    },
+    "t8_temperature": "log-odds per mask-rate bin, c = sigma(ell / T), is the primary row; softmax (top-20 plus an even tail) is a sensitivity row",
+    "time_split_set": {
+      "manifest": "artifacts/timesplit_manifest.json",
+      "sha256": "377f089562b0a563447d6c227e06ce969b6ad7a995dbe1dcf194975b6be6469c",
+      "documents": "runs/corpus/t3/timesplit_docs.jsonl (not in git)",
+      "documents_sha256": "3374de4de746df125e6bbf888eccf32d0a16859789725b6663c370f93abfcfca"
+    },
+    "claim_rule": "an E1 or E2 effect in a Holm family is claimed only if it is declared (c3.stats.declare: interval excludes 0 and |effect| > 2 x floor) AND rejected by Holm within its family at alpha = 0.05; with every floor 0 the floor half is vacuous, so this equals the Holm rejection alone. Each family's size is fixed at every label x primary arm (7 x 2 = 14); a missing member or non-finite p counts as p = 1. scripts/summarize_c1.py applies both halves (field 'claimed') and stars only claimed effects. beta_z (Eq. 2, with and without state FE) is a diagnostic: reported with its interval, outside the Holm families, never a claim. Effects outside the families (other decoder arms, uniform_matched, E3, T8, clean and time-split runs) are reported with their intervals and labelled exploratory; gamma_2..gamma_4 use Holm within each arm",
+    "eq23_bootstrap": "1,000 resamples in the primary run and the T8 precision beta_z, 200 in the knot runs, none in the contamination-clean, time-split and additive-calibrator runs (prereg/deviations.md 15)"
+  },
+  "open": [],
+  "provenance": {
+    "git_commit": "c8a7b628436990bb725d5ac9e3845a31744671a6",
+    "git_dirty": false,
+    "python": "3.12.11",
+    "platform": "Linux-6.17.0-41-generic-x86_64-with-glibc2.42",
+    "host": "andaburger",
+    "slurm_job_id": null,
+    "packages": {
+      "numpy": "2.5.3",
+      "scipy": "1.18.1",
+      "pandas": "3.0.6",
+      "pyarrow": "25.0.1",
+      "torch": "2.14.0+cpu",
+      "transformers": "4.46.3",
+      "bitsandbytes": "0.50.2",
+      "accelerate": "1.15.0",
+      "matplotlib": "3.11.2"
+    }
+  },
+  "generated_at": "2026-10-25T13:41:01+00:00"
+}

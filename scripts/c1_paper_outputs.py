@@ -8,8 +8,11 @@ Reads what ``prereg/analysis_commands.sh`` writes under ``--results`` (no traces
 no model; the cluster has no matplotlib, the laptop does):
 
   c1/<Label>/results.json (+ macros.tex)       E1, E2, ECE, Eq. 2/3, per mask arm
-  c1/<Label>_knots5|_knots13|_clean/           sensitivity variants of the same
-  c1/summary/c1_summary.json                   Holm across models x datasets (summarize_c1.py)
+  c1/<Label>_knots5|_knots13|_clean|_additive/ sensitivity variants of the same (additive: the
+                                               additive context calibrator, E1/E2 only)
+  c1/summary/c1_summary.json                   Holm across models x datasets, gamma_2..4 within
+                                               arm, ``claimed``, ``holm_m``, ``holm_missing``
+                                               (summarize_c1.py)
   e3/<Label>/results.json (+ macros.tex)       decoder vs matched-uniform / grid at equal confidence
   t8/<Label>/ablation.json (+ macros.tex)      position, token type, temperature (and precision)
 
@@ -21,13 +24,19 @@ and writes, under ``--out-tables`` (default paper/tables/c1) and ``--out-figures
                        with state FE (beta_z^FE), values only
   c1_main_col.tex      one column: E1 and E2 point estimates with the Holm / declared markers
   c1_beta.tex          beta_z with 95% CIs, no FE and FE
-  c1_sensitivity.tex   E1 / E2 under 5, 9, 13 knots and without contaminated documents
+  c1_gamma.tex         gamma_2..gamma_4 of Eq. 3 (with state FE) and the Holm p within the arm
+  c1_shared.tex        the shared-error term E_m[pi(l,s) - a] at m = 1 and 32, and the within-state
+                       ICC of the residuals a - pi(l,s)
+  c1_sensitivity.tex   E1 / E2 under 5, 9, 13 knots, without contaminated documents, and E2 with
+                       the additive context calibrator
   c1_e3.tex            E3, type effect at equal confidence, matched-uniform and grid references
   c1_t8.tex            T8, E1 and E2 without / with position, token type, temperature controls
   c1_t8_precision.tex  T8 precision (fp16 vs 4-bit), when the run exists
-  macros_c1.tex        ``\\input`` of every per-arm macros.tex (copied to macros/) plus the summary-
-                       level macros the analysis does not write: Holm decisions and counts, the E2
-                       contrast, declared flags
+  macros_c1.tex        ``\\input`` of every per-arm macros.tex (copied to macros/) plus the macros
+                       the analysis does not write: Holm decisions, ``claimed`` flags and counts,
+                       the family size and missing members (``\\COneHolmFootnote``), the E2
+                       contrast (also under each sensitivity variant), declared flags, the
+                       shared-error term and ICC, gamma_2..4 with their Holm p
   c1_sources.json      every input with its sha256, and a c3/provenance.py stamp
   c1_delta_m_all, c1_field_m_all           Delta(m), field(m) vs m, one panel per arm
   c1_delta_m_<Label>, c1_reliability_<Label>, c1_e3_<Label>   for the main arm
@@ -36,8 +45,9 @@ and writes, under ``--out-tables`` (default paper/tables/c1) and ``--out-figures
 Missing arms, mask arms, variants or summaries are shown as ``---`` (an em dash in LaTeX), never
 a crash: results land arm by arm, and the 110M and 8B arms live under two Ada accounts.
 
-Table markers (one superscript): ``*`` Holm-rejected in its family; ``\\dagger`` declared (CI
-excludes 0 and the effect exceeds 2 x floor); ``\\ddagger`` the 95% CI of the number shown (beta_z,
+Table markers (one superscript): ``*`` claimed: declared AND Holm-rejected in its family (the
+``claimed`` field of the summary; in c1_gamma.tex: Holm-rejected within the arm); ``\\dagger``
+declared (CI excludes 0 and the effect exceeds 2 x floor); ``\\ddagger`` the 95% CI of the number shown (beta_z,
 or in T8 the paired with-minus-without difference) excludes 0; ``\\S`` the Eq. 2 fit did not
 converge.  ``TS`` in an arm name is the time-split set.  The preamble needs ``booktabs``.  Every
 table is a bare ``tabular`` inside a ``\\footnotesize`` group; the caption is the paper's.
@@ -79,7 +89,10 @@ KNOWN = {**MAIN_ARMS, **TIMESPLIT_ARMS}
 PRIMARY_MASKS = ("uniform", "decoder:topk_conf:k4")
 MASK_NAME = {"uniform": "uniform", "decoder:topk_conf:k4": "dec. $k{=}4$"}
 E3_KS = (2, 4, 8)
-VARIANTS = {"knots5": "KnotsFive", "knots13": "KnotsThirteen", "clean": "Clean"}
+VARIANTS = {"knots5": "KnotsFive", "knots13": "KnotsThirteen", "clean": "Clean",
+            "additive": "Additive"}
+GAMMAS = {"gamma_2": "Two", "gamma_3": "Three", "gamma_4": "Four"}
+SHARED_MS = (1, 32)                     # field sizes of the shared-error table
 DASH = "---"
 FIG_ARMS_PER_ROW = 4
 
@@ -198,6 +211,12 @@ def est_ci(e, nd: int = 3, marks: str = "") -> str:
     lo, hi = _bare(ci[0], nd), _bare(ci[1], nd)
     if "---" in (lo, hi):
         return num(e["value"], nd) + marks
+    # More decimals (up to 5) where rounding misleads: an interval that excludes 0 printed with
+    # a 0.000 end, or a nonzero-width interval printed as [x, x].
+    while nd < 5 and ((ci_excludes_zero(e) and 0.0 in (float(lo), float(hi)))
+                      or (lo == hi and ci[0] != ci[1])):
+        nd += 1
+        lo, hi = _bare(ci[0], nd), _bare(ci[1], nd)
     return f"{num(e['value'], nd)}{marks} {{\\scriptsize[${lo}$, ${hi}$]}}"
 
 
@@ -218,8 +237,18 @@ def sup(*syms: str) -> str:
     return "$^{" + ",".join(syms) + "}$" if syms else ""
 
 
-def holm_marker(h, key: str) -> str:
-    return "*" if h and (h.get(key) or {}).get("holm_reject") else ""
+def claimed(c) -> bool:
+    """Declared AND Holm-rejected (the ``claimed`` field of summarize_c1.py).  A summary of the
+    older schema has no such field: it is rebuilt from its two parts, which is its definition."""
+    if not c:
+        return False
+    if "claimed" in c:
+        return bool(c["claimed"])
+    return bool(c.get("holm_reject")) and bool(c.get("declared"))
+
+
+def claimed_marker(h, key: str) -> str:
+    return "*" if claimed((h or {}).get(key)) else ""
 
 
 def holm_cell(h, key: str) -> str:
@@ -244,7 +273,8 @@ def beta(r, key: str):
     b = b.get("beta_z") if isinstance(b, dict) else None
     if not b or not _ok(b.get("value")):
         return None, ""
-    return b, ("" if b.get("point_converged", True) else "\\S")
+    ok = b.get("point_converged", True) and not (b.get("n_nonconverged_draws") or 0)
+    return b, ("" if ok else "\\S")
 
 
 # --------------------------------------------------------------------------- tables
@@ -290,6 +320,11 @@ def point(e, nd: int, bad: str = "") -> str:
     return num(e["value"], nd) + sup("\\ddagger" if ci_excludes_zero(e) else "", bad)
 
 
+CLAIMED_NOTE = ("% * = claimed: declared (dagger) and rejected by Holm in its family; the family size and\n"
+                "% any missing member are in \\COneHolmFootnote (macros_c1.tex).  Holm column: the decision\n"
+                "% of the Holm step alone (yes / no; expl. = exploratory arm, outside the families).\n")
+
+
 def main_table(R: Results) -> str:
     def cells(label, mask):
         r, h = R.kind(label, mask), R.holm(label, mask)
@@ -298,14 +333,16 @@ def main_table(R: Results) -> str:
         e1, e2 = r.get("contrast"), r.get("field_contrast")
         b0, m0 = beta(r, "eq2_nofe")
         b1, m1 = beta(r, "eq2_fe")
-        return [est_ci(e1, 3, sup(declared_marker(e1))), holm_cell(h, "contrast"),
-                est_ci(e2, 3, sup(declared_marker(e2))), holm_cell(h, "field_contrast"),
+        return [est_ci(e1, 3, sup(claimed_marker(h, "contrast"), declared_marker(e1))),
+                holm_cell(h, "contrast"),
+                est_ci(e2, 3, sup(claimed_marker(h, "field_contrast"), declared_marker(e2))),
+                holm_cell(h, "field_contrast"),
                 point(b0, 2, m0), point(b1, 2, m1)]
 
     head = ["Arm", "Masks", "E1", "Holm", "E2", "Holm", "$\\beta_z$", "$\\beta_z^{\\mathrm{FE}}$"]
     body = _arm_rows(R, labels_for_main(R), cells, 6)
     return _table("lllclcll", head, body,
-                  "results/c1/<Label>/results.json, results/c1/summary/c1_summary.json")
+                  "results/c1/<Label>/results.json, results/c1/summary/c1_summary.json") + CLAIMED_NOTE
 
 
 def main_col_table(R: Results) -> str:
@@ -317,12 +354,12 @@ def main_col_table(R: Results) -> str:
         def pt(c, key):
             if not c or not _ok(c.get("value")):
                 return DASH
-            return num(c["value"], 3) + sup(holm_marker(h, key), declared_marker(c))
+            return num(c["value"], 3) + sup(claimed_marker(h, key), declared_marker(c))
         return [pt(e1, "contrast"), pt(e2, "field_contrast")]
 
     head = ["Arm", "Masks", "E1", "E2"]
     body = _arm_rows(R, labels_for_main(R), cells, 2)
-    return _table("llll", head, body, "results/c1/<Label>/results.json and the Holm summary")
+    return _table("llll", head, body, "results/c1/<Label>/results.json and the Holm summary") + CLAIMED_NOTE
 
 
 def beta_table(R: Results) -> str:
@@ -336,6 +373,61 @@ def beta_table(R: Results) -> str:
     body = _arm_rows(R, labels_for_main(R), cells, 2)
     return _table("llll", ["Arm", "Masks", "$\\beta_z$, no FE", "$\\beta_z$, FE"], body,
                   "results/c1/<Label>/results.json (regression.eq2_nofe, eq2_fe)")
+
+
+def gamma_cell(g, key: str) -> list[str]:
+    """[estimate with the Holm marker, Holm p] of one gamma_k from the summary row."""
+    c = (g or {}).get(key)
+    if not c or not _ok(c.get("value")):
+        return [DASH, DASH]
+    return [num(c["value"], 2) + sup("*" if c.get("holm_reject") else ""), pval(c.get("p_holm"))]
+
+
+def gamma_table(R: Results) -> str:
+    """gamma_2..gamma_4 of Eq. 3 with state FE (rank 2, 3, 4 against rank 1), and the Holm p
+    within the arm (three tests per row, summarize_c1.py)."""
+    def cells(label, mask):
+        h = R.holm(label, mask)
+        out = []
+        for key in GAMMAS:
+            out += gamma_cell((h or {}).get("gamma"), key)
+        return out
+
+    head = ["Arm", "Masks"]
+    for k in (2, 3, 4):
+        head += [f"$\\gamma_{k}$", f"$p_{{\\mathrm{{Holm}}}}(\\gamma_{k})$"]
+    body = _arm_rows(R, labels_for_main(R), cells, 6)
+    return _table("llrrrrrr", head, body, "results/c1/summary/c1_summary.json (rows[].gamma)") + (
+        "% Eq. 3 with state fixed effects: rank 2, 3, 4 of the retained top ranks against rank 1.  * = Holm-\n"
+        "% rejected within the row (three tests).  An arm without a summary row is ---.\n")
+
+
+def shared_table(R: Results) -> str:
+    """The specification check of Proposition 1: the third term E_m[pi(l,s) - a] of the gap split
+    (``decomposition[].residual``) at m = 1 and m = 32, and the ICC(1) of a - pi(l,s) within
+    states (``icc_residuals``).  Both are zero under independent positions."""
+    def cells(label, mask):
+        r = R.kind(label, mask)
+        if r is None:
+            return [DASH] * 3
+        out = [est_ci(residual_at(r, m), 3) for m in SHARED_MS]
+        icc = (r.get("icc_residuals") or {})
+        out.append(est_ci({"value": icc.get("icc"), "ci": icc.get("ci")}, 3) if icc else DASH)
+        return out
+
+    head = ["Arm", "Masks"] + [f"$m{{=}}{m}$" for m in SHARED_MS] + ["ICC"]
+    body = _arm_rows(R, labels_for_main(R), cells, 3)
+    return _table("llccc", head, body, "results/c1/<Label>/results.json (decomposition, icc_residuals)") + (
+        "% m = 1, 32: E_m[pi(l,s) - a], the shared-error term (zero under Prop. 1).  ICC: intra-class\n"
+        "% correlation of the residuals a - pi(l,s) within states, 95% document-bootstrap CI.\n")
+
+
+def residual_at(r, m: int):
+    """``{value, ci}`` of the shared-error term at field size ``m``, or None."""
+    for row in (r or {}).get("decomposition") or []:
+        if row.get("m") == m and _ok(row.get("residual")):
+            return {"value": row["residual"], "ci": row.get("residual_ci")}
+    return None
 
 
 def sensitivity_table(R: Results) -> str:
@@ -353,12 +445,18 @@ def sensitivity_table(R: Results) -> str:
         out.append(point(base, "field_contrast"))
         out.append(point(R.kind(label, mask, "knots13"), "field_contrast"))
         out.append(point(R.kind(label, mask, "clean"), "field_contrast"))
+        out.append(point(R.kind(label, mask, "additive"), "field_contrast"))
         return out
 
-    head = ["Arm", "Masks", "E1", "E1 clean", "E2, 5 kn.", "E2, 9 kn.", "E2, 13 kn.", "E2 clean"]
-    body = _arm_rows(R, labels_for_main(R), cells, 6)
-    return _table("llcccccc", head, body,
-                  "results/c1/<Label>, <Label>_knots5, <Label>_knots13, <Label>_clean")
+    head = ["Arm", "Masks", "E1", "E1 clean", "E2, 5 kn.", "E2, 9 kn.", "E2, 13 kn.", "E2 clean",
+            "E2 add."]
+    body = _arm_rows(R, labels_for_main(R), cells, 7)
+    return _table("llccccccc", head, body,
+                  "results/c1/<Label>, <Label>_knots5, <Label>_knots13, <Label>_clean, "
+                  "<Label>_additive") + (
+        "% E2 add. = E2 with the additive context calibrator (plan v2 T6(2)); the interacted one is\n"
+        "% primary (the 9-knot column).  E1 takes no calibrator: the additive run's E1 is the primary's.\n"
+        "% Markers: dagger = declared.\n")
 
 
 def _e3_arms(R: Results) -> list[tuple[str, int]]:
@@ -481,6 +579,154 @@ def _yn(b) -> str:
     return "yes" if b else "no"
 
 
+def _est_macros(m: Macros, name: str, e, nd: int = 3) -> None:
+    """``name`` (value), ``name``Lo and ``name``Hi (the 95% CI) from ``{value, ci}``."""
+    if not e or not _ok(e.get("value")):
+        return
+    m.add(name, f"{e['value']:.{nd}f}")
+    ci = e.get("ci") or []
+    if len(ci) == 2 and _ok(ci[0]) and _ok(ci[1]):
+        m.add(name + "Lo", f"{ci[0]:.{nd}f}")
+        m.add(name + "Hi", f"{ci[1]:.{nd}f}")
+
+
+def sensitivity_macros(R: Results, m: Macros) -> None:
+    """E2 under each sensitivity variant (the analysis writes E1 and the field(m) curve only), and
+    the additive calibrator against the primary run, cell by cell."""
+    p = "COne"
+    m.comment("E2 contrast of the sensitivity runs (knots, clean, additive): "
+              "COneFieldContrast<Label><Variant><Tag>[Lo|Hi], COneFieldDeclared...")
+    cells = agree = 0
+    runs = set()
+    k_cells = k_agree = 0
+
+    def same_as(fc, prim) -> bool:
+        return (fc["value"] > 0) == (prim["value"] > 0) and \
+            bool(fc.get("declared")) == bool(prim.get("declared"))
+
+    for label in R.labels:
+        for mask in PRIMARY_MASKS:
+            tag = label + arm_tag(mask)
+            prim = (R.kind(label, mask) or {}).get("field_contrast")
+            knots = [(R.kind(label, mask, v) or {}).get("field_contrast") for v in ("knots5", "knots13")]
+            if prim and _ok(prim.get("value")) and all(k and _ok(k.get("value")) for k in knots):
+                k_cells += 1
+                k_agree += all(same_as(k, prim) for k in knots)
+            for v, word in VARIANTS.items():
+                fc = (R.kind(label, mask, v) or {}).get("field_contrast")
+                if not fc or not _ok(fc.get("value")):
+                    continue
+                vtag = f"{label}{word}{arm_tag(mask)}"
+                _est_macros(m, f"{p}FieldContrast{vtag}", fc)
+                if "declared" in fc:
+                    m.add(f"{p}FieldDeclared{vtag}", _yn(fc["declared"]))
+                if v != "additive":
+                    continue
+                runs.add(label)
+                if not prim or not _ok(prim.get("value")):
+                    continue
+                same = same_as(fc, prim)
+                cells += 1
+                agree += same
+                m.add(f"{p}FieldAdditiveShift{tag}", f"{fc['value'] - prim['value']:.3f}")
+                m.add(f"{p}FieldAdditiveAgree{tag}", _yn(same))
+    if k_cells:
+        m.comment("5 and 13 knots vs the primary 9: cells with both runs, and the cells where E2 keeps "
+                  "its sign and its declared flag at both")
+        m.add(f"{p}KnotsCells", str(k_cells))
+        m.add(f"{p}KnotsAgree", str(k_agree))
+    if runs:
+        m.comment("additive vs interacted calibrator: runs present, cells compared, and the cells where "
+                  "E2 keeps its sign and its declared flag")
+        m.add(f"{p}AdditiveRuns", str(len(runs)))
+        m.add(f"{p}AdditiveCells", str(cells))
+        m.add(f"{p}AdditiveAgree", str(agree))
+
+
+def shared_error_macros(R: Results, m: Macros) -> None:
+    """The third term of the gap split, E_m[pi(l,s) - a] (``decomposition[].residual``), and the
+    within-state ICC of the residuals (``icc_residuals``): COne<Label>Residual<m><Tag>[Lo|Hi],
+    COne<Label>ICC<Tag>[Lo|Hi]."""
+    p = "COne"
+    m.comment("shared-error term E_m[pi(l,s) - a] and the within-state ICC of residuals a - pi(l,s) "
+              "(zero under Prop. 1)")
+    for label in R.labels:
+        for mask in PRIMARY_MASKS:
+            r = R.kind(label, mask)
+            if r is None:
+                continue
+            tag = arm_tag(mask)
+            for row in r.get("decomposition") or []:
+                if row.get("m") not in _WORDS:
+                    continue
+                _est_macros(m, f"{p}{label}Residual{_WORDS[row['m']]}{tag}",
+                            residual_at(r, row["m"]))
+            icc = r.get("icc_residuals") or {}
+            _est_macros(m, f"{p}{label}ICC{tag}", {"value": icc.get("icc"), "ci": icc.get("ci")})
+
+
+def holm_footnote_macros(R: Results, m: Macros) -> None:
+    """The Holm family size and its missing members, for the footnote of the starred tables."""
+    p = "COne"
+    summ = R.summary or {}
+    sizes = [(row.get(k) or {}).get("holm_m") for row in summ.get("rows", [])
+             for k in ("contrast", "field_contrast")]
+    sizes = [int(x) for x in sizes if _ok(x)]
+    size = max(sizes) if sizes else (len(summ["holm_members"]) if summ.get("holm_members") else None)
+    missing = summ.get("holm_missing")
+    m.comment("footnote of the starred tables: family size per contrast (holm_m) and the family members "
+              "without results, counted as p = 1 (holm_missing)")
+    if size:
+        m.add(f"{p}HolmM", str(size))
+    if missing is not None:
+        names = []
+        for entry in missing:
+            lab, _, arm = str(entry).partition(":")
+            names.append(f"{display(lab)} ({MASK_NAME.get(arm, tex_escape(arm))})")
+        m.add(f"{p}HolmMissingCount", str(len(names)))
+        m.add(f"{p}HolmMissing", ", ".join(names) if names else "none")
+    text = ("$^{*}$ Claimed: declared (interval excludes 0 and effect above twice the floor) and rejected "
+            "by Holm" + (f" at $\\alpha={summ['alpha']:g}$" if _ok(summ.get("alpha")) else "")
+            + " within its family"
+            + (f" of ${size}$ cells per contrast" if size else "")
+            + "; a cell without results counts as $p=1$"
+            + (f". Missing: {', '.join(names) if names else 'none'}" if missing is not None else "") + ".")
+    m.add(f"{p}HolmFootnote", text)
+
+
+def gamma_macros(R: Results, m: Macros) -> None:
+    """gamma_2..gamma_4 of Eq. 3 (with FE) of the primary rows, their Holm p within the row, and the
+    count of rejections."""
+    p = "COne"
+    m.comment("gamma_2..4 of Eq. 3 with state FE; Holm within each row (three tests): "
+              "COne<Label>Gamma<k><Tag>[Lo|Hi], COneHolmPGamma<k>.., COneHolmDecisionGamma<k>..")
+    family = reject = rows_rej = 0
+    for (label, arm), row in sorted(R._holm.items()):
+        if (row.get("contrast") or {}).get("holm_family") not in ("E1", "E2"):
+            continue                                  # exploratory arms are not in the count
+        if not (label + arm_tag(arm)).isalpha():
+            continue
+        tag = arm_tag(arm)
+        any_rej = False
+        for key, word in GAMMAS.items():
+            g = (row.get("gamma") or {}).get(key)
+            if not g or not _ok(g.get("value")):
+                continue
+            if label in R.labels:                 # values only for arms whose own results are here
+                _est_macros(m, f"{p}{label}Gamma{word}{tag}", g)
+            if _ok(g.get("p_holm")):
+                m.add(f"{p}HolmPGamma{word}{label}{tag}", f"{g['p_holm']:.4f}")
+                m.add(f"{p}HolmDecisionGamma{word}{label}{tag}", _yn(g.get("holm_reject")))
+                family += 1
+                reject += bool(g.get("holm_reject"))
+                any_rej = any_rej or bool(g.get("holm_reject"))
+        rows_rej += any_rej
+    if family:                                # no gamma results yet: leave the counts undefined (bold ?)
+        m.add(f"{p}HolmGammaFamily", str(family))
+        m.add(f"{p}HolmGammaReject", str(reject))
+        m.add(f"{p}HolmGammaRows", str(rows_rej))
+
+
 def summary_macros(R: Results, m: Macros) -> None:
     """The headline numbers the per-arm macros.tex files lack."""
     p = "COne"
@@ -501,6 +747,8 @@ def summary_macros(R: Results, m: Macros) -> None:
                 m.add(f"{p}FieldDeclared{tag}", _yn(fc.get("declared")))
             if "declared" in (r.get("contrast") or {}):
                 m.add(f"{p}ContrastDeclared{tag}", _yn(r["contrast"]["declared"]))
+    sensitivity_macros(R, m)
+    shared_error_macros(R, m)
     if not R.summary:
         m.comment("no results/c1/summary/c1_summary.json yet: no Holm macros")
         return
@@ -517,12 +765,13 @@ def summary_macros(R: Results, m: Macros) -> None:
             n["family"] += 1
             n["reject"] += bool(c.get("holm_reject"))
             n["declared"] += bool(c.get("declared"))
-            n["both"] += bool(c.get("holm_reject")) and bool(c.get("declared"))
+            n["both"] += claimed(c)
             if _ok(c.get("p_holm")):
                 m.add(f"{p}HolmP{fam}{tag}", f"{c['p_holm']:.4f}")
             m.add(f"{p}HolmDecision{fam}{tag}", _yn(c.get("holm_reject")))
-    m.comment("counts over the family members; 'Both' = Holm-rejected and declared (CI excludes 0, "
-              "effect > 2 x floor)")
+            m.add(f"{p}Claimed{fam}{tag}", _yn(claimed(c)))
+    m.comment("counts over the family members; 'Confirmed' = claimed = Holm-rejected and declared "
+              "(CI excludes 0, effect > 2 x floor)")
     for key, fam in fams.items():
         n = count[key]
         m.add(f"{p}Holm{fam}Family", str(n["family"]))
@@ -534,6 +783,8 @@ def summary_macros(R: Results, m: Macros) -> None:
     m.add(f"{p}ArmsPresent", str(sum(l in MAIN_ARMS for l in R.labels)))
     m.add(f"{p}ArmsExpected", str(len(MAIN_ARMS)))
     m.add(f"{p}TimeSplitPresent", str(sum(l in TIMESPLIT_ARMS for l in R.labels)))
+    holm_footnote_macros(R, m)
+    gamma_macros(R, m)
 
 
 def macro_inputs(R: Results, out_tables: Path, tex_root: Path) -> list[tuple[str, str]]:
@@ -803,6 +1054,7 @@ def main(argv=None) -> int:
 
     written = []
     for name, fn in (("c1_main", main_table), ("c1_main_col", main_col_table), ("c1_beta", beta_table),
+                     ("c1_gamma", gamma_table), ("c1_shared", shared_table),
                      ("c1_sensitivity", sensitivity_table), ("c1_e3", e3_table),
                      ("c1_t8", t8_table), ("c1_t8_precision", precision_table)):
         p = tables / f"{name}.tex"
@@ -827,6 +1079,13 @@ def main(argv=None) -> int:
     miss = manifest["arms_missing"]
     if miss:
         print(f"[c1-paper] no results for: {', '.join(miss)} (their rows are {DASH})")
+    no_add = [l for l in R.labels if l in MAIN_ARMS and R.variant.get((l, "additive")) is None]
+    if no_add:
+        print(f"[c1-paper] no additive-calibrator run (c1/<Label>_additive) for: {', '.join(no_add)} "
+              f"(their E2 add. cells are {DASH})", file=sys.stderr)
+    if R.summary is None:
+        print(f"[c1-paper] no c1/summary/c1_summary.json: no Holm decisions, claimed stars, "
+              f"gamma rows or footnote ({DASH})", file=sys.stderr)
     return 0
 
 
