@@ -23,8 +23,8 @@ to 7--8B parameters and commit the most confident positions, as MaskGIT did
 \citep{chang2022maskgit}. We audit that rule; we propose no model.
 
 \paragraph{Parallel and confidence-based decoders.}
-Decoders replace top-1 probability, which can misstate uncertainty \citep{kim2025ordering},
-with entropy, margin or stability \citep{benhamu2025entropy,kim2025ordering,kim2025klass},
+Decoders replace top-1 probability, which can misstate uncertainty \citep{kim2025worst},
+with entropy, margin or stability \citep{benhamu2025entropy,kim2025worst,kim2025klass},
 tune the cutoff \citep{wu2025fastdllm,shen2025osdt} or learn the policy
 \citep{jazbec2026learning}. They evaluate speed and accuracy, not the calibration of the
 tokens they commit, which C1 measures; C3a thresholds a recalibrated probability instead
