@@ -142,12 +142,8 @@ and a residual, and E2 is \CresCI{COneFieldContrastLladaBaseUni}
 E2 is claimed in all \Cres{COneHolmETwoFamily} cells and positive in 12. For the base and 110M
 models every $|\mathrm{E2}|$ is below 0.005, of the order of what the estimator read on
 simulated traces with no field term (\S\ref{sec:validation}); we do not read these as a winner's
-curse. Under a second calibrator (a B-spline logistic with quantile knots and standardised
-features, fitted on a 1M-row fit-half sample; code archive), the LLaDA-8B-Base decoder-state
-field term is not identified: the
-% -0.005 [-0.007, -0.004]: hand-typed from dorigo/report-40754 summary_e2.csv (HF 21130a52), k4, report half.
-residual $\E_m[\hat\pi(\ell,s)-a]$ at $m=\VivaPoolMax$ is $-0.005$ [$-0.007$, $-0.004$], and
-calibrators refit on each half of the fit set give field terms of opposite sign. In seven
+curse; under an independent estimator the LLaDA-8B-Base decoder-state field term is not
+identified (\S\ref{sec:c1-robust}). In seven
 of the eight instruct cells E2 is 0.013 to \Cres{COneFieldContrastDreamInstructMbppUni}
 (Dream-7B-Instruct, MBPP, uniform states, where E1 is \Cres{COneDreamInstructMbppContrastUni}):
 there the field term grows with $m$, as a winner's curse predicts. There, at equal confidence,
@@ -213,7 +209,7 @@ The native gap measures what a decoder actually commits. For tokens the $k{=}4$ 
 commits with 32--63 positions masked it is
 \CresCI{COneLladaInstructGsmNativeThirtyTwoDecTopkConfKFour} for LLaDA-8B-Instruct on GSM8K,
 against an ECE of \Cres{COneLladaInstructGsmECEUni} over random masks. In all seven arms it is
-1.8 to 4.4 times that ECE, its interval above it (the native gap is 0.013 to 0.018 for the base
+1.8 to 4.4 times its arm's random-mask ECE, its interval above it (the native gap is 0.013 to 0.018 for the base
 and 110M models, 0.079 to 0.176 for the instruct models), and the instruct models reach 0.15 to
 0.27 with 128--255 positions masked. Commit-time miscalibration has been reported for whole
 answers \citep{jiang2026bayeser}; here it holds per committed token, in every arm. The mask
@@ -279,8 +275,8 @@ of the 4-bit run (fit half for calibrators), 4-bit NF4 in place of fp16 changes 
 \subsection{Robustness}
 \label{sec:c1-robust}
 
-E1 and E2 are repeated without contaminated documents and on time-split text, and E2 under
-two calibrator changes (E1 uses no calibrator); none of these is in a Holm family (full table
+E1 and E2 are repeated without contaminated documents, on time-split text and with an
+independent estimator, and E2 under two calibrator changes (E1 uses no calibrator); none of these is in a Holm family (full table
 in the code archive).
 
 \paragraph{Contamination-filtered.}
@@ -300,10 +296,10 @@ LLaDA-8B-Base, \CresCI{COneDreamBaseTimeSplitContrastUni} for Dream-7B-Base and
 Table~\ref{tab:c1-main}); a quarter of the documents, so wider intervals.
 % E2 macros if wanted: COneFieldContrast{LladaBase,DreamBase,Mdlm}TimeSplitUni[Lo|Hi].
 On unseen text the small negative E1 of the two base models is not reproduced: both
-intervals hold 0, so their FineWeb result may owe something to text they have seen or to the
+intervals hold 0, so their FineWeb-Edu result may owe something to text they have seen or to the
 change of domain from web pages to Wikipedia, or be too small to detect here. The 110M model's
-is larger than on FineWeb (\Cres{COneMdlmContrastUni} there); it saw neither set, so domain
-(it was trained on FineWeb-Edu) or noise, not contamination, explains the move. In decoder states E1 stays
+is larger than on FineWeb-Edu (\Cres{COneMdlmContrastUni} there); it saw neither set, so domain
+(it was trained on FineWeb-Edu), not contamination, explains the move. In decoder states E1 stays
 positive, its interval excluding 0, for all three models, so the decoder-state result is not
 confined to text the models may have seen.
 
@@ -327,3 +323,13 @@ vs \Cres{COneFieldContrastLladaBaseUni}.
 %   not change any claim." else name the cells (the E2 add. column; COneFieldAdditiveAgree<Label><Tag>
 %   = no): "E2 in <cell> depends on the form of the calibrator; we do not rely on it."
 %   (COneFieldAdditiveShift<Label><Tag> is additive minus interacted.)
+
+\paragraph{Independent estimator.}
+% dorigo/report-40754 (HF 21130a52), report half, k4 arms; numbers hand-typed from summary_e2.csv
+% (E1 rounded to 3 dp as in tab:c1-main).  Text: ayush, 20261027T201129Z-ayush-9256.
+An exact all-subsets estimator of $\Delta(m)$ with its own spline-logistic calibrator, and the
+local/remote split of \citet{dorigo2026greedy}, reproduces E1 in all four base cells (LLaDA,
+Dream; decoder $k{=}4$: $0.007$, $0.015$; uniform: $-0.003$, $-0.003$;
+Table~\ref{tab:c1-main}: $0.006$, $0.015$, $-0.003$, $-0.002$). The decoder growth is the own
+term; Dream's field term is small ($0.002$) but identified, LLaDA's is not (residual
+$-0.005$ [$-0.007$, $-0.004$], refits of opposite sign).
