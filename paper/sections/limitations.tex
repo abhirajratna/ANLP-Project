@@ -8,7 +8,7 @@
 
 \paragraph{Scope.}
 We audit two 8B-scale families and one 110M MDLM on FineWeb-Edu, GSM8K and MBPP, with model
-type and text type confounded; the 8B models run in fp16, as our GPUs lack bfloat16. C2's
+type and text type confounded; the 7--8B models' C1 traces are in fp16, as the GPUs we traced on lack bfloat16. C2's
 exact terms cover one synthetic distribution and one 110M fine-tune.
 
 \paragraph{Design and estimators.}
@@ -26,8 +26,8 @@ models.
 %   the 8B arms, change this paragraph rather than Sec. 4.
 
 \paragraph{Exploratory analyses and C3.}
-Analyses outside the Holm families (decoder states at $k\in\{2,8\}$, matched uniform states,
-$\beta_z$, $\gamma_k$, E3, T8, the clean and time-split runs) carry no claims. C3a is fitted on
+Analyses outside the E1/E2 Holm families (decoder states at $k\in\{2,8\}$, matched uniform states,
+$\beta_z$, $\gamma_k$, E3, T8, the contamination-filtered and time-split runs) carry no claims. C3a is fitted on
 teacher-forced states but applied to free-running generation, and compared on one model, with
 greedy decoding, one seed and two tasks.
 % TODO(results): name the T12 precision (bf16 on an A100 or fp16 on Ada; PR #7 allows both),

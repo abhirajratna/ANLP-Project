@@ -432,9 +432,10 @@ def test_shared_error_term_and_icc_macros_and_table(results, tmp_path):
             for j, m in enumerate(P.SHARED_MS):
                 row = next(x for x in r["decomposition"] if x["m"] == m)
                 assert f"{abs(row['residual']):.3f}" in cells[2 + j]
-                assert mine[f"COne{label}Residual{P._WORDS[m]}{tag}"] == f"{row['residual']:.3f}"
-                assert mine[f"COne{label}Residual{P._WORDS[m]}{tag}Lo"] == f"{row['residual_ci'][0]:.3f}"
-                assert mine[f"COne{label}Residual{P._WORDS[m]}{tag}Hi"] == f"{row['residual_ci'][1]:.3f}"
+                nd = P.ci_decimals({"value": row["residual"], "ci": row["residual_ci"]})
+                assert mine[f"COne{label}Residual{P._WORDS[m]}{tag}"] == f"{row['residual']:.{nd}f}"
+                assert mine[f"COne{label}Residual{P._WORDS[m]}{tag}Lo"] == f"{row['residual_ci'][0]:.{nd}f}"
+                assert mine[f"COne{label}Residual{P._WORDS[m]}{tag}Hi"] == f"{row['residual_ci'][1]:.{nd}f}"
             icc = r["icc_residuals"]
             assert f"{abs(icc['icc']):.3f}" in cells[4]
             assert mine[f"COne{label}ICC{tag}"] == f"{icc['icc']:.3f}"
@@ -556,3 +557,15 @@ def test_the_script_does_not_touch_the_frozen_analysis():
     """analyze_traces.py is frozen by the pre-registration; this feature only reads its output."""
     src = (ROOT / "scripts" / "c1_paper_outputs.py").read_text()
     assert "import analyze_traces" not in src and "from analyze_traces" not in src
+
+
+def test_ci_macros_get_decimals_where_rounding_misleads():
+    # [0.0005, 0.0014] would print as [0.001, 0.001]; an interval excluding 0 must not print a 0.000 end
+    m = P.Macros()
+    P._est_macros(m, "Narrow", {"value": 0.00093, "ci": [0.0005, 0.0014]})
+    P._est_macros(m, "NearZero", {"value": -0.0012, "ci": [-0.0021, -0.0003]})
+    P._est_macros(m, "Plain", {"value": 0.025, "ci": [0.011, 0.040]})
+    got = dict(l[len("\\newcommand{\\"):-1].split("}{") for l in m.lines)
+    assert (got["Narrow"], got["NarrowLo"], got["NarrowHi"]) == ("0.0009", "0.0005", "0.0014")
+    assert (got["NearZero"], got["NearZeroLo"], got["NearZeroHi"]) == ("-0.0012", "-0.0021", "-0.0003")
+    assert (got["Plain"], got["PlainLo"], got["PlainHi"]) == ("0.025", "0.011", "0.040")
