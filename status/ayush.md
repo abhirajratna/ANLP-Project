@@ -1,6 +1,6 @@
 ---
 member: ayush
-updated: 2026-10-26T19:08:55Z
+updated: 2026-10-27T13:52:42Z
 branch: main
 ---
-DIG E1/E2 handed to abhiraj's Ada (after 41002); Jarvis DIG dropped, wallet kept for T12
+T12 on Jarvis: GO from ayush; waiting on parth's launcher confirm + team API key
