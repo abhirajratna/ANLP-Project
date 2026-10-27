@@ -211,13 +211,21 @@ def est_ci(e, nd: int = 3, marks: str = "") -> str:
     lo, hi = _bare(ci[0], nd), _bare(ci[1], nd)
     if "---" in (lo, hi):
         return num(e["value"], nd) + marks
-    # More decimals (up to 5) where rounding misleads: an interval that excludes 0 printed with
-    # a 0.000 end, or a nonzero-width interval printed as [x, x].
-    while nd < 5 and ((ci_excludes_zero(e) and 0.0 in (float(lo), float(hi)))
-                      or (lo == hi and ci[0] != ci[1])):
-        nd += 1
-        lo, hi = _bare(ci[0], nd), _bare(ci[1], nd)
+    nd = ci_decimals(e, nd)
+    lo, hi = _bare(ci[0], nd), _bare(ci[1], nd)
     return f"{num(e['value'], nd)}{marks} {{\\scriptsize[${lo}$, ${hi}$]}}"
+
+
+def ci_decimals(e, nd: int = 3) -> int:
+    """``nd``, raised (up to 5) where rounding misleads: an interval that excludes 0 printed with
+    a 0.000 end, or a nonzero-width interval printed as [x, x]."""
+    ci = e["ci"]
+    while nd < 5:
+        lo, hi = f"{ci[0]:.{nd}f}", f"{ci[1]:.{nd}f}"
+        if not ((ci_excludes_zero(e) and 0.0 in (float(lo), float(hi))) or (lo == hi and ci[0] != ci[1])):
+            break
+        nd += 1
+    return nd
 
 
 def ci_excludes_zero(e) -> bool:
@@ -583,8 +591,10 @@ def _est_macros(m: Macros, name: str, e, nd: int = 3) -> None:
     """``name`` (value), ``name``Lo and ``name``Hi (the 95% CI) from ``{value, ci}``."""
     if not e or not _ok(e.get("value")):
         return
-    m.add(name, f"{e['value']:.{nd}f}")
     ci = e.get("ci") or []
+    if len(ci) == 2 and _ok(ci[0]) and _ok(ci[1]):
+        nd = ci_decimals(e, nd)                 # value and interval keep one number of decimals
+    m.add(name, f"{e['value']:.{nd}f}")
     if len(ci) == 2 and _ok(ci[0]) and _ok(ci[1]):
         m.add(name + "Lo", f"{ci[0]:.{nd}f}")
         m.add(name + "Hi", f"{ci[1]:.{nd}f}")
@@ -740,10 +750,7 @@ def summary_macros(R: Results, m: Macros) -> None:
             tag = label + arm_tag(mask)
             fc = r.get("field_contrast") or {}
             if _ok(fc.get("value")):
-                m.add(f"{p}FieldContrast{tag}", f"{fc['value']:.3f}")
-                if len(fc.get("ci") or []) == 2:
-                    m.add(f"{p}FieldContrast{tag}Lo", f"{fc['ci'][0]:.3f}")
-                    m.add(f"{p}FieldContrast{tag}Hi", f"{fc['ci'][1]:.3f}")
+                _est_macros(m, f"{p}FieldContrast{tag}", fc)
                 m.add(f"{p}FieldDeclared{tag}", _yn(fc.get("declared")))
             if "declared" in (r.get("contrast") or {}):
                 m.add(f"{p}ContrastDeclared{tag}", _yn(r["contrast"]["declared"]))
