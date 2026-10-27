@@ -44,7 +44,7 @@ the next 50 (\VivaLladaContamFlagged/\VivaLladaContamDocs{} LLaDA,
 \VivaDreamContamFlagged/\VivaDreamContamDocs{} Dream); 8B FineWeb endpoints are also reported without them.
 % Seed 20260917: artifacts/split_manifest.meta.json; tasks: scripts/make_task_split.py.
 Every set is split 50/50 by document (FineWeb: \VivaNFit{}/\VivaNReport{}
-before the length filter). Calibrators, $f$ and temperatures are fitted on the fit half; every C1 number comes from the report half.
+before the length filter). Calibrators, the spline $f$ of Eq.~2/3 and temperatures are fitted on the fit half; every C1 number comes from the report half.
 
 \begin{table}[t]
   \centering\footnotesize
@@ -152,7 +152,7 @@ fits $c=\sigma(\ell/T)$ per mask-rate bin on the fit half. \emph{Precision} comp
 The document is the unit. Intervals are 95\% percentile intervals over \VivaNBoot{} document
 resamples, one matrix per run shared across pool sizes, estimands and arms, so contrasts
 come from differenced draws. Eq.~2/3 are refit per resample and use 1,000 (knot panels: 200).
-Calibrators are not refitted, so E2 conditions on the fit half.
+Calibrators are not refitted, so E2 intervals condition on the fit half.
 % prereg/deviations.md item 7; prereg/analysis_commands.sh (--eq-boot 1000; 200 for knot runs);
 % 10,000 resamples of the Eq.~2/3 refits would take weeks per run.
 

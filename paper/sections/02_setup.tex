@@ -40,7 +40,7 @@ of their marginals; with $p^*$ the true joint of $x_S$ given $\xobs$ and $p^*_i$
 where $\mathrm{TC}(x_S\mid\xobs)=\sum_{i\in S}H(p^*_i)-H(p^*_S)$ is the total correlation, zero
 iff they are conditionally independent. (A) is what no product of marginals can
 represent, (B) their error \citep[cf.][]{benhamu2025entropy}; \S\ref{sec:c2}
-estimates both, C1 only (B).
+estimates both, C1 only the marginals.
 
 \paragraph{The committed-token gap.}
 Under teacher forcing (\S\ref{sec:instrument}) correctness $a_i=\1\{v_i=x_{0,i}\}$ against the
@@ -52,12 +52,12 @@ With $\E_m$ the average over states, pools of size $m$ and winners, the
   \Delta(m) = \E_m\,[\,c - a\,],
   \label{eq:gap}
 \end{equation}
-confidence minus accuracy, so positive means overconfident.$\Delta(1)$ is the ordinary signed calibration error of a masked
+confidence minus accuracy, so positive means overconfident. $\Delta(1)$ is the ordinary signed calibration error of a masked
 position; larger $m$ stands for a larger field, as at early steps and in long outputs.
 
 \paragraph{The winner's curse.}
 The largest of $m$ noisy estimates tends to be one whose error pushed it up
-\citep{efron2011tweedie,andrews2024winners}; if that acts, $\Delta(m)$ grows with $m$. Let $\pi(\ell)=\Pr(a=1\mid\ell)$ be the calibration curve over all masked positions (the
+\citep{efron2011tweedie,andrews2024winners}; if that acts on decoding, $\Delta(m)$ grows with $m$. Let $\pi(\ell)=\Pr(a=1\mid\ell)$ be the calibration curve over all masked positions (the
 $m=1$ population) and $\pi(\ell,s)=\Pr(a=1\mid\ell,s)$ its context-aware version.
 
 \begin{proposition}[Winning adds nothing]
