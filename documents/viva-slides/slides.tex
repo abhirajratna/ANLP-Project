@@ -597,41 +597,27 @@
   Backup: full table with intervals, all-arm curves.}
 \end{frame}
 
-% ================================================================ 10 C1 results: Delta(m) and field term
-\begin{frame}{C1 results: how the gap grows with the field, and how much is the field term}
-  \framesubtitle{Main arm: \VivaCOneMainArmName{}; the other arms are in the backup}
-  \vspace{0.5mm}
-  \begin{columns}[T,onlytextwidth]
-    \begin{column}{0.5\textwidth}
-      \centering
-      \COneFigure{c1_delta_m_\VivaCOneMainArm}{35mm}{TUE 27 OCT}{\texttt{results/c1/\VivaCOneMainArm/results.json}}{%
-        $\Delta(m)$ (solid, 95\% band) and its field term (dashed) against field size $m$,
-        for uniform and decoder $k{=}4$ states.}
-    \end{column}
-    \begin{column}{0.48\textwidth}
-      \centering
-      \COneFigure{c1_reliability_\VivaCOneMainArm}{35mm}{TUE 27 OCT}{\texttt{results/c1/\VivaCOneMainArm/results.json}}{%
-        Reliability curve over all masked positions (equal-mass bins), uniform and decoder
-        $k{=}4$ states, with the ECE.}
-    \end{column}
-  \end{columns}
-  \vspace{1.5mm}
-  \begin{columns}[T,onlytextwidth]
-    \begin{column}{0.5\textwidth}
-      \footnotesize\raggedright
-      \lbl{Left.} Blue: uniform; orange: decoder states. Solid $\Delta(m)$, dashed its field term;
-      the gap between them is own miscalibration. Rising solid: E1; rising dashed: E2.
-    \end{column}
-    \begin{column}{0.48\textwidth}
-      \footnotesize\raggedright
-      \lbl{Right.} Below the diagonal: confidence exceeds accuracy. ECE sees only this picture,
-      not the split into own and field terms (T0).
-    \end{column}
-  \end{columns}
-  \note{LLaDA-8B-Base: in uniform states Delta(m) falls slightly with m (E1 small, negative); in decoder
-  states it rises (E1 positive). The dashed field terms stay near zero in both, so the change is own
-  miscalibration, not a winner's curse. Estimator reads the field term slightly high in T0, so a small
-  positive E2 is weaker than its interval suggests. Other arms: backup.}
+% ================================================================ 10 C1 results: every arm, and what the decoder commits
+\begin{frame}{C1 results: the gap grows with the field wherever a decoder chooses}
+  \framesubtitle{$\Delta(m)$ per arm, uniform vs decoder $k{=}4$ states; right: the tokens the decoder commits}
+  \centering
+  \COneFigure{c1_overview}{46mm}{THU 29 OCT}{\texttt{results/c1/<Label>/results.json}}{%
+    Seven panels, one per arm: $\Delta(m)$ against field size $m$, uniform and decoder $k{=}4$
+    states, the arm's ECE over random masks dotted. Eighth panel: that ECE beside the gap of the
+    tokens the decoder commits with 32--63 and 128--255 positions masked.}
+  \par\vspace{1mm}
+  \begin{takeaway}[fontupper=\footnotesize]
+    E1 is positive and claimed in all seven decoder-state cells. Committed tokens are
+    1.8--4.4$\times$ as overconfident as the random-mask ECE says, in every model (descriptive).
+  \end{takeaway}
+  \note{Blue: uniform states; orange: the states the top-k decoder visits. Dotted line: the arm's ECE
+  over random masks, the usual calibration number. In decoder states Delta rises with m in every arm, so a
+  token that won a field of 32 is more overconfident than a random masked position: E1 claimed in all seven
+  decoder cells. In uniform states the sign varies. Y scales differ: base and 110M stay below 0.02, instruct
+  reach 0.3. Right panel: c - a over the tokens the decoder actually commits, with 32-63 positions still masked,
+  is 1.8 to 4.4 times the random-mask ECE in every arm, its interval above it; the instruct models reach 0.15
+  to 0.27 with 128-255 masked. The mask count mixes field size with lost context, so this panel describes and
+  does not test anything. Main-arm detail and the mechanism split: backup.}
 \end{frame}
 
 % ================================================================ 11 C1 diagnostic: beta_z
@@ -776,15 +762,15 @@
   \begin{columns}[T,onlytextwidth]
     \begin{column}{0.5\textwidth}
       \begin{itemize}\footnotesize
-        \item \textbf{Instances}: the simple fields of \VivaProbeSchemas{} SchemaStore schemas,
+        \item \textbf{Instances}: the simple fields (\emph{slots}) of \VivaProbeSchemas{} SchemaStore schemas,
               \VivaProbeFieldsMin–\VivaProbeFieldsMax{} per schema, single-token values with
               seeded Dirichlet marginals.
-        \item \textbf{Dependency knob $\rho$}: fields are paired. With probability $\rho$,
+        \item \textbf{Dependency knob $\rho$}: slots are paired. With probability $\rho$,
               stated in a marker at the start, the follower is a fixed function of its leader;
               otherwise an independent draw. So $p^{*}$ is exact.
         \item \textbf{Model}: our 110M fine-tuned on \VivaProbeTrainK k instances; evaluated
               on \CTwoProbeNInstances{} (\CTwoProbeNInstancesPerRho{} per $\rho$).
-        \item \textbf{Decoding}: all values masked; each step a rule picks $k$ fields, the most
+        \item \textbf{Decoding}: all values masked; each step a rule picks $k$ slots, the most
               confident or at random, and we fill them with the true values.
         \item \textbf{Check}: \A + \B equals the directly computed KL; largest error
               \CTwoIdentityMaxErrAll{} nats (bar \CTwoIdentityTol).
@@ -808,7 +794,7 @@
         are committed together.\par\vspace{0.6mm}
         \B $= \sum_{i\in S}\mathrm{KL}(p^{*}_i \,\|\, p_{\theta,i})$: mass off the allowed values
         counts against \B.\par\vspace{0.6mm}
-        Summed over steps, per field, bootstrapped over instances.
+        Summed over steps, per slot, bootstrapped over instances.
       \end{panel}
     \end{column}
   \end{columns}
@@ -837,7 +823,7 @@
         \paneltitle{$\rho = 1$, $k = 8$, confidence top-$k$}
         \A \CTwoConfAatRhoOneKEight{} \ci{\CTwoConfAatRhoOneKEightLo, \CTwoConfAatRhoOneKEightHi}
         and \B \CTwoConfBatRhoOneKEight{} \ci{\CTwoConfBatRhoOneKEightLo, \CTwoConfBatRhoOneKEightHi}
-        nats per field: \A is \CTwoConfShareAatRhoOneKEight\% of the total.
+        nats per slot: \A is \CTwoConfShareAatRhoOneKEight\% of the total.
       \end{panel}
       \src{Main model: the fine-tune that never saw the $\rho$ marker masked (choice in the
       backup). \CTwoProbeNBoot{} bootstrap resamples over instances.}
@@ -1323,6 +1309,56 @@
       knots or on contaminated text. E2 uses a calibrator, E1 does not.
     \end{column}
   \end{columns}
+\end{frame}
+
+\begin{frame}{Backup: the main arm, its field term and reliability curve}
+  \framesubtitle{Main arm: \VivaCOneMainArmName{}; the other arms are in the backup}
+  \vspace{0.5mm}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.5\textwidth}
+      \centering
+      \COneFigure{c1_delta_m_\VivaCOneMainArm}{35mm}{TUE 27 OCT}{\texttt{results/c1/\VivaCOneMainArm/results.json}}{%
+        $\Delta(m)$ (solid, 95\% band) and its field term (dashed) against field size $m$,
+        for uniform and decoder $k{=}4$ states.}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \COneFigure{c1_reliability_\VivaCOneMainArm}{35mm}{TUE 27 OCT}{\texttt{results/c1/\VivaCOneMainArm/results.json}}{%
+        Reliability curve over all masked positions (equal-mass bins), uniform and decoder
+        $k{=}4$ states, with the ECE.}
+    \end{column}
+  \end{columns}
+  \vspace{1.5mm}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.5\textwidth}
+      \footnotesize\raggedright
+      \lbl{Left.} Blue: uniform; orange: decoder states. Solid $\Delta(m)$, dashed its field term;
+      the gap between them is own miscalibration. Rising solid: E1; rising dashed: E2.
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \footnotesize\raggedright
+      \lbl{Right.} Below the diagonal: confidence exceeds accuracy. ECE sees only this picture,
+      not the split into own and field terms (T0).
+    \end{column}
+  \end{columns}
+  \note{LLaDA-8B-Base: in uniform states Delta(m) falls slightly with m (E1 small, negative); in decoder
+  states it rises (E1 positive). The dashed field terms stay near zero in both, so the change is own
+  miscalibration, not a winner's curse. Estimator reads the field term slightly high in T0, so a small
+  positive E2 is weaker than its interval suggests. Other arms: backup.}
+\end{frame}
+
+\begin{frame}{Backup: what makes E1 grow}
+  \framesubtitle{E1 (bar) split into own miscalibration, field term and shared errors; the points sum to the bar}
+  \centering
+  \COneFigure{c1_mechanisms}{56mm}{THU 29 OCT}{\texttt{results/c1/<Label>/results.json}}{%
+    One row per arm and kind of state: E1 as a bar, and the three terms of the split at
+    $m{=}\VivaPoolMax$ minus $m{=}1$; open square: the field term under the additive calibrator.}
+  \note{Point values, no intervals; separate x scales for base/110M and instruct. Base and 110M decoder
+  cells: the growth is mostly own miscalibration, the field term small (of the order of the estimator's
+  T0 bias). Instruct cells: the field term is a real part of E1, largest for Dream-I MBPP; shared errors
+  are large on MBPP. Open squares: under the additive calibrator the field term is smaller in all eight
+  instruct cells (0 to 72\% of its primary size), so its size depends on the calibrator's form; it keeps its
+  sign with the interval excluding 0 in seven, not in LLaDA-I MBPP uniform, where it drops to 0.}
 \end{frame}
 
 \begin{frame}{Backup: $\Delta(m)$ in every arm}
