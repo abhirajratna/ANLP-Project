@@ -123,7 +123,7 @@ Items 7-14 are reserved for the T13 ablation entries (branch `t13-ablations`).
     - Speed of a configuration = 256 N / sum(NFE) over its N problems (total generated
       positions over total forward passes), not the mean of per-problem ratios.
     - Knobs are calibrated per task, on fit-half problems only (GSM8K and MBPP each from
-      their own run of `prereg/t12_cal.json`, 25 configurations; 32 and 24 problems in
+      their own run of `prereg/t12_cal.json`, 32 configurations (after the extension below); 32 and 24 problems in
       `scripts/jarvis_t12.sh calibrate`). `scripts/pick_knobs.py` refuses any report-half
       record. top-k, margin and PC-Sampler are exact at k = 2, 4, 8 tokens per step.
       Threshold, entropy-bounded, KLASS and C3a knobs are interpolated, in log(speed), to
@@ -145,7 +145,17 @@ Items 7-14 are reserved for the T13 ablation entries (branch `t13-ablations`).
       (target 4 tokens per step), at the C3a alpha that `scripts/pick_knobs.py` writes to
       `prereg/t12_grid_<task>.json`; speeds 1 and 3 appear in full in the appendix figure and
       the code archive's results table, and no slot is chosen after a report-half number is read.
-    - Files: the calibration grid `prereg/t12_cal.json` and `scripts/pick_knobs.py` are at
+    - Grid extension (fit half only). The first fit-half calibration (375b079, 25
+      configurations, Jarvis instance 550443, 1,400 records) could not reach 7.2 tokens per
+      step for MBPP threshold, C3a and entropy-bounded, or for GSM8K entropy-bounded, so
+      `pick_knobs.py` refused. Using those fit-half speeds only, the grid was extended to 32
+      configurations (threshold tau 0.2 and 0.1; entropy-bounded gamma 10, 30 and 100; C3a
+      alpha 0.75 and 0.9; `prereg/t12_cal.json` at 4435c13, sha256 7d58d9a0e633...) and
+      recalibrated (run 7d58d9a0, 1,792 records, 0 errors) before any report-half
+      generation. KLASS remains unmatched at speed 3 (4.77 and 4.32 tokens per step), as the
+      KLASS rule allows.
+    - Files: the calibration grid `prereg/t12_cal.json` is at branch `ayush/t12-grids`,
+      commit `4435c13041227cfd3d6f13a6d424300c6b2b3092`; `scripts/pick_knobs.py` is at
       branch `parth/t12-driver`, commit `daff750c251f8e49fb62c40f8fad12b80cb4ee04`. The final per-task grids
       (`prereg/t12_grid_gsm8k.json`, `prereg/t12_grid_mbpp.json`) are committed before the
       report-half run, and their hashes are recorded on the coordination bus.
