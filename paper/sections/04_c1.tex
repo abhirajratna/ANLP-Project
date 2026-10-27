@@ -73,7 +73,8 @@ We claim an E1 or E2 effect only if it is declared, its 95\% interval excluding 
 Holm rejects it at $\alpha=0.05$ within its family (14 tests; a missing cell counts as $p=1$).
 Everything else is exploratory, reported with its interval and no claim: decoder states at
 $k\in\{2,8\}$, matched uniform states, $\beta_z$, $\gamma_k$, E3, the native gap, the controls,
-and the contamination-filtered, time-split, additive-calibrator and knot runs.
+and the contamination-filtered, time-split, additive-calibrator, knot and independent-estimator
+runs.
 
 % ------------------------------------------------------------------- floats
 \begin{table*}[t]
@@ -326,10 +327,11 @@ vs \Cres{COneFieldContrastLladaBaseUni}.
 
 \paragraph{Independent estimator.}
 % dorigo/report-40754 (HF 21130a52), report half, k4 arms; numbers hand-typed from summary_e2.csv
-% (E1 rounded to 3 dp as in tab:c1-main).  Text: ayush, 20261027T201129Z-ayush-9256.
-An exact all-subsets estimator of $\Delta(m)$ with its own spline-logistic calibrator, and the
-local/remote split of \citet{dorigo2026greedy}, reproduces E1 in all four base cells (LLaDA,
-Dream; decoder $k{=}4$: $0.007$, $0.015$; uniform: $-0.003$, $-0.003$;
-Table~\ref{tab:c1-main}: $0.006$, $0.015$, $-0.003$, $-0.002$). The decoder growth is the own
-term; Dream's field term is small ($0.002$) but identified, LLaDA's is not (residual
-$-0.005$ [$-0.007$, $-0.004$], refits of opposite sign).
+% (E1 rounded to 3 dp as in tab:c1-main); field_contrast_est decoder:topk_conf:k4 from summary_e2.csv;
+% null floor 0.0031 from summary.md.  Text: abhiraj 20261027T203627Z-abhiraj-f000 (ayush agreed).
+An exact all-subsets estimator of $\Delta(m)$ with its own spline-logistic calibrator and
+own/field split (after \citealt{dorigo2026greedy}) reproduces E1 in all four base cells (LLaDA,
+Dream; decoder $k{=}4$: $0.007$, $0.015$; uniform: $-0.003$, $-0.003$). The decoder growth is
+mostly the own term. Its field terms match E2 in sign and size, no larger than the $0.003$ it
+reads with no field term, except LLaDA's in decoder states ($-0.0004$ vs $0.004$), which is not
+identified (residual at $m=\VivaPoolMax$ $-0.005$ [$-0.007$, $-0.004$], refits of opposite sign).
