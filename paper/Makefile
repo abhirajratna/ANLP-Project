@@ -1,5 +1,5 @@
 # One build command: `make` (needs tectonic; fetches TeX packages on first run).
-main.pdf: main.tex sections/*.tex refs.bib ../artifacts/probe/macros_t9.tex ../artifacts/c2/macros_t10.tex ../documents/viva-slides/macros_setup.tex \
+main.pdf: main.tex sections/*.tex refs.bib ../artifacts/t0/macros.tex ../artifacts/probe/macros_t9.tex ../artifacts/c2/macros_t10.tex ../documents/viva-slides/macros_setup.tex \
 		$(wildcard tables/c1/*.tex tables/c1/macros/*.tex figures/c1/*.pdf)
 	tectonic main.tex
 

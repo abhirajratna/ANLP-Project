@@ -53,11 +53,11 @@ With $\E_m$ the average over states, pools of size $m$ and winners, the
   \label{eq:gap}
 \end{equation}
 confidence minus accuracy, so positive means overconfident. $\Delta(1)$ is the ordinary signed calibration error of a masked
-position; larger $m$ stands for a larger field, as at early steps and in long outputs.
+position; larger $m$ stands for a larger field, as at early steps and in long outputs, and random pools
+vary $m$ with the state held fixed.
 
 \paragraph{The winner's curse.}
-The largest of $m$ noisy estimates tends to be one whose error pushed it up
-\citep{efron2011tweedie,andrews2024winners}; if that acts on decoding, $\Delta(m)$ grows with $m$. Let $\pi(\ell)=\Pr(a=1\mid\ell)$ be the calibration curve over all masked positions (the
+If the winner's curse \citep{efron2011tweedie,andrews2024winners} acts on decoding, $\Delta(m)$ grows with $m$. Let $\pi(\ell)=\Pr(a=1\mid\ell)$ be the calibration curve over all masked positions (the
 $m=1$ population) and $\pi(\ell,s)=\Pr(a=1\mid\ell,s)$ its context-aware version.
 
 \begin{proposition}[Winning adds nothing]
@@ -71,7 +71,7 @@ independently of all $(\ell_j,a_j)_{j\in M}$. Then the winner $i$ of $P$ satisfi
 \end{proposition}
 
 Winning depends only on the other scores, which say nothing about $a_i$, so selection does not
-bias a correct posterior \citep{efron2011tweedie}, however unequal the noise scales; it acts
+bias a correct posterior \citep{efron2011tweedie}; it acts
 only through context:
 
 \begin{proposition}[Exact split of the gap]

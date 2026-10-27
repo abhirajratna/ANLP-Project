@@ -11,7 +11,7 @@
 % page this appendix has; the untuned numbers are in Sec. 5 as macros.)
 % =====================================================================================
 
-\subsection{C2: the main model and T10 details}
+\subsection{C2: the main model and real-text details}
 \label{sec:c2-app}
 
 % Bar, effects, NELBO and the choice: artifacts/probe/main_variant.json (via macros_t9.tex).
@@ -19,8 +19,9 @@
 One fine-tune masked the $\rho$ marker like any token (\CTwoAltFtTokensM{}M tokens); the main
 model never did, as at evaluation (\CTwoFtTokensM{}M). Neither moved the copied value's
 probability by our bar of \CTwoMarkerBar{} when the marker is switched from $\rho=1$ to $0$
-with only the leader observed (\CTwoAltMarkerEffect{} and \CTwoMarkerEffect), so we took the
-lower validation NELBO (\CTwoValNelbo{} against \CTwoAltValNelbo{} nats per token). The other
+with only the leader observed (main \CTwoMarkerEffect, other \CTwoAltMarkerEffect), so we took the
+lower validation NELBO (main \CTwoValNelbo, other \CTwoAltValNelbo{} nats per token; the main
+model also trained on more tokens). The other
 (Figure~\ref{fig:c2-alt}) crosses over at $k=\CTwoAltConfCrossKatRhoOne$ for every
 $\rho\ge\CTwoAltConfCrossRhoMin$ under both rules.
 
