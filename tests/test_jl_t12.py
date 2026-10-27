@@ -436,6 +436,15 @@ def test_the_bootstrap_refuses_a_job_nothing_would_pause(tmp_path):
     assert args[0] == "job" and args[1].isdigit() and args[2] == "smoke"
 
 
+def test_the_bootstrap_marks_the_repo_safe_on_the_instance(tmp_path):
+    # Jarvis containers own the repo dir as another uid: git refuses it ("dubious ownership") unless
+    # it is a safe.directory. The heredoc is quoted, so $REPO must reach the instance unexpanded.
+    boot = make_bootstrap(World(tmp_path)).read_text()
+    line = 'git config --global --add safe.directory "$REPO"'
+    assert line in boot
+    assert boot.index('REPO="$BASE/ANLP-Project"') < boot.index(line) < boot.index('git -C "$REPO" config core.autocrlf')
+
+
 @pytest.mark.skipif(shutil.which("git") is None, reason="no git")
 def test_the_bootstrap_restores_partial_shards_only_where_the_instance_has_none(tmp_path):
     w = World(tmp_path)

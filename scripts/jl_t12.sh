@@ -205,6 +205,7 @@ if ! command -v git >/dev/null 2>&1; then
     (apt-get update -qq && apt-get install -y -qq git) >/dev/null 2>&1 || true
 fi
 command -v git >/dev/null 2>&1 || { echo "[bootstrap] FATAL: git is not installed and apt-get could not install it" >&2; exit 1; }
+git config --global --get-all safe.directory 2>/dev/null | grep -qx "$REPO" || git config --global --add safe.directory "$REPO"   # repo dir owned by another uid on Jarvis containers
 [ -d "$REPO/.git" ] || git init -q "$REPO"
 git -C "$REPO" config core.autocrlf false
 git -C "$REPO" fetch -q "$IN/repo.bundle" "+refs/jl-t12/commit:refs/jl-t12/commit"
