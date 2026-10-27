@@ -196,9 +196,25 @@ uniform: $\gamma_2=\Cres{COneLladaBaseGammaTwoUni}$, $p_{\mathrm{Holm}}=\Cres{CO
 %    differs from rank 1 once the state is held fixed."  (Unclear sign: name the rows.)
 
 % ------------------------------------------------------------------- E3
-\subsection{Decoder states (E3)}
+\subsection{Decoder states}
 \label{sec:c1-e3}
 
+\paragraph{Committed tokens.}
+% Native gap (sec:estimands): macros COne<Label>Native<level>DecTopkConfKFour[Lo|Hi] (PR #57),
+% groups of >= 10 documents.  Ranges below from the v1.1 dry run (res/dry, 27 Oct): native at
+% |M_t| 32-63 / uniform-state ECE = 1.85 (DreamBase) .. 4.35 (DreamInstructMbpp), CI low end
+% above the ECE in all 7; / Delta(1) = 1.84 .. 3.29.  Re-check after the Thursday regen.
+The native gap measures what a decoder actually commits. For tokens the $k{=}4$ decoder
+commits with 32--63 positions masked it is
+\CresCI{COneLladaInstructGsmNativeThirtyTwoDecTopkConfKFour} for LLaDA-8B-Instruct on GSM8K,
+against an ECE of \Cres{COneLladaInstructGsmECEUni} over random masks. In all seven arms it is
+1.8 to 4.4 times that ECE, its interval above it (0.013 to 0.018 for the base and 110M models,
+0.079 to 0.176 for the instruct models), and the instruct models reach 0.15 to 0.27 with
+128--255 positions masked. A calibration check on random masks, the masks these models are
+trained on, understates the overconfidence of committed tokens in every model we traced. The
+mask count mixes field size with lost context, so this describes and does not test E1.
+
+\paragraph{E3.}
 E3 compares accuracy at equal confidence and mask rate in decoder and in uniform states
 (\S\ref{sec:estimands}); the decoder is teacher-forced, so a difference comes from which
 positions remain masked, not from its own mistakes. All E3 rows are exploratory (full table in the code archive). For
