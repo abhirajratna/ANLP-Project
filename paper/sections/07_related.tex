@@ -1,6 +1,8 @@
 % =====================================================================================
 % Sec. 7  Related work.  Owner: ayush.  First draft by ojas (branch ojas/paper-related) for
-% ayush to edit and own.  Every citation is on documents/lit-review-list.md; the keys are in
+% ayush to edit and own.  Citations are on documents/lit-review-list.md, except the seven added
+% in PR #24 (jiang2026bayeser, yadav2026bidirectional, asaria2026diffusiongemma, dalal2026beam,
+% dawid1994selection, kull2015decomp, perezlebel2023grouping), checked on arXiv/Crossref; keys in
 % refs.bib under "Sec. 7".  Descriptions of other work follow the list and the proposal's
 % Sec. 3; check each against the paper itself during the citation pass (final plan, Ayush 5).
 % Budget (plan v2 Sec. 8): Sec. 7 + limitations = 1 page; this draft is ~0.6 of a column.
@@ -31,16 +33,16 @@ tokens they commit, which C1 measures; C3a thresholds a recalibrated probability
 (\S\ref{sec:c3}).
 
 \paragraph{Calibration and the winner's curse.}
-Calibration is usually measured over all predictions \citep{guo2017calibration}. The closest
-work, PC-Sampler \citep{huang2025pcsampler}, recalibrates the commit statistic for a
+Calibration is usually measured over all predictions \citep{guo2017calibration}. Closest in
+mechanism, PC-Sampler \citep{huang2025pcsampler}, recalibrates the commit statistic for a
 positional bias; we add its weight as a covariate. Keeping the largest of noisy estimates
 biases it upward \citep{andrews2024winners}, more so as the pool grows, as in beam search
 \citep{dalal2026beam}, but leaves a correct posterior unbiased
 \citep{dawid1994selection,efron2011tweedie}, which confines our winner's curse to the field term
-(\S\ref{sec:setup}). Diffusion LMs are overconfident against autoregressive models
-\citep{yadav2026bidirectional}, entropy-based commit orders lower their sequence-level
-calibration error \citep{jiang2026bayeser}, and commit confidence tracks correctness on math
-\citep{asaria2026diffusiongemma}; none of these conditions on how many candidates a committed
+(\S\ref{sec:setup}). Diffusion LMs are overconfident against autoregressive models on most
+tasks \citep{yadav2026bidirectional}, a Bayesian, entropy-based commit order lowers their
+sequence-level calibration error \citep{jiang2026bayeser}, and commit confidence tracks
+correctness on math but not on factual recall \citep{asaria2026diffusiongemma}; none of these conditions on how many candidates a committed
 token beat.
 % TODO(ayush): confirm the PC-Sampler covariate (T8) made it into Sec. 4; else cut the clause.
 
