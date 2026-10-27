@@ -1,6 +1,6 @@
 ---
 member: ojas
-updated: 2026-10-27T03:53:16Z
+updated: 2026-10-27T06:50:30Z
 branch: main
 ---
-ojas: Colab v1.1 LIG+DIG running (LIM, DIM on HF); Ada Mdlm 40945 unchecked (VPN down); #54 trim merged, #24 §7 awaits ayush
+ojas: v1.1 instruct arms all on HF (LIM, DIM, LIG, DIG); Mdlm v1.1 Ada 40945 unchecked (VPN down); paper tables regen when DreamBase/LladaBase/Mdlm v1.1 land
