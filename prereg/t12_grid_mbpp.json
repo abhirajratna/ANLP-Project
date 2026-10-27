@@ -1,0 +1,525 @@
+{
+ "what": "T12 report-half sweep grid for mbpp (plan v2 T12; plan to the final, Parth 5): LLaDA-8B-Instruct fp16, zero-shot chat prompt, gen_length 256, block_length 32, greedy. 7 decoders x 3 speeds, target tokens/step 2 / 4 / 8 (speed 1 / 2 / 3). Knobs interpolated from FIT-half calibration runs of this task only (scripts/pick_knobs.py).",
+ "status": "calibrated",
+ "task": "mbpp",
+ "half_used_for_calibration": "fit",
+ "speed_metric": "tokens/step of a configuration = gen_length * N / sum(n_forward) over its N problems (aggregate, not the mean of per-problem ratios)",
+ "targets": {
+  "speed1": 2.0,
+  "speed2": 4.0,
+  "speed3": 8.0
+ },
+ "matching": "for each C3a setting and task, each baseline at its setting whose tokens/step (speed_metric, same task) is nearest, used only if within +-10% of C3a's, else '---'; difference = paired accuracy difference (C3a - baseline) on the shared doc_ids, 95% percentile CI from 2,000 bootstrap resamples of problems.",
+ "calibration": {
+  "n_problems": 24,
+  "run_id": "c2202fdc5fdc",
+  "configs_sha256": "7d58d9a0e6330e1f767aee706377583d6763087cfe1f731684cd167e20083337",
+  "precision": "fp16",
+  "settings": {
+   "c3a[alpha=0.02]": {
+    "n": 24,
+    "tokens_per_step": 1.8028169014084507,
+    "mean_of_ratios": 1.874758332350069,
+    "ms_per_forward": 33.31154681296206
+   },
+   "c3a[alpha=0.05]": {
+    "n": 24,
+    "tokens_per_step": 2.0813008130081303,
+    "mean_of_ratios": 2.1722589001360273,
+    "ms_per_forward": 33.3286525705592
+   },
+   "c3a[alpha=0.12]": {
+    "n": 24,
+    "tokens_per_step": 2.4935064935064934,
+    "mean_of_ratios": 2.653819976610373,
+    "ms_per_forward": 33.398622314312625
+   },
+   "c3a[alpha=0.25]": {
+    "n": 24,
+    "tokens_per_step": 3.3121293800539084,
+    "mean_of_ratios": 3.5568285497862107,
+    "ms_per_forward": 33.51975071904152
+   },
+   "c3a[alpha=0.4]": {
+    "n": 24,
+    "tokens_per_step": 4.788776305533905,
+    "mean_of_ratios": 5.117327323628321,
+    "ms_per_forward": 33.45341824099642
+   },
+   "c3a[alpha=0.6]": {
+    "n": 24,
+    "tokens_per_step": 6.841870824053452,
+    "mean_of_ratios": 7.460955096926718,
+    "ms_per_forward": 33.066375010993276
+   },
+   "c3a[alpha=0.75]": {
+    "n": 24,
+    "tokens_per_step": 8.159362549800797,
+    "mean_of_ratios": 8.911020799216475,
+    "ms_per_forward": 33.23474451701638
+   },
+   "c3a[alpha=0.9]": {
+    "n": 24,
+    "tokens_per_step": 24.284584980237153,
+    "mean_of_ratios": 24.623495023495025,
+    "ms_per_forward": 33.28531543197839
+   },
+   "entropy_bounded[gamma=0.005]": {
+    "n": 24,
+    "tokens_per_step": 1.5757886637599385,
+    "mean_of_ratios": 1.648006542089678,
+    "ms_per_forward": 31.749718966572583
+   },
+   "entropy_bounded[gamma=0.02]": {
+    "n": 24,
+    "tokens_per_step": 1.8957112002468375,
+    "mean_of_ratios": 1.9892284922763448,
+    "ms_per_forward": 31.783346218924507
+   },
+   "entropy_bounded[gamma=0.1]": {
+    "n": 24,
+    "tokens_per_step": 2.472434607645875,
+    "mean_of_ratios": 2.5982544939739247,
+    "ms_per_forward": 31.787484749342113
+   },
+   "entropy_bounded[gamma=0.3]": {
+    "n": 24,
+    "tokens_per_step": 3.068931068931069,
+    "mean_of_ratios": 3.243427287792107,
+    "ms_per_forward": 31.80688266064618
+   },
+   "entropy_bounded[gamma=1.0]": {
+    "n": 24,
+    "tokens_per_step": 4.2430939226519335,
+    "mean_of_ratios": 4.571219093436595,
+    "ms_per_forward": 31.847572072475984
+   },
+   "entropy_bounded[gamma=10.0]": {
+    "n": 24,
+    "tokens_per_step": 7.465370595382746,
+    "mean_of_ratios": 7.740102731351116,
+    "ms_per_forward": 31.406518796126143
+   },
+   "entropy_bounded[gamma=100.0]": {
+    "n": 24,
+    "tokens_per_step": 25.81512605042017,
+    "mean_of_ratios": 25.8962962962963,
+    "ms_per_forward": 31.489978552240284
+   },
+   "entropy_bounded[gamma=3.0]": {
+    "n": 24,
+    "tokens_per_step": 4.995121951219512,
+    "mean_of_ratios": 5.59569685851162,
+    "ms_per_forward": 32.04394320889217
+   },
+   "entropy_bounded[gamma=30.0]": {
+    "n": 24,
+    "tokens_per_step": 14.15668202764977,
+    "mean_of_ratios": 14.594567684350965,
+    "ms_per_forward": 31.287859327026776
+   },
+   "klass[eps_kl=0.001,fallback=1,history=2,tau=0.95]": {
+    "n": 24,
+    "tokens_per_step": 1.4695049031332217,
+    "mean_of_ratios": 1.51707158004482,
+    "ms_per_forward": 32.615023591399506
+   },
+   "klass[eps_kl=0.001,fallback=1,history=2,tau=0.9]": {
+    "n": 24,
+    "tokens_per_step": 1.4844165257308528,
+    "mean_of_ratios": 1.5325357476452377,
+    "ms_per_forward": 32.624156709547115
+   },
+   "klass[eps_kl=0.01,fallback=1,history=2,tau=0.8]": {
+    "n": 24,
+    "tokens_per_step": 1.7865658621692353,
+    "mean_of_ratios": 1.8650150219238804,
+    "ms_per_forward": 32.70606485209811
+   },
+   "klass[eps_kl=0.03,fallback=1,history=2,tau=0.6]": {
+    "n": 24,
+    "tokens_per_step": 2.1974248927038627,
+    "mean_of_ratios": 2.298104409387605,
+    "ms_per_forward": 32.70446457227263
+   },
+   "klass[eps_kl=0.1,fallback=1,history=2,tau=0.4]": {
+    "n": 24,
+    "tokens_per_step": 2.802919708029197,
+    "mean_of_ratios": 3.0434217951484364,
+    "ms_per_forward": 32.619431522253386
+   },
+   "klass[eps_kl=0.3,fallback=1,history=2,tau=0.2]": {
+    "n": 24,
+    "tokens_per_step": 4.317638791286015,
+    "mean_of_ratios": 4.669145528027239,
+    "ms_per_forward": 32.683546841406354
+   },
+   "threshold[tau=0.1]": {
+    "n": 24,
+    "tokens_per_step": 25.493775933609957,
+    "mean_of_ratios": 25.817145817145818,
+    "ms_per_forward": 31.39555059311548
+   },
+   "threshold[tau=0.2]": {
+    "n": 24,
+    "tokens_per_step": 12.826722338204593,
+    "mean_of_ratios": 14.415850650593201,
+    "ms_per_forward": 31.62245378520394
+   },
+   "threshold[tau=0.4]": {
+    "n": 24,
+    "tokens_per_step": 6.7368421052631575,
+    "mean_of_ratios": 7.512303995643332,
+    "ms_per_forward": 31.39106111944114
+   },
+   "threshold[tau=0.6]": {
+    "n": 24,
+    "tokens_per_step": 5.296551724137931,
+    "mean_of_ratios": 5.8028018067281595,
+    "ms_per_forward": 31.7409609364153
+   },
+   "threshold[tau=0.8]": {
+    "n": 24,
+    "tokens_per_step": 3.5189003436426116,
+    "mean_of_ratios": 3.8070533731057346,
+    "ms_per_forward": 31.799407883889693
+   },
+   "threshold[tau=0.95]": {
+    "n": 24,
+    "tokens_per_step": 2.4265402843601898,
+    "mean_of_ratios": 2.5700643590042165,
+    "ms_per_forward": 31.752061846226123
+   },
+   "threshold[tau=0.99]": {
+    "n": 24,
+    "tokens_per_step": 1.9068901303538175,
+    "mean_of_ratios": 1.9939676658724077,
+    "ms_per_forward": 31.68841529161219
+   },
+   "threshold[tau=0.9]": {
+    "n": 24,
+    "tokens_per_step": 2.8157653528872593,
+    "mean_of_ratios": 2.9971359988935595,
+    "ms_per_forward": 31.73851417454419
+   },
+   "topk_conf[k=4]": {
+    "n": 24,
+    "tokens_per_step": 4.0,
+    "mean_of_ratios": 4.0,
+    "ms_per_forward": 31.688149752881145
+   }
+  }
+ },
+ "picks": [
+  {
+   "policy": "threshold",
+   "speed": 1,
+   "target_tokens_per_step": 2.0,
+   "config_key": "threshold[tau=0.986]",
+   "knobs": {
+    "tau": 0.986
+   },
+   "unmatched_at_target": false,
+   "achieved_tokens_per_step": null,
+   "bracket": [
+    1.9068901303538175,
+    2.4265402843601898
+   ]
+  },
+  {
+   "policy": "threshold",
+   "speed": 2,
+   "target_tokens_per_step": 4.0,
+   "config_key": "threshold[tau=0.746]",
+   "knobs": {
+    "tau": 0.746
+   },
+   "unmatched_at_target": false,
+   "achieved_tokens_per_step": null,
+   "bracket": [
+    3.5189003436426116,
+    5.296551724137931
+   ]
+  },
+  {
+   "policy": "threshold",
+   "speed": 3,
+   "target_tokens_per_step": 8.0,
+   "config_key": "threshold[tau=0.339]",
+   "knobs": {
+    "tau": 0.339
+   },
+   "unmatched_at_target": false,
+   "achieved_tokens_per_step": null,
+   "bracket": [
+    6.7368421052631575,
+    12.826722338204593
+   ]
+  },
+  {
+   "policy": "entropy_bounded",
+   "speed": 1,
+   "target_tokens_per_step": 2.0,
+   "config_key": "entropy_bounded[gamma=0.028]",
+   "knobs": {
+    "gamma": 0.028
+   },
+   "unmatched_at_target": false,
+   "achieved_tokens_per_step": null,
+   "bracket": [
+    1.8957112002468375,
+    2.472434607645875
+   ]
+  },
+  {
+   "policy": "entropy_bounded",
+   "speed": 2,
+   "target_tokens_per_step": 4.0,
+   "config_key": "entropy_bounded[gamma=0.8]",
+   "knobs": {
+    "gamma": 0.8
+   },
+   "unmatched_at_target": false,
+   "achieved_tokens_per_step": null,
+   "bracket": [
+    3.068931068931069,
+    4.2430939226519335
+   ]
+  },
+  {
+   "policy": "entropy_bounded",
+   "speed": 3,
+   "target_tokens_per_step": 8.0,
+   "config_key": "entropy_bounded[gamma=11.0]",
+   "knobs": {
+    "gamma": 11.0
+   },
+   "unmatched_at_target": false,
+   "achieved_tokens_per_step": null,
+   "bracket": [
+    7.465370595382746,
+    14.15668202764977
+   ]
+  },
+  {
+   "policy": "klass",
+   "speed": 1,
+   "target_tokens_per_step": 2.0,
+   "config_key": "klass[eps_kl=0.018,fallback=1,history=2,tau=0.701]",
+   "knobs": {
+    "tau": 0.701,
+    "eps_kl": 0.018,
+    "history": 2,
+    "fallback": 1
+   },
+   "unmatched_at_target": false,
+   "achieved_tokens_per_step": null,
+   "bracket": [
+    1.7865658621692353,
+    2.1974248927038627
+   ]
+  },
+  {
+   "policy": "klass",
+   "speed": 2,
+   "target_tokens_per_step": 4.0,
+   "config_key": "klass[eps_kl=0.25,fallback=1,history=2,tau=0.229]",
+   "knobs": {
+    "tau": 0.229,
+    "eps_kl": 0.25,
+    "history": 2,
+    "fallback": 1
+   },
+   "unmatched_at_target": false,
+   "achieved_tokens_per_step": null,
+   "bracket": [
+    2.802919708029197,
+    4.317638791286015
+   ]
+  },
+  {
+   "policy": "klass",
+   "speed": 3,
+   "target_tokens_per_step": 8.0,
+   "config_key": "klass[eps_kl=0.3,fallback=1,history=2,tau=0.2]",
+   "knobs": {
+    "tau": 0.2,
+    "eps_kl": 0.3,
+    "history": 2,
+    "fallback": 1
+   },
+   "unmatched_at_target": true,
+   "achieved_tokens_per_step": 4.317638791286015,
+   "bracket": null
+  },
+  {
+   "policy": "c3a",
+   "speed": 1,
+   "target_tokens_per_step": 2.0,
+   "config_key": "c3a[alpha=0.039]",
+   "knobs": {
+    "alpha": 0.039
+   },
+   "unmatched_at_target": false,
+   "achieved_tokens_per_step": null,
+   "bracket": [
+    1.8028169014084507,
+    2.0813008130081303
+   ]
+  },
+  {
+   "policy": "c3a",
+   "speed": 2,
+   "target_tokens_per_step": 4.0,
+   "config_key": "c3a[alpha=0.322]",
+   "knobs": {
+    "alpha": 0.322
+   },
+   "unmatched_at_target": false,
+   "achieved_tokens_per_step": null,
+   "bracket": [
+    3.3121293800539084,
+    4.788776305533905
+   ]
+  },
+  {
+   "policy": "c3a",
+   "speed": 3,
+   "target_tokens_per_step": 8.0,
+   "config_key": "c3a[alpha=0.735]",
+   "knobs": {
+    "alpha": 0.735
+   },
+   "unmatched_at_target": false,
+   "achieved_tokens_per_step": null,
+   "bracket": [
+    6.841870824053452,
+    8.159362549800797
+   ]
+  }
+ ],
+ "speed_of_config": {
+  "topk_conf[k=2]": 1,
+  "topk_conf[k=4]": 2,
+  "topk_conf[k=8]": 3,
+  "margin[k=2]": 1,
+  "margin[k=4]": 2,
+  "margin[k=8]": 3,
+  "pc_sampler[alpha=10.0,k=2,lam=0.25]": 1,
+  "pc_sampler[alpha=10.0,k=4,lam=0.25]": 2,
+  "pc_sampler[alpha=10.0,k=8,lam=0.25]": 3,
+  "threshold[tau=0.986]": 1,
+  "threshold[tau=0.746]": 2,
+  "threshold[tau=0.339]": 3,
+  "entropy_bounded[gamma=0.028]": 1,
+  "entropy_bounded[gamma=0.8]": 2,
+  "entropy_bounded[gamma=11.0]": 3,
+  "klass[eps_kl=0.018,fallback=1,history=2,tau=0.701]": 1,
+  "klass[eps_kl=0.25,fallback=1,history=2,tau=0.229]": 2,
+  "klass[eps_kl=0.3,fallback=1,history=2,tau=0.2]": 3,
+  "c3a[alpha=0.039]": 1,
+  "c3a[alpha=0.322]": 2,
+  "c3a[alpha=0.735]": 3
+ },
+ "configs": [
+  {
+   "policy": "topk_conf",
+   "k": 2
+  },
+  {
+   "policy": "topk_conf",
+   "k": 4
+  },
+  {
+   "policy": "topk_conf",
+   "k": 8
+  },
+  {
+   "policy": "margin",
+   "k": 2
+  },
+  {
+   "policy": "margin",
+   "k": 4
+  },
+  {
+   "policy": "margin",
+   "k": 8
+  },
+  {
+   "policy": "pc_sampler",
+   "k": 2,
+   "lam": 0.25,
+   "alpha": 10.0
+  },
+  {
+   "policy": "pc_sampler",
+   "k": 4,
+   "lam": 0.25,
+   "alpha": 10.0
+  },
+  {
+   "policy": "pc_sampler",
+   "k": 8,
+   "lam": 0.25,
+   "alpha": 10.0
+  },
+  {
+   "policy": "threshold",
+   "tau": 0.986
+  },
+  {
+   "policy": "threshold",
+   "tau": 0.746
+  },
+  {
+   "policy": "threshold",
+   "tau": 0.339
+  },
+  {
+   "policy": "entropy_bounded",
+   "gamma": 0.028
+  },
+  {
+   "policy": "entropy_bounded",
+   "gamma": 0.8
+  },
+  {
+   "policy": "entropy_bounded",
+   "gamma": 11.0
+  },
+  {
+   "policy": "klass",
+   "tau": 0.701,
+   "eps_kl": 0.018,
+   "history": 2,
+   "fallback": 1
+  },
+  {
+   "policy": "klass",
+   "tau": 0.229,
+   "eps_kl": 0.25,
+   "history": 2,
+   "fallback": 1
+  },
+  {
+   "policy": "klass",
+   "tau": 0.2,
+   "eps_kl": 0.3,
+   "history": 2,
+   "fallback": 1
+  },
+  {
+   "policy": "c3a",
+   "alpha": 0.039
+  },
+  {
+   "policy": "c3a",
+   "alpha": 0.322
+  },
+  {
+   "policy": "c3a",
+   "alpha": 0.735
+  }
+ ]
+}
