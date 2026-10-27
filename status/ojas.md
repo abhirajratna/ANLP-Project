@@ -1,6 +1,6 @@
 ---
 member: ojas
-updated: 2026-10-26T21:52:49Z
+updated: 2026-10-27T03:18:50Z
 branch: main
 ---
-ojas: PR #50 (C1 E1/E2 results) merged; Colab running 4 instruct arms @v1.1; Mdlm v1.1 Ada 40945
+ojas: v1.1 instruct on Colab (LIM, DIM on HF; LIG, DIG running ~10-15 h); Mdlm v1.1 Ada 40945 (VPN down); drafting paper trim §2/§3/§5 (ojas/trim-235)
