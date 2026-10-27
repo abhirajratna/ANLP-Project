@@ -39,12 +39,12 @@ question visible and only the reference answer maskable;
 % MBPP test 482 (3,986 tokens), --max-doc-tokens 1024: prereg/deviations.md item 6.
 one MBPP document over 1,024 tokens is excluded. A time-split set of 500 English Wikipedia
 % artifacts/timesplit_manifest.json; artifacts/README.md (created 2025-04-04 .. 2026-08-29).
-articles created after both 8B releases, unseen by every model, is a robustness check. A document is contaminated if an 8B Base model, given its first \VivaLladaContamPrefix{} tokens, greedily reproduces a run of $\ge\VivaContamThreshold$ of
+articles created after both LLaDA and Dream were released, unseen by every model, is a robustness check. A document is contaminated if a 7--8B Base model, given its first \VivaLladaContamPrefix{} tokens, greedily reproduces a run of $\ge\VivaContamThreshold$ of
 the next 50 (\VivaLladaContamFlagged/\VivaLladaContamDocs{} LLaDA,
-\VivaDreamContamFlagged/\VivaDreamContamDocs{} Dream); 8B FineWeb endpoints are also reported without them.
+\VivaDreamContamFlagged/\VivaDreamContamDocs{} Dream); LLaDA and Dream FineWeb endpoints are also reported without them.
 % Seed 20260917: artifacts/split_manifest.meta.json; tasks: scripts/make_task_split.py.
 Every set is split 50/50 by document with one fixed seed (FineWeb: \VivaNFit{}/\VivaNReport{}
-before the length filter). Calibrators, the spline $f$ of Eq.~2/3, knots and temperatures are fitted on the fit half; every C1 number comes from the report half.
+before the length filter). Calibrators, the spline $f$ of Eqs.~\ref{eq:eqtwo}--\ref{eq:eqthree}, knots and temperatures are fitted on the fit half; every C1 number comes from the report half.
 500 separate reserve documents served the pilot and the non-determinism floor.
 
 \begin{table}[t]
@@ -80,7 +80,7 @@ before the length filter). Calibrators, the spline $f$ of Eq.~2/3, knots and tem
 Each measurement is one forward pass on a true document with some positions masked, recording
 at each masked position $v_i$, $c_i$, $\ell_i$, $a_i$ (\S\ref{sec:setup}), the true token's
 probability, entropy, margin, the top-\VivaTopK{} and whether it was committed. A document
-has three arms of states: \emph{uniform}, each position masked independently at rate
+has three kinds of states: \emph{uniform}, each position masked independently at rate
 $t\in\{\VivaMaskRateMin,0.2,\dots,\VivaMaskRateMax\}$, \VivaMasksPerRate{} masks per rate; \emph{decoder}, every state of a teacher-forced confidence top-$k$ trajectory,
 $k\in\{\VivaDecoderK\}$, which starts fully masked, commits the $k$ most confident positions,
 fills them with the \emph{true} tokens and repeats (the states a decoder visits if always
@@ -98,7 +98,7 @@ positions of those states.
 Both are fitted on the fit half. $\hat\pi(\ell)$ is isotonic in $\ell$. $\hat\pi(\ell,s)$ is
 logistic in a restricted cubic spline of $\ell$ plus the state's field features (median $\ell$
 of its masked positions, mask rate, $\log|M|$, decoding step) and their products with $\ell$, so
-the slope varies too; the plan's additive form is a sensitivity check.
+the slope varies too; an additive form, without these products, is a sensitivity check.
 Averages are taken within a document, every state weighing the same, then across documents;
 positions are weighted by $1/(|M_s|\times\text{states in their document})$ to match. The
 calibrators are fitted on every state but the averages use only states with at
@@ -107,16 +107,16 @@ E2 is a contrast.
 
 \paragraph{E1, E2 and the native gap.}
 E1 is $\Delta(m)$ \eqref{eq:gap}, with primary contrast $\Delta(\VivaPoolMax)-\Delta(1)$,
-beside 15-bin equal-mass ECE and smooth ECE over all masked positions. E2 is the field
+beside 15-bin equal-mass ECE over all masked positions. E2 is the field
 term $\E_m[\hat\pi(\ell)-\hat\pi(\ell,s)]$ of \eqref{eq:gapsplit}, with primary contrast
 field$(\VivaPoolMax)-$field$(1)$. On the same winners, own miscalibration
 $\E_m[c-\hat\pi(\ell)]$, the field term and $\E_m[\hat\pi(\ell,s)-a]$ sum to $\Delta$ exactly;
 the last, zero under Proposition~\ref{prop:select}, is a specification check, as is the
 intra-class correlation of residuals $a-\hat\pi(\ell,s)$ within states. The \emph{native} gap
-is $c-a$ over committed tokens, grouped by $|M_t|$ at commit time.
+is $c-a$ over the tokens the decoder commits, grouped by $|M_t|$ at commit time.
 
-\paragraph{Eq.~2/3 diagnostics.}
-Eq.~2 is on pool winners, Eq.~3 on the top four ranks; $\eta_i=\alpha\,[+\alpha_s]+f(\ell_i)$:
+\paragraph{Rank diagnostics.}
+Eq.~\ref{eq:eqtwo} is on pool winners, Eq.~\ref{eq:eqthree} on the top four ranks; $\eta_i=\alpha\,[+\alpha_s]+f(\ell_i)$:
 \begin{align}
   \Pr(a_i{=}1) &= \sigma\bigl(\eta_i + \beta_z z_{r,m}\bigr), \label{eq:eqtwo}\\
   \Pr(a_i{=}1) &= \sigma\bigl(\eta_i + {\textstyle\sum_{k=2}^{4}}\gamma_k \1\{r{=}k\}\bigr),
@@ -130,13 +130,13 @@ ${\approx}0$ with them points to a field effect, $\beta_z\neq0$ with them to sha
 the reading is approximate (\S\ref{sec:validation}), so $\beta_z$ is a diagnostic.
 
 \paragraph{E3, trajectory shift.}
-For each decoder arm we fit, on its positions (mask rate in $[0.05,0.95)$) and a reference arm's,
-$\Pr(a{=}1)=\sigma(\alpha_b+f(\ell)+\textit{dec}\cdot(g_0+f'(\ell)))$, with $\alpha_b$ an intercept
-per mask-rate bin (centred on $0.1,\dots,0.9$). The reference is the matched uniform arm
+For decoder states at each $k$ we fit, on their positions (mask rate in $[0.05,0.95)$) and those of
+reference states,
+$\Pr(a{=}1)=\sigma(\alpha_b+f(\ell)+\textit{dec}\cdot(g_0+h(\ell)))$, with $\alpha_b$ an intercept
+per mask-rate bin (centred on $0.1,\dots,0.9$). The reference is matched uniform states
 (secondary: the uniform grid, reweighted to the decoder's rate mix). The endpoint is
 $\E_{\mathrm{dec}}[\pi_{\mathrm{ref}}(\ell,b)-\pi_{\mathrm{dec}}(\ell,b)]$, positive if
-decoder-state tokens are right less often at equal confidence and mask rate; $(g_0,f')$ are
-tested jointly by a sup-$t$ test.
+decoder-state tokens are right less often at equal confidence and mask rate; $(g_0,h)$ are tested jointly by a sup-$t$ test.
 
 \paragraph{T8 controls.}
 Each control gives the E1 and E2 contrasts (temperature: E1 only) without and with it, and their
@@ -153,7 +153,7 @@ fits $c=\sigma(\ell/T)$ per mask-rate bin on the fit half (a softmax temperature
 \paragraph{Bootstrap.}
 The document is the unit. Intervals are 95\% percentile intervals over \VivaNBoot{} document
 resamples, one matrix per run shared across pool sizes, estimands and arms, so contrasts
-come from differenced draws. Eq.~2/3 are refit per resample and use 1,000 (knot panels: 200).
+come from differenced draws. Eqs.~\ref{eq:eqtwo}--\ref{eq:eqthree} are refit per resample and use 1,000 (knot runs: 200).
 Calibrators are not refitted, so E2 intervals condition on the fit half.
 % prereg/deviations.md item 7; prereg/analysis_commands.sh (--eq-boot 1000; 200 for knot runs);
 % 10,000 resamples of the Eq.~2/3 refits would take weeks per run.
@@ -165,20 +165,21 @@ reserve documents per model family. Repeats were bitwise identical, so every flo
 \VivaLladaFloor{} and the interval decides; $\delta_{\min}=\VivaDeltaMin$ is for power only.
 % PRIMARY_ARMS=(uniform decoder:topk_conf:k4) x 7 ARMS in prereg/analysis_commands.sh;
 % scripts/summarize_c1.py (Holm on two-sided bootstrap p-values).
-Holm's correction (two-sided bootstrap $p$-values) has three families: the E1 and E2
-contrasts, each over the seven arms of Table~\ref{tab:runs} in uniform and $k{=}4$ decoder
-states (14 each), and $\gamma_2,\gamma_3,\gamma_4$ per arm. 
+Holm's correction (two-sided bootstrap $p$-values) runs within families: the E1 contrasts and the
+E2 contrasts, each over the seven arms of Table~\ref{tab:runs} in uniform and $k{=}4$ decoder
+states (14 tests each), and $\gamma_2,\gamma_3,\gamma_4$ within each arm and kind of state. 
 
 \subsection{Validation}
 \label{sec:validation}
 
-\paragraph{Known truth (T0).}
+\paragraph{Known truth.}
 We first ran the pipeline on simulated traces in four worlds: calibrated everywhere;
 miscalibrated alike in every context; miscalibrated by context (the winner's curse of
 Proposition~\ref{prop:split}); and errors shared within a state (violating
 Proposition~\ref{prop:select}). The E1 contrast was zero only in the first, and $\beta_z$ without
 fixed effects strongly negative only in the third. Three findings shape \S\ref{sec:c1}:
-the field-term estimator reads high (slightly positive when the truth is zero, above it otherwise); fixed effects do
+the field-term estimator reads high (at $m=\VivaPoolMax$, \TZeroFieldCalibrated{} and
+\TZeroFieldUniform{} where the truth is zero; above the truth otherwise); fixed effects do
 not fully clean $\beta_z$ in the third; and shared errors give a \emph{negative} field
 term with a \emph{positive} $\beta_z$ without fixed effects. Too few knots let curvature load onto $z_{r,m}$; we use \VivaKnots{}.
 % artifacts/t0/ (scripts/t0_scenarios.py; 200 simulated documents, fit -> report half);

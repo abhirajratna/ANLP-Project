@@ -31,24 +31,25 @@ Work on parallel decoding targets the dependency term (A) of Eq.~\ref{eq:decomp}
 % 200 schemas, 6--16 fields, 200k instances: artifacts/probe/manifest.json (n_schemas,
 % fields_per_schema.min/max, train.n).  rho values: artifacts/probe/spec.json (rhos).
 The probe fills the simple fields of 200 SchemaStore schemas \citep{schemastore}, 6--16 per
-schema, with single-token values. Each field has a Dirichlet(1) marginal; fields
-are paired: with probability $\rho$, stated in a marker at the start of the instance, the
+schema, with single-token values; we call them slots. Each slot has a Dirichlet(1) marginal;
+slots are paired: with probability $\rho$, stated in a marker at the start of the instance, the
 follower is a fixed function of its leader's value, otherwise an independent draw, so $p^*$
 is known exactly. We fine-tune our 110M MDLM (\S\ref{sec:instrument}) on 200k instances and
 evaluate \CTwoProbeNInstances{} (\CTwoProbeNInstancesPerRho{} per
 $\rho\in\{0,.25,.5,.75,1\}$); the main model is the fine-tune that never saw the marker masked
 (Appendix~\ref{sec:c2-app}). Decoding starts with every value masked; each step picks
-$k\in\{1,2,4,8\}$ fields, the most confident or at random, computes (A)
+$k\in\{1,2,4,8\}$ slots, the most confident or at random, computes (A)
 and (B) for them ($p_{\theta,i}$ is the model's probability of each allowed value; mass
 off the list counts against (B)), and fills them with the true values. Terms are summed over
-steps and divided by the number of fields; bootstrap intervals use \CTwoProbeNBoot{} instance
+steps and divided by the number of slots; bootstrap intervals use \CTwoProbeNBoot{} instance
 resamples.
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=\columnwidth]{../artifacts/probe/figures/c2_crossover_ft110m-v3-visible}
-  \caption{(A) and (B) per field on the probe (main model), with 95\% intervals, against
-    tokens per step $k$. Columns: $\rho$; rows: selection rule.}
+  \caption{(A) and (B) per slot on the probe (main model), with 95\% intervals, against
+    tokens per step $k$. Columns: $\rho$; rows: selection rule. Shaded: the $k$ where (A)
+    exceeds (B) (hatched where the interval of (A)$-$(B) still holds 0).}
   \label{fig:c2-crossover}
 \end{figure}
 
@@ -63,7 +64,7 @@ For $\rho\ge\CTwoConfCrossRhoMin$ it overtakes (B) at $k=\CTwoRandCrossKatRhoOne
 $\rho=1$ under confidence top-$k$ already at $k=\CTwoConfCrossKatRhoOne$; each crossover is
 also where the 95\% interval of (A)$-$(B) clears zero. For $\rho\le0.25$ (B) dominates up to
 $k=8$. At $\rho=1$, $k=8$ (confidence), (A) is \CTwoConfAatRhoOneKEight{}
-[\CTwoConfAatRhoOneKEightLo, \CTwoConfAatRhoOneKEightHi] nats per field and (B)
+[\CTwoConfAatRhoOneKEightLo, \CTwoConfAatRhoOneKEightHi] nats per slot and (B)
 \CTwoConfBatRhoOneKEight{} [\CTwoConfBatRhoOneKEightLo, \CTwoConfBatRhoOneKEightHi]:
 \CTwoConfShareAatRhoOneKEight\% of the total.
 
@@ -78,10 +79,9 @@ leaders with their followers more often than chance, bringing the crossover forw
 
 \paragraph{The terms trade off.}
 $\rho$ was meant to move only (A), but (B) rises too: at $k=1$, from \CTwoConfBatRhoZeroKOne{}
-at $\rho=0$ to \CTwoConfBatRhoOneKOne{} at $\rho=1$. The model reads the marker only in part
-(Appendix~\ref{sec:c2-app}), so a follower decoded after its leader misses the sharp marginal
-the copy implies; decoded with it, the true marginal is broad, the model matches it, and the gap
-appears as (A). At $\rho=1$, from $k=1$ to $8$, (B) falls to
+at $\rho=0$ to \CTwoConfBatRhoOneKOne{} at $\rho=1$. Decoded after its leader, a follower should be a near-copy, but the model reads the marker
+only in part (Appendix~\ref{sec:c2-app}) and stays broad: error in (B). Decoded in the same
+step, the true marginal is broad too, and the missing coupling counts as (A). At $\rho=1$, from $k=1$ to $8$, (B) falls to
 \CTwoConfBatRhoOneKEight{} while (A) rises from $0$ to \CTwoConfAatRhoOneKEight. Without
 fine-tuning, (B) dominates everywhere ((A) is ${\le}\,$\CTwoUntunedConfShareAMax\% of the
 total).
@@ -123,6 +123,8 @@ positions. $\Delta$ cannot be told from zero at $k=1$ and is small but positive 
 \CTwoTTenDeltaKEight{} [\CTwoTTenDeltaKEightLo, \CTwoTTenDeltaKEightHi] and, for LLaDA,
 \CTwoTTenLladaDeltaKEight{} [\CTwoTTenLladaDeltaKEightLo, \CTwoTTenLladaDeltaKEightHi].
 
-So at 2--8 tokens per step real text looks like the probe's low-$\rho$ regime, where (B)
-dominates. Two limits: the proxy sees only dependence the model has learned, so near-zero
-disagreement does not show that (A) is small, and real text gives a direction, not a split in nats.
+So at 2--8 tokens per step the models act on almost no learned dependency between the
+positions they commit together, while CE grows with $k$ and $\Delta$ is small but positive at
+$k=8$. The proxy sees only
+dependence the model has learned, so this does not show that (A) is small, and real text gives
+a direction, not a split in nats.

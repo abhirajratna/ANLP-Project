@@ -8,14 +8,14 @@ Reads committed artifacts only (no model, no GPU), from ``--results-dir``:
   rho_check_<tag>.json   how far the rho marker moves q(f(leader)) at rho = 1 (the 0.5 bar)
   val_rescored.json      validation NELBO of both fine-tunes under one protocol
   history_<tag>.jsonl    the fine-tunes' training logs (a consistency check, token counts)
-  grid_<tag>.json        (A) and (B) per field for rho x k x rule, the crossover, the identity
+  grid_<tag>.json        (A) and (B) per slot for rho x k x rule, the crossover, the identity
 
 and writes, under ``--out-dir``:
 
   main_variant.json      the rule as written, both candidates' numbers, the choice, the
                          source files with their sha256, and a c3/provenance.py stamp
   figures/c2_crossover_<tag>.{pdf,png}
-                         (A) and (B) in nats per field against k, one panel per rho (columns)
+                         (A) and (B) in nats per slot against k, one panel per rho (columns)
                          and selection rule (rows), at ACL column width; shaded: the k
                          interval in which (A) overtakes (B) (hatched if the 95% interval of
                          (A)-(B) still holds 0 there).  One for each fine-tune: the main
@@ -267,7 +267,7 @@ def crossover_figure(grid: dict, out: Path, stem: str, title: str) -> list[Path]
         side.set_ylabel(RULE_LABEL[rule].replace(" ", "\n", 1), rotation=270, va="bottom",
                         labelpad=1, fontsize=6.5)
     fig.supxlabel("tokens per step k", fontsize=7, color=INK2)
-    fig.supylabel("nats per field", fontsize=7, color=INK2)
+    fig.supylabel("nats per slot", fontsize=7, color=INK2)
     handles = [Line2D([], [], color=COLOR[t], linewidth=1.2, marker=MARKER[t], markersize=3.3,
                       markeredgecolor="white", markeredgewidth=0.5, label=TERM[t]) for t in "AB"]
     handles.append(Patch(facecolor=BAND, edgecolor="none", label="(A) overtakes (B)"))
@@ -308,7 +308,7 @@ def comparison_figure(grids: dict, order: list, label: dict, out: Path, stem: st
     ax1.minorticks_off()
     ax1.set_ylim(0.02, 14)
     ax1.set_title("(B) at k = 1", fontsize=7)
-    ax1.set_ylabel("nats per field", fontsize=7)
+    ax1.set_ylabel("nats per slot", fontsize=7)
     ax2.set_ylim(-3, 103)
     ax2.set_yticks([0, 25, 50, 75, 100])
     ax2.axhline(50, color=MUTED, linewidth=0.8, zorder=0)
@@ -376,7 +376,7 @@ def macros(dec: dict, grids: dict, main: str, alt: str) -> str:
               "\\CTwoConfAatRhoOneKEight")
     m.comment("  no variant word = the main variant; Rule: Conf = confidence top-k, "
               "Rand = random positions")
-    m.comment("  Q: A = (A) dependency, B = (B) estimation, nats per field (mean over the "
+    m.comment("  Q: A = (A) dependency, B = (B) estimation, nats per slot (mean over the "
               "instances at that rho);")
     m.comment("     ShareA = (A) as a percentage of (A)+(B)")
     m.comment("  Rho: RhoZero, RhoQuarter, RhoHalf, RhoThreeQuarters, RhoOne;  "

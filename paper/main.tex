@@ -18,6 +18,7 @@
 % ---- macros from committed artifacts (numbers are never typed by hand) ----
 \input{../artifacts/probe/macros_t9.tex}    % \CTwo...      scripts/figures_t9.py   (T9)
 \input{../artifacts/c2/macros_t10.tex}      % \CTwoTTen...  scripts/macros_t10.py   (T10)
+\input{../artifacts/t0/macros.tex}          % \TZero...     scripts/t0_scenarios.py (Sec. 3.5)
 \input{../documents/viva-slides/macros_setup.tex}   % \Viva...    Sec. 2-3 setup macros (PR #20)
 % C1 macros (\COne... \EThree... \TEight...): scripts/c1_paper_outputs.py copies every per-arm
 % results/{c1,e3,t8}/<Label>/macros.tex to tables/c1/macros/ and writes tables/c1/macros_c1.tex,
@@ -52,8 +53,8 @@ whose top token is most probable. Confidence thus picks the tokens it then descr
 committed tokens it is a selected quantity, yet calibration is audited over random masks. We
 study it in three parts. C1 audits calibration conditional on selection: on teacher-forced
 traces from LLaDA-8B, Dream-7B and a 110M model of our own, it measures how far committed tokens' confidence exceeds their accuracy as
-a function of how many candidates they beat, and splits this gap exactly into ordinary
-miscalibration and a field term, the part that is a winner's curse, on held-out documents
+a function of how many candidates they beat, and splits this gap into ordinary
+miscalibration, a field term (the part that is a winner's curse) and a shared-error residual, on held-out documents
 with Holm-corrected tests.
 In the states a confidence decoder visits, the gap grows with field size for every model, and
 its field term does too for the instruct models.
