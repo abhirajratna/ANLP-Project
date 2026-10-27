@@ -678,8 +678,8 @@ def matched_figure(res: dict, stem: Path) -> list:
     axes[0].set_ylabel("realised error of committed tokens")
     axes[0].legend(frameon=False, loc="upper left", fontsize=5.5)
     fig.suptitle(f"Realised error at equal speed, C3a vs raw rule -- {STAMP}", fontsize=7.5, y=0.995)
-    fig.text(0.01, 0.005, "Each curve sweeps alpha (dense grid); solid = leftmost 32-block, band = 95% document "
-             "bootstrap; dashed = whole region. Per-token error vs the reference token, not task accuracy.",
+    fig.text(0.01, 0.005, "Curves sweep alpha (dense grid); solid = leftmost 32-block, band = 95% document bootstrap; "
+             "dashed = whole region. Error vs the reference token, not task accuracy.",
              fontsize=5, color=INK2)
     fig.tight_layout(rect=(0, 0.03, 1, 0.97))
     paths = _save(fig, stem, "Realised error vs tokens per state, C3a vs raw (exploratory)")
