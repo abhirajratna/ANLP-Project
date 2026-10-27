@@ -41,7 +41,7 @@ one MBPP document over 1,024 tokens is excluded. A time-split set of 500 English
 % artifacts/timesplit_manifest.json; artifacts/README.md (created 2025-04-04 .. 2026-08-29).
 articles created after both LLaDA and Dream were released, unseen by every model, is a robustness check. A document is contaminated if a 7--8B Base model, given its first \VivaLladaContamPrefix{} tokens, greedily reproduces a run of $\ge\VivaContamThreshold$ of
 the next 50 (\VivaLladaContamFlagged/\VivaLladaContamDocs{} LLaDA,
-\VivaDreamContamFlagged/\VivaDreamContamDocs{} Dream); 8B FineWeb endpoints are also reported without them.
+\VivaDreamContamFlagged/\VivaDreamContamDocs{} Dream); LLaDA and Dream FineWeb endpoints are also reported without them.
 % Seed 20260917: artifacts/split_manifest.meta.json; tasks: scripts/make_task_split.py.
 Every set is split 50/50 by document with one fixed seed (FineWeb: \VivaNFit{}/\VivaNReport{}
 before the length filter). Calibrators, the spline $f$ of Eqs.~\ref{eq:eqtwo}--\ref{eq:eqthree}, knots and temperatures are fitted on the fit half; every C1 number comes from the report half.

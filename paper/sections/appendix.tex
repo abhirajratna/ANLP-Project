@@ -26,7 +26,7 @@ model also trained on more tokens). The other
 $\rho\ge\CTwoAltConfCrossRhoMin$ under both rules.
 
 % 256 tokens: config.max_tokens in both T10 JSONs (the C1 length filter); ids: documents.last_doc_id.
-\paragraph{T10.}
+\paragraph{Real text.}
 We skip documents under 256 tokens (fit-half ids up to
 \CTwoTTenLastDocId; \CTwoTTenLladaLastDocId{} for LLaDA) and keep at least \CTwoTTenMinMasked{}
 masked positions per state. Intervals resample documents (\CTwoTTenNBoot{} times).
