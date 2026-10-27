@@ -72,8 +72,8 @@ within each arm and kind of state (\S\ref{sec:inference}).
 We claim an E1 or E2 effect only if it is declared, its 95\% interval excluding 0, \emph{and}
 Holm rejects it at $\alpha=0.05$ within its family (14 tests; a missing cell counts as $p=1$).
 Everything else is exploratory, reported with its interval and no claim: decoder states at
-$k\in\{2,8\}$, matched uniform states, $\beta_z$, $\gamma_k$, E3, the controls, and the
-contamination-filtered, time-split, additive-calibrator and knot runs.
+$k\in\{2,8\}$, matched uniform states, $\beta_z$, $\gamma_k$, E3, the native gap, the controls,
+and the contamination-filtered, time-split, additive-calibrator and knot runs.
 
 % ------------------------------------------------------------------- floats
 \begin{table*}[t]
@@ -115,6 +115,8 @@ in uniform states of both base models and of LLaDA-8B-Instruct on GSM8K, where t
 shrinks with the field. The two cells without a claim, uniform states of LLaDA-8B-Instruct on
 MBPP and of the 110M model, are both declared but not claimed
 (both $p_{\mathrm{Holm}}=\Cres{COneHolmPEOneLladaInstructMbppUni}$).
+% Regen check: COneHolmPEOneMdlmUni must equal COneHolmPEOneLladaInstructMbppUni (Holm step-down
+% ties them on v1 and the v1.1 dry run); if they differ, name both.
 Sizes differ as much as signs: $|\mathrm{E1}|\le0.015$ for the base and 110M models, up to
 0.26 for the instruct models on MBPP.
 
@@ -140,8 +142,10 @@ and a residual, and E2 is \CresCI{COneFieldContrastLladaBaseUni}
 E2 is claimed in all \Cres{COneHolmETwoFamily} cells and positive in 12. For the base and 110M
 models every $|\mathrm{E2}|$ is below 0.005, of the order of what the estimator read on
 simulated traces with no field term (\S\ref{sec:validation}); we do not read these as a winner's
-curse. Under a second calibrator (a spline logistic in $\ell$ and per-state features, fitted on the
-fit half; code archive), the LLaDA-8B-Base decoder-state field term is not identified: the
+curse. Under a second calibrator (a B-spline logistic with quantile knots and standardised
+features, fitted on a 1M-row fit-half sample; code archive), the LLaDA-8B-Base decoder-state
+field term is not identified: the
+% -0.005 [-0.007, -0.004]: hand-typed from dorigo/report-40754 summary_e2.csv (HF 21130a52), k4, report half.
 residual $\E_m[\hat\pi(\ell,s)-a]$ at $m=\VivaPoolMax$ is $-0.005$ [$-0.007$, $-0.004$], and
 calibrators refit on each half of the fit set give field terms of opposite sign. In seven
 of the eight instruct cells E2 is 0.013 to \Cres{COneFieldContrastDreamInstructMbppUni}
@@ -160,9 +164,10 @@ to 0.056). The residual at $m=\VivaPoolMax$ is near 0 in the base and 110M model
 LLaDA-8B-Base decoder states (\CresCI{COneLladaBaseResidualThirtyTwoDecTopkConfKFour}, larger
 in size than that cell's E1). It is 0.055 to 0.103 on MBPP and in uniform states of
 Dream-7B-Instruct on GSM8K, larger than E2 in four of these five cells: there the split has
-its third term, and E2 and $\beta_z$ are read with that in mind (\S\ref{sec:c1-beta}). In
-simulation, shared errors pushed the estimated field term below zero (\S\ref{sec:validation}),
-so shared errors alone do not explain a positive E2.
+its third term, and E2 and $\beta_z$ are read with that in mind (\S\ref{sec:c1-beta}). In the
+simulated shared-error world the field term at $m=\VivaPoolMax$ was \CresCI{TZeroFieldMisreading}
+(\S\ref{sec:validation}), below zero; its third term was negative, unlike these cells, so this
+does not rule shared errors out.
 
 % ------------------------------------------------------------------- beta_z
 \subsection{The selection diagnostic $\beta_z$}
@@ -171,7 +176,7 @@ so shared errors alone do not explain a positive E2.
 $\beta_z$ (Eq.~\ref{eq:eqtwo}) asks the same question by regression: does winning a larger field
 ($z_{1,m}$, the expected maximum of $m$ standard normals) predict correctness beyond the winner's
 own log-odds (\S\ref{sec:estimands})? In simulation shared errors gave a \emph{positive} $\beta_z$
-without fixed effects and a \emph{negative} field term (\S\ref{sec:validation}), so we read
+without fixed effects (\S\ref{sec:validation}), so we read
 $\beta_z$ only beside the sign of E2. For LLaDA-8B-Base in uniform states it is
 $\Cres{COneLladaBaseBetaZNoFEUni}$ without fixed effects and $\Cres{COneLladaBaseBetaZFEUni}$
 with them (Table~\ref{tab:c1-main}).
@@ -208,11 +213,12 @@ The native gap measures what a decoder actually commits. For tokens the $k{=}4$ 
 commits with 32--63 positions masked it is
 \CresCI{COneLladaInstructGsmNativeThirtyTwoDecTopkConfKFour} for LLaDA-8B-Instruct on GSM8K,
 against an ECE of \Cres{COneLladaInstructGsmECEUni} over random masks. In all seven arms it is
-1.8 to 4.4 times that ECE, its interval above it (0.013 to 0.018 for the base and 110M models,
-0.079 to 0.176 for the instruct models), and the instruct models reach 0.15 to 0.27 with
-128--255 positions masked. A calibration check on random masks, the masks these models are
-trained on, understates the overconfidence of committed tokens in every model we traced. The
-mask count mixes field size with lost context, so this describes and does not test E1.
+1.8 to 4.4 times that ECE, its interval above it (the native gap is 0.013 to 0.018 for the base
+and 110M models, 0.079 to 0.176 for the instruct models), and the instruct models reach 0.15 to
+0.27 with 128--255 positions masked. Commit-time miscalibration has been reported for whole
+answers \citep{jiang2026bayeser}; here it holds per committed token, in every arm. The mask
+count mixes field size with lost context, so this describes and does not test E1.
+% Hand-typed, re-check at the regen: 1.8, 4.4, 0.013-0.018, 0.079-0.176, 0.15-0.27.
 
 \paragraph{E3.}
 E3 compares accuracy at equal confidence and mask rate in decoder and in uniform states
@@ -296,12 +302,13 @@ Table~\ref{tab:c1-main}); a quarter of the documents, so wider intervals.
 On unseen text the small negative E1 of the two base models is not reproduced: both
 intervals hold 0, so their FineWeb result may owe something to text they have seen or to the
 change of domain from web pages to Wikipedia, or be too small to detect here. The 110M model's
-is larger than on FineWeb (\Cres{COneMdlmContrastUni} there). In decoder states E1 stays
+is larger than on FineWeb (\Cres{COneMdlmContrastUni} there); it saw neither set, so domain
+(it was trained on FineWeb-Edu) or noise, not contamination, explains the move. In decoder states E1 stays
 positive, its interval excluding 0, for all three models, so the decoder-state result is not
 confined to text the models may have seen.
 
 \paragraph{Spline knots.}
-E1 uses no calibrator; E2 and $\beta_z$ do. E2 keeps its sign and declared flag with 5 and with
+E2 keeps its sign and declared flag with 5 and with
 13 knots, instead of the primary \VivaKnots{}, in \Cres{COneKnotsAgree} of \Cres{COneKnotsCells}
 cells (full table in the code archive). These runs refit
 Eqs.~\ref{eq:eqtwo} and~\ref{eq:eqthree} only 200 times, so their $\beta_z$ and $\gamma_k$ intervals are descriptive only;
