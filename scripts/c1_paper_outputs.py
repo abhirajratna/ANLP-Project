@@ -36,8 +36,13 @@ and writes, under ``--out-tables`` (default paper/tables/c1) and ``--out-figures
                        the analysis does not write: Holm decisions, ``claimed`` flags and counts,
                        the family size and missing members (``\\COneHolmFootnote``), the E2
                        contrast (also under each sensitivity variant), declared flags, the
-                       shared-error term and ICC, gamma_2..4 with their Holm p
+                       shared-error term and ICC, gamma_2..4 with their Holm p, the native gap
+                       of committed tokens per |M_t| group
   c1_sources.json      every input with its sha256, and a c3/provenance.py stamp
+  c1_overview          (figure*) Delta(m) of the 7 primary arms, uniform vs decoder k = 4, with the
+                       uniform-state ECE; 8th panel: that ECE vs the native gap of committed tokens
+  c1_mechanisms        (figure*) E1 per arm and kind of state split into own / field / shared-error
+                       point estimates; the additive-calibrator field term as a sensitivity marker
   c1_delta_m_all, c1_field_m_all           Delta(m), field(m) vs m, one panel per arm
   c1_delta_m_<Label>, c1_reliability_<Label>, c1_e3_<Label>   for the main arm
                        (``.pdf`` and ``.png``, ACL widths)
@@ -965,7 +970,7 @@ def figure_overview(R: Results, F, plt, out: Path) -> list[Path]:
         ece = ((R.kind(label, "uniform") or {}).get("ece") or {}).get("ece")
         if _ok(ece):
             ax.axhline(ece, color=F.MUTED, linewidth=0.9, linestyle=(0, (1, 1.5)), zorder=2,
-                       label="ECE, random masks")
+                       label="ECE (unsigned), uniform states")
         _m_axis(ax, ms)
         ax.set_title(display(label), fontsize=7)
         if i % 4 == 0:
@@ -974,7 +979,8 @@ def figure_overview(R: Results, F, plt, out: Path) -> list[Path]:
     ax = axes.flat[7]
     F._style(ax, grid_y=False)
     ys = list(range(len(labels)))[::-1]
-    shapes = {32: ("s", "committed, $|M_t|$ 32$-$63"), 128: ("^", "committed, $|M_t|$ 128$-$255")}
+    shapes = {32: ("s", "committed, $|M_t|$ 32$-$63", F.COLOR["B"], (0, ())),
+              128: ("^", "committed, $|M_t|$ 128$-$255", "white", (0, (2, 1.2)))}
     for y, label in zip(ys, labels):
         ece = ((R.kind(label, "uniform") or {}).get("ece") or {}).get("ece")
         if _ok(ece):
@@ -985,24 +991,26 @@ def figure_overview(R: Results, F, plt, out: Path) -> list[Path]:
             if w is None:
                 continue
             lo, hi = w.get("ci_low"), w.get("ci_high")
+            marker, _, face, dash = shapes[level]
             if _ok(lo) and _ok(hi):
-                ax.plot([lo, hi], [y, y], color=F.COLOR["B"], linewidth=0.8, zorder=2)
-            ax.plot([w["delta"]], [y], linestyle="none", marker=shapes[level][0], markersize=4,
-                    color=F.COLOR["B"], markeredgecolor="white", markeredgewidth=0.4, zorder=3)
+                ax.plot([lo, hi], [y, y], color=F.COLOR["B"], linewidth=0.8, linestyle=dash, zorder=2)
+            ax.plot([w["delta"]], [y], linestyle="none", marker=marker, markersize=4.4,
+                    markerfacecolor=face, markeredgecolor=F.COLOR["B"], markeredgewidth=0.8, zorder=3)
     ax.set_yticks(ys, [SHORT.get(l, l) for l in labels], fontsize=6)
     ax.axvline(0, color="#c3c2b7", linewidth=0.6, zorder=0)
-    ax.set_xlabel("calibration error", fontsize=7)
+    ax.set_xlabel("$c-a$ (ECE: unsigned)", fontsize=7)
     ax.set_title("ECE vs committed tokens", fontsize=7)
     from matplotlib.legend_handler import HandlerTuple
     from matplotlib.lines import Line2D
     h, l = axes.flat[0].get_legend_handles_labels()
-    if "ECE, random masks" in l:
-        i = l.index("ECE, random masks")
+    if "ECE (unsigned), uniform states" in l:
+        i = l.index("ECE (unsigned), uniform states")
         h[i] = (h[i], Line2D([], [], linestyle="none", marker="o", markerfacecolor="white",
                              markeredgecolor=F.MUTED, markersize=4))
     for level in NATIVE_LEVELS:
-        h.append(Line2D([], [], color=F.COLOR["B"], marker=shapes[level][0], markersize=4,
-                        linewidth=0.8))
+        marker, _, face, dash = shapes[level]
+        h.append(Line2D([], [], color=F.COLOR["B"], marker=marker, markersize=4.4, linewidth=0.8,
+                        linestyle=dash, markerfacecolor=face, markeredgecolor=F.COLOR["B"]))
         l.append(shapes[level][1])
     fig.legend(h, l, loc="outside upper center", ncol=5, frameon=False, handlelength=2.0,
                columnspacing=1.0,
@@ -1056,21 +1064,21 @@ def figure_mechanisms(R: Results, F, plt, out: Path) -> list[Path]:
                             markeredgecolor="white", markeredgewidth=0.4, zorder=3)
             fa = (R.kind(label, mask, "additive") or {}).get("field_contrast") or {}
             if _ok(fa.get("value")):
-                ax.plot([fa["value"]], [y], linestyle="none", marker="s", markersize=4.2,
-                        markerfacecolor="white", markeredgecolor=COMPONENTS[1][2],
-                        markeredgewidth=0.9, zorder=2)
-        ax.set_yticks(ys, [f"{SHORT.get(l, l)}, {'unif.' if mk == 'uniform' else 'dec.'}"
+                ax.plot([fa["value"]], [y], linestyle="none", marker="s", markersize=6.0,
+                        markerfacecolor="none", markeredgecolor=COMPONENTS[1][2],
+                        markeredgewidth=0.9, zorder=4)
+        ax.set_yticks(ys, [f"{SHORT.get(l, l)}, {'uniform' if mk == 'uniform' else 'decoder'}"
                            for l, mk in rows], fontsize=6)
         ax.axvline(0, color="#c3c2b7", linewidth=0.6, zorder=0)
-        ax.set_xlabel("contribution to E1 $=\\Delta(32)-\\Delta(1)$", fontsize=7)
+        ax.set_xlabel("contribution to E1 $=\\Delta(32)-\\Delta(1)$ (point estimates)", fontsize=7)
         ax.set_title(title, fontsize=7)
     h = [Line2D([], [], color="#e4e3dd", linewidth=5)]
     l = ["E1 (bar)"]
     for _, name, color, marker in COMPONENTS:
         h.append(Line2D([], [], linestyle="none", marker=marker, color=color, markersize=4.2))
         l.append(name)
-    h.append(Line2D([], [], linestyle="none", marker="s", markerfacecolor="white",
-                    markeredgecolor=COMPONENTS[1][2], markersize=4.2))
+    h.append(Line2D([], [], linestyle="none", marker="s", markerfacecolor="none",
+                    markeredgecolor=COMPONENTS[1][2], markersize=6.0))
     l.append("field term, additive calibrator (sensitivity)")
     fig.legend(h, l, loc="outside upper center", ncol=5, frameon=False, fontsize=6.5,
                columnspacing=1.2)
