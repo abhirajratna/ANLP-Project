@@ -910,6 +910,157 @@ def figure_by_arm(R: Results, F, plt, out: Path, stem: str, which: str) -> list[
     return paths
 
 
+SHORT = {"LladaBase": "LLaDA-B", "DreamBase": "Dream-B", "LladaInstructGsm": "LLaDA-I GSM8K",
+         "LladaInstructMbpp": "LLaDA-I MBPP", "DreamInstructGsm": "Dream-I GSM8K",
+         "DreamInstructMbpp": "Dream-I MBPP", "Mdlm": "MDLM-110M"}
+NATIVE_LEVELS = (32, 128)               # |M_t| groups of the native panel (32-63 and 128-255 masked)
+NATIVE_MIN_DOCS = 10                    # a native group with fewer documents is left out
+
+
+def _native_at(r, level):
+    for w in ((r or {}).get("native") or {}).get("rows") or []:
+        if w.get("level") == level and _ok(w.get("delta")) and (w.get("n_docs") or 0) >= NATIVE_MIN_DOCS:
+            return w
+    return None
+
+
+def figure_overview(R: Results, F, plt, out: Path) -> list[Path]:
+    """Fig. 1: Delta(m) per primary arm (uniform vs decoder k = 4, 95% bands) with the arm's ECE
+    over uniform states as a dotted reference, and an eighth panel setting that ECE beside the
+    native gap of the tokens the k = 4 decoder commits (descriptive)."""
+    labels = [l for l in MAIN_ARMS if l in R.labels and any(R.kind(l, k) for k in PRIMARY_MASKS)]
+    if not labels:
+        return []
+    style = _mask_style(F)
+    fig, axes = plt.subplots(2, 4, figsize=(6.9, 3.4), squeeze=False, layout="constrained")
+    ms = [1, 2, 4, 8, 16, 32]
+    for i, ax in enumerate(axes.flat[:7]):
+        if i >= len(labels):
+            ax.set_visible(False)
+            continue
+        F._style(ax)
+        label = labels[i]
+        for mask, (color, marker, name) in style.items():
+            xs, ys, lo, hi = _levels(R.kind(label, mask))
+            _curve(ax, xs, ys, lo, hi, color, marker, label=name)
+            ms = xs or ms
+        ece = ((R.kind(label, "uniform") or {}).get("ece") or {}).get("ece")
+        if _ok(ece):
+            ax.axhline(ece, color=F.MUTED, linewidth=0.9, linestyle=(0, (1, 1.5)), zorder=2,
+                       label="ECE, random masks")
+        _m_axis(ax, ms)
+        ax.set_title(display(label), fontsize=7)
+        if i % 4 == 0:
+            ax.set_ylabel("confidence $-$ accuracy", fontsize=7)
+        ax.set_xlabel("field size $m$", fontsize=7)
+    ax = axes.flat[7]
+    F._style(ax, grid_y=False)
+    ys = list(range(len(labels)))[::-1]
+    shapes = {32: ("s", "committed, $|M_t|$ 32$-$63"), 128: ("^", "committed, $|M_t|$ 128$-$255")}
+    for y, label in zip(ys, labels):
+        ece = ((R.kind(label, "uniform") or {}).get("ece") or {}).get("ece")
+        if _ok(ece):
+            ax.plot([ece], [y], linestyle="none", marker="o", markersize=4, markerfacecolor="white",
+                    markeredgecolor=F.MUTED, markeredgewidth=0.9, zorder=3)
+        for level in NATIVE_LEVELS:
+            w = _native_at(R.kind(label, "decoder:topk_conf:k4"), level)
+            if w is None:
+                continue
+            lo, hi = w.get("ci_low"), w.get("ci_high")
+            if _ok(lo) and _ok(hi):
+                ax.plot([lo, hi], [y, y], color=F.COLOR["B"], linewidth=0.8, zorder=2)
+            ax.plot([w["delta"]], [y], linestyle="none", marker=shapes[level][0], markersize=4,
+                    color=F.COLOR["B"], markeredgecolor="white", markeredgewidth=0.4, zorder=3)
+    ax.set_yticks(ys, [SHORT.get(l, l) for l in labels], fontsize=6)
+    ax.axvline(0, color="#c3c2b7", linewidth=0.6, zorder=0)
+    ax.set_xlabel("calibration error", fontsize=7)
+    ax.set_title("ECE vs committed tokens", fontsize=7)
+    from matplotlib.legend_handler import HandlerTuple
+    from matplotlib.lines import Line2D
+    h, l = axes.flat[0].get_legend_handles_labels()
+    if "ECE, random masks" in l:
+        i = l.index("ECE, random masks")
+        h[i] = (h[i], Line2D([], [], linestyle="none", marker="o", markerfacecolor="white",
+                             markeredgecolor=F.MUTED, markersize=4))
+    for level in NATIVE_LEVELS:
+        h.append(Line2D([], [], color=F.COLOR["B"], marker=shapes[level][0], markersize=4,
+                        linewidth=0.8))
+        l.append(shapes[level][1])
+    fig.legend(h, l, loc="outside upper center", ncol=5, frameon=False, handlelength=2.0,
+               columnspacing=1.0,
+               fontsize=6.5, handler_map={tuple: HandlerTuple(ndivide=None, pad=0.6)})
+    paths = F._save(fig, out, "c1_overview", "C1 overview: Delta(m) per arm, ECE, native gap")
+    plt.close(fig)
+    return paths
+
+
+COMPONENTS = (("delta_own", "own miscalibration", "#6250d6", "o"),
+              ("field", "field term", "#1baf7a", "s"),
+              ("residual", "shared errors", "#eda100", "^"))
+
+
+def _contrast(r, key, m_hi=32, m_lo=1):
+    rows = {w["m"]: w for w in (r or {}).get("decomposition") or []}
+    a, b = rows.get(m_hi), rows.get(m_lo)
+    if not a or not b or not (_ok(a.get(key)) and _ok(b.get(key))):
+        return None
+    return a[key] - b[key]
+
+
+def figure_mechanisms(R: Results, F, plt, out: Path) -> list[Path]:
+    """E1 = Delta(32) - Delta(1) split into own, field and shared-error contrasts (point values;
+    the three sum to E1), per primary arm and kind of state; the field contrast under the
+    additive calibrator (a sensitivity run) as an open square."""
+    groups = (("Base and 110M models", ["LladaBase", "DreamBase", "Mdlm"]),
+              ("Instruct models", ["LladaInstructGsm", "DreamInstructGsm",
+                                   "LladaInstructMbpp", "DreamInstructMbpp"]))
+    groups = [(t, [l for l in ls if l in R.labels]) for t, ls in groups]
+    groups = [(t, ls) for t, ls in groups if ls]
+    if not groups:
+        return []
+    fig, axes = plt.subplots(1, len(groups), figsize=(6.9, 2.35), squeeze=False,
+                             layout="constrained",
+                             gridspec_kw={"width_ratios": [len(ls) for _, ls in groups]})
+    from matplotlib.lines import Line2D
+    for ax, (title, labels) in zip(axes.flat, groups):
+        F._style(ax, grid_y=False)
+        rows = [(l, mk) for l in labels for mk in PRIMARY_MASKS]
+        ys = list(range(len(rows)))[::-1]
+        for y, (label, mask) in zip(ys, rows):
+            r = R.kind(label, mask)
+            e1 = ((r or {}).get("contrast") or {}).get("value")
+            if _ok(e1):
+                ax.barh(y, e1, height=0.62, color="#e4e3dd", edgecolor="none", zorder=1)
+            for key, _, color, marker in COMPONENTS:
+                v = _contrast(r, key)
+                if v is not None:
+                    ax.plot([v], [y], linestyle="none", marker=marker, markersize=4.2, color=color,
+                            markeredgecolor="white", markeredgewidth=0.4, zorder=3)
+            fa = (R.kind(label, mask, "additive") or {}).get("field_contrast") or {}
+            if _ok(fa.get("value")):
+                ax.plot([fa["value"]], [y], linestyle="none", marker="s", markersize=4.2,
+                        markerfacecolor="white", markeredgecolor=COMPONENTS[1][2],
+                        markeredgewidth=0.9, zorder=2)
+        ax.set_yticks(ys, [f"{SHORT.get(l, l)}, {'unif.' if mk == 'uniform' else 'dec.'}"
+                           for l, mk in rows], fontsize=6)
+        ax.axvline(0, color="#c3c2b7", linewidth=0.6, zorder=0)
+        ax.set_xlabel("contribution to E1 $=\\Delta(32)-\\Delta(1)$", fontsize=7)
+        ax.set_title(title, fontsize=7)
+    h = [Line2D([], [], color="#e4e3dd", linewidth=5)]
+    l = ["E1 (bar)"]
+    for _, name, color, marker in COMPONENTS:
+        h.append(Line2D([], [], linestyle="none", marker=marker, color=color, markersize=4.2))
+        l.append(name)
+    h.append(Line2D([], [], linestyle="none", marker="s", markerfacecolor="white",
+                    markeredgecolor=COMPONENTS[1][2], markersize=4.2))
+    l.append("field term, additive calibrator (sensitivity)")
+    fig.legend(h, l, loc="outside upper center", ncol=5, frameon=False, fontsize=6.5,
+               columnspacing=1.2)
+    paths = F._save(fig, out, "c1_mechanisms", "C1 E1 split into own, field and shared errors")
+    plt.close(fig)
+    return paths
+
+
 def figure_main_arm(R: Results, F, plt, out: Path, label: str) -> list[Path]:
     """Column width: Delta(m) (solid, with 95% CI) and the field term of Prop. 2 (dashed)."""
     if not any(R.kind(label, k) for k in PRIMARY_MASKS):
@@ -1023,6 +1174,8 @@ def make_figures(R: Results, out: Path, main_arm: str) -> list[Path]:
         return []
     out.mkdir(parents=True, exist_ok=True)
     paths = []
+    paths += figure_overview(R, F, plt, out)
+    paths += figure_mechanisms(R, F, plt, out)
     paths += figure_by_arm(R, F, plt, out, "c1_delta_m_all", "delta")
     paths += figure_by_arm(R, F, plt, out, "c1_field_m_all", "field")
     for fn in (figure_main_arm, figure_reliability, figure_e3):

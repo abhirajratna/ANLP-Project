@@ -249,7 +249,7 @@ def test_figures_are_written_as_pdf_and_png(results, tmp_path):
     pytest.importorskip("matplotlib")
     out = run(results, tmp_path)
     fig = out / "figures" / "c1"
-    for stem in ("c1_delta_m_all", "c1_field_m_all", "c1_delta_m_LladaBase",
+    for stem in ("c1_overview", "c1_mechanisms", "c1_delta_m_all", "c1_field_m_all", "c1_delta_m_LladaBase",
                  "c1_reliability_LladaBase", "c1_e3_LladaBase"):
         for ext in ("pdf", "png"):
             assert (fig / f"{stem}.{ext}").stat().st_size > 5_000, stem
@@ -263,10 +263,21 @@ def test_figures_degrade_with_missing_arms_and_e3(results, tmp_path):
     fig = out / "figures" / "c1"
     assert (fig / "c1_delta_m_all.pdf").exists() and (fig / "c1_delta_m_DreamBase.pdf").exists()
     assert (fig / "c1_reliability_DreamBase.png").exists()
+    assert (fig / "c1_overview.pdf").exists() and (fig / "c1_mechanisms.pdf").exists()
     assert not list(fig.glob("c1_e3_*"))                  # no E3 results, no E3 figure
     shutil.rmtree(results / "c1")
     out2 = run(results, tmp_path / "again")                # nothing: no figure, no crash
     assert not list((out2 / "figures" / "c1").glob("*.pdf"))
+
+
+def test_native_panel_skips_thin_groups_and_contrast_is_32_minus_1():
+    r = {"native": {"rows": [{"level": 32, "delta": 0.1, "n_docs": 40},
+                             {"level": 128, "delta": 0.3, "n_docs": P.NATIVE_MIN_DOCS - 1}]},
+         "decomposition": [{"m": 1, "field": 0.01}, {"m": 8, "field": 0.5}, {"m": 32, "field": 0.04}]}
+    assert P._native_at(r, 32)["delta"] == 0.1
+    assert P._native_at(r, 128) is None and P._native_at(None, 32) is None
+    assert P._contrast(r, "field") == pytest.approx(0.03)
+    assert P._contrast(r, "residual") is None
 
 
 # ---------------------------------------------------------------- claimed, family footnote
