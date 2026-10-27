@@ -36,8 +36,13 @@ and writes, under ``--out-tables`` (default paper/tables/c1) and ``--out-figures
                        the analysis does not write: Holm decisions, ``claimed`` flags and counts,
                        the family size and missing members (``\\COneHolmFootnote``), the E2
                        contrast (also under each sensitivity variant), declared flags, the
-                       shared-error term and ICC, gamma_2..4 with their Holm p
+                       shared-error term and ICC, gamma_2..4 with their Holm p, the native gap
+                       of committed tokens per |M_t| group
   c1_sources.json      every input with its sha256, and a c3/provenance.py stamp
+  c1_overview          (figure*) Delta(m) of the 7 primary arms, uniform vs decoder k = 4, with the
+                       uniform-state ECE; 8th panel: that ECE vs the native gap of committed tokens
+  c1_mechanisms        (figure*) E1 per arm and kind of state split into own / field / shared-error
+                       point estimates; the additive-calibrator field term as a sensitivity marker
   c1_delta_m_all, c1_field_m_all           Delta(m), field(m) vs m, one panel per arm
   c1_delta_m_<Label>, c1_reliability_<Label>, c1_e3_<Label>   for the main arm
                        (``.pdf`` and ``.png``, ACL widths)
@@ -211,7 +216,21 @@ def est_ci(e, nd: int = 3, marks: str = "") -> str:
     lo, hi = _bare(ci[0], nd), _bare(ci[1], nd)
     if "---" in (lo, hi):
         return num(e["value"], nd) + marks
+    nd = ci_decimals(e, nd)
+    lo, hi = _bare(ci[0], nd), _bare(ci[1], nd)
     return f"{num(e['value'], nd)}{marks} {{\\scriptsize[${lo}$, ${hi}$]}}"
+
+
+def ci_decimals(e, nd: int = 3) -> int:
+    """``nd``, raised (up to 5) where rounding misleads: an interval that excludes 0 printed with
+    a 0.000 end, or a nonzero-width interval printed as [x, x]."""
+    ci = e["ci"]
+    while nd < 5:
+        lo, hi = f"{ci[0]:.{nd}f}", f"{ci[1]:.{nd}f}"
+        if not ((ci_excludes_zero(e) and 0.0 in (float(lo), float(hi))) or (lo == hi and ci[0] != ci[1])):
+            break
+        nd += 1
+    return nd
 
 
 def ci_excludes_zero(e) -> bool:
@@ -267,7 +286,8 @@ def beta(r, key: str):
     b = b.get("beta_z") if isinstance(b, dict) else None
     if not b or not _ok(b.get("value")):
         return None, ""
-    return b, ("" if b.get("point_converged", True) else "\\S")
+    ok = b.get("point_converged", True) and not (b.get("n_nonconverged_draws") or 0)
+    return b, ("" if ok else "\\S")
 
 
 # --------------------------------------------------------------------------- tables
@@ -576,8 +596,10 @@ def _est_macros(m: Macros, name: str, e, nd: int = 3) -> None:
     """``name`` (value), ``name``Lo and ``name``Hi (the 95% CI) from ``{value, ci}``."""
     if not e or not _ok(e.get("value")):
         return
-    m.add(name, f"{e['value']:.{nd}f}")
     ci = e.get("ci") or []
+    if len(ci) == 2 and _ok(ci[0]) and _ok(ci[1]):
+        nd = ci_decimals(e, nd)                 # value and interval keep one number of decimals
+    m.add(name, f"{e['value']:.{nd}f}")
     if len(ci) == 2 and _ok(ci[0]) and _ok(ci[1]):
         m.add(name + "Lo", f"{ci[0]:.{nd}f}")
         m.add(name + "Hi", f"{ci[1]:.{nd}f}")
@@ -591,9 +613,20 @@ def sensitivity_macros(R: Results, m: Macros) -> None:
               "COneFieldContrast<Label><Variant><Tag>[Lo|Hi], COneFieldDeclared...")
     cells = agree = 0
     runs = set()
+    k_cells = k_agree = 0
+
+    def same_as(fc, prim) -> bool:
+        return (fc["value"] > 0) == (prim["value"] > 0) and \
+            bool(fc.get("declared")) == bool(prim.get("declared"))
+
     for label in R.labels:
         for mask in PRIMARY_MASKS:
             tag = label + arm_tag(mask)
+            prim = (R.kind(label, mask) or {}).get("field_contrast")
+            knots = [(R.kind(label, mask, v) or {}).get("field_contrast") for v in ("knots5", "knots13")]
+            if prim and _ok(prim.get("value")) and all(k and _ok(k.get("value")) for k in knots):
+                k_cells += 1
+                k_agree += all(same_as(k, prim) for k in knots)
             for v, word in VARIANTS.items():
                 fc = (R.kind(label, mask, v) or {}).get("field_contrast")
                 if not fc or not _ok(fc.get("value")):
@@ -605,15 +638,18 @@ def sensitivity_macros(R: Results, m: Macros) -> None:
                 if v != "additive":
                     continue
                 runs.add(label)
-                prim = (R.kind(label, mask) or {}).get("field_contrast")
                 if not prim or not _ok(prim.get("value")):
                     continue
-                same = (fc["value"] > 0) == (prim["value"] > 0) and \
-                    bool(fc.get("declared")) == bool(prim.get("declared"))
+                same = same_as(fc, prim)
                 cells += 1
                 agree += same
                 m.add(f"{p}FieldAdditiveShift{tag}", f"{fc['value'] - prim['value']:.3f}")
                 m.add(f"{p}FieldAdditiveAgree{tag}", _yn(same))
+    if k_cells:
+        m.comment("5 and 13 knots vs the primary 9: cells with both runs, and the cells where E2 keeps "
+                  "its sign and its declared flag at both")
+        m.add(f"{p}KnotsCells", str(k_cells))
+        m.add(f"{p}KnotsAgree", str(k_agree))
     if runs:
         m.comment("additive vs interacted calibrator: runs present, cells compared, and the cells where "
                   "E2 keeps its sign and its declared flag")
@@ -642,6 +678,23 @@ def shared_error_macros(R: Results, m: Macros) -> None:
                             residual_at(r, row["m"]))
             icc = r.get("icc_residuals") or {}
             _est_macros(m, f"{p}{label}ICC{tag}", {"value": icc.get("icc"), "ci": icc.get("ci")})
+
+
+def native_macros(R: Results, m: Macros) -> None:
+    """The native gap c - a of the tokens the k = 4 decoder commits, per |M_t| group
+    (``native.rows``; level = 2^floor(log2 |M_t|)): COne<Label>Native<level><Tag>[Lo|Hi] and
+    COne<Label>NativeDocs<level><Tag>, for groups of at least NATIVE_MIN_DOCS documents."""
+    p, mask = "COne", "decoder:topk_conf:k4"
+    m.comment(f"native gap of committed tokens by |M_t| group (groups with >= {NATIVE_MIN_DOCS} documents)")
+    for label in R.labels:
+        r = R.kind(label, mask)
+        for w in ((r or {}).get("native") or {}).get("rows") or []:
+            level = w.get("level")
+            if level not in _WORDS or _native_at(r, level) is None:
+                continue
+            name = f"{p}{label}Native{_WORDS[level]}{arm_tag(mask)}"
+            _est_macros(m, name, {"value": w["delta"], "ci": [w.get("ci_low"), w.get("ci_high")]})
+            m.add(f"{p}{label}NativeDocs{_WORDS[level]}{arm_tag(mask)}", str(int(w["n_docs"])))
 
 
 def holm_footnote_macros(R: Results, m: Macros) -> None:
@@ -700,9 +753,10 @@ def gamma_macros(R: Results, m: Macros) -> None:
                 reject += bool(g.get("holm_reject"))
                 any_rej = any_rej or bool(g.get("holm_reject"))
         rows_rej += any_rej
-    m.add(f"{p}HolmGammaFamily", str(family))
-    m.add(f"{p}HolmGammaReject", str(reject))
-    m.add(f"{p}HolmGammaRows", str(rows_rej))
+    if family:                                # no gamma results yet: leave the counts undefined (bold ?)
+        m.add(f"{p}HolmGammaFamily", str(family))
+        m.add(f"{p}HolmGammaReject", str(reject))
+        m.add(f"{p}HolmGammaRows", str(rows_rej))
 
 
 def summary_macros(R: Results, m: Macros) -> None:
@@ -718,15 +772,13 @@ def summary_macros(R: Results, m: Macros) -> None:
             tag = label + arm_tag(mask)
             fc = r.get("field_contrast") or {}
             if _ok(fc.get("value")):
-                m.add(f"{p}FieldContrast{tag}", f"{fc['value']:.3f}")
-                if len(fc.get("ci") or []) == 2:
-                    m.add(f"{p}FieldContrast{tag}Lo", f"{fc['ci'][0]:.3f}")
-                    m.add(f"{p}FieldContrast{tag}Hi", f"{fc['ci'][1]:.3f}")
+                _est_macros(m, f"{p}FieldContrast{tag}", fc)
                 m.add(f"{p}FieldDeclared{tag}", _yn(fc.get("declared")))
             if "declared" in (r.get("contrast") or {}):
                 m.add(f"{p}ContrastDeclared{tag}", _yn(r["contrast"]["declared"]))
     sensitivity_macros(R, m)
     shared_error_macros(R, m)
+    native_macros(R, m)
     if not R.summary:
         m.comment("no results/c1/summary/c1_summary.json yet: no Holm macros")
         return
@@ -881,6 +933,160 @@ def figure_by_arm(R: Results, F, plt, out: Path, stem: str, which: str) -> list[
     return paths
 
 
+SHORT = {"LladaBase": "LLaDA-B", "DreamBase": "Dream-B", "LladaInstructGsm": "LLaDA-I GSM8K",
+         "LladaInstructMbpp": "LLaDA-I MBPP", "DreamInstructGsm": "Dream-I GSM8K",
+         "DreamInstructMbpp": "Dream-I MBPP", "Mdlm": "MDLM-110M"}
+NATIVE_LEVELS = (32, 128)               # |M_t| groups of the native panel (32-63 and 128-255 masked)
+NATIVE_MIN_DOCS = 10                    # a native group with fewer documents is left out
+
+
+def _native_at(r, level):
+    for w in ((r or {}).get("native") or {}).get("rows") or []:
+        if w.get("level") == level and _ok(w.get("delta")) and (w.get("n_docs") or 0) >= NATIVE_MIN_DOCS:
+            return w
+    return None
+
+
+def figure_overview(R: Results, F, plt, out: Path) -> list[Path]:
+    """Fig. 1: Delta(m) per primary arm (uniform vs decoder k = 4, 95% bands) with the arm's ECE
+    over uniform states as a dotted reference, and an eighth panel setting that ECE beside the
+    native gap of the tokens the k = 4 decoder commits (descriptive)."""
+    labels = [l for l in MAIN_ARMS if l in R.labels and any(R.kind(l, k) for k in PRIMARY_MASKS)]
+    if not labels:
+        return []
+    style = _mask_style(F)
+    fig, axes = plt.subplots(2, 4, figsize=(6.9, 3.4), squeeze=False, layout="constrained")
+    ms = [1, 2, 4, 8, 16, 32]
+    for i, ax in enumerate(axes.flat[:7]):
+        if i >= len(labels):
+            ax.set_visible(False)
+            continue
+        F._style(ax)
+        label = labels[i]
+        for mask, (color, marker, name) in style.items():
+            xs, ys, lo, hi = _levels(R.kind(label, mask))
+            _curve(ax, xs, ys, lo, hi, color, marker, label=name)
+            ms = xs or ms
+        ece = ((R.kind(label, "uniform") or {}).get("ece") or {}).get("ece")
+        if _ok(ece):
+            ax.axhline(ece, color=F.MUTED, linewidth=0.9, linestyle=(0, (1, 1.5)), zorder=2,
+                       label="ECE (unsigned), uniform states")
+        _m_axis(ax, ms)
+        ax.set_title(display(label), fontsize=7)
+        if i % 4 == 0:
+            ax.set_ylabel("confidence $-$ accuracy", fontsize=7)
+        ax.set_xlabel("field size $m$", fontsize=7)
+    ax = axes.flat[7]
+    F._style(ax, grid_y=False)
+    ys = list(range(len(labels)))[::-1]
+    shapes = {32: ("s", "committed, $|M_t|$ 32$-$63", F.COLOR["B"], (0, ())),
+              128: ("^", "committed, $|M_t|$ 128$-$255", "white", (0, (2, 1.2)))}
+    for y, label in zip(ys, labels):
+        ece = ((R.kind(label, "uniform") or {}).get("ece") or {}).get("ece")
+        if _ok(ece):
+            ax.plot([ece], [y], linestyle="none", marker="o", markersize=4, markerfacecolor="white",
+                    markeredgecolor=F.MUTED, markeredgewidth=0.9, zorder=3)
+        for level in NATIVE_LEVELS:
+            w = _native_at(R.kind(label, "decoder:topk_conf:k4"), level)
+            if w is None:
+                continue
+            lo, hi = w.get("ci_low"), w.get("ci_high")
+            marker, _, face, dash = shapes[level]
+            if _ok(lo) and _ok(hi):
+                ax.plot([lo, hi], [y, y], color=F.COLOR["B"], linewidth=0.8, linestyle=dash, zorder=2)
+            ax.plot([w["delta"]], [y], linestyle="none", marker=marker, markersize=4.4,
+                    markerfacecolor=face, markeredgecolor=F.COLOR["B"], markeredgewidth=0.8, zorder=3)
+    ax.set_yticks(ys, [SHORT.get(l, l) for l in labels], fontsize=6)
+    ax.axvline(0, color="#c3c2b7", linewidth=0.6, zorder=0)
+    ax.set_xlabel("$c-a$ (ECE: unsigned)", fontsize=7)
+    ax.set_title("ECE vs committed tokens", fontsize=7)
+    from matplotlib.legend_handler import HandlerTuple
+    from matplotlib.lines import Line2D
+    h, l = axes.flat[0].get_legend_handles_labels()
+    if "ECE (unsigned), uniform states" in l:
+        i = l.index("ECE (unsigned), uniform states")
+        h[i] = (h[i], Line2D([], [], linestyle="none", marker="o", markerfacecolor="white",
+                             markeredgecolor=F.MUTED, markersize=4))
+    for level in NATIVE_LEVELS:
+        marker, _, face, dash = shapes[level]
+        h.append(Line2D([], [], color=F.COLOR["B"], marker=marker, markersize=4.4, linewidth=0.8,
+                        linestyle=dash, markerfacecolor=face, markeredgecolor=F.COLOR["B"]))
+        l.append(shapes[level][1])
+    fig.legend(h, l, loc="outside upper center", ncol=5, frameon=False, handlelength=2.0,
+               columnspacing=1.0,
+               fontsize=6.5, handler_map={tuple: HandlerTuple(ndivide=None, pad=0.6)})
+    paths = F._save(fig, out, "c1_overview", "C1 overview: Delta(m) per arm, ECE, native gap")
+    plt.close(fig)
+    return paths
+
+
+COMPONENTS = (("delta_own", "own miscalibration", "#6250d6", "o"),
+              ("field", "field term", "#1baf7a", "s"),
+              ("residual", "shared errors", "#eda100", "^"))
+
+
+def _contrast(r, key, m_hi=32, m_lo=1):
+    rows = {w["m"]: w for w in (r or {}).get("decomposition") or []}
+    a, b = rows.get(m_hi), rows.get(m_lo)
+    if not a or not b or not (_ok(a.get(key)) and _ok(b.get(key))):
+        return None
+    return a[key] - b[key]
+
+
+def figure_mechanisms(R: Results, F, plt, out: Path) -> list[Path]:
+    """E1 = Delta(32) - Delta(1) split into own, field and shared-error contrasts (point values;
+    the three sum to E1), per primary arm and kind of state; the field contrast under the
+    additive calibrator (a sensitivity run) as an open square."""
+    groups = (("Base and 110M models", ["LladaBase", "DreamBase", "Mdlm"]),
+              ("Instruct models", ["LladaInstructGsm", "DreamInstructGsm",
+                                   "LladaInstructMbpp", "DreamInstructMbpp"]))
+    groups = [(t, [l for l in ls if l in R.labels]) for t, ls in groups]
+    groups = [(t, ls) for t, ls in groups if ls]
+    if not groups:
+        return []
+    fig, axes = plt.subplots(1, len(groups), figsize=(6.9, 2.35), squeeze=False,
+                             layout="constrained",
+                             gridspec_kw={"width_ratios": [len(ls) for _, ls in groups]})
+    from matplotlib.lines import Line2D
+    for ax, (title, labels) in zip(axes.flat, groups):
+        F._style(ax, grid_y=False)
+        rows = [(l, mk) for l in labels for mk in PRIMARY_MASKS]
+        ys = list(range(len(rows)))[::-1]
+        for y, (label, mask) in zip(ys, rows):
+            r = R.kind(label, mask)
+            e1 = ((r or {}).get("contrast") or {}).get("value")
+            if _ok(e1):
+                ax.barh(y, e1, height=0.62, color="#e4e3dd", edgecolor="none", zorder=1)
+            for key, _, color, marker in COMPONENTS:
+                v = _contrast(r, key)
+                if v is not None:
+                    ax.plot([v], [y], linestyle="none", marker=marker, markersize=4.2, color=color,
+                            markeredgecolor="white", markeredgewidth=0.4, zorder=3)
+            fa = (R.kind(label, mask, "additive") or {}).get("field_contrast") or {}
+            if _ok(fa.get("value")):
+                ax.plot([fa["value"]], [y], linestyle="none", marker="s", markersize=6.0,
+                        markerfacecolor="none", markeredgecolor=COMPONENTS[1][2],
+                        markeredgewidth=0.9, zorder=4)
+        ax.set_yticks(ys, [f"{SHORT.get(l, l)}, {'uniform' if mk == 'uniform' else 'decoder'}"
+                           for l, mk in rows], fontsize=6)
+        ax.axvline(0, color="#c3c2b7", linewidth=0.6, zorder=0)
+        ax.set_xlabel("contribution to E1 $=\\Delta(32)-\\Delta(1)$ (point estimates)", fontsize=7)
+        ax.set_title(title, fontsize=7)
+    h = [Line2D([], [], color="#e4e3dd", linewidth=5)]
+    l = ["E1 (bar)"]
+    for _, name, color, marker in COMPONENTS:
+        h.append(Line2D([], [], linestyle="none", marker=marker, color=color, markersize=4.2))
+        l.append(name)
+    h.append(Line2D([], [], linestyle="none", marker="s", markerfacecolor="none",
+                    markeredgecolor=COMPONENTS[1][2], markersize=6.0))
+    l.append("field term, additive calibrator (sensitivity)")
+    fig.legend(h, l, loc="outside upper center", ncol=5, frameon=False, fontsize=6.5,
+               columnspacing=1.2)
+    paths = F._save(fig, out, "c1_mechanisms", "C1 E1 split into own, field and shared errors")
+    plt.close(fig)
+    return paths
+
+
 def figure_main_arm(R: Results, F, plt, out: Path, label: str) -> list[Path]:
     """Column width: Delta(m) (solid, with 95% CI) and the field term of Prop. 2 (dashed)."""
     if not any(R.kind(label, k) for k in PRIMARY_MASKS):
@@ -994,6 +1200,8 @@ def make_figures(R: Results, out: Path, main_arm: str) -> list[Path]:
         return []
     out.mkdir(parents=True, exist_ok=True)
     paths = []
+    paths += figure_overview(R, F, plt, out)
+    paths += figure_mechanisms(R, F, plt, out)
     paths += figure_by_arm(R, F, plt, out, "c1_delta_m_all", "delta")
     paths += figure_by_arm(R, F, plt, out, "c1_field_m_all", "field")
     for fn in (figure_main_arm, figure_reliability, figure_e3):

@@ -23,16 +23,12 @@
 
 \paragraph{Masked diffusion decoding.}
 A masked diffusion LM \citep{austin2021d3pm,sahoo2024mdlm,nie2025llada,ye2025dream} writes by
-unmasking. A \emph{state} $s$ is a sequence with a set $M$ of masked positions. One forward
-pass gives, at every $i\in M$, a distribution $p_{\theta,i}$ given the observed tokens
-$\xobs$, with top-1 token $v_i$, \emph{confidence} $c_i=p_{\theta,i}(v_i)$ and log-odds
-$\ell_i=\log\frac{c_i}{1-c_i}$, so $c_i=\sigma(\ell_i)$. The decoder \emph{commits} some
-positions for good and repeats. The usual rule, from MaskGIT \citep{chang2022maskgit} and the
-default of LLaDA and Dream, commits the $k$ most confident positions per step; threshold rules
-such as Fast-dLLM \citep{wu2025fastdllm} commit every position above a confidence cutoff.
-
-Committing a set $S\subseteq M$ in one step draws its tokens from the product of their
-marginals. With $p^*$ the true joint of $x_S$ given $\xobs$ and $p^*_i$ its marginals,
+unmasking: in a \emph{state} $s$ with masked set $M$, one forward pass gives at each $i\in M$ a
+distribution $p_{\theta,i}$ given the observed tokens $\xobs$, with top-1 token $v_i$,
+\emph{confidence} $c_i=p_{\theta,i}(v_i)$ and log-odds $\ell_i=\log\frac{c_i}{1-c_i}$. The
+decoder \emph{commits} positions for good: the $k$ most confident per step
+\citep{chang2022maskgit} or all above a cutoff \citep{wu2025fastdllm}. Committing $S\subseteq M$ in one step draws its tokens from the product
+of their marginals; with $p^*$ the true joint of $x_S$ given $\xobs$ and $p^*_i$ its marginals,
 \begin{equation}
   \begin{split}
   \mathrm{KL}\bigl(p^* \,\|\, {\textstyle\prod_{i\in S}} p_{\theta,i}\bigr)
@@ -42,34 +38,26 @@ marginals. With $p^*$ the true joint of $x_S$ given $\xobs$ and $p^*_i$ its marg
   \label{eq:decomp}
 \end{equation}
 where $\mathrm{TC}(x_S\mid\xobs)=\sum_{i\in S}H(p^*_i)-H(p^*_S)$ is the total correlation, zero
-if and only if the tokens are conditionally independent. (A) is what no product of marginals
-can represent; (B) is the error of the marginals themselves
-\citep[cf.][]{benhamu2025entropy}. Section~\ref{sec:c2} estimates both. C1 asks a narrower
-question about the marginals: once the decoder has chosen a token, is its confidence still an
-honest probability of being right?
+iff they are conditionally independent. (A) is what no product of marginals can
+represent, (B) the marginals' error \citep[cf.][]{benhamu2025entropy}; \S\ref{sec:c2}
+estimates both, C1 only the marginals.
 
 \paragraph{The committed-token gap.}
-Let $x_0$ be the true document. Under teacher forcing (\S\ref{sec:instrument}) correctness
-$a_i=\1\{v_i=x_{0,i}\}$ is observed. A commit is a selection: the committed token had the
-largest $\ell$ among its candidates. We model a field of $m$ candidates as a random pool
-$P\subseteq M$ of size $m$, won by $i=\arg\max_{j\in P}\ell_j$ (ties broken at random). With
-$\E_m$ the average over states, pools of size $m$ and their winners, the
+Under teacher forcing (\S\ref{sec:instrument}) correctness $a_i=\1\{v_i=x_{0,i}\}$ against the
+true document $x_0$ is observed. A commit is a selection, so we model a field of $m$ candidates
+as a random pool $P\subseteq M$, won by $i=\arg\max_{j\in P}\ell_j$ (ties broken at random).
+With $\E_m$ the average over states, pools of size $m$ and winners, the
 \emph{committed-token gap} is
 \begin{equation}
   \Delta(m) = \E_m\,[\,c - a\,],
   \label{eq:gap}
 \end{equation}
-confidence minus accuracy, so positive means overconfident.\footnote{The proposal used
-accuracy minus confidence; files from that period keep the opposite sign.} $\Delta(1)$ is the
-ordinary signed calibration error of a random masked position; larger $m$ stands for
-committing out of a larger field, as at early steps and in long outputs.
+confidence minus accuracy, so positive means overconfident. $\Delta(1)$ is the ordinary signed calibration error of a masked
+position; larger $m$ stands for a larger field, as at early steps and in long outputs, and random pools
+vary $m$ with the state held fixed.
 
 \paragraph{The winner's curse.}
-The largest of $m$ noisy estimates tends to be one whose error pushed it up: the winner's
-curse \citep{efron2011tweedie,andrews2024winners}. If it acts on decoding, $\Delta(m)$ grows
-with $m$, and a confidence cutoff means something different in exactly the states where it is
-applied. Whether it can act depends on what calibration conditions on. Let
-$\pi(\ell)=\Pr(a=1\mid\ell)$ be the ordinary calibration curve over all masked positions (the
+If the winner's curse \citep{efron2011tweedie,andrews2024winners} acts on decoding, $\Delta(m)$ grows with $m$. Let $\pi(\ell)=\Pr(a=1\mid\ell)$ be the calibration curve over all masked positions (the
 $m=1$ population) and $\pi(\ell,s)=\Pr(a=1\mid\ell,s)$ its context-aware version.
 
 \begin{proposition}[Winning adds nothing]
@@ -82,10 +70,9 @@ independently of all $(\ell_j,a_j)_{j\in M}$. Then the winner $i$ of $P$ satisfi
 \]
 \end{proposition}
 
-Given $\ell_i$ and $s$, whether $i$ wins depends only on the other scores, which say nothing
-about $a_i$: selection does not bias a correct posterior \citep{efron2011tweedie}. This holds
-however unequal the noise scales are, so heteroskedastic noise alone, the mechanism our
-proposal relied on, cannot make field size informative. Selection acts only through context:
+Winning depends only on the other scores, which say nothing about $a_i$, so selection does not
+bias a correct posterior \citep{dawid1994selection,efron2011tweedie}; it acts
+only through context:
 
 \begin{proposition}[Exact split of the gap]
 \label{prop:split}
@@ -100,11 +87,9 @@ Under the conditions of Proposition~\ref{prop:select},
 and the field term is exactly zero at $m=1$.
 \end{proposition}
 
-Proofs are in Appendix~\ref{sec:app-proofs}. The first term, ordinary miscalibration reweighted
-towards where winners sit, can make $\Delta(m)$ grow with $m$ with no winner's curse at all.
-The \emph{field term} is nonzero only if accuracy at fixed confidence depends on context, and
-winning a large pool shifts which contexts winners come from (a lone high score in a weak
-field is more likely to be noise). It is the winner's curse in a corrected, testable form. If
-positions of a state share errors, Proposition~\ref{prop:select} fails and
-\eqref{eq:gapsplit} gains a third term, $\E_m[\pi(\ell,s)-a]$, which \S\ref{sec:instrument}
-tracks.
+Proofs are in Appendix~\ref{sec:app-proofs}. Own miscalibration, reweighted towards where
+winners sit, can make $\Delta(m)$ grow with $m$ with no winner's curse; the \emph{field term},
+nonzero only if accuracy at fixed confidence depends on context (it requires a nonzero
+grouping loss; \citealp{kull2015decomp,perezlebel2023grouping}), is the winner's curse in a
+testable form. If positions of a state share errors, Proposition~\ref{prop:select} fails and
+\eqref{eq:gapsplit} gains a third term, $\E_m[\pi(\ell,s)-a]$ (\S\ref{sec:instrument}).

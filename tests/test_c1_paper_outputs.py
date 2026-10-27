@@ -227,6 +227,10 @@ def test_number_formatting():
     assert P.num(1.8e6) == "$1.8{\\times}10^{6}$"
     assert P.est_ci({"value": 0.1, "ci": [None, 0.2]}) == "$0.100$"      # no half-interval
     assert P.est_ci(None) == P.DASH
+    # rounding that would mislead takes more decimals: an end of an interval excluding 0, or [x, x]
+    assert P.est_ci({"value": 0.0015, "ci": [0.00003, 0.003]}) == "$0.00150$ {\\scriptsize[$0.00003$, $0.00300$]}"
+    assert P.est_ci({"value": 0.0010, "ci": [0.00098, 0.00106]}) == "$0.0010$ {\\scriptsize[$0.0010$, $0.0011$]}"
+    assert P.est_ci({"value": 0.05, "ci": [-0.0002, 0.1]}) == "$0.050$ {\\scriptsize[$0.000$, $0.100$]}"
     assert P.sup("*", "", "\\dagger") == "$^{*,\\dagger}$" and P.sup("") == ""
     assert P.pval(0.0004) == "$<0.001$" and P.pval(0.0321) == "$0.032$"
 
@@ -245,7 +249,7 @@ def test_figures_are_written_as_pdf_and_png(results, tmp_path):
     pytest.importorskip("matplotlib")
     out = run(results, tmp_path)
     fig = out / "figures" / "c1"
-    for stem in ("c1_delta_m_all", "c1_field_m_all", "c1_delta_m_LladaBase",
+    for stem in ("c1_overview", "c1_mechanisms", "c1_delta_m_all", "c1_field_m_all", "c1_delta_m_LladaBase",
                  "c1_reliability_LladaBase", "c1_e3_LladaBase"):
         for ext in ("pdf", "png"):
             assert (fig / f"{stem}.{ext}").stat().st_size > 5_000, stem
@@ -259,10 +263,35 @@ def test_figures_degrade_with_missing_arms_and_e3(results, tmp_path):
     fig = out / "figures" / "c1"
     assert (fig / "c1_delta_m_all.pdf").exists() and (fig / "c1_delta_m_DreamBase.pdf").exists()
     assert (fig / "c1_reliability_DreamBase.png").exists()
+    assert (fig / "c1_overview.pdf").exists() and (fig / "c1_mechanisms.pdf").exists()
     assert not list(fig.glob("c1_e3_*"))                  # no E3 results, no E3 figure
     shutil.rmtree(results / "c1")
     out2 = run(results, tmp_path / "again")                # nothing: no figure, no crash
     assert not list((out2 / "figures" / "c1").glob("*.pdf"))
+
+
+def test_native_panel_skips_thin_groups_and_contrast_is_32_minus_1():
+    r = {"native": {"rows": [{"level": 32, "delta": 0.1, "n_docs": 40},
+                             {"level": 128, "delta": 0.3, "n_docs": P.NATIVE_MIN_DOCS - 1}]},
+         "decomposition": [{"m": 1, "field": 0.01}, {"m": 8, "field": 0.5}, {"m": 32, "field": 0.04}]}
+    assert P._native_at(r, 32)["delta"] == 0.1
+    assert P._native_at(r, 128) is None and P._native_at(None, 32) is None
+    assert P._contrast(r, "field") == pytest.approx(0.03)
+    assert P._contrast(r, "residual") is None
+
+
+def test_native_macros_per_level_with_doc_counts():
+    rows = [{"level": 32, "delta": 0.0791, "ci_low": 0.07, "ci_high": 0.088, "n_docs": 651},
+            {"level": 256, "delta": 0.4, "ci_low": 0.1, "ci_high": 0.7, "n_docs": 2}]
+    R = type("R", (), {"labels": ["LladaInstructGsm"],
+                       "kind": lambda self, l, k, v=None: {"native": {"rows": rows}} if k.startswith("decoder") else None})()
+    m = P.Macros()
+    P.native_macros(R, m)
+    body = "\n".join(m.lines)
+    assert "\\newcommand{\\COneLladaInstructGsmNativeThirtyTwoDecTopkConfKFour}{0.079}" in body
+    assert "{\\COneLladaInstructGsmNativeDocsThirtyTwoDecTopkConfKFour}{651}" in body
+    assert "TwoFiftySix" not in body                     # 2 documents: below NATIVE_MIN_DOCS
+
 
 
 # ---------------------------------------------------------------- claimed, family footnote
@@ -403,6 +432,15 @@ def test_gamma_without_a_summary_is_dashes_and_no_macros(results, tmp_path):
     assert not any("Gamma" in n for n in macro_defs(out / "tables" / "c1" / "macros_c1.tex"))
 
 
+def test_gamma_counts_undefined_when_the_summary_has_no_gamma(results, tmp_path):
+    summ = _summary(results)                               # E1/E2-only runs: gamma is None
+    for r in summ["rows"]:
+        r["gamma"] = {g: None for g in P.GAMMAS}
+    _write_summary(results, summ)
+    mine = macro_defs(run(results, tmp_path, "--no-figures") / "tables" / "c1" / "macros_c1.tex")
+    assert not any(n.startswith("COneHolmGamma") for n in mine)
+
+
 # ---------------------------------------------------------------- shared-error term and ICC
 def test_shared_error_term_and_icc_macros_and_table(results, tmp_path):
     out = run(results, tmp_path, "--no-figures")
@@ -419,9 +457,10 @@ def test_shared_error_term_and_icc_macros_and_table(results, tmp_path):
             for j, m in enumerate(P.SHARED_MS):
                 row = next(x for x in r["decomposition"] if x["m"] == m)
                 assert f"{abs(row['residual']):.3f}" in cells[2 + j]
-                assert mine[f"COne{label}Residual{P._WORDS[m]}{tag}"] == f"{row['residual']:.3f}"
-                assert mine[f"COne{label}Residual{P._WORDS[m]}{tag}Lo"] == f"{row['residual_ci'][0]:.3f}"
-                assert mine[f"COne{label}Residual{P._WORDS[m]}{tag}Hi"] == f"{row['residual_ci'][1]:.3f}"
+                nd = P.ci_decimals({"value": row["residual"], "ci": row["residual_ci"]})
+                assert mine[f"COne{label}Residual{P._WORDS[m]}{tag}"] == f"{row['residual']:.{nd}f}"
+                assert mine[f"COne{label}Residual{P._WORDS[m]}{tag}Lo"] == f"{row['residual_ci'][0]:.{nd}f}"
+                assert mine[f"COne{label}Residual{P._WORDS[m]}{tag}Hi"] == f"{row['residual_ci'][1]:.{nd}f}"
             icc = r["icc_residuals"]
             assert f"{abs(icc['icc']):.3f}" in cells[4]
             assert mine[f"COne{label}ICC{tag}"] == f"{icc['icc']:.3f}"
@@ -505,6 +544,33 @@ def test_a_missing_additive_dir_is_a_dash_and_a_stderr_note(results, tmp_path, c
     assert not any(n.startswith("COneAdditive") or "Additive" in n for n in mine)
 
 
+def test_knots_agreement_macros_count_cells_with_both_knot_runs(results, tmp_path):
+    out = run(results, tmp_path, "--no-figures")
+    mine = macro_defs(out / "tables" / "c1" / "macros_c1.tex")
+
+    def fc(run_dir, mask):
+        r = json.loads((results / "c1" / run_dir / "results.json").read_text())
+        return r["by_mask_kind"][mask]["field_contrast"]
+
+    cells = agree = 0
+    for label in sorted(p.name for p in (results / "c1").iterdir() if p.name.endswith("_knots5")):
+        label = label[:-len("_knots5")]
+        if not (results / "c1" / f"{label}_knots13").exists():
+            continue                                    # one knot run only: not a cell
+        for mask in P.PRIMARY_MASKS:
+            prim = fc(label, mask)
+            runs = [fc(f"{label}_knots{k}", mask) for k in (5, 13)]
+            cells += 1
+            agree += all((x["value"] > 0) == (prim["value"] > 0)
+                         and bool(x.get("declared")) == bool(prim.get("declared")) for x in runs)
+    assert cells > 0
+    assert mine["COneKnotsCells"] == str(cells)
+    assert mine["COneKnotsAgree"] == str(agree)
+    shutil.rmtree(results / "c1" / "LladaBase_knots13")
+    again = macro_defs(run(results, tmp_path / "again", "--no-figures") / "tables" / "c1" / "macros_c1.tex")
+    assert "COneKnotsCells" not in again and "COneKnotsAgree" not in again
+
+
 def test_an_unreadable_additive_file_is_skipped_with_a_warning(results, tmp_path, capsys):
     (results / "c1" / "LladaBase_additive" / "results.json").write_text("{not json")
     out = run(results, tmp_path, "--no-figures")
@@ -516,3 +582,15 @@ def test_the_script_does_not_touch_the_frozen_analysis():
     """analyze_traces.py is frozen by the pre-registration; this feature only reads its output."""
     src = (ROOT / "scripts" / "c1_paper_outputs.py").read_text()
     assert "import analyze_traces" not in src and "from analyze_traces" not in src
+
+
+def test_ci_macros_get_decimals_where_rounding_misleads():
+    # [0.0005, 0.0014] would print as [0.001, 0.001]; an interval excluding 0 must not print a 0.000 end
+    m = P.Macros()
+    P._est_macros(m, "Narrow", {"value": 0.00093, "ci": [0.0005, 0.0014]})
+    P._est_macros(m, "NearZero", {"value": -0.0012, "ci": [-0.0021, -0.0003]})
+    P._est_macros(m, "Plain", {"value": 0.025, "ci": [0.011, 0.040]})
+    got = dict(l[len("\\newcommand{\\"):-1].split("}{") for l in m.lines)
+    assert (got["Narrow"], got["NarrowLo"], got["NarrowHi"]) == ("0.0009", "0.0005", "0.0014")
+    assert (got["NearZero"], got["NearZeroLo"], got["NearZeroHi"]) == ("-0.0012", "-0.0021", "-0.0003")
+    assert (got["Plain"], got["PlainLo"], got["PlainHi"]) == ("0.025", "0.011", "0.040")

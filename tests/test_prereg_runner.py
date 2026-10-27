@@ -269,3 +269,103 @@ def test_the_runner_stops_before_the_commands_when_inputs_are_wrong(job, case):
     rc, out, calls, stub = job(**env)
     assert rc != 0 and why in out, out
     assert stub == []
+
+
+def test_e1e2_only_runs_the_primary_c1_steps_with_skip_regression(job):
+    rc, out, calls, stub = job(C3_PREREG_DRYRUN="1", C3_E1E2_ONLY="1")
+    assert rc == 0, out
+    persist = job.out.parent
+    root = persist / "prereg-dryrun-e1e2"
+    assert "[prereg] C3_E1E2_ONLY=1: primary c1 steps only, --skip-regression, OUT=" in out
+    assert not job.out.exists() and not (persist / "prereg-dryrun").exists()
+    outs = [Path(_arg(c, "--out")) for c in stub]
+    assert len(stub) == 1 and stub[0][0] == "scripts/analyze_traces.py"
+    assert outs[0].parent.parent.parent == root and outs[0].parent.name == "c1"
+    assert outs[0].name == "Mdlm"
+    assert stub[0].count("--skip-regression") == 1
+    for tail in ("Mdlm_knots5", "Mdlm_knots13", "Mdlm_additive", "MdlmTimeSplit"):
+        assert f"[prereg] C3_E1E2_ONLY: skipped {outs[0].parent / tail}" in out
+    assert f"skipped {outs[0].parent.parent / 'e3' / 'Mdlm'}" in out
+    assert f"skipped {outs[0].parent.parent / 't8' / 'Mdlm'}" in out
+    assert "--skip-regression" in (outs[0] / ".prereg-done").read_text()
+    # An explicit OUT still wins.
+    rc, out, calls, stub = job(C3_E1E2_ONLY="1", OUT=str(persist / "elsewhere"))
+    assert rc == 0 and len(stub) == 1 and "OUT=" + str(persist / "elsewhere") in out, out
+
+
+def test_e1e2_only_defaults_to_its_own_root(job):
+    rc, out, calls, stub = job(C3_E1E2_ONLY="1")
+    assert rc == 0, out
+    assert [Path(_arg(c, "--out")) for c in stub] == [
+        job.out.parent / "prereg-v1-e1e2" / "c1" / "Mdlm"]
+    assert not job.out.exists()
+
+
+@pytest.mark.parametrize("flag", [None, "0"])
+def test_without_e1e2_only_the_commands_are_unchanged(job, flag):
+    rc, out, calls, stub = job(C3_E1E2_ONLY=flag)
+    assert rc == 0, out
+    assert "C3_E1E2_ONLY" not in out
+    got = [(c[0], Path(_arg(c, "--out")).relative_to(job.out).as_posix(),
+            c.count("--skip-regression")) for c in stub]
+    assert got == [("scripts/analyze_traces.py", "c1/Mdlm", 0),
+                   ("scripts/analyze_traces.py", "c1/Mdlm_knots5", 0),
+                   ("scripts/analyze_traces.py", "c1/Mdlm_knots13", 0),
+                   ("scripts/analyze_traces.py", "c1/Mdlm_additive", 1),
+                   ("scripts/analyze_traces.py", "c1/MdlmTimeSplit", 1),
+                   ("scripts/analyze_e3.py", "e3/Mdlm", 0),
+                   ("scripts/run_controls.py", "t8/Mdlm", 0)]
+
+
+def test_e1e2_only_refuses_the_full_root_and_lets_the_summary_through(job):
+    rc, out, calls, stub = job(C3_E1E2_ONLY="1", OUT=str(job.out))
+    assert rc != 0 and "would write into the full prereg-v1 root" in out and stub == []
+    root = job.out.parent / "prereg-v1-e1e2"
+    for label in ("LladaBase", "DreamBase", "LladaInstructGsm", "LladaInstructMbpp",
+                  "DreamInstructGsm", "DreamInstructMbpp", "Mdlm"):
+        (root / "c1" / label).mkdir(parents=True)
+        (root / "c1" / label / "results.json").write_text("{}")
+    rc, out, calls, stub = job(C3_E1E2_ONLY="1", SUMMARY_ONLY="1", OUT=str(root))
+    assert rc == 0, out
+    assert [c[0] for c in stub] == ["scripts/summarize_c1.py"]
+    assert "--skip-regression" not in stub[0] and _arg(stub[0], "--out") == str(root / "c1" / "summary")
+    assert "skipped" not in out
+
+
+def test_a_later_prereg_tag_changes_the_out_root_and_keeps_the_gates(job):
+    (job.repo / "prereg" / "deviations.md").write_text("warm start\n")
+    _git(job.repo, "commit", "-qam", "warm start")
+    rc, out, calls, stub = job(C3_PREREG_TAG="prereg-v1.1")
+    assert rc != 0 and "no tag prereg-v1.1" in out and stub == []
+    _git(job.repo, "tag", "prereg-v1.1")
+    rc, out, calls, stub = job(C3_PREREG_TAG="prereg-v1.1")
+    assert rc == 0 and "[prereg] prereg-v1.1 = " in out, out
+    assert all(Path(_arg(c, "--out")).is_relative_to(job.out.parent / "prereg-v1.1") for c in stub)
+    assert not job.out.exists()
+    rc, out, calls, stub = job(C3_PREREG_TAG="prereg-v1.1", C3_E1E2_ONLY="1")
+    assert rc == 0 and [Path(_arg(c, "--out")) for c in stub] == [
+        job.out.parent / "prereg-v1.1-e1e2" / "c1" / "Mdlm"], out
+    rc, out, calls, stub = job(C3_PREREG_TAG="prereg-v1.1", C3_E1E2_ONLY="1",
+                               OUT=str(job.out.parent / "prereg-v1.1"))
+    assert rc != 0 and "full prereg-v1.1 root" in out
+    rc, out, calls, stub = job(C3_PREREG_TAG="prereg-v1.1", C3_PREREG_DRYRUN="1")
+    assert rc == 0 and stub, out
+    # HEAD must be the chosen tag: prereg-v1 is now behind HEAD.
+    rc, out, calls, stub = job()
+    assert rc != 0 and "is not prereg-v1" in out
+
+
+def test_a_later_tag_must_descend_from_prereg_v1(job):
+    _git(job.repo, "checkout", "-q", "--orphan", "other")
+    (job.repo / "prereg" / "deviations.md").write_text("unrelated\n")
+    _git(job.repo, "add", "-A")
+    _git(job.repo, "commit", "-qm", "unrelated root")
+    _git(job.repo, "tag", "prereg-v1.2")
+    rc, out, calls, stub = job(C3_PREREG_TAG="prereg-v1.2")
+    assert rc != 0 and "does not descend from prereg-v1" in out and stub == []
+
+
+@pytest.mark.parametrize("tag", ["v2", "prereg-v1x", "prereg-v2", "prereg-v1."])
+def test_a_bogus_prereg_tag_is_refused(job, tag):
+    rc, out, calls, stub = job(C3_PREREG_TAG=tag, C3_PREREG_DRYRUN="1")
+    assert rc != 0 and "only prereg-v1 or prereg-v1.<digits>" in out and calls == [] and stub == []

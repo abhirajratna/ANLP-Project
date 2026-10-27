@@ -12,20 +12,29 @@
 \usepackage{latexsym}
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
+\usepackage{booktabs}   % the generated C1 tables (scripts/c1_paper_outputs.py)
 \usepackage{microtype}
 
 % ---- macros from committed artifacts (numbers are never typed by hand) ----
 \input{../artifacts/probe/macros_t9.tex}    % \CTwo...      scripts/figures_t9.py   (T9)
 \input{../artifacts/c2/macros_t10.tex}      % \CTwoTTen...  scripts/macros_t10.py   (T10)
+\input{../artifacts/t0/macros.tex}          % \TZero...     scripts/t0_scenarios.py (Sec. 3.5)
 \input{../documents/viva-slides/macros_setup.tex}   % \Viva...    Sec. 2-3 setup macros (PR #20)
-% C1 macros: written by the report-half run (slurm/prereg_analysis.sbatch) to
-% results/c1/<arm>/macros.tex, one file per arm.  Enable each \input once the run has been
-% committed; the macro names carry no arm word unless the file says so (check its header).
-% \input{../results/c1/<arm>/macros.tex}
+% C1 macros (\COne... \EThree... \TEight...): scripts/c1_paper_outputs.py copies every per-arm
+% results/{c1,e3,t8}/<Label>/macros.tex to tables/c1/macros/ and writes tables/c1/macros_c1.tex,
+% which \inputs them and adds the Holm macros.  Absent until the report-half results exist;
+% 04_c1.tex then prints a bold ? for each number (\Cres).
+\IfFileExists{tables/c1/macros_c1.tex}{\input{tables/c1/macros_c1.tex}}{}
 
 % Figures that are committed artifacts are referenced from artifacts/ (see 05_c2.tex);
 % paper/figures/ is only for figures that are not.
 \graphicspath{{../artifacts/probe/figures/}{figures/}}
+
+% C3 macros (\CThreeTEleven... \CThreeTTwelve...): scripts/c3_paper_outputs.py (parth; names on
+% the team bus, msg 20261025T143320Z-parth-6800).  Absent until T11/T12 are scored; 06_c3.tex
+% then prints a bold ? for each number (\Cres).  booktabs: the generated t12 tables.
+\usepackage{booktabs}
+\IfFileExists{../artifacts/c3/macros_c3.tex}{\input{../artifacts/c3/macros_c3.tex}}{}
 
 \title{C$^3$: Committed Confidence Calibration\\
   Selection Bias in Confidence-Based Token Commitment in Diffusion Language Models}
@@ -37,8 +46,26 @@
 \maketitle
 
 \begin{abstract}
-% owner: ayush; placeholder
-Abstract to be written.
+% DRAFT (ojas fallback, 26 Oct): ayush to review
+% owner: ayush.  ~185 words.  Same sources and rules as sections/01_intro.tex; no numbers.
+Masked diffusion language models decode by committing, at each step, the positions
+whose top token is most probable. Confidence thus picks the tokens it then describes, so on
+committed tokens it is a selected quantity, yet calibration is audited over random masks. We
+study it in three parts. C1 audits calibration conditional on selection: on teacher-forced
+traces from LLaDA-8B, Dream-7B and a 110M model of our own, it measures how far committed tokens' confidence exceeds their accuracy as
+a function of how many candidates they beat, and splits this gap into ordinary
+miscalibration, a field term (the part that is a winner's curse) and a shared-error residual, on held-out documents
+with Holm-corrected tests.
+In the states a confidence decoder visits, the gap grows with field size for every model, and
+its field term does too for the instruct models.
+C2 computes the two errors of committing several tokens at once, dependency and estimation,
+exactly on a synthetic JSON probe: dependency overtakes estimation only for strongly coupled
+tokens committed several at a time, confidence ranking raises dependency error, not estimation
+error, and for coupled tokens the two trade off as tokens per step grow. On real text a dependency proxy is near zero. C3 is a commitment policy
+that commits as many positions as have recalibrated confidence at least $1-\alpha$, with no extra
+forward pass.
+% TODO(results): C3 outcome, same wording as the C3 TODO in 01_intro.tex; if T12 is not done
+%   at the freeze, drop the C3 sentence and say "in two parts".
 \end{abstract}
 
 \input{sections/01_intro}

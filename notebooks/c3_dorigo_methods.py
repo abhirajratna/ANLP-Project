@@ -8,7 +8,7 @@
 #
 # **Basis.** Cell 1.6 on `ANLP-project/c3-traces` (`main-110m-v3/`: 119.6 M rows, 1,979 docs; `timesplit-110m-v3/`: 30.2 M rows, 500 docs), one schema, every module A–F feasible, 89–90% of states with |M| ≥ 32, largest kind ≈ 4.7 GB in memory, ≈ 6 min projected. The table below is the pre-data check of 24 Oct (written before Phase 2, from the repo only; it then said PARTIAL because only the old-schema pilot was on hand). Cells 1.1–1.6 redo every check on each run; if cell 1.6 prints a different verdict, cell 1.6 wins and this cell must be edited to match.
 #
-# **Pre-registration hold.** Every C1 arm here (110M and 8B) is pre-registered, and `prereg-v1` is not tagged yet. `HALF_MODE = "fit_only"` (0.1) is therefore the default: no number touches the report half. Switch to `"report"` only after the tag. On Ada, `slurm/dorigo_notebook.sbatch` enforces this.
+# **Report-half gate.** `prereg-v1` is tagged (`6b4c25e`, 25 Oct). `HALF_MODE = "fit_only"` (0.1) stays the default: no row of the report half is read. `"report"` needs `C3_REPORT_HALF_OK=1` set on purpose (and, in a checkout, `prereg-v1` as an ancestor of HEAD); the notebook and `slurm/dorigo_notebook.sbatch` both enforce this. The paper's C1 numbers come from `prereg/analysis_commands.sh`; numbers from this notebook are exploratory.
 #
 # **Not yet run here:** the LLaDA-8B traces (the pilot headline). They are on Ada (`/share1/abhiraj.ratna/traces/`), not on HF; add them to `DATASETS` when a copy is reachable.
 #
@@ -61,7 +61,11 @@ DATASETS = {**DATASETS_REAL,
     #                         "split": {"rule": {"n_docs": 2000, "seed": 20260917, "doc_offset": 0}}},
 }
 MOUNT_DRIVE = True            # Colab only; ignored elsewhere
-MASK_KINDS = ["uniform", "decoder", "uniform_matched"]   # "matched" is stored as uniform_matched
+# Arms: a bare mask kind pools every (policy, k) it holds; "kind:policy:kN" keeps one, as
+# prereg/analysis_commands.sh names arms (its primary decoder arm is decoder:topk_conf:k4).
+# Matched states copy policy and k from the decoder state they match.
+MASK_KINDS = ["uniform", "decoder", "uniform_matched",
+              "decoder:topk_conf:k4", "uniform_matched:topk_conf:k4"]   # "matched" is stored as uniform_matched
 M_GRID = [1, 2, 4, 8, 16, 32]
 POOLS_PER_STATE = 50          # Monte Carlo pools per state (shuffle test, pairing, quintiles); Δ itself is exact
 N_BOOT = 10_000
@@ -75,15 +79,20 @@ N_QUINTILES = 5               # Module F
 ECE_BINS = 15
 # E2 (Prop. 2): Δ(m) = own miscalibration E_m[c − π(ℓ)] + field term E_m[π(ℓ) − π(ℓ, s)] + residual
 # E_m[π(ℓ, s) − a].  π(ℓ) is isotonic, π(ℓ, s) a spline logistic with per-state field features and
-# their ℓ interactions, both fit on the fit half with pool weights (as c3/calibrators.py).
+# their ℓ interactions, both fit on the fit half with pool weights (as c3/calibrators.py). π(ℓ, s) here
+# approximates c3.calibrators.ContextLogistic (sklearn B-spline with quantile knots, standardised features,
+# C = 1e3, a 1M-row fit sample; c3 uses a restricted cubic spline, raw features, ridge 1e-4, all rows), so
+# field terms will not match prereg/analysis_commands.sh E2 numbers exactly.
 FIELD_FEATURES = ("median_ell", "mask_rate", "log_n_masked", "step")   # = c3.frame.FIELD_FEATURES
 CAL_KNOTS = 9                 # spline knots on ℓ in π(ℓ, s)   (= c3.DEFAULT_KNOTS)
 CAL_MAX_ROWS = 1_000_000      # fit-half rows sampled (pool weights kept) to fit π(ℓ, s) (~19 parameters)
 CAL_C = 1e3                   # sklearn inverse ridge on mean-1 weights; C = 1 shrank π̂(ℓ, s) at the top on small fits
 CAL_REFIT_CHECK = True        # refit both calibrators on each half of the fit documents: field-term fit noise
-DELTA_MIN = 0.02              # pre-registered smallest effect worth reporting (= c3.DELTA_MIN)
-H3_PAIRS = [("decoder", "uniform_matched")]   # H3: compared at equal winner confidence
-H3_BINS = 20                  # equal-width winner-confidence bins for that comparison
+DELTA_MIN = 0.02              # smallest effect treated as worth reporting (= c3.DELTA_MIN)
+H3_PAIRS = [("decoder", "uniform_matched"),     # H3: compared at equal winner confidence
+            ("decoder:topk_conf:k4", "uniform_matched:topk_conf:k4")]
+H3_BINS = 20                  # H3: equal-mass bins on ℓ, edges from both arms' pooled winner mass at each m
+H3_ELL_GRID = (-15.0, 25.0, 400)  # fine ℓ grid the per-document H3 sums are kept on (edges come from it)
 ICC_DROP_TOP = 5              # the ICC is also given without its 5 most influential documents
 TOY_N = 50_000                # Module A toys per Q
 SELFTEST_BOOT = 2_000         # bootstrap resamples inside the Module B self-tests
@@ -91,16 +100,20 @@ OUT_DIR = "/content/c3_dorigo_out" if __import__("os").path.isdir("/content") el
 # Which documents are reported. "fit_only" until prereg-v1 is tagged: report-half documents are
 # dropped before anything is computed, and the fit half is split again (seed FIT_ONLY_SEED) into an
 # inner fit half (calibrators) and an inner report half (every number). "report" = the real split;
-# set it only once prereg-v1 is tagged (C1 arms are pre-registered; see prereg/).
+# set it only once prereg-v1 is tagged (C1 arms are pre-registered; see prereg/). "report" on real
+# traces also needs the environment variable C3_REPORT_HALF_OK=1 (on Colab:
+# os.environ["C3_REPORT_HALF_OK"] = "1"), and inside a git checkout the tag prereg-v1 at or before HEAD;
+# cell 1.3 refuses otherwise. Report-half numbers from this notebook are exploratory: the
+# pre-registered ones come from prereg/analysis_commands.sh.
 HALF_MODE = "fit_only"
 FIT_ONLY_SEED = 20261025
-NOTEBOOK_VERSION = "2026-10-25.2"
+NOTEBOOK_VERSION = "2026-10-26.4"
 
 # %% [markdown]
 # ## 0.2 Setup: imports, versions, seeds, exclusion log
 
 # %%
-import os, sys, json, time, math, zlib, platform, warnings
+import os, sys, json, time, math, zlib, platform, warnings, itertools, subprocess
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -126,7 +139,7 @@ FIG_DIR = os.path.join(OUT_DIR, "figures"); os.makedirs(FIG_DIR, exist_ok=True)
 VERSIONS = {"python": platform.python_version(), "platform": platform.platform(),
             "numpy": np.__version__, "pandas": pd.__version__, "pyarrow": pa.__version__,
             "scipy": scipy.__version__, "sklearn": sklearn.__version__,
-            "matplotlib": matplotlib.__version__, "notebook": NOTEBOOK_VERSION}
+            "matplotlib": matplotlib.__version__, "notebook": NOTEBOOK_VERSION, "python_executable": sys.executable}
 print(json.dumps(VERSIONS, indent=1))
 pd.set_option("display.width", 160, "display.max_columns", 40)
 
@@ -162,7 +175,7 @@ assert rng_for("x", 1).random() == rng_for("x", 1).random() != rng_for("x", 2).r
 # ---------------------------------------------------------------- schema / field map
 CANON = {  # canonical name -> candidate column names, in order of preference
     "doc": ["doc_id", "document_id"], "state": ["state_id"], "model": ["model"],
-    "kind": ["mask_kind"], "rate": ["mask_rate", "target_rate"], "n_masked": ["n_masked"],
+    "kind": ["mask_kind"], "policy": ["policy"], "k": ["k"], "rate": ["mask_rate", "target_rate"], "n_masked": ["n_masked"],
     "doc_len": ["doc_len"], "step": ["step"], "position": ["position"], "top1": ["top1"],
     "conf": ["conf", "confidence"], "ell": ["ell", "log_odds", "logodds"],
     "agree": ["agree", "correct"], "p_true": ["p_true"], "entropy": ["entropy"],
@@ -170,7 +183,7 @@ CANON = {  # canonical name -> candidate column names, in order of preference
     "delta_ell": ["delta_ell"], "commit_rank": ["commit_rank"], "half": ["half", "split"],
 }
 FIELD_LABEL = {
-    "doc": "document id", "state": "state id", "model": "model", "kind": "mask kind",
+    "doc": "document id", "state": "state id", "model": "model", "kind": "mask kind", "policy": "decoder policy", "k": "tokens per step",
     "rate": "mask rate", "n_masked": "number masked", "doc_len": "document length",
     "step": "step", "position": "position", "top1": "top-1 token id", "conf": "confidence",
     "ell": "log-odds", "agree": "correctness", "p_true": "p(true token)", "entropy": "entropy",
@@ -178,7 +191,7 @@ FIELD_LABEL = {
     "delta_ell": "delta-ell since previous step", "commit_rank": "commit rank",
     "half": "fit/report flag",
 }
-USED_BY = {"doc": "C D E F ICC", "state": "C D E F ICC", "kind": "C D E F", "rate": "D E2",
+USED_BY = {"doc": "C D E F ICC", "state": "C D E F ICC", "kind": "C D E F", "policy": "per-k arms", "k": "per-k arms", "rate": "D E2",
            "conf": "C D E F", "ell": "C D E F E2 ICC", "agree": "C D E F E2 ICC", "margin": "F",
            "step": "E2 (field feature)",
            "topk_p": "F (if no margin)", "half": "all (or split manifest)",
@@ -256,7 +269,38 @@ def make_split(spec: dict, mode: str = "report"):
         i = np.clip(np.searchsorted(keys, doc_ids), 0, len(keys) - 1)
         return np.where(keys[i] == doc_ids, vals[i], -1).astype(np.int8)
     half_of.n = len(man)
+    half_of.docs = keys          # every document in the split (in fit_only: fit-half documents only)
     return half_of
+
+
+def report_half_gate():
+    """HALF_MODE = "report" on real traces: refuse unless C3_REPORT_HALF_OK=1 is set, and, inside a
+    git checkout, the tag prereg-v1 exists and is an ancestor of HEAD.  Returns the tag's commit
+    (None outside a checkout, e.g. on Colab)."""
+    if os.environ.get("C3_REPORT_HALF_OK") != "1":
+        raise RuntimeError("HALF_MODE = 'report' reads the pre-registered report half: set the environment "
+                           "variable C3_REPORT_HALF_OK=1 on purpose (only after prereg-v1 is tagged), or use 'fit_only'")
+    def git(*a):
+        r = subprocess.run(["git", *a], capture_output=True, text=True)
+        return r.returncode, r.stdout.strip()
+    if git("rev-parse", "--show-toplevel")[0] != 0:
+        print("report half: C3_REPORT_HALF_OK=1; not in a git checkout, so the prereg-v1 tag is not checked")
+        return None
+    rc, tag = git("rev-parse", "-q", "--verify", "refs/tags/prereg-v1^{commit}")
+    if rc != 0:
+        raise RuntimeError("HALF_MODE = 'report': no tag prereg-v1 in this checkout (git fetch --tags)")
+    if git("merge-base", "--is-ancestor", tag, "HEAD")[0] != 0:
+        raise RuntimeError(f"HALF_MODE = 'report': prereg-v1 ({tag[:12]}) is not an ancestor of HEAD")
+    print(f"report half: C3_REPORT_HALF_OK=1, prereg-v1 = {tag[:12]} is an ancestor of HEAD")
+    return tag
+
+
+def doc_filter(name: str, doc_col: str):
+    """With HALF_MODE = 'fit_only' on real traces: a pyarrow filter keeping only the documents in the
+    split (the fit half), so report-half rows are never read.  None otherwise."""
+    if USE_SYNTHETIC or HALF_MODE != "fit_only" or name not in SPLITS:
+        return None
+    return pc.field(doc_col).isin(pa.array(SPLITS[name].docs, type=pa.int64()))
 
 
 # ---------------------------------------------------------------- Module B generator
@@ -367,8 +411,29 @@ def _margin_from_topk(col) -> np.ndarray:
     return (arr[:, 0] - arr[:, 1]).astype(np.float32)
 
 
+def parse_arm(arm: str) -> tuple:
+    """'decoder' -> ('decoder', None, None); 'decoder:topk_conf:k4' -> ('decoder', 'topk_conf', 4)."""
+    kind, *rest = arm.split(":")
+    if not rest:
+        return kind, None, None
+    if len(rest) != 2 or not rest[1].startswith("k") or not rest[1][1:].isdigit():
+        raise ValueError(f"arm {arm!r}: expected 'kind' or 'kind:policy:kN'")
+    return kind, rest[0], int(rest[1][1:])
+
+
+def arm_filter(fmap: dict, arm: str):
+    """Row filter for one arm, or None when the file lacks the policy/k columns it needs."""
+    kind, policy, k = parse_arm(arm)
+    filt = pc.field(fmap["kind"]) == kind
+    if policy is not None:
+        if not (fmap.get("policy") and fmap.get("k")):
+            return None
+        filt = filt & (pc.field(fmap["policy"]) == policy) & (pc.field(fmap["k"]) == k)
+    return filt
+
+
 def read_kind(files, fmap: dict, kind: str, model: str | None = None,
-              need_margin: bool = True, batch_rows: int = 2_000_000) -> dict:
+              need_margin: bool = True, batch_rows: int = 2_000_000, doc_filter=None) -> dict:
     """The rows of one mask kind as pruned, downcast numpy columns (batched; no list columns
     kept).  Keys: doc, state, ell, conf, agree, margin, rate, n_masked, step, position (when present)."""
     want = {"doc": np.int64, "state": np.int64, "ell": np.float64, "conf": np.float32,
@@ -378,9 +443,14 @@ def read_kind(files, fmap: dict, kind: str, model: str | None = None,
     use_topk = need_margin and not fmap.get("margin") and fmap.get("topk_p")
     read_cols = list(cols.values()) + ([fmap["topk_p"]] if use_topk else [])
     dset = pads.dataset([str(f) for f in files], format="parquet")
-    filt = pc.field(fmap["kind"]) == kind
+    filt = arm_filter(fmap, kind)
+    if filt is None:
+        print(f"[skip] arm {kind}: no policy/k columns")
+        return {}
     if model is not None and fmap.get("model"):
         filt = filt & (pc.field(fmap["model"]) == model)
+    if doc_filter is not None:
+        filt = filt & doc_filter
     parts = defaultdict(list)
     for b in dset.to_batches(columns=read_cols, filter=filt, batch_size=batch_rows):
         for k, c in cols.items():
@@ -889,7 +959,8 @@ def analyze(tr: Traces, st_half: np.ndarray, *, m_grid=M_GRID, pools=POOLS_PER_S
     counts, exact_terms, h3 = {}, {"delta": c_r - a_r, "own": c_r - po_r, "field": po_r - pc_r,
                                    "resid": pc_r - a_r, "c": c_r, "a": a_r}, {}
     nsd = np.bincount(inv, minlength=D).astype(np.float64)       # report states per document
-    hbin_r = np.minimum((c_r * h3_bins).astype(np.int64), h3_bins - 1)
+    g_lo, g_hi, g_n = H3_ELL_GRID
+    hbin_r = np.clip(((tr.ell[rows_rep] - g_lo) / (g_hi - g_lo) * g_n).astype(np.int64), 0, g_n - 1)
     gap_row = tr.conf.astype(np.float64) - tr.agree
     refit_pt = []
     for m in m_grid:
@@ -897,11 +968,11 @@ def analyze(tr: Traces, st_half: np.ndarray, *, m_grid=M_GRID, pools=POOLS_PER_S
         assert ew[0].size == rows_rep.size
         for nm, v in exact_terms.items():
             acc.add(f"x_{nm}|{m}", didx[rep], exact_winner_mean(tr, rep, m, v, ew))
-        # per document and winner-confidence bin: winner mass and winner (c − a) mass, states averaged
+        # per document and fine ℓ bin: winner mass, winner (c − a) mass and winner c mass, states averaged
         dw = ew[1] / nsd[didx[rs_rep]]
-        cell = didx[rs_rep] * h3_bins + hbin_r
-        h3[m] = {"M": np.bincount(cell, weights=dw, minlength=D * h3_bins).reshape(D, h3_bins),
-                 "G": np.bincount(cell, weights=dw * (c_r - a_r), minlength=D * h3_bins).reshape(D, h3_bins)}
+        cell = didx[rs_rep] * g_n + hbin_r
+        h3[m] = {nm: np.bincount(cell, weights=dw * v, minlength=D * g_n).reshape(D, g_n).astype(np.float32)
+                 for nm, v in (("M", 1.0), ("G", c_r - a_r), ("C", c_r))}
         if m == m_grid[-1]:
             refit_pt = [float(pd.Series(exact_winner_mean(tr, rep, m, v, ew)).groupby(didx[rep]).mean().mean())
                         for v in refit]
@@ -1004,40 +1075,56 @@ def analyze(tr: Traces, st_half: np.ndarray, *, m_grid=M_GRID, pools=POOLS_PER_S
             "calibrator_seconds": round(t_cal, 1), "seconds": round(time.time() - t0, 1)}
     return {"main": pd.DataFrame(main), "paired": pd.DataFrame(paired), "e2": pd.DataFrame(e2),
             "quint": pd.DataFrame(quint), "icc_top": icc_top.assign(dataset=ds_, kind=kd),
-            "h3": {"docs": rep_docs, "bins": h3_bins, **{m: h3[m] for m in m_grid}}, "info": info}
+            "h3": {"docs": rep_docs, "bins": h3_bins, "grid": H3_ELL_GRID, **{m: h3[m] for m in m_grid}}, "info": info}
 
 
-def equal_conf_contrast(A: dict, B: dict, m: int, n_boot: int, rng, target: str = "A") -> dict:
-    """H3 at equal winner confidence: Δ_A − Δ_B with both arms' per-bin gaps E[c − a | winner in
-    bin b] averaged over one winner-confidence distribution (A's by default, or B's).
+def equal_conf_contrast(A: dict, B: dict, m: int, n_boot: int, rng, target: str = "A",
+                        n_bins: int | None = None) -> dict:
+    """H3 at equal winner ℓ: Δ_A − Δ_B with both arms' per-bin gaps E[c − a | winner in bin b]
+    averaged over one winner distribution (A's by default, or B's).
 
-    A and B are the `h3` outputs of `analyze` for two arms; only documents in both are used, and
-    one set of document weights resamples both (the same documents carry both arms).  Bins where
-    either arm has no winner mass are left out; `support` is the share of the target arm's mass
-    that remains.  Returns est/lo/hi for both reweighted Δs and their difference, plus per-bin
-    gaps of each arm (point estimates)."""
+    Bins are on ℓ, not c: near c = 1 equal-width confidence bins put almost every winner in one bin,
+    and the contrast falls back to the raw Δ_A − Δ_B.  The `n_bins` edges are equal-mass quantiles of
+    the two arms' pooled winner mass (each arm normalised to 1) on the fine grid from `analyze`; they
+    use no outcome.  Only documents in both arms are used, and one set of document weights resamples
+    both (the same documents carry both arms).  Bins where either arm has no winner mass are left out;
+    `support` is the share of the target arm's mass that remains, and `c_imbalance` is
+    Σ_b p_b (c̄_A,b − c̄_B,b), the confidence difference the binning leaves.  Returns est/lo/hi for both
+    reweighted Δs and their difference, plus per-bin gaps of each arm (point estimates)."""
+    n_bins = n_bins or A["bins"]
     docs = np.intersect1d(A["docs"], B["docs"])
     ia, ib = np.searchsorted(A["docs"], docs), np.searchsorted(B["docs"], docs)
-    MA, GA, MB, GB = A[m]["M"][ia], A[m]["G"][ia], B[m]["M"][ib], B[m]["G"][ib]
+    pooled = A[m]["M"][ia].sum(0) / A[m]["M"][ia].sum() + B[m]["M"][ib].sum(0) / B[m]["M"][ib].sum()
+    cum = np.cumsum(pooled) / pooled.sum()
+    starts = np.unique(np.concatenate([[0], np.searchsorted(cum, np.arange(1, n_bins) / n_bins, side="right")]))
+    starts = starts[starts < cum.size]
+    MA, GA, CA = (np.add.reduceat(A[m][k][ia].astype(np.float64), starts, axis=1) for k in ("M", "G", "C"))
+    MB, GB, CB = (np.add.reduceat(B[m][k][ib].astype(np.float64), starts, axis=1) for k in ("M", "G", "C"))
     W = np.vstack([np.ones(docs.size), doc_weights(docs.size, n_boot, rng)])
     with np.errstate(invalid="ignore", divide="ignore"):
         mA, mB = W @ MA, W @ MB
         gA, gB = (W @ GA) / mA, (W @ GB) / mB
+        cA, cB = (W @ CA) / mA, (W @ CB) / mB
         both = (mA > 0) & (mB > 0)
         tm = np.where(both, mA if target == "A" else mB, 0.0)
         p = tm / tm.sum(1, keepdims=True)
         dA = np.nansum(p * np.where(both, gA, 0), 1)
         dB = np.nansum(p * np.where(both, gB, 0), 1)
+        imb = np.nansum(p * np.where(both, cA - cB, 0), 1)
         support = tm.sum(1) / (mA if target == "A" else mB).sum(1)
-    out = {"m": m, "target": target, "n_docs": int(docs.size), "support": float(support[0])}
+    g_lo, g_hi, g_n = A["grid"]
+    edges = g_lo + (g_hi - g_lo) * np.append(starts, g_n) / g_n
+    out = {"m": m, "target": target, "n_docs": int(docs.size), "n_bins": int(starts.size),
+           "support": float(support[0]), "c_imbalance": float(imb[0])}
     for nm, v in (("delta_A", dA), ("delta_B", dB), ("diff", dA - dB)):
         r = ci(v[1:], v[0])
         out.update({f"{nm}_est": r["est"], f"{nm}_lo": r["lo"], f"{nm}_hi": r["hi"]})
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")      # empty bins give all-NaN percentiles
         out["bins"] = pd.DataFrame({
-            "bin": np.arange(MA.shape[1]), "conf_lo": np.arange(MA.shape[1]) / MA.shape[1],
-            "mass_A": mA[0] / mA[0].sum(), "mass_B": mB[0] / mB[0].sum(), "gap_A": gA[0], "gap_B": gB[0],
+            "bin": np.arange(starts.size), "ell_lo": edges[:-1], "ell_hi": edges[1:],
+            "mass_A": mA[0] / mA[0].sum(), "mass_B": mB[0] / mB[0].sum(), "conf_A": cA[0], "conf_B": cB[0],
+            "gap_A": gA[0], "gap_B": gB[0],
             "gap_A_lo": np.nanpercentile(gA[1:], 2.5, 0), "gap_A_hi": np.nanpercentile(gA[1:], 97.5, 0),
             "gap_B_lo": np.nanpercentile(gB[1:], 2.5, 0), "gap_B_hi": np.nanpercentile(gB[1:], 97.5, 0)})
     return out
@@ -1167,6 +1254,9 @@ for name, files in FILES.items():
     if len(schemas) > 1:
         print("   WARNING: files differ in schema:", {k[:60]: v[:3] for k, v in schemas.items()})
     print("   columns:", ", ".join(f"{fl.name}:{fl.type}" for fl in first.schema_arrow))
+    if HALF_MODE == "fit_only" and not USE_SYNTHETIC:
+        print("   (5-row preview skipped: HALF_MODE = 'fit_only' reads no row before the split is known)")
+        continue
     prev = pa.Table.from_batches([next(first.iter_batches(batch_size=5))]).slice(0, 5).to_pandas()
     for c in prev.columns:
         if prev[c].dtype == object and prev[c].map(lambda v: hasattr(v, "__len__") and not isinstance(v, str)).any():
@@ -1178,7 +1268,8 @@ for name, files in FILES.items():
 
 # %%
 SPLITS, FEASIBLE = {}, {}
-for name, fm in FMAP.items():
+PREREG_TAG = report_half_gate() if (HALF_MODE == "report" and not USE_SYNTHETIC) else None
+for name, fm in list(FMAP.items()):
     spec = DATASETS[name]["split"]
     try:
         SPLITS[name] = make_split(spec, mode="report" if USE_SYNTHETIC else HALF_MODE)
@@ -1186,6 +1277,11 @@ for name, fm in FMAP.items():
     except (OSError, KeyError, ValueError) as exc:
         print(f"{name}: split not available: {exc}")
         has_split = False
+        if HALF_MODE == "fit_only" and not USE_SYNTHETIC:
+            # without the split no row can be told fit from report: drop the dataset entirely
+            print(f"   HALF_MODE = 'fit_only': {name} dropped (its report half cannot be filtered out)")
+            FMAP.pop(name); FILES.pop(name, None)
+            continue
     tab = pd.DataFrame([{"field": FIELD_LABEL[k], "canonical": k, "column": fm[k] or "missing",
                          "used by": USED_BY.get(k, "-")} for k in CANON])
     print(f"== {name}  (split: {'manifest' if 'manifest' in spec else 'rule'}"
@@ -1200,7 +1296,7 @@ for name, fm in FMAP.items():
 
 # %% [markdown]
 # ## 1.4 Mask kinds, state sizes, and how many states allow m = 32
-# This cell reads only `doc_id`, `state_id` and `mask_kind` (plus `ell` on a sample, to count ties).
+# This cell reads only `doc_id`, `state_id`, `mask_kind`, and `policy` and `k` when present (plus `ell` on a sample, to count ties).
 
 # %%
 STATE_TABLE = {}
@@ -1208,15 +1304,28 @@ for name, files in FILES.items():
     fm = FMAP.get(name)
     if not fm or not fm["kind"]:
         continue
-    cols = [fm["doc"], fm["state"], fm["kind"]]
+    by_arm = [fm["kind"]] + [fm[c] for c in ("policy", "k") if fm.get(c)]
+    cols = [fm["doc"], fm["state"]] + by_arm
     dset = pads.dataset([str(f) for f in files], format="parquet")
     filt = (pc.field(fm["model"]) == DATASETS[name]["model"]) if DATASETS[name].get("model") and fm["model"] else None
+    dfilt = doc_filter(name, fm["doc"])
+    if dfilt is not None:
+        filt = dfilt if filt is None else filt & dfilt
     parts = []
     for b in dset.to_batches(columns=cols, filter=filt, batch_size=4_000_000):
         df = b.to_pandas()
-        parts.append(df.groupby([fm["kind"], fm["doc"], fm["state"]], observed=True).size())
-    st = pd.concat(parts).groupby(level=[0, 1, 2]).sum().rename("n").reset_index()
-    st.columns = ["kind", "doc", "state", "n"]
+        parts.append(df.groupby(by_arm + [fm["doc"], fm["state"]], observed=True).size())
+    lv = list(range(len(by_arm) + 2))
+    g = pd.concat(parts).groupby(level=lv).sum().rename("n").reset_index()
+    g.columns = ["kind"] + ["policy", "k"][:len(by_arm) - 1] + ["doc", "state", "n"]
+    arms = []
+    for arm in MASK_KINDS_RUN:  # pooled and per-k arms share rows; each arm is analysed on its own
+        kind, policy, k = parse_arm(arm)
+        sel = g["kind"] == kind
+        if policy is not None:
+            sel &= (g["policy"] == policy) & (g["k"] == k) if "k" in g else False
+        arms.append(g.loc[sel, ["doc", "state", "n"]].assign(kind=arm))
+    st = pd.concat(arms, ignore_index=True)[["kind", "doc", "state", "n"]]
     st["half"] = SPLITS[name](st["doc"].to_numpy()) if name in SPLITS else -1
     STATE_TABLE[name] = st
     summ = st.groupby("kind").agg(rows=("n", "sum"), docs=("doc", "nunique"), states=("n", "size"),
@@ -1234,14 +1343,18 @@ for name, files in FILES.items():
         print("   mask kinds not present:", missing_kinds)
     n_nohalf = st.loc[st["half"] < 0, "doc"].nunique()
     if n_nohalf:
-        print(f"   {n_nohalf} documents are not in the split and will be excluded"
-              + (" (with HALF_MODE = 'fit_only' these include every report-half document)"
-                 if HALF_MODE == "fit_only" and not USE_SYNTHETIC else ""))
-    sample = pq.ParquetFile(files[0]).read_row_group(0, columns=[fm["state"], fm["kind"], fm["ell"] or fm["conf"]]).to_pandas()
+        print(f"   {n_nohalf} documents are not in the split and will be excluded")
+    if dfilt is not None:
+        print("   HALF_MODE = 'fit_only': only fit-half documents are read (report-half rows never loaded)")
+    tie_cols = [fm["state"], fm["kind"], fm["ell"] or fm["conf"]]
+    if dfilt is None:
+        sample = pq.ParquetFile(files[0]).read_row_group(0, columns=tie_cols).to_pandas()
+    else:
+        sample = pads.dataset(str(files[0]), format="parquet").head(200_000, columns=tie_cols, filter=dfilt).to_pandas()
     sample.columns = ["state", "kind", "ell"]
     tied = sample.duplicated(["kind", "state", "ell"], keep=False)
     full_tie = sample.groupby(["kind", "state"])["ell"].nunique() == 1
-    print(f"   ties in the first row group: {tied.mean():.1%} of rows; "
+    print(f"   ties in the first {'row group' if dfilt is None else f'{len(sample):,} fit-half rows'}: {tied.mean():.1%} of rows; "
           f"{int(full_tie.sum())} of {full_tie.size} states fully tied")
 
 # %% [markdown]
@@ -1332,9 +1445,14 @@ for name in DATASETS:
     elif no:
         partial.append(f"{name}: cannot run {', '.join(no)}")
     st = STATE_TABLE.get(name)
+    fm_ = FMAP.get(name) or {}
     if st is not None:
         for kind in MASK_KINDS_RUN:
             sk = st[(st["kind"] == kind) & (st["half"] == 1)]
+            if sk.empty and parse_arm(kind)[1] is not None and fm_.get("policy") and fm_.get("k"):
+                # a per-k arm the trace should hold: stop before Phase 2 reads report-half outcomes
+                raise RuntimeError(f"{name}: per-k arm '{kind}' has no report-half states, although the "
+                                   f"trace has policy/k columns; check the arm name against the trace's k values")
             if sk.empty:
                 partial.append(f"{name}: no '{kind}' states in the report half")
             elif (sk["n"] >= MIN_STATE_SIZE).sum() == 0:
@@ -1534,6 +1652,26 @@ xs = np.linspace(-5, 5, 101)
 check("isotonic calibrator is non-decreasing and in [0, 1]", (np.diff(cal_t(xs)) >= -1e-12).all() and (cal_t(xs) >= 0).all() and (cal_t(xs) <= 1).all())
 ew_t = exact_winner_weights(tie_tr, st_all, 8)
 check("exact winner weights sum to 1 in every state", np.allclose(np.bincount(tie_tr.row_state[ew_t[0]], ew_t[1]), 1.0))
+
+
+def brute_winner_mean(ell, v, m):
+    """Mean of v at the winner over every m-subset; a tie at the top shares the win equally."""
+    tot = 0.0
+    subs = list(itertools.combinations(range(len(ell)), m))
+    for sub in subs:
+        e = ell[list(sub)]
+        top = [j for j, x in zip(sub, e) if x == e.max()]
+        tot += v[top].mean()
+    return tot / len(subs)
+
+
+bf_tr = traces_from_frame(make_synthetic("calibrated", n_docs=4, n_states=3, n_pos=8, round_ell=0.5, seed=3), "bf")
+bf_v = np.random.default_rng(5).random(bf_tr.ell.size)
+bf_err = max(abs(exact_winner_mean(bf_tr, np.array([s_]), m_, bf_v)[0]
+                 - brute_winner_mean(bf_tr.ell[bf_tr.st_start[s_]:bf_tr.st_start[s_] + bf_tr.st_n[s_]],
+                                     bf_v[bf_tr.st_start[s_]:bf_tr.st_start[s_] + bf_tr.st_n[s_]], m_))
+             for s_ in range(bf_tr.n_states) for m_ in (1, 2, 3, 4, 8))
+check("exact winner mean equals brute-force enumeration of every m-subset (ties, n = 8)", bf_err < 1e-12)
 pw_r, pw_w = pool_weights(tie_tr, st_all)
 check("pool weights: every document weighs 1", np.allclose(np.bincount(tie_tr.st_doc[tie_tr.row_state[pw_r]], pw_w), 1.0))
 ds_t = icc_doc_stats(tie_tr, st_all, tie_tr.st_doc, 40, tie_tr.agree - cal_t(tie_tr.ell), np.arange(tie_tr.ell.size))
@@ -1633,6 +1771,26 @@ check(f"H3 equal-confidence contrast: two calibrated draws, CI covers 0 at m={M}
 check(f"H3 equal-confidence contrast: flat (0.08) vs calibrated, CI covers 0.08 at m={M}",
       h3_flat["diff_lo"] <= 0.08 <= h3_flat["diff_hi"] and h3_flat["support"] > 0.9)
 
+
+def shifted_arm(mu, seed, n_docs=200, n_states=5, n_pos=100):
+    """One arm of the H3 shift test: a ~ Bern(sigmoid(0.7 ℓ)) for both arms, ℓ ~ N(mu, 1.5)."""
+    df = make_synthetic("calibrated", n_docs=n_docs, n_states=n_states, n_pos=n_pos, seed=seed)
+    r = rng_for("h3-shift", mu, seed)
+    ell = mu + 1.5 * r.normal(size=len(df))
+    df["ell"] = ell
+    df["conf"] = 1 / (1 + np.exp(-ell))
+    df["agree"] = (r.random(len(df)) < 1 / (1 + np.exp(-0.7 * ell))).astype(np.int8)
+    tr_ = traces_from_frame(df, f"synthetic-h3-shift-{mu}")
+    return analyze(tr_, make_split({"rule": {"n_docs": n_docs}})(tr_.st_doc), m_grid=[1, M],
+                   n_boot=200, key="h3", e2=False)["h3"]
+
+
+h3_shift = equal_conf_contrast(shifted_arm(4.0, 11), shifted_arm(2.5, 11), M, SELFTEST_BOOT, rng_for("h3-test3"))
+check(f"H3 at equal ℓ: same calibration curve, confidence shifted between arms, CI covers 0 at m={M}",
+      covers(h3_shift["diff_lo"], h3_shift["diff_hi"]))
+print(f"info H3 shift test: diff {h3_shift['diff_est']:+.4f} [{h3_shift['diff_lo']:+.4f}, {h3_shift['diff_hi']:+.4f}], "
+      f"{h3_shift['n_bins']} bins, support {h3_shift['support']:.2f}, c_imbalance {h3_shift['c_imbalance']:+.4f}")
+
 # Replicates: R independent synthetic data sets per scenario (fresh seeds), shuffle gap at m = M.
 # Null scenarios: no bias (|mean gap| < 3 SD / sqrt(R)), CI coverage >= 16/20 (a correct 95% CI
 # fails this with probability 1.6%), bootstrap SE within 30% of the replicate SD.
@@ -1704,7 +1862,8 @@ for name, spec in DATASETS.items():
     need_margin = FEASIBLE[name]["F"][0]
     for kind in MASK_KINDS_RUN:
         t0 = time.time()
-        cols = read_kind(FILES[name], fm, kind, model=spec.get("model"), need_margin=need_margin)
+        cols = read_kind(FILES[name], fm, kind, model=spec.get("model"), need_margin=need_margin,
+                         doc_filter=doc_filter(name, fm["doc"]))
         if len(cols.get("doc", [])) == 0:
             log_exclusion(name, kind, "load", "mask kind", 1, "no rows of this kind")
             continue
@@ -1758,8 +1917,8 @@ print(E2[["dataset", "kind", "m", "delta_est", "own_est", "field_est", "field_lo
           "delta_contrast_est", "own_contrast_est", "field_contrast_est", "field_contrast_lo",
           "field_contrast_hi"]].round(4).to_string(index=False))
 if len(H3_TAB):
-    print("\nH3 at equal winner confidence (diff = arm A − arm B)")
-    print(H3_TAB[["dataset", "arm_A", "arm_B", "m", "weights_from", "support", "delta_A_est", "delta_B_est",
+    print("\nH3 at equal winner ℓ (diff = arm A − arm B; c_imbalance = confidence gap the bins leave)")
+    print(H3_TAB[["dataset", "arm_A", "arm_B", "m", "weights_from", "support", "c_imbalance", "delta_A_est", "delta_B_est",
                   "diff_est", "diff_lo", "diff_hi"]].round(4).to_string(index=False))
 print("\nmost influential documents for the ICC (influence = ICC − ICC without the document)")
 print(ICC_TOP.round(5).to_string(index=False))
@@ -1879,20 +2038,20 @@ for name in dict.fromkeys(k[0] for k in RESULTS):
     for ka, kb in H3_PAIRS:
         if (name, ka, kb, M, "A") not in H3:
             continue
-        b = H3[(name, ka, kb, M, "A")]["bins"]; xc = b.conf_lo + 0.5 / H3_BINS
+        b = H3[(name, ka, kb, M, "A")]["bins"]; xc = b["bin"].to_numpy(float)
         fig, ax = plt.subplots(1, 2, figsize=(12, 4))
         for col, kd_, cc in (("A", ka, "C1"), ("B", kb, "C2")):
             ok = b[f"mass_{col}"] > 0
             ax[0].errorbar(xc[ok], b[f"gap_{col}"][ok], [(b[f"gap_{col}"] - b[f"gap_{col}_lo"])[ok],
                            (b[f"gap_{col}_hi"] - b[f"gap_{col}"])[ok]], fmt="o-", c=cc, capsize=3, label=kd_)
-            ax[1].bar(xc + (-0.012 if col == "A" else 0.012), b[f"mass_{col}"], width=0.024, color=cc, label=kd_)
+            ax[1].bar(xc + (-0.2 if col == "A" else 0.2), b[f"mass_{col}"], width=0.4, color=cc, label=kd_)
         ax[0].axhline(0, c="k", lw=0.8)
-        ax[0].set(xlabel="winner confidence", ylabel="E[c − a | winner in bin]", title=f"H3 at equal confidence, m = {M}")
-        ax[1].set(xlabel="winner confidence", ylabel="share of winners", title="winner-confidence distribution")
+        ax[0].set(xlabel="winner ℓ bin (equal pooled winner mass)", ylabel="E[c − a | winner in bin]", title=f"H3 at equal winner ℓ, m = {M}")
+        ax[1].set(xlabel="winner ℓ bin (equal pooled winner mass)", ylabel="share of winners", title="winner distribution over the ℓ bins")
         for a_ in ax:
             a_.grid(alpha=0.3); a_.legend(fontsize=7)
         fig.suptitle(f"{name}: {ka} vs {kb}"); fig.tight_layout()
-        fig.savefig(os.path.join(FIG_DIR, f"H3_{name}_{ka}_vs_{kb}.png"), dpi=300); plt.show()
+        fig.savefig(os.path.join(FIG_DIR, f"H3_{name}_{ka}_vs_{kb}.png".replace(":", "_")), dpi=300); plt.show()
 
 # %% [markdown]
 # ## Provenance and exclusions
@@ -1911,8 +2070,13 @@ RUN_META = {"created": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "versions": VERSION
                          for n, s in DATASETS.items()},
             "selftests_passed": SELFTEST_ALL, "toy_checks_passed": TOY_CHECKS_ALL,
             "info": {f"{k[0]}/{k[1]}": v["info"] for k, v in RESULTS.items()},
-            "git_commit": os.environ.get("C3_GIT_COMMIT"),
-            "note": "git_commit is set by notebooks/run_notebook.py; on Colab record the repo commit by hand"}
+            "git_commit": os.environ.get("C3_GIT_COMMIT"), "prereg_tag_commit": PREREG_TAG,
+            "note": "git_commit is set by slurm/dorigo_notebook.sbatch; on Colab record the repo commit by hand"}
+try:   # c3/provenance.py stamp when the notebook runs inside the repo (CLAUDE.md: every result carries one)
+    from c3.provenance import collect as _prov
+    RUN_META["provenance"] = _prov()
+except Exception as exc:  # noqa: BLE001 -- on Colab c3 is not importable
+    RUN_META["provenance"] = f"not available ({type(exc).__name__})"
 with open(os.path.join(OUT_DIR, "run_meta.json"), "w") as fh:
     json.dump(RUN_META, fh, indent=1, default=str)
 ex = pd.DataFrame(EXCLUSIONS)
@@ -1931,6 +2095,12 @@ if USE_SYNTHETIC:
 elif HALF_MODE == "fit_only":
     lines.append("**FIT-HALF-ONLY RUN: every number below comes from an inner split of the fit-half documents "
                  "(about a quarter of the corpus each way), not from the pre-registered report half.**\n")
+else:
+    lines.append("**REPORT-HALF RUN, EXPLORATORY: these numbers come from this notebook, not from "
+                 "prereg/analysis_commands.sh, so they are exploratory (documents/final-plan.md). The E2 split uses "
+                 "the notebook's own π̂(ℓ, s) (sklearn spline logistic, standardised features, 1M-row fit), an "
+                 "approximation of c3.calibrators.ContextLogistic: do not read a gap to the pre-registered E2 "
+                 "numbers as a finding.**\n")
 lines.append(f"Phase 1 verdict: **{PHASE1_VERDICT}**. Self-tests: {sum(SELFTEST.values())}/{len(SELFTEST)} passed; "
              f"toy checks: {sum(TOY_CHECKS.values())}/{len(TOY_CHECKS)} as expected. Bootstrap resamples: {N_BOOT_RUN:,}"
              + (" (dry run)." if N_BOOT_RUN < N_BOOT else "."))
@@ -1939,6 +2109,9 @@ d1 = TOY_DEC[(TOY_DEC.L == 6) & (TOY_DEC.Q == 1)].iloc[0]
 lines.append(f"\n**Toy (Module A).** In the Gaussian matched filter, Q × local bias reaches {tl.Qbias_cv:.3f} ± {1.96 * tl.Qbias_cv_se:.3f} at Q = {int(tl.Q)} "
              f"(theory 0.5). At Q = 1 the global search adds a remote term of {d1.B_remote:.3f} to the local bias of {d1.B_local:.3f}, and "
              f"the remote side wins {d1.P_remote_wins:.0%} of the time (L = 6). This checks the code; it says nothing about language models.")
+# The calibrator's own bias: the largest |field(M)| on this run's synthetic scenarios that have no field
+# term (Module B: calibrated, flat_miscal, context). A field term no bigger than that is not told from 0.
+FIELD_NULL_FLOOR = max(abs(float(erow(sc, M).field_est)) for sc in ("calibrated", "flat_miscal", "context"))
 for (name, kind), r in RESULTS.items():
     t = r["main"].set_index("m"); p = r["paired"].set_index("m"); e = r["e2"].set_index("m"); i = r["info"]
     a1, aM, eM, e1 = t.loc[1], t.loc[M], e.loc[M], e.loc[1]
@@ -1948,25 +2121,62 @@ for (name, kind), r in RESULTS.items():
     lines.append(f"- The calibrated gap Δ (exact estimator) goes from {a1.delta_x_est:+.4f} [{a1.delta_x_lo:+.4f}, {a1.delta_x_hi:+.4f}] at m = 1 to "
                  f"{aM.delta_x_est:+.4f} [{aM.delta_x_lo:+.4f}, {aM.delta_x_hi:+.4f}] at m = {M}. The change Δ({M}) − Δ(1) = "
                  f"{eM.delta_contrast_est:+.4f} [{eM.delta_contrast_lo:+.4f}, {eM.delta_contrast_hi:+.4f}] (CI {side(eM.delta_contrast_lo, eM.delta_contrast_hi)}); "
-                 + (f"its CI lies inside ±{DELTA_MIN}, so any change is smaller than the pre-registered smallest effect worth reporting."
+                 + (f"its CI lies inside ±{DELTA_MIN} (δ_min, the smallest effect we treat as worth reporting), so any change is smaller than that."
                     if eM.delta_contrast_within_dmin else f"its CI is not inside ±{DELTA_MIN}."))
     grows = eM.delta_contrast_lo > 0
     own_share = eM.own_contrast_est / eM.delta_contrast_est if grows else np.nan
-    if eM.field_lo > 0:
+    # Field-term verdict, keyed to the E2 endpoint: the CONTRAST field(M) − field(1), which cancels any
+    # m-independent calibrator offset. The level field(M) must agree in sign. A CI that excludes 0 is not
+    # enough: the CIs treat the calibrators as fixed, so the level's sign must survive refitting both
+    # calibrators on each half of the fit documents. δ_min decides what is worth reporting; the
+    # synthetic-null floor (an exploratory label, not a test) only picks the wording below it.
+    refits = np.array([eM.field_refit_a, eM.field_refit_b], dtype=float)
+    has_refit = bool(np.isfinite(refits).all())
+    no_refit = "" if has_refit else " (no refit check)"
+    sgn = lambda lo, hi: 1 if lo > 0 else -1 if hi < 0 else 0   # noqa: E731
+    sign_c = sgn(eM.field_contrast_lo, eM.field_contrast_hi)
+    sign_l = sgn(eM.field_lo, eM.field_hi)
+    sign = sign_c if sign_c == sign_l else 0
+    robust = sign != 0 and (not has_refit or bool((np.sign(refits) == sign).all()))
+    size = max(abs(eM.field_contrast_est), abs(eM.field_est))
+    big = size >= DELTA_MIN
+    if sign_c and sign_l and sign_c != sign_l:
+        verdict = (f"The field term's contrast ({eM.field_contrast_est:+.4f}) and level ({eM.field_est:+.4f}) disagree in sign: "
+                   "no field term is detected.")
+    elif sign_c != sign_l and not big:
+        verdict = (f"No field term of a size worth reporting: only one of the contrast ({eM.field_contrast_est:+.4f}) and the "
+                   f"level ({eM.field_est:+.4f}) has a CI excluding 0, and both are far inside δ_min = {DELTA_MIN}.")
+    elif sign_c != sign_l:
+        verdict = (f"The field term is unsettled: only one of the contrast ({eM.field_contrast_est:+.4f}) and the level "
+                   f"({eM.field_est:+.4f}) has a CI excluding 0, and at least one reaches δ_min = {DELTA_MIN}; read the "
+                   "E2 table, not this sentence.")
+    elif sign and not robust:
+        verdict = (f"The field term's CIs exclude 0, but refitting the calibrators gives {refits[0]:+.4f} and {refits[1]:+.4f}, "
+                   "not both of the estimate's sign: its sign rests on the calibrator fit, so this is not evidence of a field term.")
+    elif sign and not big and size <= FIELD_NULL_FLOOR:
+        verdict = (f"No field term of a size worth reporting (contrast {eM.field_contrast_est:+.4f}, level {eM.field_est:+.4f}, "
+                   f"both ≪ δ_min = {DELTA_MIN}). The CIs exclude 0{no_refit}, but the size is not distinguishable from the "
+                   f"calibrator's own bias on synthetic data with no field term (up to {FIELD_NULL_FLOOR:.4f} in this run's self-tests).")
+    elif sign > 0 and big:
         verdict = ("Part of the change is a winner's curse from the state: at equal own confidence, winners of larger "
-                   "pools sit in states where the context-aware calibrator expects lower accuracy.")
-    elif eM.field_hi < 0:
+                   f"pools sit in states where the context-aware calibrator expects lower accuracy{no_refit}.")
+    elif sign < 0 and big:
         verdict = ("The field term is negative: at equal own confidence, large-pool winners sit in states the "
-                   "context-aware calibrator rates as more accurate, so the state works against the winner's curse here.")
-    elif grows and eM.own_contrast_lo > 0:
-        verdict = ("No field term is detected; the growth of Δ sits in the own term, which is ordinary high-confidence "
-                   "miscalibration seen through the maximum, not a winner's curse from the state.")
+                   f"context-aware calibrator rates as more accurate, so the state works against the winner's curse here{no_refit}.")
+    elif sign:
+        verdict = (f"A {'positive' if sign > 0 else 'negative'} field term is detected{no_refit} and is larger than the "
+                   f"calibrator's synthetic-null bias ({FIELD_NULL_FLOOR:.4f}), but at contrast {eM.field_contrast_est:+.4f} / "
+                   f"level {eM.field_est:+.4f} it is far below δ_min = {DELTA_MIN}: no field term of a size worth reporting.")
     else:
         verdict = "No field term is detected."
+    if grows and eM.own_contrast_lo > 0 and np.isfinite(own_share) and own_share >= 0.5:
+        verdict += (" The own term accounts for all of the growth of Δ (the field and residual terms together are "
+                    "negative here)" if own_share > 1 else f" The growth of Δ sits mainly in the own term ({own_share:.0%} of it)")
+        verdict += ": ordinary high-confidence miscalibration seen through the maximum, not a winner's curse from the state."
     lines.append(f"- E2 split of that change: own miscalibration {eM.own_contrast_est:+.4f} [{eM.own_contrast_lo:+.4f}, {eM.own_contrast_hi:+.4f}], "
                  f"field term {eM.field_contrast_est:+.4f} [{eM.field_contrast_lo:+.4f}, {eM.field_contrast_hi:+.4f}], residual "
                  f"{eM.resid_contrast_est:+.4f} [{eM.resid_contrast_lo:+.4f}, {eM.resid_contrast_hi:+.4f}]"
-                 + (f" (own share {own_share:.0%})." if np.isfinite(own_share) and 0 <= own_share <= 1.5 else ".")
+                 + (f" (own share {own_share:.0%})." if np.isfinite(own_share) and 0 <= own_share <= 1 else ".")
                  + f" The field term at m = {M} is {eM.field_est:+.4f} [{eM.field_lo:+.4f}, {eM.field_hi:+.4f}] (H2; CI {side(eM.field_lo, eM.field_hi)}; "
                  f"at m = 1 it is {e1.field_est:+.4f}, which should be ≈ 0"
                  + (f"; refitting both calibrators on each half of the fit documents gives {eM.field_refit_a:+.4f} and "
@@ -2003,12 +2213,13 @@ for name in dict.fromkeys(k[0] for k in RESULTS):
         if (name, ka, kb, M, "A") not in H3:
             continue
         hA, hB = H3[(name, ka, kb, M, "A")], H3[(name, ka, kb, M, "B")]
-        lines.append(f"\n**H3, {name}: {ka} vs {kb} at equal winner confidence (m = {M}).** Raw winner confidence "
+        lines.append(f"\n**H3, {name}: {ka} vs {kb} at equal winner ℓ (m = {M}).** Raw winner confidence "
                      f"{RESULTS[(name, ka)]['main'].set_index('m').loc[M, 'E_c_w_est']:.2f} vs "
                      f"{RESULTS[(name, kb)]['main'].set_index('m').loc[M, 'E_c_w_est']:.2f}, so the raw Δs are not comparable. "
-                     f"Over {ka}'s winner-confidence distribution, Δ is {hA['delta_A_est']:+.4f} ({ka}) vs {hA['delta_B_est']:+.4f} ({kb}), "
+                     f"Over {ka}'s winner distribution on {hA['n_bins']} equal-mass ℓ bins, Δ is {hA['delta_A_est']:+.4f} ({ka}) vs {hA['delta_B_est']:+.4f} ({kb}), "
                      f"difference {hA['diff_est']:+.4f} [{hA['diff_lo']:+.4f}, {hA['diff_hi']:+.4f}] (CI {side(hA['diff_lo'], hA['diff_hi'])}; "
-                     f"{hA['support']:.0%} of {ka}'s winners in shared bins). Over {kb}'s distribution: {hB['diff_est']:+.4f} "
+                     f"{hA['support']:.0%} of {ka}'s winners in shared bins; confidence left unequal by the binning {hA['c_imbalance']:+.4f}). "
+                     f"Over {kb}'s distribution: {hB['diff_est']:+.4f} "
                      f"[{hB['diff_lo']:+.4f}, {hB['diff_hi']:+.4f}] ({hB['support']:.0%} support).")
 lines.append(f"\nCaveats: Δ and the E2 terms are exact over pools; the shuffle test, the Monte Carlo pairing and the quintiles use "
              f"{POOLS_PER_STATE} pools per state, and their CIs are conditional on those draws. The E2 CIs treat the fitted calibrators "

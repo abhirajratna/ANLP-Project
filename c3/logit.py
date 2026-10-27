@@ -69,6 +69,8 @@ def fit_fe_logit(
     tol: float = 1e-10,
     weights: np.ndarray | None = None,
     offset: np.ndarray | None = None,
+    init_beta: np.ndarray | None = None,
+    init_alpha: np.ndarray | None = None,
 ) -> LogitFit:
     """IRLS for ``logit(P(y=1)) = alpha[groups] + X @ beta``.
 
@@ -84,6 +86,11 @@ def fit_fe_logit(
         fixed at 1.  Cross-fitting uses it to carry the confidence-accuracy
         curve ``f(ell)`` estimated on the fit half into the eval half, so that
         ``f`` cannot be flexed on the same data that reports ``beta_z``.
+    init_beta, init_alpha : optional warm start, ``beta`` on the original
+        (unstandardised) covariate scale and one intercept per group.  Either
+        may be given alone; the other starts at zero.  ``None`` (default) is the
+        cold start from zero.  The estimator, tolerance, ``max_iter`` and the
+        step-halving rule are unchanged; only the starting point differs.
     """
     y = np.asarray(y, dtype=np.float64).ravel()
     X = np.ascontiguousarray(np.asarray(X, dtype=np.float64))
@@ -114,8 +121,12 @@ def fit_fe_logit(
     if off.size != N:
         raise ValueError("offset must have one entry per row")
 
-    beta = np.zeros(p)
-    alpha = np.zeros(G)
+    beta = np.zeros(p) if init_beta is None else np.array(init_beta, dtype=np.float64).ravel() * col_scale
+    alpha = np.zeros(G) if init_alpha is None else np.array(init_alpha, dtype=np.float64).ravel()
+    if beta.size != p:
+        raise ValueError(f"init_beta has {beta.size} entries for {p} columns")
+    if alpha.size != G:
+        raise ValueError(f"init_alpha has {alpha.size} entries for {G} groups")
     converged = False
     prev_ll = -np.inf
     it = 0

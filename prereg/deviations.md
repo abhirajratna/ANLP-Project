@@ -147,3 +147,35 @@ Items 7-14 are reserved for the T13 ablation entries (branch `t13-ablations`).
       branch `parth/t12-driver`, commit `daff750c251f8e49fb62c40f8fad12b80cb4ee04`. The final per-task grids
       (`prereg/t12_grid_gsm8k.json`, `prereg/t12_grid_mbpp.json`) are committed before the
       report-half run, and their hashes are recorded on the coordination bus.
+
+18. **Step order: E1/E2 banked before Eq. 2/3 (scheduling only).** The Eq. 2/3 FE bootstrap
+    did not fit the 96 h Ada job cap on the 120M-row arms (measured: LladaBase job 39851,
+    eq2_fe 5-8 min per resample per worker; DreamBase job 39510, eq3_fe ~100 s per resample
+    per worker, first of 7 mask kinds still running after 16 h). Each arm's primary
+    `c1/<Label>` command is therefore first run with `--skip-regression` into
+    `prereg-v1-e1e2/` (`slurm/prereg_analysis.sbatch`, `C3_E1E2_ONLY=1`, PR #47). The E1/E2
+    Holm families come only from the 10,000-draw reweighting bootstrap
+    (`scripts/analyze_traces.py:154-196` at `prereg-v1`; bootstrap counts drawn once at
+    `:401`), so their numbers are identical to a full run; Eq. 2/3 follows separately. No
+    frozen choice changes.
+
+19. **Eq. 2/3 bootstrap warm start.** From commits cc9cc85 and 51657cb (branch
+    `abhiraj/eq23-warm-start`) each Eq. 2/3 bootstrap resample's IRLS starts from the
+    full-sample fit instead of zero; estimator, ridge, tolerance, max_iter and resample
+    seeds unchanged. The penalised objective is strictly concave, so a converged draw does
+    not depend on where it started; against an independent high-precision solver warm draws
+    are exact to <=2e-9 and CI endpoints move by <=3e-10. Where the frozen cold start hit
+    max_iter, its draws were not optimal (errors up to 9e-2 on synthetic hard cases);
+    unconverged point fits and draws are now restarted once from their last iterate, and any
+    still unconverged are counted and marked §. `--eq-cold-start` reproduces `prereg-v1`
+    output exactly. On real data (fit-half documents only; 50 and 200 documents of LladaBase
+    decoder:topk_conf:k2; full-sample fit plus 10 bootstrap resamples each, using each tag's
+    own code), the prereg-v1 cold start converged in every case but slowly: median 49 IRLS
+    iterations (max 58) and about 270-340 step-halvings per fit, 16 s and 63 s per fit.
+    Under prereg-v1.1 every resample converged in 5 iterations with no step-halving, 29-32
+    times faster, and coefficients agreed with the cold fits to within 1.3e-12; the
+    full-sample fits were identical. On the observed data the change is therefore a speed
+    change only. Non-convergence was seen in synthetic hard cases only. Diagnostic scripts
+    and output: ANLP-project/c3-traces-8b, diagnostics/fediag-2026-10-26/. The library default stays cold, so other callers (`run_controls`,
+    `run_stage0`, `c3/sim`) are unchanged. Convergence of point fits and draws is now
+    recorded (`point_converged`, `point_restarted`, `n_nonconverged_draws`).
