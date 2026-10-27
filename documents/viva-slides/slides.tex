@@ -575,22 +575,26 @@
       \lbl{E2} $=$ field$(\VivaPoolMax)-$field$(1)$. Positive: part of that growth is the
       winner's curse proper (Proposition 2).\par\vspace{1mm}
       \lbl{Markers.} $^{*}$ Holm-rejected in its family; $^{\dagger}$ declared (95\% interval
-      excludes 0 and the effect exceeds twice the floor). \textbf{A claim needs both.}
-      Everything else is exploratory.\par\vspace{1.5mm}
+      excludes 0, effect above twice the floor). \textbf{A claim needs both.}\par\vspace{1.5mm}
       \begin{takeaway}[fontupper=\footnotesize]
         \ifCOneMacros
           \textbf{Claims.} E1: \Cres{COneConfirmedEOne} of \Cres{COneHolmEOneFamily} cells.
-          E2: \Cres{COneConfirmedETwo} of \Cres{COneHolmETwoFamily}.
+          E2: \Cres{COneConfirmedETwo} of \Cres{COneHolmETwoFamily}. E1 is positive in every
+          decoder-state cell; E2 clearly exceeds the estimator's T0 bias only for the instruct
+          models.
         \else
           \textbf{Claims.} {\color{ink2}Pending: how many cells meet both markers.}
         \fi
       \end{takeaway}
     \end{column}
   \end{columns}
-  \note{Pending until the report-half run (Tue 27). Cells are read from macros\_c1.tex (COne<Label>Contrast,
-  COneFieldContrast, COneHolmDecision, ...Declared). Answer H1 with the E1 columns and H2 with E2, and say
-  plainly if no cell meets the rule. Sign: positive means overconfident. Backup: full table with intervals
-  (paper/tables/c1/c1\_main.tex), all-arm curves, sensitivity, E3 table.}
+  \note{Sign: positive means overconfident. H1 (E1): yes in the states a top-k decoder visits, every arm,
+  all claimed. In uniform states the sign varies: negative and claimed for both base models and LLaDA-I GSM8K,
+  positive for Dream-I; LLaDA-I MBPP and MDLM uniform are declared but not claimed. Sizes: |E1| at most 0.015
+  for base and 110M, up to 0.26 for instruct MBPP. H2 (E2): claimed in all 14, positive in 12, but for base and
+  110M below 0.005, of the order of what the estimator reads with no field term in T0, so not a winner's curse
+  there. Instruct cells: 0.013 up to Dream-I MBPP uniform. E2 intervals condition on the fitted calibrators.
+  Backup: full table with intervals, all-arm curves.}
 \end{frame}
 
 % ================================================================ 10 C1 results: Delta(m) and field term
@@ -624,9 +628,10 @@
       not the split into own and field terms (T0).
     \end{column}
   \end{columns}
-  \note{Pending until Tue 27. If the main arm is not LLaDA-8B-Base, change \textbackslash VivaCOneMainArm
-  and the name above (and pass --main-arm to the script). Estimator reads field term slightly high
-  in T0, so a small positive E2 is weaker than its interval suggests.}
+  \note{LLaDA-8B-Base: in uniform states Delta(m) falls slightly with m (E1 small, negative); in decoder
+  states it rises (E1 positive). The dashed field terms stay near zero in both, so the change is own
+  miscalibration, not a winner's curse. Estimator reads the field term slightly high in T0, so a small
+  positive E2 is weaker than its interval suggests. Other arms: backup.}
 \end{frame}
 
 % ================================================================ 11 C1 diagnostic: beta_z
@@ -1039,9 +1044,10 @@
       \begin{panel}[height=25mm, colback=wash, colframe=accent!40]
         \paneltitle{2 · C1 audit}
         \ifCOneMacros
-          Claims (declared and Holm-rejected): E1 \Cres{COneConfirmedEOne} of
-          \Cres{COneHolmEOneFamily} cells, E2 \Cres{COneConfirmedETwo} of
-          \Cres{COneHolmETwoFamily}. E3, T8 and the robustness runs are exploratory.
+          Claims: E1 \Cres{COneConfirmedEOne} of \Cres{COneHolmEOneFamily} cells, E2
+          \Cres{COneConfirmedETwo} of \Cres{COneHolmETwoFamily}. In decoder states the gap grows
+          with the field for every model; the field term grows clearly only for the instruct
+          models.
         \else
           {\color{ink2}Pending: the answers to H1–H3 on three model families, from the
           report half (Tue 27).}
@@ -1094,7 +1100,8 @@
           \item The disagreement proxy tracks \A weakly, and mostly through $k$.
           \item 8B models in fp16, not bfloat16 (no bfloat16 on our GPUs); E3 for top-$k$
                 decoders only.
-          \item {\color{ink2}C1 and C3 limits: pass 2.}
+          \item C1 is teacher-forced, and E2 intervals condition on the fitted calibrators.
+          \item {\color{ink2}C3 limits: when T12 lands.}
         \end{itemize}
       \end{panel}
     \end{column}
