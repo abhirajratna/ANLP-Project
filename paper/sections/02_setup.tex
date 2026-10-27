@@ -27,10 +27,8 @@ unmasking: in a \emph{state} $s$ with masked set $M$, one forward pass gives at 
 distribution $p_{\theta,i}$ given the observed tokens $\xobs$, with top-1 token $v_i$,
 \emph{confidence} $c_i=p_{\theta,i}(v_i)$ and log-odds $\ell_i=\log\frac{c_i}{1-c_i}$. The
 decoder \emph{commits} positions for good: the $k$ most confident per step
-\citep{chang2022maskgit}, the default of LLaDA and Dream, or all above a cutoff
-\citep{wu2025fastdllm}. Committing $S\subseteq M$ in one step draws its tokens from the product
-of their marginals. With $p^*$ the true joint of $x_S$ given $\xobs$ and $p^*_i$ its
-marginals,
+\citep{chang2022maskgit} or all above a cutoff \citep{wu2025fastdllm}. Committing $S\subseteq M$ in one step draws its tokens from the product
+of their marginals; with $p^*$ the true joint of $x_S$ given $\xobs$ and $p^*_i$ its marginals,
 \begin{equation}
   \begin{split}
   \mathrm{KL}\bigl(p^* \,\|\, {\textstyle\prod_{i\in S}} p_{\theta,i}\bigr)
@@ -40,29 +38,26 @@ marginals,
   \label{eq:decomp}
 \end{equation}
 where $\mathrm{TC}(x_S\mid\xobs)=\sum_{i\in S}H(p^*_i)-H(p^*_S)$ is the total correlation, zero
-iff the tokens are conditionally independent. (A) is what no product of marginals can
-represent, (B) the error of the marginals \citep[cf.][]{benhamu2025entropy}; \S\ref{sec:c2}
-estimates both, C1 only the marginals.
+iff they are conditionally independent. (A) is what no product of marginals can
+represent, (B) their error \citep[cf.][]{benhamu2025entropy}; \S\ref{sec:c2}
+estimates both, C1 only (B).
 
 \paragraph{The committed-token gap.}
 Under teacher forcing (\S\ref{sec:instrument}) correctness $a_i=\1\{v_i=x_{0,i}\}$ against the
 true document $x_0$ is observed. A commit is a selection, so we model a field of $m$ candidates
 as a random pool $P\subseteq M$, won by $i=\arg\max_{j\in P}\ell_j$ (ties broken at random).
-With $\E_m$ the average over states, pools of size $m$ and their winners, the
+With $\E_m$ the average over states, pools of size $m$ and winners, the
 \emph{committed-token gap} is
 \begin{equation}
   \Delta(m) = \E_m\,[\,c - a\,],
   \label{eq:gap}
 \end{equation}
-confidence minus accuracy, so positive means overconfident.\footnote{Proposal-era files use
-accuracy minus confidence.} $\Delta(1)$ is the
-ordinary signed calibration error of a masked position; larger $m$ stands for a larger
-field, as at early steps and in long outputs.
+confidence minus accuracy, so positive means overconfident.$\Delta(1)$ is the ordinary signed calibration error of a masked
+position; larger $m$ stands for a larger field, as at early steps and in long outputs.
 
 \paragraph{The winner's curse.}
 The largest of $m$ noisy estimates tends to be one whose error pushed it up
-\citep{efron2011tweedie,andrews2024winners}; if that acts on decoding, $\Delta(m)$ grows with
-$m$. Let $\pi(\ell)=\Pr(a=1\mid\ell)$ be the calibration curve over all masked positions (the
+\citep{efron2011tweedie,andrews2024winners}; if that acts, $\Delta(m)$ grows with $m$. Let $\pi(\ell)=\Pr(a=1\mid\ell)$ be the calibration curve over all masked positions (the
 $m=1$ population) and $\pi(\ell,s)=\Pr(a=1\mid\ell,s)$ its context-aware version.
 
 \begin{proposition}[Winning adds nothing]
@@ -75,8 +70,8 @@ independently of all $(\ell_j,a_j)_{j\in M}$. Then the winner $i$ of $P$ satisfi
 \]
 \end{proposition}
 
-Winning depends only on the other scores, which say nothing about $a_i$: selection does not
-bias a correct posterior \citep{efron2011tweedie}, however unequal the noise scales. It acts
+Winning depends only on the other scores, which say nothing about $a_i$, so selection does not
+bias a correct posterior \citep{efron2011tweedie}, however unequal the noise scales; it acts
 only through context:
 
 \begin{proposition}[Exact split of the gap]
@@ -95,6 +90,5 @@ and the field term is exactly zero at $m=1$.
 Proofs are in Appendix~\ref{sec:app-proofs}. Own miscalibration, reweighted towards where
 winners sit, can make $\Delta(m)$ grow with $m$ with no winner's curse; the \emph{field term},
 nonzero only if accuracy at fixed confidence depends on context, is the winner's curse in a
-testable form. If positions of a state
-share errors, Proposition~\ref{prop:select} fails and \eqref{eq:gapsplit} gains a third term,
-$\E_m[\pi(\ell,s)-a]$ (\S\ref{sec:instrument}).
+testable form. If positions of a state share errors, Proposition~\ref{prop:select} fails and
+\eqref{eq:gapsplit} gains a third term, $\E_m[\pi(\ell,s)-a]$ (\S\ref{sec:instrument}).
