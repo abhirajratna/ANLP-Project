@@ -44,18 +44,11 @@ Three contributions follow, resting on the theory of \S\ref{sec:setup} and the i
   the committed-token gap as a function of how many
   candidates a token beat, and its field term, on held-out documents with Holm-corrected
   tests (\S\ref{sec:inference}).
-  % TODO(results): one sentence on C1, from the Holm summary (claimed stars only), keeping to
-  %   the levels/trends split of limitations.tex (levels from the 110M arm, trends in m from
-  %   the 8B arms).  Wording per outcome:
-  %   (a) E1 and E2 claimed in some arms: "The gap grows with field size in <arms>, and part
-  %       of the growth is a field term that a token's own confidence does not reveal."
-  %   (b) E1 claimed, E2 not: "The gap grows with field size in <arms>, but the field term
-  %       cannot be told from zero: the growth is ordinary miscalibration seen through
-  %       selection, so recalibrating per step, not per context, would remove it."
-  %   (c) neither claimed: "In no arm does the gap grow detectably with field size, which is
-  %       why confidence thresholding works as well as it does."
-  %   Add E3 (exploratory, not in a Holm family) only if its sup-t test rejects: "Decoder
-  %   states are <more/less> overconfident than random masks of the same size."
+  In the states a confidence decoder visits, the gap grows with field size for every model (in
+  random masked states its sign varies). Its field term grows too in all but one instruct-model
+  cell; for the base and 110M models it is of the order of the estimator's bias.
+  % TODO(results): add E3 (exploratory, not in a Holm family) only if its sup-t test rejects:
+  %   "Decoder states are <more/less> overconfident than random masks of the same size."
 \item \textbf{C2, an instrument for the two errors of parallel commitment}
   (\S\ref{sec:c2}). Committing several tokens in one step incurs a dependency error (A) and an
   estimation error (B) (Eq.~\ref{eq:decomp}), computed exactly on a JSON probe with known joint

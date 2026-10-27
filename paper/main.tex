@@ -55,7 +55,8 @@ traces from LLaDA-8B, Dream-7B and a 110M model of our own, it measures how far 
 a function of how many candidates they beat, and splits this gap exactly into ordinary
 miscalibration and a field term, the part that is a winner's curse, on held-out documents
 with Holm-corrected tests.
-% TODO(results): one C1 sentence, same outcome wording as the C1 TODO in 01_intro.tex.
+In the states a confidence decoder visits, the gap grows with field size for every model, and
+its field term does too for the instruct models.
 C2 computes the two errors of committing several tokens at once, dependency and estimation,
 exactly on a synthetic JSON probe: dependency overtakes estimation only for strongly coupled
 tokens committed several at a time, confidence ranking raises dependency error, not estimation
