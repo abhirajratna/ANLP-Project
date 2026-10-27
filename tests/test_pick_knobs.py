@@ -124,11 +124,12 @@ def cal_configs():
 
 
 def path_nfes(klass_top):
-    """Forward passes per problem along each adaptive path of the 25-config calibration grid:
-    2, 2.67, 4, 5.33, 8, 10.67 tokens/step for six knobs (klass_top = the fastest klass NFE)."""
-    nfes = [128, 96, 64, 48, 32, 24]
-    return {"threshold": nfes, "entropy_bounded": nfes, "c3a": nfes,
-            "klass": nfes[:-1] + [klass_top]}
+    """Forward passes per problem along each adaptive path of the 32-config calibration grid:
+    2, 2.67, 4, 5.33, 8, 10.67, 16, 21.3, 32 tokens/step, as many knobs as the path has
+    (klass_top = the fastest of klass's six)."""
+    nfes = [128, 96, 64, 48, 32, 24, 16, 12, 8]
+    return {"threshold": nfes[:8], "entropy_bounded": nfes, "c3a": nfes[:8],
+            "klass": nfes[:5] + [klass_top]}
 
 
 def make_run(root, name, task, configs, scale=1.0, klass_top=24, half="fit",
@@ -160,10 +161,10 @@ def test_committed_calibration_grid_is_fit_half_and_has_the_adaptive_paths():
     by = {}
     for c in d["configs"]:
         by.setdefault(c["policy"], []).append(c)
-    assert len(d["configs"]) == 25
+    assert len(d["configs"]) == 32
     assert {p: len(v) for p, v in by.items()} == {
-        "topk_conf": 1, "threshold": 6, "entropy_bounded": 6, "klass": 6, "c3a": 6}
-    assert len({pk.config_key(c) for c in d["configs"]}) == 25
+        "topk_conf": 1, "threshold": 8, "entropy_bounded": 9, "klass": 6, "c3a": 8}
+    assert len({pk.config_key(c) for c in d["configs"]}) == 32
 
 
 def test_per_task_grids_come_out_one_per_task(tmp_path):
@@ -298,4 +299,4 @@ def test_grid_loads_through_run_t12_and_keys_agree(tmp_path):
     grid = json.loads(path.read_text())
     assert set(grid["speed_of_config"]) == {run_t12.config_key(c) for c in loaded}
     # the calibration grid itself loads too, and is what --half fit runs
-    assert len(run_t12.load_configs(CAL)) == 25
+    assert len(run_t12.load_configs(CAL)) == 32
