@@ -105,14 +105,15 @@ calibrators are fitted on every state but the averages use only states with at
 least \VivaPoolMax{} masked positions, so the estimated field term need not be zero at $m=1$:
 E2 is a contrast.
 
-\paragraph{E1 and E2.}
+\paragraph{E1, E2 and the native gap.}
 E1 is $\Delta(m)$ \eqref{eq:gap}, with primary contrast $\Delta(\VivaPoolMax)-\Delta(1)$,
 beside 15-bin equal-mass ECE over all masked positions. E2 is the field
 term $\E_m[\hat\pi(\ell)-\hat\pi(\ell,s)]$ of \eqref{eq:gapsplit}, with primary contrast
 field$(\VivaPoolMax)-$field$(1)$. On the same winners, own miscalibration
 $\E_m[c-\hat\pi(\ell)]$, the field term and $\E_m[\hat\pi(\ell,s)-a]$ sum to $\Delta$ exactly;
 the last, zero under Proposition~\ref{prop:select}, is a specification check, as is the
-intra-class correlation of residuals $a-\hat\pi(\ell,s)$ within states.
+intra-class correlation of residuals $a-\hat\pi(\ell,s)$ within states. The \emph{native} gap
+is $c-a$ over the tokens the decoder commits, grouped by $|M_t|$ at commit time.
 
 \paragraph{Rank diagnostics.}
 Eq.~\ref{eq:eqtwo} is on pool winners, Eq.~\ref{eq:eqthree} on the top four ranks; $\eta_i=\alpha\,[+\alpha_s]+f(\ell_i)$:
