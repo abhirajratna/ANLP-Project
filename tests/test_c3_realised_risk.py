@@ -208,3 +208,91 @@ def test_report_docs_come_from_value_one_of_the_manifest():
     assert rr.report_docs({"3": 1, "4": 0, "5": 1}) == [3, 5]
     with pytest.raises(SystemExit):
         rr.report_docs({"3": 0})
+
+
+# ---- v2: matched speed, unforced error, the extra checks ---------------------------------
+
+def test_interp_rows_is_exact_and_nan_outside_the_curve():
+    X, Y = np.array([[1.0, 2.0, 3.0]]), np.array([[0.1, 0.2, 0.4]])
+    assert rr.interp_rows(2.5, X, Y)[0] == pytest.approx(0.3)
+    assert rr.interp_rows(2.0, X, Y)[0] == pytest.approx(0.2)
+    assert np.isnan(rr.interp_rows(0.9, X, Y)[0]) and np.isnan(rr.interp_rows(3.1, X, Y)[0])
+
+
+def test_matched_estimate_interpolates_inside_each_draw_not_on_the_mean_curve():
+    # row 0 = the point; rows 1.. = bootstrap draws, each with its own tokens/state axis
+    X = np.array([[1.0, 2.0, 3.0], [1.0, 2.0, 4.0], [1.5, 2.5, 3.5]])
+    Y = np.array([[0.1, 0.2, 0.4], [0.1, 0.2, 0.4], [0.0, 0.1, 0.2]])
+    m = rr.matched_estimate(2.5, X, Y)
+    assert m["value"] == pytest.approx(0.3)
+    assert np.allclose(m["draws"], [0.25, 0.1])           # each draw on its own axis
+    assert m["draws"][0] == pytest.approx(np.interp(2.5, X[1], Y[1]))
+    assert m["share_in_range"] == 1.0
+    out = rr.matched_estimate(3.8, X, Y)                   # beyond draw 2's last point
+    assert np.isnan(out["draws"][1]) and out["share_in_range"] == 0.5
+
+
+def test_matched_curves_agree_with_an_independent_interpolation_of_the_simulation():
+    rows, cal = _states(n_states=60, seed=11), _calibrator()
+    chat = rr.chat_for(rows, cal)
+    docs = np.unique(rows.doc_id)
+    state_doc = np.searchsorted(docs, rows.state_doc)
+    counts = doc_boot_counts(docs.size, 100, seed=0, label="t11-realised-risk-toy")
+    dense = tuple(np.unique(np.round(np.geomspace(0.005, 0.8, 40), 5)))
+    for variant in rr.VARIANTS:
+        out = rr.matched_curves(rows, chat, variant, state_doc, counts, dense, (1.5, 2.0))
+        sim = rr.simulate(rows, chat, variant, dense)
+        tps = {r: sim.n[r].sum(1) / rows.n_states for r in rr.RULES}
+        risk = {r: 1 - sim.correct[r].sum(1) / sim.n[r].sum(1) for r in rr.RULES}
+        for rec in out["matched"]:
+            T = rec["T"]
+            if not rec["in_range"]:
+                continue
+            want = {r: np.interp(T, tps[r], risk[r]) for r in rr.RULES}
+            assert rec["c3a"]["risk"]["value"] == pytest.approx(want["c3a"])
+            assert rec["raw"]["risk"]["value"] == pytest.approx(want["raw"])
+            assert rec["diff"]["value"] == pytest.approx(want["c3a"] - want["raw"])
+            assert rec["diff"]["ci_low"] <= rec["diff"]["ci_high"]
+        pt = out["curve"]["c3a"][5]                         # the dense curve's own point value
+        assert pt["tokens_per_state"]["value"] == pytest.approx(tps["c3a"][5])
+        assert pt["risk"]["value"] == pytest.approx(risk["c3a"][5])
+
+
+def test_curves_carry_unforced_error_and_its_ratio_to_alpha_with_intervals():
+    rows, cal = _states(n_states=60, seed=12), _calibrator()
+    chat = rr.chat_for(rows, cal)
+    docs = np.unique(rows.doc_id)
+    counts = doc_boot_counts(docs.size, 100, seed=0, label="t11-realised-risk-toy")
+    out = rr.curves(rows, rr.simulate(rows, chat, "block32", ALPHAS), np.searchsorted(docs, rows.state_doc), counts)
+    for rule in rr.RULES:
+        for rec in out["rules"][rule]:
+            u, q = rec["risk_unforced"], rec["unforced_over_alpha"]
+            if u["value"] is None:
+                continue
+            assert q["value"] == pytest.approx(u["value"] / rec["alpha"])
+            assert q["ci_low"] == pytest.approx(u["ci_low"] / rec["alpha"])
+    assert "differ" in out["notes"]["unforced"]
+
+
+def test_verify_checks_the_forced_flags(monkeypatch):
+    rows, cal = _states(seed=5), _calibrator()
+    chat = rr.chat_for(rows, cal)
+    real = rr.simulate
+
+    def flipped(*a, **k):
+        sim = real(*a, **k)
+        sim.forced["raw"] = ~sim.forced["raw"]
+        return sim
+
+    monkeypatch.setattr(rr, "simulate", flipped)
+    with pytest.raises(AssertionError, match="forced"):
+        rr.verify_against_policies(rows, chat, cal, ALPHAS, n_states=20, seed=0)
+
+
+def test_verify_features_equals_state_field_features_and_catches_a_difference(monkeypatch):
+    rows = _states(seed=9)
+    assert rr.verify_features(rows, n_states=30, seed=0) == 30
+    real = rr.state_features
+    monkeypatch.setattr(rr, "state_features", lambda r: {**real(r), "median_ell": real(r)["median_ell"] + 1e-3})
+    with pytest.raises(AssertionError, match="median_ell"):
+        rr.verify_features(rows, n_states=30, seed=0)

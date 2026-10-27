@@ -34,8 +34,15 @@ states (also over unforced and forced states separately; a state is forced when 
 passes and one is committed anyway), tokens per state, forced share.  Intervals resample whole
 documents (one matrix per task, shared by every estimand, ``c3.stats.doc_boot_counts``).
 
-Writes ``artifacts/c3/realised_risk_llada-8b-instruct_fp16_<tag>.{json,pdf,png}``, ``..._arms.pdf``
-and ``..._macros.tex`` (prefix CThreeTEleven, naming scheme in its header); refuses to overwrite.
+Both rules commit a prefix of the same ell order, so at equal alpha they differ mostly in how many
+tokens they commit.  The main figure therefore plots realised error against tokens per state, tracing
+each rule along a dense alpha grid (``DENSE_ALPHAS``; curves only, not a knob), and the JSON holds the
+paired difference c3a - raw at fixed tokens-per-state targets (``TARGETS``), interpolated inside every
+bootstrap draw.  The reported 9-point alpha grid gives the equal-alpha view (``_alpha`` figures).
+
+Writes ``artifacts/c3/realised_risk_llada-8b-instruct_fp16_<tag>.{json,pdf,png}`` (error vs tokens),
+``..._alpha.{pdf,png}``, ``..._arms.pdf``, ``..._alpha_arms.pdf`` and ``..._macros.tex`` (prefix
+CThreeTEleven, naming scheme in its header); refuses to overwrite.
 """
 from __future__ import annotations
 
@@ -64,6 +71,11 @@ ALPHAS = (0.01, 0.02, 0.05, 0.10, 0.12, 0.20, 0.25, 0.40, 0.60)
 (prereg/t12_cal.json) together with its tau grid as 1 - tau {.01,.05,.1,.2,.4,.6}.  The per-task
 C3a alphas of prereg/t12_grid_<task>.json were not committed when this was run, so none is added.
 Nothing else may be added after results are seen."""
+DENSE_ALPHAS = tuple(np.unique(np.round(np.geomspace(0.005, 0.8, 160), 5)))
+"""Only traces the error-vs-tokens curves (a different estimand from the reported grid above,
+not a knob: no number is read off it except by matching tokens per state)."""
+TARGETS = (1.5, 2.0, 2.5, 3.0, 4.0)
+"""Tokens-per-state levels at which C3a and the raw rule are compared (matched speed)."""
 ARMS = (2, 4, 8)
 PRIMARY_ARM = 4
 VARIANTS = ("block32", "region")
@@ -215,11 +227,28 @@ def verify_against_policies(rows: Rows, chat: np.ndarray, cal, alphas=ALPHAS, n_
             for a, alpha in enumerate(alphas):
                 for rule, policy in (("c3a", C3a(alpha, cal)), ("raw", Threshold(tau=1.0 - alpha))):
                     order, n = policy.select(stats, ctx)
+                    score = policy.calibrated(stats, ctx)[0] if rule == "c3a" else stats["conf"]
+                    if sim.forced[rule][a, s] != (not np.any(score >= 1.0 - alpha)):
+                        raise AssertionError(f"{variant} {rule} alpha={alpha} state {s}: wrong forced flag")
                     want = np.sort(pos[order[:n]])
                     got = np.sort(rows.position[sim.committed(s, rule, a)])
                     if sim.n[rule][a, s] != n or not np.array_equal(got, want):
                         raise AssertionError(f"{variant} {rule} alpha={alpha} state {s}: simulated "
                                              f"{got.tolist()} but the policy commits {want.tolist()}")
+    return int(pick.size)
+
+
+def verify_features(rows: Rows, n_states: int = 200, seed: int = 0) -> int:
+    """The vectorised state features against ``state_field_features`` on random states."""
+    feats = state_features(rows)
+    rng = np.random.default_rng(seed)
+    pick = rng.choice(rows.n_states, size=min(n_states, rows.n_states), replace=False)
+    for s in pick:
+        sl = slice(rows.state_start[s], rows.state_start[s + 1])
+        ref = state_field_features(rows.ell[sl], int(rows.n_masked[sl][0]), int(rows.span_len[sl][0]))
+        for name, v in ref.items():
+            if not np.isclose(feats[name][s], v, rtol=0, atol=1e-12):
+                raise AssertionError(f"state {s}: {name} {feats[name][s]!r} != state_field_features {v!r}")
     return int(pick.size)
 
 
@@ -245,6 +274,10 @@ def pub(e: dict) -> dict:
     return {"value": nn(e["value"]), "ci_low": nn(e["ci"][0]), "ci_high": nn(e["ci"][1])}
 
 
+def over_alpha(e: dict, alpha: float) -> dict:
+    return pub({"value": e["value"] / alpha, "ci": tuple(x / alpha for x in e["ci"])})
+
+
 def curves(rows: Rows, sim: Sim, state_doc: np.ndarray, counts: np.ndarray) -> dict:
     """Per rule and alpha: risk (all / unforced / forced), tokens per state, forced share, and the
     paired risk difference c3a - raw; document-bootstrap intervals throughout."""
@@ -254,6 +287,11 @@ def curves(rows: Rows, sim: Sim, state_doc: np.ndarray, counts: np.ndarray) -> d
     out = {"singleton_share": pub(ratio_ci(per_doc((sim.size == 1).astype(float)), states, counts)),
            "mean_eligible_size": float(sim.size.mean()),
            "sigma_changes_raw_n_states": [int(x) for x in sim.sigma_diff],
+           "notes": {"unforced": "risk_unforced is the error of the commits in states where at least one "
+                                 "position passed the bar; the unforced subsets differ between the two rules "
+                                 "(the raw rule has fewer forced states at the same alpha), so unforced risks "
+                                 "are not a like-for-like comparison.  unforced_over_alpha = risk_unforced / "
+                                 "alpha: under 1 means the nominal bound holds on those commits."},
            "rules": {r: [] for r in RULES}, "paired_risk_diff_c3a_minus_raw": []}
     risk = {r: [] for r in RULES}
     for a, alpha in enumerate(sim.alphas):
@@ -264,6 +302,8 @@ def curves(rows: Rows, sim: Sim, state_doc: np.ndarray, counts: np.ndarray) -> d
             risk[rule].append(r_all)
             rec = {"alpha": alpha, "risk": pub(r_all), "n_committed": int(n.sum()),
                    "risk_unforced": pub(ratio_ci(per_doc(err * ~f), per_doc(n * ~f * 1.0), counts)),
+                   "unforced_over_alpha": over_alpha(
+                       ratio_ci(per_doc(err * ~f), per_doc(n * ~f * 1.0), counts), alpha),
                    "risk_forced": pub(ratio_ci(per_doc(err * f), per_doc(n * f * 1.0), counts)),
                    "tokens_per_state": pub(ratio_ci(per_doc(n.astype(float)), states, counts)),
                    "forced_share": pub(ratio_ci(per_doc(f * 1.0), states, counts))}
@@ -271,6 +311,63 @@ def curves(rows: Rows, sim: Sim, state_doc: np.ndarray, counts: np.ndarray) -> d
         out["paired_risk_diff_c3a_minus_raw"].append(
             {"alpha": alpha, **pub(diff_ci(risk["c3a"][a], risk["raw"][a]))})
     return out
+
+
+def interp_rows(T: float, X: np.ndarray, Y: np.ndarray) -> np.ndarray:
+    """Row-wise linear interpolation of Y at X = T (X increasing along a row); NaN outside X's range."""
+    out = np.full(X.shape[0], np.nan)
+    for i in range(X.shape[0]):
+        if X[i, 0] <= T <= X[i, -1]:
+            out[i] = np.interp(T, X[i], Y[i])
+    return out
+
+
+def matched_estimate(T: float, X: np.ndarray, Y: np.ndarray) -> dict:
+    """Y at X = T.  Row 0 of X, Y is the point curve, rows 1.. one bootstrap draw each: the
+    interpolation is redone inside every draw (each has its own tokens-per-state axis)."""
+    v = interp_rows(T, X, Y)
+    draws = v[1:]
+    return {"value": float(v[0]), "ci": percentile_ci(draws), "draws": draws,
+            "share_in_range": float(np.isfinite(draws).mean())}
+
+
+def matched_curves(rows: Rows, chat: np.ndarray, variant: str, state_doc: np.ndarray,
+                   counts: np.ndarray, alphas=DENSE_ALPHAS, targets=TARGETS) -> dict:
+    """Realised error against tokens per state for each rule along a dense alpha grid, and the
+    paired difference c3a - raw at fixed tokens-per-state targets (same document draws)."""
+    sim = simulate(rows, chat, variant, alphas)
+    D = counts.shape[1]
+    per_doc = lambda w: np.bincount(state_doc, weights=w, minlength=D)  # noqa: E731
+    W = np.vstack([np.ones((1, D)), counts.astype(np.float64)])        # row 0: the point estimate
+    states = W @ per_doc(np.ones(rows.n_states))
+    X, Y = {}, {}
+    for rule in RULES:
+        n = sim.n[rule].astype(np.float64)
+        N = np.stack([per_doc(x) for x in n])                           # (alphas, docs)
+        E = np.stack([per_doc(x) for x in n - sim.correct[rule]])
+        X[rule] = (W @ N.T) / states[:, None]
+        Y[rule] = (W @ E.T) / (W @ N.T)
+    curve = {}
+    for rule in RULES:
+        lo_x, hi_x = np.quantile(X[rule][1:], [0.025, 0.975], axis=0)
+        lo_y, hi_y = np.quantile(Y[rule][1:], [0.025, 0.975], axis=0)
+        curve[rule] = [{"alpha": float(a),
+                        "tokens_per_state": {"value": float(X[rule][0, i]), "ci_low": float(lo_x[i]),
+                                             "ci_high": float(hi_x[i])},
+                        "risk": {"value": float(Y[rule][0, i]), "ci_low": float(lo_y[i]),
+                                 "ci_high": float(hi_y[i])}} for i, a in enumerate(alphas)]
+    matched = []
+    for T in targets:
+        est = {r: matched_estimate(T, X[r], Y[r]) for r in RULES}
+        ok = all(np.isfinite(e["value"]) for e in est.values())
+        rec = {"T": T, "in_range": ok,
+               **{r: {"risk": pub(est[r]), "share_draws_in_range": est[r]["share_in_range"]} for r in RULES}}
+        rec["diff"] = (pub(diff_ci(est["c3a"], est["raw"])) if ok
+                       else pub({"value": np.nan, "ci": (np.nan, np.nan)}))
+        matched.append(rec)
+    return {"alphas": [float(a) for a in alphas], "curve": curve, "matched": matched,
+            "note": "dense alpha grid: traces the curves only; matched = risk interpolated at fixed tokens/state "
+                    "inside every bootstrap draw (draws whose tokens range misses T are dropped from the CI)"}
 
 
 def monotone_share(rows: Rows, chat: np.ndarray) -> float:
@@ -394,13 +491,16 @@ def run_task(task: str, data_dir: Path, art_dir: Path, n_boot: int, seed: int) -
     pooled = {"chat": [], "sigma": [], "agree": [], "doc": [], "outside": {}}
     for k, rows in arms.items():
         chat = chat_for(rows, cal)
+        verify_features(rows, 200, seed)
         res["checked_states"][f"k{k}"] = verify_against_policies(rows, chat, cal, seed=seed)
         state_doc = np.searchsorted(universe, rows.state_doc)
         row_doc = state_doc[rows.sid]
         sigma = 1.0 / (1.0 + np.exp(-rows.ell))
         res["arms"][f"k{k}"] = {"n_states": rows.n_states, "n_rows": int(rows.ell.size),
                                 "n_docs": int(np.unique(rows.doc_id).size),
-                                **{v: curves(rows, simulate(rows, chat, v), state_doc, counts) for v in VARIANTS}}
+                                **{v: {**curves(rows, simulate(rows, chat, v), state_doc, counts),
+                                       "matched_speed": matched_curves(rows, chat, v, state_doc, counts)}
+                                   for v in VARIANTS}}
         res["ece"][f"k{k}"] = {"calibrated": ece_equal_mass(chat, rows.agree, 15, row_doc, counts).to_dict(),
                                "raw_sigma_ell": ece_equal_mass(sigma, rows.agree, 15, row_doc, counts).to_dict()}
         res["monotone_share"][f"k{k}"] = monotone_share(rows, chat)
@@ -428,6 +528,9 @@ def run_task(task: str, data_dir: Path, art_dir: Path, n_boot: int, seed: int) -
 PREFIX = "CThreeTEleven"
 RULE_WORD = {"c3a": "CThreeA", "raw": "Raw"}
 ALPHA_WORD = {0.05: "AlphaFivePct", 0.10: "AlphaTenPct", 0.20: "AlphaTwentyPct"}
+UNFORCED_ALPHA_WORD = {0.01: "AlphaOnePct", **ALPHA_WORD}
+T_WORD = {1.5: "OnePtFive", 2.0: "Two", 2.5: "TwoPtFive", 3.0: "Three", 4.0: "Four"}
+VARIANT_WORD = {"block32": "Block", "region": "Region"}
 
 
 def at(curve: list, alpha: float) -> dict:
@@ -454,7 +557,14 @@ def macros(res: dict, json_name: str) -> str:
                  "  \\CThreeTEleven<Task>TokensPerState<Rule><Alpha>   committed tokens per state",
                  "  \\CThreeTEleven<Task>ReportECE<Raw|Cal>   equal-mass ECE of sigma(ell) / of c_hat, all positions",
                  "  \\CThreeTEleven<Task>RiskOutsideShare   share of states with a feature outside the fit range",
-                 "  Task: Gsm, Mbpp;  Rule: CThreeA, Raw;  Alpha: AlphaFivePct, AlphaTenPct, AlphaTwentyPct"):
+                 "  \\CThreeTEleven<Task>UnforcedRisk<Rule><Alpha>[Lo|Hi]   error of the commits in states where a",
+                 "      position passed the bar (the unforced subsets differ between the rules);",
+                 "  \\CThreeTEleven<Task>UnforcedRatio<Rule><Alpha>[Lo|Hi]   that error divided by alpha",
+                 "  \\CThreeTEleven<Task>Matched<Block|Region>Diff<T>[Lo|Hi]   C3a minus raw realised error at equal",
+                 "      tokens per state T (interpolated on a dense alpha grid inside every bootstrap draw; Block =",
+                 "      leftmost 32-block, Region = whole region);  ...Matched<Block|Region>Risk<Rule><T>  each rule's error",
+                 "  Task: Gsm, Mbpp;  Rule: CThreeA, Raw;  Alpha: AlphaFivePct, AlphaTenPct, AlphaTwentyPct",
+                 "  (Unforced...: also AlphaOnePct);  T: OnePtFive, Two, TwoPtFive, Three, Four tokens per state"):
         lines.append(f"% {line}")
     k = f"k{PRIMARY_ARM}"
     for task, t in res["tasks"].items():
@@ -467,6 +577,25 @@ def macros(res: dict, json_name: str) -> str:
                 add(base + "Lo", f"{rec['risk']['ci_low']:.3f}")
                 add(base + "Hi", f"{rec['risk']['ci_high']:.3f}")
                 add(f"{w}TokensPerState{RULE_WORD[rule]}{aw}", f"{rec['tokens_per_state']['value']:.3f}")
+        for rule in RULES:
+            for alpha, aw in UNFORCED_ALPHA_WORD.items():
+                rec = at(t["arms"][k]["block32"]["rules"][rule], alpha)
+                for key, word, fmt in (("risk_unforced", "UnforcedRisk", "{:.3f}"),
+                                       ("unforced_over_alpha", "UnforcedRatio", "{:.2f}")):
+                    base = f"{w}{word}{RULE_WORD[rule]}{aw}"
+                    add(base, fmt.format(rec[key]["value"]))
+                    add(base + "Lo", fmt.format(rec[key]["ci_low"]))
+                    add(base + "Hi", fmt.format(rec[key]["ci_high"]))
+        for variant, vw in VARIANT_WORD.items():
+            for m in t["arms"][k][variant]["matched_speed"]["matched"]:
+                if not m["in_range"]:
+                    lines.append(f"% {w} {vw} T={m['T']}: outside the tokens range of one rule; not written")
+                    continue
+                add(f"{w}Matched{vw}Diff{T_WORD[m['T']]}", f"{m['diff']['value']:+.3f}")
+                add(f"{w}Matched{vw}Diff{T_WORD[m['T']]}Lo", f"{m['diff']['ci_low']:+.3f}")
+                add(f"{w}Matched{vw}Diff{T_WORD[m['T']]}Hi", f"{m['diff']['ci_high']:+.3f}")
+                for rule in RULES:
+                    add(f"{w}Matched{vw}Risk{RULE_WORD[rule]}{T_WORD[m['T']]}", f"{m[rule]['risk']['value']:.3f}")
         add(f"{w}ReportECERaw", f"{t['ece'][k]['raw_sigma_ell']['ece']:.3f}")
         add(f"{w}ReportECECal", f"{t['ece'][k]['calibrated']['ece']:.3f}")
         add(f"{w}RiskOutsideShare", f"{t['outside_share'][k]['any']:.3f}")
@@ -502,16 +631,85 @@ def _tokens_axis(ax) -> None:
     ax.minorticks_off()
 
 
-def _style(ax) -> None:
+def _style(ax, alpha_axis: bool = True) -> None:
     ax.grid(axis="y", color=GRID, linewidth=0.5)
     ax.set_axisbelow(True)
     for side in ("top", "right"):
         ax.spines[side].set_visible(False)
     ax.tick_params(length=0, pad=1.5)
     ax.set_xscale("log")
-    ax.set_xticks(ALPHAS)
-    ax.set_xticklabels([f"{a:g}" for a in ALPHAS], rotation=60)
+    if alpha_axis:
+        ax.set_xticks(ALPHAS)
+        ax.set_xticklabels([f"{a:g}" for a in ALPHAS], rotation=60)
+    else:
+        ticks = [1, 1.5, 2, 3, 4, 6, 8, 12]
+        ax.set_xticks(ticks)
+        ax.set_xticklabels([f"{t:g}" for t in ticks])
+        ax.set_xlim(1, 12)
     ax.minorticks_off()
+
+
+def _tokens_line(ax, curve, rule, ls="-", band=True, lw=1.2, label=None):
+    """Realised error against tokens per state along the dense alpha grid."""
+    x = [r["tokens_per_state"]["value"] for r in curve]
+    ax.plot(x, [r["risk"]["value"] for r in curve], ls, color=COLOR[rule], lw=lw, label=label)
+    if band:
+        ax.fill_between(x, [r["risk"]["ci_low"] for r in curve], [r["risk"]["ci_high"] for r in curve],
+                        color=COLOR[rule], alpha=0.18, lw=0)
+
+
+def matched_figure(res: dict, stem: Path) -> list:
+    """MAIN figure: realised error against tokens per state (equal speed), one panel per task."""
+    plt = _plt()
+    k = f"k{PRIMARY_ARM}"
+    fig, axes = plt.subplots(1, 2, figsize=(6.4, 2.9), sharey=True)
+    for j, (task, t) in enumerate(res["tasks"].items()):
+        ax = axes[j]
+        _style(ax, alpha_axis=False)
+        for rule in RULES:
+            _tokens_line(ax, t["arms"][k]["block32"]["matched_speed"]["curve"][rule], rule,
+                         label=LABEL[rule] + ", block 32")
+            _tokens_line(ax, t["arms"][k]["region"]["matched_speed"]["curve"][rule], rule, ls="--", lw=0.9,
+                         band=False, label=LABEL[rule] + ", whole region")
+        ax.set_title(f"{'GSM8K' if task == 'gsm8k' else 'MBPP'}  (arm k{PRIMARY_ARM}, "
+                     f"{t['arms'][k]['n_states']:,} states, {t['n_docs']} docs)", loc="left")
+        ax.set_xlabel("committed tokens per state")
+        ax.set_ylim(bottom=0)
+    axes[0].set_ylabel("realised error of committed tokens")
+    axes[0].legend(frameon=False, loc="upper left", fontsize=5.5)
+    fig.suptitle(f"Realised error at equal speed, C3a vs raw rule -- {STAMP}", fontsize=7.5, y=0.995)
+    fig.text(0.01, 0.005, "Each curve sweeps alpha (dense grid); solid = leftmost 32-block, band = 95% document "
+             "bootstrap; dashed = whole region. Per-token error vs the reference token, not task accuracy.",
+             fontsize=5, color=INK2)
+    fig.tight_layout(rect=(0, 0.03, 1, 0.97))
+    paths = _save(fig, stem, "Realised error vs tokens per state, C3a vs raw (exploratory)")
+    plt.close(fig)
+    return paths
+
+
+def matched_arms_figure(res: dict, stem: Path) -> list:
+    plt = _plt()
+    fig, axes = plt.subplots(2, 2, figsize=(6.4, 5.2), sharex=True)
+    style = {"k2": ":", "k4": "-", "k8": "--"}
+    for j, (task, t) in enumerate(res["tasks"].items()):
+        for i, variant in enumerate(VARIANTS):
+            ax = axes[i, j]
+            _style(ax, alpha_axis=False)
+            for arm in t["arms"]:
+                for rule in RULES:
+                    _tokens_line(ax, t["arms"][arm][variant]["matched_speed"]["curve"][rule], rule, ls=style[arm],
+                                 band=False, lw=1.0, label=f"{arm}, {LABEL[rule]}" if (i, j) == (0, 0) else None)
+            ax.set_title(f"{task}: {variant}", loc="left")
+            ax.set_ylim(bottom=0)
+        axes[1, j].set_xlabel("committed tokens per state")
+        axes[0, 0].set_ylabel("realised error")
+        axes[1, 0].set_ylabel("realised error")
+    axes[0, 0].legend(frameon=False, ncol=2, fontsize=5, loc="upper left")
+    fig.suptitle(f"All arms (k2 dotted, k4 solid, k8 dashed) -- {STAMP}", fontsize=7.5, y=0.998)
+    fig.tight_layout(rect=(0, 0, 1, 0.98))
+    paths = _save(fig, stem.parent / f"{stem.name}_arms", "Realised error vs tokens, all arms (exploratory)", png=False)
+    plt.close(fig)
+    return paths
 
 
 def _line(ax, curve, key, rule, ls="-", band=False, lw=1.2, label=None):
@@ -535,7 +733,8 @@ def _save(fig, stem: Path, title: str, png: bool = True) -> list:
     return out
 
 
-def figures(res: dict, stem: Path) -> list:
+def alpha_figures(res: dict, stem: Path) -> list:
+    """The equal-alpha view (secondary): realised error and tokens per state against alpha."""
     plt = _plt()
     k = f"k{PRIMARY_ARM}"
     fig, axes = plt.subplots(2, 2, figsize=(6.4, 4.6), sharex=True)
@@ -558,11 +757,11 @@ def figures(res: dict, stem: Path) -> list:
         _tokens_axis(bot)
         bot.set_xlabel("alpha (nominal risk, 1 - threshold)")
     axes[0, 0].legend(frameon=False, loc="upper left")
-    fig.suptitle(f"Realised risk of C3a vs the raw rule -- {STAMP}", fontsize=7.5, y=0.995)
+    fig.suptitle(f"Realised risk of C3a vs the raw rule at equal alpha -- {STAMP}", fontsize=7.5, y=0.995)
     fig.text(0.01, 0.005, "Solid: eligible set = leftmost 32-block, band = 95% document bootstrap. Dashed: whole "
              "region. Per-token error against the reference token, not task accuracy.", fontsize=5.5, color=INK2)
     fig.tight_layout(rect=(0, 0.02, 1, 0.97))
-    paths = _save(fig, stem, "Realised risk of C3a vs raw (exploratory)")
+    paths = _save(fig, stem.parent / f"{stem.name}_alpha", "Realised risk of C3a vs raw at equal alpha (exploratory)")
     plt.close(fig)
 
     fig, axes = plt.subplots(4, 2, figsize=(6.4, 8.6), sharex=True)
@@ -586,7 +785,7 @@ def figures(res: dict, stem: Path) -> list:
     axes[0, 0].legend(frameon=False, ncol=2, fontsize=5, loc="upper left")
     fig.suptitle(f"All arms (k2 dotted, k4 solid, k8 dashed) -- {STAMP}", fontsize=7.5, y=0.998)
     fig.tight_layout(rect=(0, 0, 1, 0.98))
-    paths += _save(fig, stem.parent / f"{stem.name}_arms", "Realised risk, all arms (exploratory)", png=False)
+    paths += _save(fig, stem.parent / f"{stem.name}_alpha_arms", "Realised risk, all arms (exploratory)", png=False)
     plt.close(fig)
     return paths
 
@@ -599,16 +798,18 @@ def main() -> int:
                          f"{HF_REVISION[:8]})")
     ap.add_argument("--tasks", nargs="+", default=list(TASKS), choices=list(TASKS))
     ap.add_argument("--art-dir", type=Path, default=ROOT / "artifacts" / "c3")
-    ap.add_argument("--tag", default="v1", help="output version; an existing one is never overwritten")
+    ap.add_argument("--tag", default="v2", help="output version; an existing one is never overwritten")
     ap.add_argument("--n-boot", type=int, default=N_BOOT)
     ap.add_argument("--seed", type=int, default=0)
     a = ap.parse_args()
 
     stem = a.art_dir / f"realised_risk_llada-8b-instruct_fp16_{a.tag}"
     outs = [stem.with_suffix(".json"), stem.with_suffix(".pdf"), stem.with_suffix(".png"),
-            stem.parent / f"{stem.name}_arms.pdf", stem.parent / f"{stem.name}_macros.tex"]
+            stem.parent / f"{stem.name}_alpha.pdf", stem.parent / f"{stem.name}_alpha.png",
+            stem.parent / f"{stem.name}_arms.pdf", stem.parent / f"{stem.name}_alpha_arms.pdf",
+            stem.parent / f"{stem.name}_macros.tex"]
     clash = [p.name for p in outs if p.exists()]
-    need(not clash, f"refusing to overwrite {clash}; use --tag v2")
+    need(not clash, f"refusing to overwrite {clash}; use a new --tag")
 
     res = {"what": "Realised per-token risk of C3a vs the raw 1 - alpha rule, one commit step per "
                    "report-half teacher-forced decoder state (LLaDA-8B-Instruct, fp16)",
@@ -619,6 +820,14 @@ def main() -> int:
                                        "(primary)", "region": "every masked row of the state"},
            "rules": {"c3a": "n = max(1, #{c_hat >= 1 - alpha}), unclamped", "raw": "n = max(1, #{conf >= 1 - alpha}), "
                                                                                   "float32 compare"},
+           "dense_alphas": {"grid": "160 log-spaced alpha in [0.005, 0.8] (rounded to 5 decimals, unique)",
+                            "targets_tokens_per_state": list(TARGETS),
+                            "note": "traces the error-vs-tokens curves only; the reported grid is `alphas`"},
+           "notes": ["Both rules commit a prefix of the same ell order, so the comparison at equal alpha is mostly a "
+                     "token-count effect: compare at equal tokens per state (arms[*][variant].matched_speed).",
+                     "risk_unforced is taken over states where a position passed the bar; the unforced subsets "
+                     "differ between the rules, so it is not a like-for-like comparison.",
+                     "Errors are against the reference token, not task accuracy."],
            "bootstrap": {"n_boot": a.n_boot, "seed": a.seed, "label": "t11-realised-risk-<task>",
                          "unit": "document"},
            "hf": {"repo": "ANLP-project/c3-traces-8b", "revision": HF_REVISION}, "tasks": {}}
@@ -627,7 +836,7 @@ def main() -> int:
     res["provenance"] = provenance()
     stem.with_suffix(".json").write_text(json.dumps(res, indent=1, default=float))
     stem.parent.joinpath(f"{stem.name}_macros.tex").write_text(macros(res, stem.with_suffix(".json").name))
-    for p in figures(res, stem):
+    for p in matched_figure(res, stem) + matched_arms_figure(res, stem) + alpha_figures(res, stem):
         print(f"[risk] wrote {p}")
     print(f"[risk] wrote {stem.with_suffix('.json')} and the macros")
     return 0
