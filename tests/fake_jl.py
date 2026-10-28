@@ -117,6 +117,8 @@ def main(argv):
         elif ".sha256" in c:
             f = D / "outputs.tgz"
             print(hashlib.sha256(f.read_bytes()).hexdigest() if f.exists() else "")
+        elif ".job-" in c:   # the job's end marker (scenario "job_running": not written yet)
+            print("" if sc.get("job_running") else "T12_JOB_ENDED")
         elif ".deadline-" in c:
             if "budget_left" in sc:
                 print(sc["budget_left"])

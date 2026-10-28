@@ -798,6 +798,12 @@ finalize() {
 EOF
             return 2 ;;
     esac
+    # `jl run status` can report a finished state when it cannot reach the machine (seen on 551207:
+    # "Connection failed", then a mid-run pause).  Only the job's own end marker says it is over.
+    if ! { timeout 120 jl exec "$id" -- sh -c "test -s /home/ANLP-Project/runs/t12/.job-$phase.status && echo T12_JOB_ENDED" 2>/dev/null || true; } | grep -q T12_JOB_ENDED; then
+        info "jl reports the run as '$state', but instance $id has no runs/t12/.job-$phase.status (or cannot be read): treating it as still running"
+        return 2
+    fi
     fetch_outputs "$phase" "$id" "$rid" || info "FETCH FAILED: the outputs stay on the instance (/home/ANLP-Project/runs/t12-out); pausing anyway, \`fetch $phase\` retries"
     pause_instance "$id" "$name" || { LOOKUP_DOWN=1; return 2; }
     rm -f "$dir/resume.pending"
