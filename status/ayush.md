@@ -1,6 +1,6 @@
 ---
 member: ayush
-updated: 2026-10-28T09:31:00Z
+updated: 2026-10-28T09:41:38Z
 branch: main
 ---
-T12: report waits for any free RTX PRO in IN1; launches 2-GPU (81b85a0) or 1-GPU (ffff6cb), whichever first
+T12: report RUNNING on Jarvis 551207 (1 GPU, ffff6cb) since 09:40Z; ETA ~22:00Z
