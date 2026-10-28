@@ -160,6 +160,15 @@ Items 7-14 are reserved for the T13 ablation entries (branch `t13-ablations`).
       (`prereg/t12_grid_gsm8k.json`, `prereg/t12_grid_mbpp.json`) are committed before the
       report-half run, and their hashes are recorded on the coordination bus.
     - No T12 result changes any choice frozen in prereg-v1 or prereg-v1.1.
+    - Amendment (28 Oct 2026, before any H200 report-half generation): no RTX PRO 6000
+      container was free in Jarvis IN1 for most of 28 Oct, and the first report attempt (RTX
+      PRO, 1 GPU, commit ffff6cb) was paused mid-run by a launcher fault (fixed in
+      `parth/t12-jarvis-cli` 202fb7f). The report half is therefore run afresh with both
+      tasks wholly on 1x H200 (Jarvis IN2), with the same code (ffff6cb), the same per-task
+      grids and fp16. The fit-half knobs stay as calibrated on RTX PRO 6000: tokens per step
+      is a forward-pass count and does not depend on the GPU, and matching uses each
+      configuration's report-half speed. No task mixes machines. The first attempt's partial
+      RTX PRO records are kept as an unreported cross-check.
 
 18. **Step order: E1/E2 banked before Eq. 2/3 (scheduling only).** The Eq. 2/3 FE bootstrap
     did not fit the 96 h Ada job cap on the 120M-row arms (measured: LladaBase job 39851,
