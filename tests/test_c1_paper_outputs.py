@@ -19,7 +19,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import c1_paper_outputs as P  # noqa: E402
 
 NEWCOMMAND = re.compile(r"^\\newcommand\{\\([^}]*)\}\{(.*)\}$")
-TABLES = ("c1_main", "c1_main_col", "c1_beta", "c1_gamma", "c1_shared", "c1_sensitivity", "c1_e3",
+TABLES = ("c1_main", "c1_timesplit", "c1_main_col", "c1_beta", "c1_gamma", "c1_shared", "c1_sensitivity", "c1_e3",
           "c1_t8",
           "c1_t8_precision")
 
@@ -87,7 +87,7 @@ def test_main_table_has_one_row_pair_per_arm_and_the_summary_decisions(results, 
     out = run(results, tmp_path, "--no-figures")
     tex = table(out, "c1_main")
     rs = rows(tex)
-    arms = list(P.MAIN_ARMS) + ["LladaBaseTimeSplit"]
+    arms = list(P.MAIN_ARMS)                             # the time-split arm has its own table
     assert len(rs) == 2 * len(arms)
     assert [r[0] for r in rs[::2]] == [P.display(a) for a in arms]
     assert [r[1] for r in rs[:2]] == ["uniform", "dec. $k{=}4$"]
@@ -102,8 +102,10 @@ def test_main_table_has_one_row_pair_per_arm_and_the_summary_decisions(results, 
             c = res["by_mask_kind"][mask]["contrast"]
             assert f"{abs(c['value']):.3f}" in r[2]
             assert ("\\dagger" in r[2]) == bool(c["declared"])
-    # the time-split arm is not in the Holm summary: no decision
-    assert rs[-1][3] == rs[-1][5] == P.DASH
+    # the time-split arm is not in the Holm summary: no decision, and it is in c1_timesplit only
+    ts = rows(table(out, "c1_timesplit"))
+    assert [r[0] for r in ts[::2]] == [P.display("LladaBaseTimeSplit")]
+    assert ts[0][3] == ts[0][5] == P.DASH
     # markers share one superscript
     assert "$^{*}$$^{" not in tex and "$^{\\dagger}$$^{" not in tex
 
@@ -332,7 +334,8 @@ def test_stars_mark_claimed_not_just_holm_rejected(results, tmp_path):
                 assert ("*" in col[2 * arms.index(label) + i][ccell]) == want, (label, mask, key)
     assert n_star == 4
     # the time-split arm is outside the families: never starred
-    assert "*" not in main[-1][2] + main[-2][2]
+    ts = rows(table(out, "c1_timesplit"))
+    assert "*" not in ts[-1][2] + ts[-2][2]
 
 
 def test_claimed_is_rebuilt_from_an_older_summary_without_the_field(results, tmp_path):

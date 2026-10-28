@@ -95,8 +95,7 @@ Both are fitted on the fit half. $\hat\pi(\ell)$ is isotonic in $\ell$. $\hat\pi
 logistic in a restricted cubic spline of $\ell$ plus the state's field features (median $\ell$
 of its masked positions, mask rate, $\log|M|$, decoding step) and their products with $\ell$, so
 the slope varies too; an additive form, without these products, is a sensitivity check.
-Averages are taken within a document, every state weighing the same, then across documents;
-positions are weighted by $1/(|M_s|\times\text{states in their document})$ to match. The
+Documents weigh equally (Appendix~\ref{sec:c1-app}). The
 calibrators are fitted on every state but the averages use only states with at
 least \VivaPoolMax{} masked positions, so the estimated field term need not be zero at $m=1$:
 E2 is a contrast.

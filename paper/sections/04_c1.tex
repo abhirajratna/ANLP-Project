@@ -83,8 +83,7 @@ and the robustness runs (\S\ref{sec:c1-robust}).
     field$(\VivaPoolMax)-$field$(1)$, with 95\% intervals (\VivaNBoot{} document resamples; $\beta_z$: 1,000).
     Holm: decision of the Holm step. $^\dagger$declared; $^*$claimed. $\beta_z$,
     $\beta_z^{\mathrm{FE}}$: Eq.~\ref{eq:eqtwo} without and with state fixed effects
-    ($^\ddagger$interval excludes 0; $^\S$no convergence). TS: time-split set, outside the
-    families. ---: absent or outside the families.}
+    ($^\ddagger$interval excludes 0; $^\S$no convergence). ---: absent. Time-split rows: code archive.}
   \label{tab:c1-main}
   \par\smallskip{\footnotesize\raggedright\Cres{COneHolmFootnote}\par}
 \end{table*}
@@ -109,9 +108,7 @@ MBPP and of the 110M model, are both declared but not claimed
 % ties them on v1 and the v1.1 dry run); if they differ, name both.
 Sizes differ as much as signs: $|\mathrm{E1}|\le0.015$ for the base and 110M models, up to
 0.26 for the instruct models on MBPP.
-For LLaDA-8B-Base in uniform states $\Delta(1)$ is \CresCI{COneLladaBaseGapOneUni} (15-bin ECE
-$\Cres{COneLladaBaseECEUni}$) and E1 is \CresCI{COneLladaBaseContrastUni}; in decoder states E1 is
-\CresCI{COneLladaBaseContrastDecTopkConfKFour}.
+
 Decoder states change the picture: E1 changes sign for both base models and
 LLaDA-8B-Instruct on GSM8K, and is claimed only in decoder states for LLaDA-8B-Instruct on MBPP
 and the 110M model. Uniform states matched to the decoder's mask counts (exploratory) keep the base models'

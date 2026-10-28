@@ -11,6 +11,10 @@
 \subsection{C1: E3, controls and committed tokens}
 \label{sec:c1-app}
 
+\paragraph{Weighting.}
+Averages are taken within a document, every state weighing the same, then across documents;
+positions are weighted by $1/(|M_s|\times\text{states in their document})$ to match.
+
 \paragraph{E3, trajectory shift.}
 On the positions of decoder states at each $k$ and of matched uniform states (secondary: the
 uniform grid, reweighted to the decoder's rate mix), mask rate in $[0.05,0.95)$, we fit

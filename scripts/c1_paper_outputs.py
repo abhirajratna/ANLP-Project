@@ -21,7 +21,8 @@ and writes, under ``--out-tables`` (default paper/tables/c1) and ``--out-figures
 
   c1_main.tex          main table, page width (\\input in a table*): per arm and mask arm, E1 and
                        E2 with 95% CI and the Holm decision, beta_z of Eq. 2 without (beta_z) and
-                       with state FE (beta_z^FE), values only
+                       with state FE (beta_z^FE), values only; the seven Holm arms
+  c1_timesplit.tex     the same columns for the time-split arms (code archive)
   c1_main_col.tex      one column: E1 and E2 point estimates with the Holm / declared markers
   c1_beta.tex          beta_z with 95% CIs, no FE and FE
   c1_gamma.tex         gamma_2..gamma_4 of Eq. 3 (with state FE) and the Holm p within the arm
@@ -338,7 +339,9 @@ CLAIMED_NOTE = ("% * = claimed: declared (dagger) and rejected by Holm in its fa
                 "% of the Holm step alone (yes / no; expl. = exploratory arm, outside the families).\n")
 
 
-def main_table(R: Results) -> str:
+def main_table(R: Results, time_split: bool = False) -> str:
+    """The Holm arms (``time_split=False``, the paper's Table 2) or the time-split arms only
+    (``c1_timesplit``, code archive): the same columns either way."""
     def cells(label, mask):
         r, h = R.kind(label, mask), R.holm(label, mask)
         if r is None:
@@ -353,7 +356,8 @@ def main_table(R: Results) -> str:
                 point(b0, 2, m0), point(b1, 2, m1)]
 
     head = ["Arm", "Masks", "E1", "Holm", "E2", "Holm", "$\\beta_z$", "$\\beta_z^{\\mathrm{FE}}$"]
-    body = _arm_rows(R, labels_for_main(R), cells, 6)
+    labels = [l for l in labels_for_main(R) if l.endswith("TimeSplit") == time_split]
+    body = _arm_rows(R, labels, cells, 6)
     return _table("lllclcll", head, body,
                   "results/c1/<Label>/results.json, results/c1/summary/c1_summary.json") + CLAIMED_NOTE
 
@@ -1243,7 +1247,8 @@ def main(argv=None) -> int:
     main_arm = pick_main(R, a.main_arm)
 
     written = []
-    for name, fn in (("c1_main", main_table), ("c1_main_col", main_col_table), ("c1_beta", beta_table),
+    for name, fn in (("c1_main", main_table), ("c1_timesplit", lambda R: main_table(R, time_split=True)),
+                     ("c1_main_col", main_col_table), ("c1_beta", beta_table),
                      ("c1_gamma", gamma_table), ("c1_shared", shared_table),
                      ("c1_sensitivity", sensitivity_table), ("c1_e3", e3_table),
                      ("c1_t8", t8_table), ("c1_t8_precision", precision_table)):
