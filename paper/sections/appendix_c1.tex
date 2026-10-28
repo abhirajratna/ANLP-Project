@@ -30,7 +30,8 @@ token: punctuation, stop-word or content) are covariates $x$: $\E_m[\pi(\ell)-\p
 is removed from $\Delta(m)$ and $x$ enters both field-term calibrators. \emph{Temperature}
 fits $c=\sigma(\ell/T)$ per mask-rate bin on the fit half (a softmax temperature is a sensitivity row).
 Table~\ref{tab:c1-t8} gives each control. For LLaDA-8B-Base in uniform states the change in E1
-is \CresCI{TEightLladaBasePositionEOneUniDifference} for position,
+% position: 4.4e-5 [2.3e-5, 6.5e-5] in ablation.json; its macro rounds to 0.0000 [0.0000, 0.0001]
+is below $0.0001$ for position,
 \CresCI{TEightLladaBaseTokenTypeEOneUniDifference} for token type and
 \CresCI{TEightLladaBaseTemperatureLogoddsEOneUniDifference} for a temperature per mask-rate bin.
 In decoder states E1 keeps its sign under every control in every arm and moves by at most

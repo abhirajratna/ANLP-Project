@@ -227,8 +227,8 @@ def ci_decimals(e, nd: int = 3) -> int:
     a 0.000 end, or a nonzero-width interval printed as [x, x]."""
     ci = e["ci"]
     while nd < 5:
-        lo, hi = f"{ci[0]:.{nd}f}", f"{ci[1]:.{nd}f}"
-        if not ((ci_excludes_zero(e) and 0.0 in (float(lo), float(hi))) or (lo == hi and ci[0] != ci[1])):
+        lo, hi = float(f"{ci[0]:.{nd}f}"), float(f"{ci[1]:.{nd}f}")   # floats: -0.000 == 0.000
+        if not ((ci_excludes_zero(e) and 0.0 in (lo, hi)) or (lo == hi and ci[0] != ci[1])):
             break
         nd += 1
     return nd

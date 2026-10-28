@@ -170,8 +170,7 @@ E3 compares accuracy at equal confidence and mask rate in decoder and matched un
 positions remain masked, not from its own mistakes. It is positive, its interval excluding 0,
 in every arm and at every $k\in\{2,4,8\}$ (sup-$t$ $p\le0.002$; exploratory, full table in the
 code archive): tokens are right less often in the states a decoder visits, by 0.001 to 0.006 in
-the base and 110M models and 0.03 to 0.06 in the instruct models (LLaDA-8B-Base, $k=4$:
-\CresCI{EThreeLladaBaseTypeEffectTopkConfKFourMatched}). A calibrator for decoding should
+the base and 110M models and 0.03 to 0.06 in the instruct models. A calibrator for decoding should
 therefore be fitted on decoder states, as C3a's is (\S\ref{sec:c3}).
 % ranges and p from tables/c1/c1_e3.tex, matched columns (regen of 28 Oct; recheck)
 The tokens a decoder commits are themselves more overconfident than random masks suggest:

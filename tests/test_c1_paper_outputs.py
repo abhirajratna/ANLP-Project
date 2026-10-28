@@ -233,6 +233,8 @@ def test_number_formatting():
     assert P.est_ci({"value": 0.0015, "ci": [0.00003, 0.003]}) == "$0.00150$ {\\scriptsize[$0.00003$, $0.00300$]}"
     assert P.est_ci({"value": 0.0010, "ci": [0.00098, 0.00106]}) == "$0.0010$ {\\scriptsize[$0.0010$, $0.0011$]}"
     assert P.est_ci({"value": 0.05, "ci": [-0.0002, 0.1]}) == "$0.050$ {\\scriptsize[$0.000$, $0.100$]}"
+    # [-0.0003, 0.0002] rounds to -0.000 and 0.000: the same printed number, so more decimals
+    assert P.est_ci({"value": 0.0, "ci": [-0.0003, 0.0002]}) == "$0.0000$ {\\scriptsize[$-0.0003$, $0.0002$]}"
     assert P.sup("*", "", "\\dagger") == "$^{*,\\dagger}$" and P.sup("") == ""
     assert P.pval(0.0004) == "$<0.001$" and P.pval(0.0321) == "$0.032$"
 
