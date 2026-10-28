@@ -136,7 +136,9 @@ def main(argv):
             n = load("polls.json", {"n": 0})
             n["n"] += 1
             save("polls.json", n)
-            if sc.get("run") == "fail":
+            if sc.get("run_state"):            # what real jl prints when users/fetch fails
+                out({"state": sc["run_state"]})
+            elif sc.get("run") == "fail":
                 out({"state": "failed"})
             else:
                 out({"state": "running" if n["n"] <= sc.get("polls_running", 0) else "succeeded"})
