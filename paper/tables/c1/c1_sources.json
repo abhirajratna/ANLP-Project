@@ -1,649 +1,655 @@
 {
- "results_root": "HF ANLP-project/c3-traces-8b prereg-v1.1-results (instruct arms 342105a/4c1985d/c70e6c6/1ae83e3; Mdlm c1 e22c125, e3 5d4c285, t8 91d1c7f; DreamBase a6cb28c; LladaBase c1 + additive ad59452) and, while HF was full on 28 Oct, parth's Ada copy /share1/parth.sharma/prereg-v1.1-results (LladaBase knots5/knots13/clean, e3, t8, precision; Ada jobs 41132/41133); time-split from prereg-v1-results. c1 results.json slimmed locally (calibrators removed); per-file hf_path/hf_sha256 or ada_path/ada_sha256 below.",
- "main_arm": "LladaBase",
- "arms_present": [
-  "LladaBase",
-  "DreamBase",
-  "LladaInstructGsm",
-  "LladaInstructMbpp",
-  "DreamInstructGsm",
-  "DreamInstructMbpp",
-  "Mdlm",
-  "LladaBaseTimeSplit",
-  "DreamBaseTimeSplit",
-  "MdlmTimeSplit"
- ],
- "arms_missing": [],
- "summary_present": true,
- "macro_files": [
-  "c1-LladaBase",
-  "c1-LladaBase-knots5",
-  "c1-LladaBase-knots13",
-  "c1-LladaBase-clean",
-  "c1-LladaBase-additive",
-  "c1-DreamBase",
-  "c1-DreamBase-knots5",
-  "c1-DreamBase-knots13",
-  "c1-DreamBase-clean",
-  "c1-DreamBase-additive",
-  "c1-LladaInstructGsm",
-  "c1-LladaInstructGsm-knots5",
-  "c1-LladaInstructGsm-knots13",
-  "c1-LladaInstructGsm-additive",
-  "c1-LladaInstructMbpp",
-  "c1-LladaInstructMbpp-knots5",
-  "c1-LladaInstructMbpp-knots13",
-  "c1-LladaInstructMbpp-additive",
-  "c1-DreamInstructGsm",
-  "c1-DreamInstructGsm-knots5",
-  "c1-DreamInstructGsm-knots13",
-  "c1-DreamInstructGsm-additive",
-  "c1-DreamInstructMbpp",
-  "c1-DreamInstructMbpp-knots5",
-  "c1-DreamInstructMbpp-knots13",
-  "c1-DreamInstructMbpp-additive",
-  "c1-Mdlm",
-  "c1-Mdlm-knots5",
-  "c1-Mdlm-knots13",
-  "c1-Mdlm-additive",
-  "c1-LladaBaseTimeSplit",
-  "c1-DreamBaseTimeSplit",
-  "c1-MdlmTimeSplit",
-  "e3-LladaBase",
-  "e3-DreamBase",
-  "e3-LladaInstructGsm",
-  "e3-LladaInstructMbpp",
-  "e3-DreamInstructGsm",
-  "e3-DreamInstructMbpp",
-  "e3-Mdlm",
-  "t8-LladaBase",
-  "t8-DreamBase",
-  "t8-LladaInstructGsm",
-  "t8-LladaInstructMbpp",
-  "t8-DreamInstructGsm",
-  "t8-DreamInstructMbpp",
-  "t8-Mdlm",
-  "t8-LladaBasePrecision"
- ],
- "sources": {
-  "c1/DreamBase/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamBase/results.json",
-   "sha256": "c281519955939a649c9d0f0e59c9d58de82d99e1be0c333ea1a33479f2ef56e5",
-   "hf_path": "prereg-v1.1-results/c1/DreamBase/results.json",
-   "hf_sha256": "6495b7fd88bae67a7b78082d22a7c6503559a7c52f7fa33f7a3ee98d287f3740",
-   "bytes": 1625471851,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/DreamBaseTimeSplit/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamBaseTimeSplit/results.json",
-   "sha256": "2b8d36dd34bbf55bfaaaede5824199fa5319c1037fdcb8dda8437adea7df26a5",
-   "hf_path": "prereg-v1-results/c1/DreamBaseTimeSplit/results.json",
-   "hf_sha256": "a5bfd0343cd7f55c60b89f0e11e5d6385cfd5a05d3b8153d24868229e62fa3a6",
-   "bytes": 698008597,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/DreamBase_additive/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamBase_additive/results.json",
-   "sha256": "21b6334e04e3e38c445b76f8f332738c832ee6d8b92672400beaf3ce5f21b6ad",
-   "hf_path": "prereg-v1.1-results/c1/DreamBase_additive/results.json",
-   "hf_sha256": "1ad713205875a0361e63290e019888cb2b7396067546df3d83fe13e54cfc1cb9",
-   "bytes": 1625436702,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/DreamBase_clean/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamBase_clean/results.json",
-   "sha256": "7e4fb02b80b771a544c4ac8f3345809b4d2528be49dd595eb0dabf397b864ecf",
-   "hf_path": "prereg-v1.1-results/c1/DreamBase_clean/results.json",
-   "hf_sha256": "1f643e037cef6ebdc6235498db5d1b95699dc7f355b8ee7a4317141e802cd714",
-   "bytes": 1625438302,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/DreamBase_knots13/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamBase_knots13/results.json",
-   "sha256": "54b695d7759be535e8c70bbbf75a6a12b23b4693c794a81d3b6f4313600b2c82",
-   "hf_path": "prereg-v1.1-results/c1/DreamBase_knots13/results.json",
-   "hf_sha256": "56860b152562da804d690682f241478d9c3f6e9941b236c10c4ed8bd34b4dbb9",
-   "bytes": 1625473320,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/DreamBase_knots5/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamBase_knots5/results.json",
-   "sha256": "7af4114532c53bc6e9e2ede7b289e584d2b63ac11cf726d95f8e2e21eea9f111",
-   "hf_path": "prereg-v1.1-results/c1/DreamBase_knots5/results.json",
-   "hf_sha256": "36609c3dc788cc229562c4ab93063728dbfbc652a232c7d42092888640b8bf91",
-   "bytes": 1625469483,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/DreamInstructGsm/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructGsm/results.json",
-   "sha256": "9605d88ec88c923dcf9f538dfe1926b1ae4bbcf27c04d711042f2479b2d80cff",
-   "hf_path": "prereg-v1.1-results/c1/DreamInstructGsm/results.json",
-   "hf_sha256": "5d2d06ca77f505073743054aac674ef0be48c1e9447825c5a6417102daf20a2c",
-   "bytes": 417273180,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/DreamInstructGsm_additive/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructGsm_additive/results.json",
-   "sha256": "0d66a54dfc92a8e35179e8fd33d2ce677389ef596de87fb6661b4b813e85ccd4",
-   "hf_path": "prereg-v1.1-results/c1/DreamInstructGsm_additive/results.json",
-   "hf_sha256": "ca3578164caaa1d66fde3eb016cda240ebf82cf07139f71ecd5315d453f161c0",
-   "bytes": 417238190,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/DreamInstructGsm_knots13/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructGsm_knots13/results.json",
-   "sha256": "cad4bfaffe737d55d3ee14d2192750738ccfa1073b9791734d0f8c41835a4a28",
-   "hf_path": "prereg-v1.1-results/c1/DreamInstructGsm_knots13/results.json",
-   "hf_sha256": "83f318bd7cadf34ede5fa15917010fb8d0692d9f5a0f729095b46fe4282f8563",
-   "bytes": 417274617,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/DreamInstructGsm_knots5/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructGsm_knots5/results.json",
-   "sha256": "d700a55fafac6105fd815281d7441e3f730732b9fbff3b916a6cba23fedd528d",
-   "hf_path": "prereg-v1.1-results/c1/DreamInstructGsm_knots5/results.json",
-   "hf_sha256": "608e5fe039ed2da2d15ffe19523864b302c2586505be57d820f3f4f6aee9e793",
-   "bytes": 417270791,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/DreamInstructMbpp/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructMbpp/results.json",
-   "sha256": "3a463c657d4632523d9cc0f9b5285d76371a2e4b90266b0e49b8713b6d4ca569",
-   "hf_path": "prereg-v1.1-results/c1/DreamInstructMbpp/results.json",
-   "hf_sha256": "f514e4b074894df9a979e2f122be44aca63ecedcb84e905df11d7bdbc55c1138",
-   "bytes": 89760012,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/DreamInstructMbpp_additive/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructMbpp_additive/results.json",
-   "sha256": "09d3370ac4e38530ad27cc1a95812cb33df473532d586e0b8cd6c73bddc010d6",
-   "hf_path": "prereg-v1.1-results/c1/DreamInstructMbpp_additive/results.json",
-   "hf_sha256": "6205e2d6674c73656c950ad1aaa5f8e2b5668cc871807f4631d020f96395c2e0",
-   "bytes": 89725184,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/DreamInstructMbpp_knots13/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructMbpp_knots13/results.json",
-   "sha256": "5b25ed299714bc8bd12b7905c3f90b1c3fb89a5188cf15bf6364557b1424930d",
-   "hf_path": "prereg-v1.1-results/c1/DreamInstructMbpp_knots13/results.json",
-   "hf_sha256": "f3f41870d5b13e4cea83ffca424d84af557469949876f2a4855ff20f688620a2",
-   "bytes": 89761465,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/DreamInstructMbpp_knots5/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructMbpp_knots5/results.json",
-   "sha256": "8313db72f00e98bf0f15b6a1aa6ec449bfd270e9db0c85711a98665db2f82902",
-   "hf_path": "prereg-v1.1-results/c1/DreamInstructMbpp_knots5/results.json",
-   "hf_sha256": "4f9c555d9812b3d4f4428ce2b9b1656cba2cb25cdd002bb2484c118d792e7e08",
-   "bytes": 89757652,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/LladaBase/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaBase/results.json",
-   "sha256": "1a1526cd34765ba330f2764ef830931fd03d94bfa4b368f0102451f89b2bba6a",
-   "hf_path": "prereg-v1.1-results/c1/LladaBase/results.json",
-   "hf_sha256": "ba99f7c5d926d7637c50cabd85b6343418636791b0b25f28f40a33432f9a003c",
-   "bytes": 1125308823,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/LladaBaseTimeSplit/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaBaseTimeSplit/results.json",
-   "sha256": "482c1db3c0bdb9262ce0089755a6695da85a022d09a58a847aafeb8074ed14fa",
-   "hf_path": "prereg-v1-results/c1/LladaBaseTimeSplit/results.json",
-   "hf_sha256": "15bac9276074e8d8da641674502a67b033c005db81da39b4d916e97f5656ac72",
-   "bytes": 548705149,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/LladaBase_additive/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaBase_additive/results.json",
-   "sha256": "d2fc23e6dff2c57cecb4749fa2b052d3440d892c34c683fb9703e34982b0f4c8",
-   "hf_path": "prereg-v1.1-results/c1/LladaBase_additive/results.json",
-   "hf_sha256": "d6eecdcea014be32e5f8a7dce475872d0250b7afb57ec8e44f743c7759651f05",
-   "bytes": 1125273649,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/LladaBase_clean/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaBase_clean/results.json",
-   "sha256": "5a32ac76b099f64d58fa1a7d05527da25dc9e85c2cb3a4c6453c350c1e9c4476",
-   "ada_path": "/share1/parth.sharma/prereg-v1.1-results/c1/LladaBase_clean/results.json",
-   "ada_sha256": "dfa0b62a3cc0254c660204946a9e9265e6248c204d5a885b41276abaada02d45",
-   "bytes": 1124590015,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/LladaBase_knots13/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaBase_knots13/results.json",
-   "sha256": "86075e37197fd23306d25fa8c511a91b4d0abc9f800dd60d05720ae619e31338",
-   "ada_path": "/share1/parth.sharma/prereg-v1.1-results/c1/LladaBase_knots13/results.json",
-   "ada_sha256": "9d43d42f501bbcf27845b393ab5d250063b295d4e271ce9339919d8bac1464f6",
-   "bytes": 1125310273,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/LladaBase_knots5/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaBase_knots5/results.json",
-   "sha256": "c18878d8747c7069a97e5522f2d1ed8b0009fc28d470ee8f8472cfc195f4cde9",
-   "ada_path": "/share1/parth.sharma/prereg-v1.1-results/c1/LladaBase_knots5/results.json",
-   "ada_sha256": "98dd1c37fa2008d0e3eac04afb2c115958b0cb0a52656f9f5951e065d62c567e",
-   "bytes": 1125306456,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/LladaInstructGsm/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructGsm/results.json",
-   "sha256": "597c935d5cf3ac86fc0b48a83694b7f1a36d817c0db294cc81ab7ead9d74066e",
-   "hf_path": "prereg-v1.1-results/c1/LladaInstructGsm/results.json",
-   "hf_sha256": "abe811a3e169ba50d648c70b9cce3acb4b402e201432161fdad7bed0049f4124",
-   "bytes": 427840071,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/LladaInstructGsm_additive/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructGsm_additive/results.json",
-   "sha256": "2c1f77c3cb60572a40ff40842b98007fc5d21f8499847501be1d418c05a40ece",
-   "hf_path": "prereg-v1.1-results/c1/LladaInstructGsm_additive/results.json",
-   "hf_sha256": "363eedce1b82e267784e16a0999a130c1057906e36926e6771124be1b5b612bf",
-   "bytes": 427805031,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/LladaInstructGsm_knots13/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructGsm_knots13/results.json",
-   "sha256": "42ccba169693421bc61408a972f38773705ed104c50c6b23b02ac011ad0cfe7b",
-   "hf_path": "prereg-v1.1-results/c1/LladaInstructGsm_knots13/results.json",
-   "hf_sha256": "60a1dd9c41a5023ee1071e62148656643055d7666eec450bf9b24a5eafc2aa8b",
-   "bytes": 427841479,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/LladaInstructGsm_knots5/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructGsm_knots5/results.json",
-   "sha256": "833b4b270a5bb22483b065fcaa91b2e9b8b9213c8f300f87b2106d665343e23c",
-   "hf_path": "prereg-v1.1-results/c1/LladaInstructGsm_knots5/results.json",
-   "hf_sha256": "f70fc47c8402ae42b25b83ea96545d5ce3343bd86118809a78d8729d06027122",
-   "bytes": 427837706,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/LladaInstructMbpp/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructMbpp/results.json",
-   "sha256": "d6132b8315bdcdd5694be9f52946d77a5213463945f3fa63d319d426c72d98e4",
-   "hf_path": "prereg-v1.1-results/c1/LladaInstructMbpp/results.json",
-   "hf_sha256": "8a02f25697ccb4b102476d0b56c1a5a67c0f85df3e2c1e3bf570fc607887dc78",
-   "bytes": 108869955,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/LladaInstructMbpp_additive/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructMbpp_additive/results.json",
-   "sha256": "05eec21d3b35eaa7f2836c35cccba81b859e161ac87bb0545410f9b8752c49fe",
-   "hf_path": "prereg-v1.1-results/c1/LladaInstructMbpp_additive/results.json",
-   "hf_sha256": "bf45dd7162d30be8c67fd794504e6e0dea4b6a51303c02780452ad6c802a3c11",
-   "bytes": 108835037,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/LladaInstructMbpp_knots13/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructMbpp_knots13/results.json",
-   "sha256": "1026eda905cd75426fb84a6327579977e06bc65f6f0e384b106edefd8d8aef5d",
-   "hf_path": "prereg-v1.1-results/c1/LladaInstructMbpp_knots13/results.json",
-   "hf_sha256": "4c09442155fbdebda409a27e76930a8682fabe7c9343ffd7a8605d7519005ce4",
-   "bytes": 108871385,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/LladaInstructMbpp_knots5/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructMbpp_knots5/results.json",
-   "sha256": "f35bdb10ad8253b0f274195987e9b8b06a53789c8efffa540107ab20984ab2e6",
-   "hf_path": "prereg-v1.1-results/c1/LladaInstructMbpp_knots5/results.json",
-   "hf_sha256": "21cdbd10669f13296ad26d0e171706c9426aa5859b0b7bf1ef0cf07e934b6678",
-   "bytes": 108867565,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/Mdlm/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/Mdlm/results.json",
-   "sha256": "11855a322d5322d97715633c96113fc5bc29a9a363811066c043d5bf47c44fd7",
-   "hf_path": "prereg-v1.1-results/c1/Mdlm/results.json",
-   "hf_sha256": "55ab03cac6430a81c77ff9526877084ea52e77057f97dbf6b9a3975d94836f9e",
-   "bytes": 1520837609,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/MdlmTimeSplit/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/MdlmTimeSplit/results.json",
-   "sha256": "ef6ca5d0194c53e17c1ed0a2bf7013f2237a8f591af547655367043549db7fae",
-   "hf_path": "prereg-v1-results/c1/MdlmTimeSplit/results.json",
-   "hf_sha256": "48a9de28a7f1e291b52af42594c85ebc12dba7e8a5d8c1a2b223aed4ffabccd1",
-   "bytes": 619024821,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/Mdlm_additive/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/Mdlm_additive/results.json",
-   "sha256": "63d7f2488c3bd067e54c3bdec008b7312ff32a05ec83484d95d12123d7f72c2f",
-   "hf_path": "prereg-v1.1-results/c1/Mdlm_additive/results.json",
-   "hf_sha256": "2af3bdc0e0e61ed926787240e13b34f6cb03baf3d0446712c506da55c3c2fea8",
-   "bytes": 1520802370,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/Mdlm_knots13/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/Mdlm_knots13/results.json",
-   "sha256": "1d67068cbf0e0b132573b8d9d7d7d1aac9d37fb993aa224904c4befa0f9b4bd1",
-   "hf_path": "prereg-v1.1-results/c1/Mdlm_knots13/results.json",
-   "hf_sha256": "8c95a0b0f3865464996d56b1fc6cc315ae51c0bb8c9a674174af9be673be02cc",
-   "bytes": 1520839044,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/Mdlm_knots5/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/Mdlm_knots5/results.json",
-   "sha256": "a2b266ca380c492f0443000e0714bc5bb30717f2f395b00caa87cd06ae6e5a72",
-   "hf_path": "prereg-v1.1-results/c1/Mdlm_knots5/results.json",
-   "hf_sha256": "4060fee57035e6173108fb0d8865d7419c859a8af31c22f42e3593f7ad6645c1",
-   "bytes": 1520835192,
-   "slim": "by_mask_kind.*.calibrators removed"
-  },
-  "c1/summary/c1_summary.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/summary/c1_summary.json",
-   "sha256": "e4789b92b9c04f66d4b288619635d99017ba5d6f8e730d740ecf737723713a74"
-  },
-  "e3/DreamBase/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/DreamBase/results.json",
-   "sha256": "6ec266efcefe190c17af9603ffac52725586edddd296ffb10cb4848e78abbac1",
-   "hf_path": "prereg-v1.1-results/e3/DreamBase/results.json"
-  },
-  "e3/DreamInstructGsm/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/DreamInstructGsm/results.json",
-   "sha256": "2792bb4a9cbaa1847ce91d4148de10f0daeb2dee412e4331fc708079873adc11",
-   "hf_path": "prereg-v1.1-results/e3/DreamInstructGsm/results.json"
-  },
-  "e3/DreamInstructMbpp/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/DreamInstructMbpp/results.json",
-   "sha256": "f3a79b00d785f27db019e26804e332291f9bc71f4f830f0e12a2398eafaec2ba",
-   "hf_path": "prereg-v1.1-results/e3/DreamInstructMbpp/results.json"
-  },
-  "e3/LladaBase/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/LladaBase/results.json",
-   "sha256": "f713986fbae2c92ebc752e9899b407fb329b7e324aac8cfecfd96673a36846be",
-   "ada_path": "/share1/parth.sharma/prereg-v1.1-results/e3/LladaBase/results.json"
-  },
-  "e3/LladaInstructGsm/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/LladaInstructGsm/results.json",
-   "sha256": "511a7b4d0f6b6efc6140e8598115576083ce1b19ece0977786164488fd9ae7a7",
-   "hf_path": "prereg-v1.1-results/e3/LladaInstructGsm/results.json"
-  },
-  "e3/LladaInstructMbpp/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/LladaInstructMbpp/results.json",
-   "sha256": "8594a76cdbe0f1efc5272a54068c788301bca77eecd7eed6f672c82f9374cab2",
-   "hf_path": "prereg-v1.1-results/e3/LladaInstructMbpp/results.json"
-  },
-  "e3/Mdlm/results.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/Mdlm/results.json",
-   "sha256": "17d75c2f018f9d546aa09e6f165342b9e006e8b91fbc0d553fddd87ed93bb823",
-   "hf_path": "prereg-v1.1-results/e3/Mdlm/results.json"
-  },
-  "macros/c1-DreamBase": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamBase/macros.tex",
-   "sha256": "986a17df5d286187e961d5d3329d82ace6cfa130fb9fa8340dcded31c926ecf3"
-  },
-  "macros/c1-DreamBase-additive": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamBase_additive/macros.tex",
-   "sha256": "620e56a85d2f40c82fc3c1d4d5d3db445f6579d010460f5dc892e9ff9974bb02"
-  },
-  "macros/c1-DreamBase-clean": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamBase_clean/macros.tex",
-   "sha256": "22cfba8843bca90a870d197a1deeb9947a24dce30fe21b91dd26905f270abce5"
-  },
-  "macros/c1-DreamBase-knots13": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamBase_knots13/macros.tex",
-   "sha256": "8910a7496fb4d3b981c9f4216ab29da4272b57770637b7712ca9dd3dc7200426"
-  },
-  "macros/c1-DreamBase-knots5": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamBase_knots5/macros.tex",
-   "sha256": "957d33c4e9d3ca2928edaaa32e3c321e092c9e5867d5f9efc392a15a70549fae"
-  },
-  "macros/c1-DreamBaseTimeSplit": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamBaseTimeSplit/macros.tex",
-   "sha256": "b0a2461f58add95f9e3e89d393555a59cabd7436b3ce84e21e9c0555d2cdd6ae"
-  },
-  "macros/c1-DreamInstructGsm": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructGsm/macros.tex",
-   "sha256": "325c24cff0ccb86982de5f8b6109f88bc08aaa3dd77bb9e1355eb04bc4f7c7d5"
-  },
-  "macros/c1-DreamInstructGsm-additive": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructGsm_additive/macros.tex",
-   "sha256": "4ccc67aed150d843b5d687a821ebc0555a4371ef889340cb4ea0243c7959a37c"
-  },
-  "macros/c1-DreamInstructGsm-knots13": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructGsm_knots13/macros.tex",
-   "sha256": "76006c7a124363a999a37117ad739545c09b11405c3debd1e4d1c3396506ecdc"
-  },
-  "macros/c1-DreamInstructGsm-knots5": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructGsm_knots5/macros.tex",
-   "sha256": "710efe3559207f5fd37d902d087325699fab9a1b9d4c9c2d55bc715e34b0bf8b"
-  },
-  "macros/c1-DreamInstructMbpp": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructMbpp/macros.tex",
-   "sha256": "a4511400422273cb6dd8e75ef70caaf8339f2962de876d4f741c50044a5b5210"
-  },
-  "macros/c1-DreamInstructMbpp-additive": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructMbpp_additive/macros.tex",
-   "sha256": "9cd789083be367793a3ad2f966e5fb887b36322f213b903ad24745c592e16874"
-  },
-  "macros/c1-DreamInstructMbpp-knots13": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructMbpp_knots13/macros.tex",
-   "sha256": "e2022809f9578d7331e6ad8e464d77917057dc23d90dab44ded34bbf1e32c68a"
-  },
-  "macros/c1-DreamInstructMbpp-knots5": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructMbpp_knots5/macros.tex",
-   "sha256": "1dc84083a3608f1139f0e1866c335ea681e061254bba4286ac68916256290fd9"
-  },
-  "macros/c1-LladaBase": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaBase/macros.tex",
-   "sha256": "8b51c7283ef8f73a9b6c86099e05c56cfef2827cdf8ed303d25fd90b6f1c9f36"
-  },
-  "macros/c1-LladaBase-additive": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaBase_additive/macros.tex",
-   "sha256": "b0c7c4ebfd7c32540b77d68238da8ba6e88ad4a293c1e0322430c8a3185352f7"
-  },
-  "macros/c1-LladaBase-clean": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaBase_clean/macros.tex",
-   "sha256": "e7a5c6df7d21ecf05e44ee9837d756838cd40e51196d17ebf7b5669f3204b6bd"
-  },
-  "macros/c1-LladaBase-knots13": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaBase_knots13/macros.tex",
-   "sha256": "eac38997a983635074cf4bd8fac5f31353b7c8700ca06e67ee02cdb9ea2da554"
-  },
-  "macros/c1-LladaBase-knots5": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaBase_knots5/macros.tex",
-   "sha256": "f3d534abc6eb7bb013b032196bc6e6d91fd8908c3e4622d1e9015dcd30aef675"
-  },
-  "macros/c1-LladaBaseTimeSplit": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaBaseTimeSplit/macros.tex",
-   "sha256": "966bfcda4455840ff2d20549be6f264083b06d4e8cf7a0db159cd735d52ac2c9"
-  },
-  "macros/c1-LladaInstructGsm": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructGsm/macros.tex",
-   "sha256": "43d065c736ea74c93c551d273cfd2c62430200f6467e4f18c840c86f309a4520"
-  },
-  "macros/c1-LladaInstructGsm-additive": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructGsm_additive/macros.tex",
-   "sha256": "9b93df6d678cff5e616834e1125fdd2c409b8b2ba561bbefb469774c90f0274f"
-  },
-  "macros/c1-LladaInstructGsm-knots13": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructGsm_knots13/macros.tex",
-   "sha256": "1f27511e14f9d4d52f5f270a7d418130fb61fa9231406fa9a6650ce68ef50c6a"
-  },
-  "macros/c1-LladaInstructGsm-knots5": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructGsm_knots5/macros.tex",
-   "sha256": "62dda3e191a03b52328a444790c5f4f9f45311364acc70fe73f9dfaef20f90bf"
-  },
-  "macros/c1-LladaInstructMbpp": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructMbpp/macros.tex",
-   "sha256": "3c77fddef4085b1fc618e73ff88f72e5e7a93849148c6d80026080f35d12b446"
-  },
-  "macros/c1-LladaInstructMbpp-additive": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructMbpp_additive/macros.tex",
-   "sha256": "408621cc226f0216c70028479d202a2c546da681b7c7a78ba3535441a08bc867"
-  },
-  "macros/c1-LladaInstructMbpp-knots13": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructMbpp_knots13/macros.tex",
-   "sha256": "73d86aca34d4456c08d65b52ddf1ace0c95eb583428192cb4d20fbff4b0a6471"
-  },
-  "macros/c1-LladaInstructMbpp-knots5": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructMbpp_knots5/macros.tex",
-   "sha256": "7b4108a56322387379dc402a6e60fa25fcd57a83eaf50d16ddf9316c446b0239"
-  },
-  "macros/c1-Mdlm": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/Mdlm/macros.tex",
-   "sha256": "0a8eadc739c803fbabd0c06dd507f3e8fc715851699fb90b9d76f45db3c8ca35"
-  },
-  "macros/c1-Mdlm-additive": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/Mdlm_additive/macros.tex",
-   "sha256": "18bb23b7cf568a6fe842f939ae98a3eaaec432617ad2b3947fcdc4aab3763541"
-  },
-  "macros/c1-Mdlm-knots13": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/Mdlm_knots13/macros.tex",
-   "sha256": "058602d9d69b39d1c79a1440d9abf45b45e5e0db0389dee0e47d7d9a3895811d"
-  },
-  "macros/c1-Mdlm-knots5": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/Mdlm_knots5/macros.tex",
-   "sha256": "0e89b80769c182873f4b5a2fec9f0865d6472611c335662d7d0912f9ad59707f"
-  },
-  "macros/c1-MdlmTimeSplit": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/MdlmTimeSplit/macros.tex",
-   "sha256": "6d087db02a9642b02bb71a7a416d2e0dcfbf485272f3c385f24ea0695314546d"
-  },
-  "macros/e3-DreamBase": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/DreamBase/macros.tex",
-   "sha256": "e59757425b4a5d8945483736c879b35381a6ae4604829d898d869b81e1a9e34f"
-  },
-  "macros/e3-DreamInstructGsm": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/DreamInstructGsm/macros.tex",
-   "sha256": "8e93753015a5073e33f9f40ef5ca883a7e58dde8e74d3deadcc745ffcd19c5e1"
-  },
-  "macros/e3-DreamInstructMbpp": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/DreamInstructMbpp/macros.tex",
-   "sha256": "eb63923ffb157823e96e864c11fe979a05b5e22f9aa03400d8a312f312be9670"
-  },
-  "macros/e3-LladaBase": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/LladaBase/macros.tex",
-   "sha256": "803e63a9f06f738949abc03eea543218bb996152302c8b5b377df2a4572f8336"
-  },
-  "macros/e3-LladaInstructGsm": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/LladaInstructGsm/macros.tex",
-   "sha256": "61c6fe8f30b384f9da068db0f8c8162fafed7ef6b7d29520dda15767df9256dc"
-  },
-  "macros/e3-LladaInstructMbpp": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/LladaInstructMbpp/macros.tex",
-   "sha256": "5c862d52757c2d8b84958e107314da48b90482da88de29a6550ef757864bac67"
-  },
-  "macros/e3-Mdlm": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/Mdlm/macros.tex",
-   "sha256": "cf9156fc8a8e73bc78621e0d889b7d8cab17c7b94c5a7bb51aa63b2ff870478c"
-  },
-  "macros/t8-DreamBase": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/DreamBase/macros.tex",
-   "sha256": "96328f3b564c23ed85b3d43bd93f77f01d32c39afc0d30a853b9cfadf2829c7c"
-  },
-  "macros/t8-DreamInstructGsm": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/DreamInstructGsm/macros.tex",
-   "sha256": "130ce08b8a6d060a1044284e455e9f4ed6e2746c6848d4318831302a6a8d8f6e"
-  },
-  "macros/t8-DreamInstructMbpp": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/DreamInstructMbpp/macros.tex",
-   "sha256": "a5139908b6c9f990b18d1775fc2e49f8772b722be432304c746631d2e7816e8d"
-  },
-  "macros/t8-LladaBase": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/LladaBase/macros.tex",
-   "sha256": "5197f8b8877e407df6073639345e4dfd8e735a63d50eee84e5924f5f1d19ac90"
-  },
-  "macros/t8-LladaBasePrecision": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/LladaBasePrecision/macros.tex",
-   "sha256": "358f3b32b0e858788a518d6b3d69390d42db8e20d51b01472832aabcd9336cf9"
-  },
-  "macros/t8-LladaInstructGsm": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/LladaInstructGsm/macros.tex",
-   "sha256": "37b1a08aceb9be988fa3bcc03676603db92c7065daf73bcb3cd1296754cd5caf"
-  },
-  "macros/t8-LladaInstructMbpp": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/LladaInstructMbpp/macros.tex",
-   "sha256": "5cc64b81c55d508ca228a7ffa7fe78e4fe7ab71414727e8652e37500277ad579"
-  },
-  "macros/t8-Mdlm": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/Mdlm/macros.tex",
-   "sha256": "e24bbf4592e55c222d37c84473acfbdfb65520b850621d1718a918927ae006d9"
-  },
-  "t8/DreamBase/ablation.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/DreamBase/ablation.json",
-   "sha256": "5f560f78dee13979e46e7c86c422143a8767e2fce4c56faa0152b0fcf30d60ef",
-   "hf_path": "prereg-v1.1-results/t8/DreamBase/ablation.json"
-  },
-  "t8/DreamInstructGsm/ablation.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/DreamInstructGsm/ablation.json",
-   "sha256": "a684649ab27a87b38115f59a29b42cfb435496afea2dd92dfbf910062d241ea7",
-   "hf_path": "prereg-v1.1-results/t8/DreamInstructGsm/ablation.json"
-  },
-  "t8/DreamInstructMbpp/ablation.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/DreamInstructMbpp/ablation.json",
-   "sha256": "b05c7692e42669c79bdc097d43102a4f5e17aed5ed893785af2f6a098b70f4af",
-   "hf_path": "prereg-v1.1-results/t8/DreamInstructMbpp/ablation.json"
-  },
-  "t8/LladaBase/ablation.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/LladaBase/ablation.json",
-   "sha256": "4fe8ddf235f61346b98327e193c151a6ae46334b538a85ec6ac482501f020f33",
-   "ada_path": "/share1/parth.sharma/prereg-v1.1-results/t8/LladaBase/ablation.json"
-  },
-  "t8/LladaBasePrecision/ablation.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/LladaBasePrecision/ablation.json",
-   "sha256": "a739c49f718909fc2b61174dbef49cb3de9fd872044565830c4de4f44a000360",
-   "ada_path": "/share1/parth.sharma/prereg-v1.1-results/t8/LladaBasePrecision/ablation.json"
-  },
-  "t8/LladaInstructGsm/ablation.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/LladaInstructGsm/ablation.json",
-   "sha256": "f56561b5c65f8f3e992b0fc51c474c8c0d813d7169b929168001e25f4e4a6db5",
-   "hf_path": "prereg-v1.1-results/t8/LladaInstructGsm/ablation.json"
-  },
-  "t8/LladaInstructMbpp/ablation.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/LladaInstructMbpp/ablation.json",
-   "sha256": "00083e3e313df45565b4c077e69e4e80fbb92bbcea78f6a856fdcdf3c54ac599",
-   "hf_path": "prereg-v1.1-results/t8/LladaInstructMbpp/ablation.json"
-  },
-  "t8/Mdlm/ablation.json": {
-   "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/Mdlm/ablation.json",
-   "sha256": "78ab39753af20feaf74bb125f369bacbcf26452e7c23b576a47f141677685cf3",
-   "hf_path": "prereg-v1.1-results/t8/Mdlm/ablation.json"
+  "results_root": "HF ANLP-project/c3-traces-8b prereg-v1.1-results (instruct arms 342105a/4c1985d/c70e6c6/1ae83e3; Mdlm c1 e22c125, e3 5d4c285, t8 91d1c7f; DreamBase a6cb28c; LladaBase c1 + additive ad59452) and LladaBase knots5/knots13/clean, e3, t8, precision (read from parth's Ada copy /share1/parth.sharma/prereg-v1.1-results while HF was full; identical to HF c1 _clean e1a64dd, _knots5 508dca4, _knots13 a501b1c, e3 8f77bb3/04ea37e, t8 32b65cd, precision 24b2073 by sha256 on 28 Oct); time-split from prereg-v1-results. c1 results.json slimmed locally (calibrators removed); per-file hf_path/hf_sha256 or ada_path/ada_sha256 below.",
+  "main_arm": "LladaBase",
+  "arms_present": [
+    "LladaBase",
+    "DreamBase",
+    "LladaInstructGsm",
+    "LladaInstructMbpp",
+    "DreamInstructGsm",
+    "DreamInstructMbpp",
+    "Mdlm",
+    "LladaBaseTimeSplit",
+    "DreamBaseTimeSplit",
+    "MdlmTimeSplit"
+  ],
+  "arms_missing": [],
+  "summary_present": true,
+  "macro_files": [
+    "c1-LladaBase",
+    "c1-LladaBase-knots5",
+    "c1-LladaBase-knots13",
+    "c1-LladaBase-clean",
+    "c1-LladaBase-additive",
+    "c1-DreamBase",
+    "c1-DreamBase-knots5",
+    "c1-DreamBase-knots13",
+    "c1-DreamBase-clean",
+    "c1-DreamBase-additive",
+    "c1-LladaInstructGsm",
+    "c1-LladaInstructGsm-knots5",
+    "c1-LladaInstructGsm-knots13",
+    "c1-LladaInstructGsm-additive",
+    "c1-LladaInstructMbpp",
+    "c1-LladaInstructMbpp-knots5",
+    "c1-LladaInstructMbpp-knots13",
+    "c1-LladaInstructMbpp-additive",
+    "c1-DreamInstructGsm",
+    "c1-DreamInstructGsm-knots5",
+    "c1-DreamInstructGsm-knots13",
+    "c1-DreamInstructGsm-additive",
+    "c1-DreamInstructMbpp",
+    "c1-DreamInstructMbpp-knots5",
+    "c1-DreamInstructMbpp-knots13",
+    "c1-DreamInstructMbpp-additive",
+    "c1-Mdlm",
+    "c1-Mdlm-knots5",
+    "c1-Mdlm-knots13",
+    "c1-Mdlm-additive",
+    "c1-LladaBaseTimeSplit",
+    "c1-DreamBaseTimeSplit",
+    "c1-MdlmTimeSplit",
+    "e3-LladaBase",
+    "e3-DreamBase",
+    "e3-LladaInstructGsm",
+    "e3-LladaInstructMbpp",
+    "e3-DreamInstructGsm",
+    "e3-DreamInstructMbpp",
+    "e3-Mdlm",
+    "t8-LladaBase",
+    "t8-DreamBase",
+    "t8-LladaInstructGsm",
+    "t8-LladaInstructMbpp",
+    "t8-DreamInstructGsm",
+    "t8-DreamInstructMbpp",
+    "t8-Mdlm",
+    "t8-LladaBasePrecision"
+  ],
+  "sources": {
+    "c1/DreamBase/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamBase/results.json",
+      "sha256": "c281519955939a649c9d0f0e59c9d58de82d99e1be0c333ea1a33479f2ef56e5",
+      "hf_path": "prereg-v1.1-results/c1/DreamBase/results.json",
+      "hf_sha256": "6495b7fd88bae67a7b78082d22a7c6503559a7c52f7fa33f7a3ee98d287f3740",
+      "bytes": 1625471851,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/DreamBaseTimeSplit/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamBaseTimeSplit/results.json",
+      "sha256": "2b8d36dd34bbf55bfaaaede5824199fa5319c1037fdcb8dda8437adea7df26a5",
+      "hf_path": "prereg-v1-results/c1/DreamBaseTimeSplit/results.json",
+      "hf_sha256": "a5bfd0343cd7f55c60b89f0e11e5d6385cfd5a05d3b8153d24868229e62fa3a6",
+      "bytes": 698008597,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/DreamBase_additive/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamBase_additive/results.json",
+      "sha256": "21b6334e04e3e38c445b76f8f332738c832ee6d8b92672400beaf3ce5f21b6ad",
+      "hf_path": "prereg-v1.1-results/c1/DreamBase_additive/results.json",
+      "hf_sha256": "1ad713205875a0361e63290e019888cb2b7396067546df3d83fe13e54cfc1cb9",
+      "bytes": 1625436702,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/DreamBase_clean/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamBase_clean/results.json",
+      "sha256": "7e4fb02b80b771a544c4ac8f3345809b4d2528be49dd595eb0dabf397b864ecf",
+      "hf_path": "prereg-v1.1-results/c1/DreamBase_clean/results.json",
+      "hf_sha256": "1f643e037cef6ebdc6235498db5d1b95699dc7f355b8ee7a4317141e802cd714",
+      "bytes": 1625438302,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/DreamBase_knots13/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamBase_knots13/results.json",
+      "sha256": "54b695d7759be535e8c70bbbf75a6a12b23b4693c794a81d3b6f4313600b2c82",
+      "hf_path": "prereg-v1.1-results/c1/DreamBase_knots13/results.json",
+      "hf_sha256": "56860b152562da804d690682f241478d9c3f6e9941b236c10c4ed8bd34b4dbb9",
+      "bytes": 1625473320,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/DreamBase_knots5/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamBase_knots5/results.json",
+      "sha256": "7af4114532c53bc6e9e2ede7b289e584d2b63ac11cf726d95f8e2e21eea9f111",
+      "hf_path": "prereg-v1.1-results/c1/DreamBase_knots5/results.json",
+      "hf_sha256": "36609c3dc788cc229562c4ab93063728dbfbc652a232c7d42092888640b8bf91",
+      "bytes": 1625469483,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/DreamInstructGsm/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructGsm/results.json",
+      "sha256": "9605d88ec88c923dcf9f538dfe1926b1ae4bbcf27c04d711042f2479b2d80cff",
+      "hf_path": "prereg-v1.1-results/c1/DreamInstructGsm/results.json",
+      "hf_sha256": "5d2d06ca77f505073743054aac674ef0be48c1e9447825c5a6417102daf20a2c",
+      "bytes": 417273180,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/DreamInstructGsm_additive/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructGsm_additive/results.json",
+      "sha256": "0d66a54dfc92a8e35179e8fd33d2ce677389ef596de87fb6661b4b813e85ccd4",
+      "hf_path": "prereg-v1.1-results/c1/DreamInstructGsm_additive/results.json",
+      "hf_sha256": "ca3578164caaa1d66fde3eb016cda240ebf82cf07139f71ecd5315d453f161c0",
+      "bytes": 417238190,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/DreamInstructGsm_knots13/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructGsm_knots13/results.json",
+      "sha256": "cad4bfaffe737d55d3ee14d2192750738ccfa1073b9791734d0f8c41835a4a28",
+      "hf_path": "prereg-v1.1-results/c1/DreamInstructGsm_knots13/results.json",
+      "hf_sha256": "83f318bd7cadf34ede5fa15917010fb8d0692d9f5a0f729095b46fe4282f8563",
+      "bytes": 417274617,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/DreamInstructGsm_knots5/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructGsm_knots5/results.json",
+      "sha256": "d700a55fafac6105fd815281d7441e3f730732b9fbff3b916a6cba23fedd528d",
+      "hf_path": "prereg-v1.1-results/c1/DreamInstructGsm_knots5/results.json",
+      "hf_sha256": "608e5fe039ed2da2d15ffe19523864b302c2586505be57d820f3f4f6aee9e793",
+      "bytes": 417270791,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/DreamInstructMbpp/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructMbpp/results.json",
+      "sha256": "3a463c657d4632523d9cc0f9b5285d76371a2e4b90266b0e49b8713b6d4ca569",
+      "hf_path": "prereg-v1.1-results/c1/DreamInstructMbpp/results.json",
+      "hf_sha256": "f514e4b074894df9a979e2f122be44aca63ecedcb84e905df11d7bdbc55c1138",
+      "bytes": 89760012,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/DreamInstructMbpp_additive/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructMbpp_additive/results.json",
+      "sha256": "09d3370ac4e38530ad27cc1a95812cb33df473532d586e0b8cd6c73bddc010d6",
+      "hf_path": "prereg-v1.1-results/c1/DreamInstructMbpp_additive/results.json",
+      "hf_sha256": "6205e2d6674c73656c950ad1aaa5f8e2b5668cc871807f4631d020f96395c2e0",
+      "bytes": 89725184,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/DreamInstructMbpp_knots13/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructMbpp_knots13/results.json",
+      "sha256": "5b25ed299714bc8bd12b7905c3f90b1c3fb89a5188cf15bf6364557b1424930d",
+      "hf_path": "prereg-v1.1-results/c1/DreamInstructMbpp_knots13/results.json",
+      "hf_sha256": "f3f41870d5b13e4cea83ffca424d84af557469949876f2a4855ff20f688620a2",
+      "bytes": 89761465,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/DreamInstructMbpp_knots5/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructMbpp_knots5/results.json",
+      "sha256": "8313db72f00e98bf0f15b6a1aa6ec449bfd270e9db0c85711a98665db2f82902",
+      "hf_path": "prereg-v1.1-results/c1/DreamInstructMbpp_knots5/results.json",
+      "hf_sha256": "4f9c555d9812b3d4f4428ce2b9b1656cba2cb25cdd002bb2484c118d792e7e08",
+      "bytes": 89757652,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/LladaBase/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaBase/results.json",
+      "sha256": "1a1526cd34765ba330f2764ef830931fd03d94bfa4b368f0102451f89b2bba6a",
+      "hf_path": "prereg-v1.1-results/c1/LladaBase/results.json",
+      "hf_sha256": "ba99f7c5d926d7637c50cabd85b6343418636791b0b25f28f40a33432f9a003c",
+      "bytes": 1125308823,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/LladaBaseTimeSplit/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaBaseTimeSplit/results.json",
+      "sha256": "482c1db3c0bdb9262ce0089755a6695da85a022d09a58a847aafeb8074ed14fa",
+      "hf_path": "prereg-v1-results/c1/LladaBaseTimeSplit/results.json",
+      "hf_sha256": "15bac9276074e8d8da641674502a67b033c005db81da39b4d916e97f5656ac72",
+      "bytes": 548705149,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/LladaBase_additive/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaBase_additive/results.json",
+      "sha256": "d2fc23e6dff2c57cecb4749fa2b052d3440d892c34c683fb9703e34982b0f4c8",
+      "hf_path": "prereg-v1.1-results/c1/LladaBase_additive/results.json",
+      "hf_sha256": "d6eecdcea014be32e5f8a7dce475872d0250b7afb57ec8e44f743c7759651f05",
+      "bytes": 1125273649,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/LladaBase_clean/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaBase_clean/results.json",
+      "sha256": "5a32ac76b099f64d58fa1a7d05527da25dc9e85c2cb3a4c6453c350c1e9c4476",
+      "ada_path": "/share1/parth.sharma/prereg-v1.1-results/c1/LladaBase_clean/results.json",
+      "ada_sha256": "dfa0b62a3cc0254c660204946a9e9265e6248c204d5a885b41276abaada02d45",
+      "bytes": 1124590015,
+      "slim": "by_mask_kind.*.calibrators removed",
+      "hf_path": "prereg-v1.1-results/c1/LladaBase_clean/results.json.gz"
+    },
+    "c1/LladaBase_knots13/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaBase_knots13/results.json",
+      "sha256": "86075e37197fd23306d25fa8c511a91b4d0abc9f800dd60d05720ae619e31338",
+      "ada_path": "/share1/parth.sharma/prereg-v1.1-results/c1/LladaBase_knots13/results.json",
+      "ada_sha256": "9d43d42f501bbcf27845b393ab5d250063b295d4e271ce9339919d8bac1464f6",
+      "bytes": 1125310273,
+      "slim": "by_mask_kind.*.calibrators removed",
+      "hf_path": "prereg-v1.1-results/c1/LladaBase_knots13/results.json.gz"
+    },
+    "c1/LladaBase_knots5/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaBase_knots5/results.json",
+      "sha256": "c18878d8747c7069a97e5522f2d1ed8b0009fc28d470ee8f8472cfc195f4cde9",
+      "ada_path": "/share1/parth.sharma/prereg-v1.1-results/c1/LladaBase_knots5/results.json",
+      "ada_sha256": "98dd1c37fa2008d0e3eac04afb2c115958b0cb0a52656f9f5951e065d62c567e",
+      "bytes": 1125306456,
+      "slim": "by_mask_kind.*.calibrators removed",
+      "hf_path": "prereg-v1.1-results/c1/LladaBase_knots5/results.json.gz"
+    },
+    "c1/LladaInstructGsm/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructGsm/results.json",
+      "sha256": "597c935d5cf3ac86fc0b48a83694b7f1a36d817c0db294cc81ab7ead9d74066e",
+      "hf_path": "prereg-v1.1-results/c1/LladaInstructGsm/results.json",
+      "hf_sha256": "abe811a3e169ba50d648c70b9cce3acb4b402e201432161fdad7bed0049f4124",
+      "bytes": 427840071,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/LladaInstructGsm_additive/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructGsm_additive/results.json",
+      "sha256": "2c1f77c3cb60572a40ff40842b98007fc5d21f8499847501be1d418c05a40ece",
+      "hf_path": "prereg-v1.1-results/c1/LladaInstructGsm_additive/results.json",
+      "hf_sha256": "363eedce1b82e267784e16a0999a130c1057906e36926e6771124be1b5b612bf",
+      "bytes": 427805031,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/LladaInstructGsm_knots13/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructGsm_knots13/results.json",
+      "sha256": "42ccba169693421bc61408a972f38773705ed104c50c6b23b02ac011ad0cfe7b",
+      "hf_path": "prereg-v1.1-results/c1/LladaInstructGsm_knots13/results.json",
+      "hf_sha256": "60a1dd9c41a5023ee1071e62148656643055d7666eec450bf9b24a5eafc2aa8b",
+      "bytes": 427841479,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/LladaInstructGsm_knots5/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructGsm_knots5/results.json",
+      "sha256": "833b4b270a5bb22483b065fcaa91b2e9b8b9213c8f300f87b2106d665343e23c",
+      "hf_path": "prereg-v1.1-results/c1/LladaInstructGsm_knots5/results.json",
+      "hf_sha256": "f70fc47c8402ae42b25b83ea96545d5ce3343bd86118809a78d8729d06027122",
+      "bytes": 427837706,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/LladaInstructMbpp/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructMbpp/results.json",
+      "sha256": "d6132b8315bdcdd5694be9f52946d77a5213463945f3fa63d319d426c72d98e4",
+      "hf_path": "prereg-v1.1-results/c1/LladaInstructMbpp/results.json",
+      "hf_sha256": "8a02f25697ccb4b102476d0b56c1a5a67c0f85df3e2c1e3bf570fc607887dc78",
+      "bytes": 108869955,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/LladaInstructMbpp_additive/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructMbpp_additive/results.json",
+      "sha256": "05eec21d3b35eaa7f2836c35cccba81b859e161ac87bb0545410f9b8752c49fe",
+      "hf_path": "prereg-v1.1-results/c1/LladaInstructMbpp_additive/results.json",
+      "hf_sha256": "bf45dd7162d30be8c67fd794504e6e0dea4b6a51303c02780452ad6c802a3c11",
+      "bytes": 108835037,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/LladaInstructMbpp_knots13/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructMbpp_knots13/results.json",
+      "sha256": "1026eda905cd75426fb84a6327579977e06bc65f6f0e384b106edefd8d8aef5d",
+      "hf_path": "prereg-v1.1-results/c1/LladaInstructMbpp_knots13/results.json",
+      "hf_sha256": "4c09442155fbdebda409a27e76930a8682fabe7c9343ffd7a8605d7519005ce4",
+      "bytes": 108871385,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/LladaInstructMbpp_knots5/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructMbpp_knots5/results.json",
+      "sha256": "f35bdb10ad8253b0f274195987e9b8b06a53789c8efffa540107ab20984ab2e6",
+      "hf_path": "prereg-v1.1-results/c1/LladaInstructMbpp_knots5/results.json",
+      "hf_sha256": "21cdbd10669f13296ad26d0e171706c9426aa5859b0b7bf1ef0cf07e934b6678",
+      "bytes": 108867565,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/Mdlm/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/Mdlm/results.json",
+      "sha256": "11855a322d5322d97715633c96113fc5bc29a9a363811066c043d5bf47c44fd7",
+      "hf_path": "prereg-v1.1-results/c1/Mdlm/results.json",
+      "hf_sha256": "55ab03cac6430a81c77ff9526877084ea52e77057f97dbf6b9a3975d94836f9e",
+      "bytes": 1520837609,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/MdlmTimeSplit/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/MdlmTimeSplit/results.json",
+      "sha256": "ef6ca5d0194c53e17c1ed0a2bf7013f2237a8f591af547655367043549db7fae",
+      "hf_path": "prereg-v1-results/c1/MdlmTimeSplit/results.json",
+      "hf_sha256": "48a9de28a7f1e291b52af42594c85ebc12dba7e8a5d8c1a2b223aed4ffabccd1",
+      "bytes": 619024821,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/Mdlm_additive/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/Mdlm_additive/results.json",
+      "sha256": "63d7f2488c3bd067e54c3bdec008b7312ff32a05ec83484d95d12123d7f72c2f",
+      "hf_path": "prereg-v1.1-results/c1/Mdlm_additive/results.json",
+      "hf_sha256": "2af3bdc0e0e61ed926787240e13b34f6cb03baf3d0446712c506da55c3c2fea8",
+      "bytes": 1520802370,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/Mdlm_knots13/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/Mdlm_knots13/results.json",
+      "sha256": "1d67068cbf0e0b132573b8d9d7d7d1aac9d37fb993aa224904c4befa0f9b4bd1",
+      "hf_path": "prereg-v1.1-results/c1/Mdlm_knots13/results.json",
+      "hf_sha256": "8c95a0b0f3865464996d56b1fc6cc315ae51c0bb8c9a674174af9be673be02cc",
+      "bytes": 1520839044,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/Mdlm_knots5/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/Mdlm_knots5/results.json",
+      "sha256": "a2b266ca380c492f0443000e0714bc5bb30717f2f395b00caa87cd06ae6e5a72",
+      "hf_path": "prereg-v1.1-results/c1/Mdlm_knots5/results.json",
+      "hf_sha256": "4060fee57035e6173108fb0d8865d7419c859a8af31c22f42e3593f7ad6645c1",
+      "bytes": 1520835192,
+      "slim": "by_mask_kind.*.calibrators removed"
+    },
+    "c1/summary/c1_summary.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/summary/c1_summary.json",
+      "sha256": "e4789b92b9c04f66d4b288619635d99017ba5d6f8e730d740ecf737723713a74"
+    },
+    "e3/DreamBase/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/DreamBase/results.json",
+      "sha256": "6ec266efcefe190c17af9603ffac52725586edddd296ffb10cb4848e78abbac1",
+      "hf_path": "prereg-v1.1-results/e3/DreamBase/results.json"
+    },
+    "e3/DreamInstructGsm/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/DreamInstructGsm/results.json",
+      "sha256": "2792bb4a9cbaa1847ce91d4148de10f0daeb2dee412e4331fc708079873adc11",
+      "hf_path": "prereg-v1.1-results/e3/DreamInstructGsm/results.json"
+    },
+    "e3/DreamInstructMbpp/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/DreamInstructMbpp/results.json",
+      "sha256": "f3a79b00d785f27db019e26804e332291f9bc71f4f830f0e12a2398eafaec2ba",
+      "hf_path": "prereg-v1.1-results/e3/DreamInstructMbpp/results.json"
+    },
+    "e3/LladaBase/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/LladaBase/results.json",
+      "sha256": "f713986fbae2c92ebc752e9899b407fb329b7e324aac8cfecfd96673a36846be",
+      "ada_path": "/share1/parth.sharma/prereg-v1.1-results/e3/LladaBase/results.json",
+      "hf_path": "prereg-v1.1-results/e3/LladaBase/results.json"
+    },
+    "e3/LladaInstructGsm/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/LladaInstructGsm/results.json",
+      "sha256": "511a7b4d0f6b6efc6140e8598115576083ce1b19ece0977786164488fd9ae7a7",
+      "hf_path": "prereg-v1.1-results/e3/LladaInstructGsm/results.json"
+    },
+    "e3/LladaInstructMbpp/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/LladaInstructMbpp/results.json",
+      "sha256": "8594a76cdbe0f1efc5272a54068c788301bca77eecd7eed6f672c82f9374cab2",
+      "hf_path": "prereg-v1.1-results/e3/LladaInstructMbpp/results.json"
+    },
+    "e3/Mdlm/results.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/Mdlm/results.json",
+      "sha256": "17d75c2f018f9d546aa09e6f165342b9e006e8b91fbc0d553fddd87ed93bb823",
+      "hf_path": "prereg-v1.1-results/e3/Mdlm/results.json"
+    },
+    "macros/c1-DreamBase": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamBase/macros.tex",
+      "sha256": "986a17df5d286187e961d5d3329d82ace6cfa130fb9fa8340dcded31c926ecf3"
+    },
+    "macros/c1-DreamBase-additive": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamBase_additive/macros.tex",
+      "sha256": "620e56a85d2f40c82fc3c1d4d5d3db445f6579d010460f5dc892e9ff9974bb02"
+    },
+    "macros/c1-DreamBase-clean": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamBase_clean/macros.tex",
+      "sha256": "22cfba8843bca90a870d197a1deeb9947a24dce30fe21b91dd26905f270abce5"
+    },
+    "macros/c1-DreamBase-knots13": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamBase_knots13/macros.tex",
+      "sha256": "8910a7496fb4d3b981c9f4216ab29da4272b57770637b7712ca9dd3dc7200426"
+    },
+    "macros/c1-DreamBase-knots5": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamBase_knots5/macros.tex",
+      "sha256": "957d33c4e9d3ca2928edaaa32e3c321e092c9e5867d5f9efc392a15a70549fae"
+    },
+    "macros/c1-DreamBaseTimeSplit": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamBaseTimeSplit/macros.tex",
+      "sha256": "b0a2461f58add95f9e3e89d393555a59cabd7436b3ce84e21e9c0555d2cdd6ae"
+    },
+    "macros/c1-DreamInstructGsm": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructGsm/macros.tex",
+      "sha256": "325c24cff0ccb86982de5f8b6109f88bc08aaa3dd77bb9e1355eb04bc4f7c7d5"
+    },
+    "macros/c1-DreamInstructGsm-additive": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructGsm_additive/macros.tex",
+      "sha256": "4ccc67aed150d843b5d687a821ebc0555a4371ef889340cb4ea0243c7959a37c"
+    },
+    "macros/c1-DreamInstructGsm-knots13": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructGsm_knots13/macros.tex",
+      "sha256": "76006c7a124363a999a37117ad739545c09b11405c3debd1e4d1c3396506ecdc"
+    },
+    "macros/c1-DreamInstructGsm-knots5": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructGsm_knots5/macros.tex",
+      "sha256": "710efe3559207f5fd37d902d087325699fab9a1b9d4c9c2d55bc715e34b0bf8b"
+    },
+    "macros/c1-DreamInstructMbpp": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructMbpp/macros.tex",
+      "sha256": "a4511400422273cb6dd8e75ef70caaf8339f2962de876d4f741c50044a5b5210"
+    },
+    "macros/c1-DreamInstructMbpp-additive": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructMbpp_additive/macros.tex",
+      "sha256": "9cd789083be367793a3ad2f966e5fb887b36322f213b903ad24745c592e16874"
+    },
+    "macros/c1-DreamInstructMbpp-knots13": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructMbpp_knots13/macros.tex",
+      "sha256": "e2022809f9578d7331e6ad8e464d77917057dc23d90dab44ded34bbf1e32c68a"
+    },
+    "macros/c1-DreamInstructMbpp-knots5": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/DreamInstructMbpp_knots5/macros.tex",
+      "sha256": "1dc84083a3608f1139f0e1866c335ea681e061254bba4286ac68916256290fd9"
+    },
+    "macros/c1-LladaBase": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaBase/macros.tex",
+      "sha256": "8b51c7283ef8f73a9b6c86099e05c56cfef2827cdf8ed303d25fd90b6f1c9f36"
+    },
+    "macros/c1-LladaBase-additive": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaBase_additive/macros.tex",
+      "sha256": "b0c7c4ebfd7c32540b77d68238da8ba6e88ad4a293c1e0322430c8a3185352f7"
+    },
+    "macros/c1-LladaBase-clean": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaBase_clean/macros.tex",
+      "sha256": "e7a5c6df7d21ecf05e44ee9837d756838cd40e51196d17ebf7b5669f3204b6bd"
+    },
+    "macros/c1-LladaBase-knots13": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaBase_knots13/macros.tex",
+      "sha256": "eac38997a983635074cf4bd8fac5f31353b7c8700ca06e67ee02cdb9ea2da554"
+    },
+    "macros/c1-LladaBase-knots5": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaBase_knots5/macros.tex",
+      "sha256": "f3d534abc6eb7bb013b032196bc6e6d91fd8908c3e4622d1e9015dcd30aef675"
+    },
+    "macros/c1-LladaBaseTimeSplit": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaBaseTimeSplit/macros.tex",
+      "sha256": "966bfcda4455840ff2d20549be6f264083b06d4e8cf7a0db159cd735d52ac2c9"
+    },
+    "macros/c1-LladaInstructGsm": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructGsm/macros.tex",
+      "sha256": "43d065c736ea74c93c551d273cfd2c62430200f6467e4f18c840c86f309a4520"
+    },
+    "macros/c1-LladaInstructGsm-additive": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructGsm_additive/macros.tex",
+      "sha256": "9b93df6d678cff5e616834e1125fdd2c409b8b2ba561bbefb469774c90f0274f"
+    },
+    "macros/c1-LladaInstructGsm-knots13": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructGsm_knots13/macros.tex",
+      "sha256": "1f27511e14f9d4d52f5f270a7d418130fb61fa9231406fa9a6650ce68ef50c6a"
+    },
+    "macros/c1-LladaInstructGsm-knots5": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructGsm_knots5/macros.tex",
+      "sha256": "62dda3e191a03b52328a444790c5f4f9f45311364acc70fe73f9dfaef20f90bf"
+    },
+    "macros/c1-LladaInstructMbpp": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructMbpp/macros.tex",
+      "sha256": "3c77fddef4085b1fc618e73ff88f72e5e7a93849148c6d80026080f35d12b446"
+    },
+    "macros/c1-LladaInstructMbpp-additive": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructMbpp_additive/macros.tex",
+      "sha256": "408621cc226f0216c70028479d202a2c546da681b7c7a78ba3535441a08bc867"
+    },
+    "macros/c1-LladaInstructMbpp-knots13": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructMbpp_knots13/macros.tex",
+      "sha256": "73d86aca34d4456c08d65b52ddf1ace0c95eb583428192cb4d20fbff4b0a6471"
+    },
+    "macros/c1-LladaInstructMbpp-knots5": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructMbpp_knots5/macros.tex",
+      "sha256": "7b4108a56322387379dc402a6e60fa25fcd57a83eaf50d16ddf9316c446b0239"
+    },
+    "macros/c1-Mdlm": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/Mdlm/macros.tex",
+      "sha256": "0a8eadc739c803fbabd0c06dd507f3e8fc715851699fb90b9d76f45db3c8ca35"
+    },
+    "macros/c1-Mdlm-additive": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/Mdlm_additive/macros.tex",
+      "sha256": "18bb23b7cf568a6fe842f939ae98a3eaaec432617ad2b3947fcdc4aab3763541"
+    },
+    "macros/c1-Mdlm-knots13": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/Mdlm_knots13/macros.tex",
+      "sha256": "058602d9d69b39d1c79a1440d9abf45b45e5e0db0389dee0e47d7d9a3895811d"
+    },
+    "macros/c1-Mdlm-knots5": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/Mdlm_knots5/macros.tex",
+      "sha256": "0e89b80769c182873f4b5a2fec9f0865d6472611c335662d7d0912f9ad59707f"
+    },
+    "macros/c1-MdlmTimeSplit": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/MdlmTimeSplit/macros.tex",
+      "sha256": "6d087db02a9642b02bb71a7a416d2e0dcfbf485272f3c385f24ea0695314546d"
+    },
+    "macros/e3-DreamBase": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/DreamBase/macros.tex",
+      "sha256": "e59757425b4a5d8945483736c879b35381a6ae4604829d898d869b81e1a9e34f"
+    },
+    "macros/e3-DreamInstructGsm": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/DreamInstructGsm/macros.tex",
+      "sha256": "8e93753015a5073e33f9f40ef5ca883a7e58dde8e74d3deadcc745ffcd19c5e1"
+    },
+    "macros/e3-DreamInstructMbpp": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/DreamInstructMbpp/macros.tex",
+      "sha256": "eb63923ffb157823e96e864c11fe979a05b5e22f9aa03400d8a312f312be9670"
+    },
+    "macros/e3-LladaBase": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/LladaBase/macros.tex",
+      "sha256": "803e63a9f06f738949abc03eea543218bb996152302c8b5b377df2a4572f8336"
+    },
+    "macros/e3-LladaInstructGsm": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/LladaInstructGsm/macros.tex",
+      "sha256": "61c6fe8f30b384f9da068db0f8c8162fafed7ef6b7d29520dda15767df9256dc"
+    },
+    "macros/e3-LladaInstructMbpp": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/LladaInstructMbpp/macros.tex",
+      "sha256": "5c862d52757c2d8b84958e107314da48b90482da88de29a6550ef757864bac67"
+    },
+    "macros/e3-Mdlm": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/Mdlm/macros.tex",
+      "sha256": "cf9156fc8a8e73bc78621e0d889b7d8cab17c7b94c5a7bb51aa63b2ff870478c"
+    },
+    "macros/t8-DreamBase": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/DreamBase/macros.tex",
+      "sha256": "96328f3b564c23ed85b3d43bd93f77f01d32c39afc0d30a853b9cfadf2829c7c"
+    },
+    "macros/t8-DreamInstructGsm": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/DreamInstructGsm/macros.tex",
+      "sha256": "130ce08b8a6d060a1044284e455e9f4ed6e2746c6848d4318831302a6a8d8f6e"
+    },
+    "macros/t8-DreamInstructMbpp": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/DreamInstructMbpp/macros.tex",
+      "sha256": "a5139908b6c9f990b18d1775fc2e49f8772b722be432304c746631d2e7816e8d"
+    },
+    "macros/t8-LladaBase": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/LladaBase/macros.tex",
+      "sha256": "5197f8b8877e407df6073639345e4dfd8e735a63d50eee84e5924f5f1d19ac90"
+    },
+    "macros/t8-LladaBasePrecision": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/LladaBasePrecision/macros.tex",
+      "sha256": "358f3b32b0e858788a518d6b3d69390d42db8e20d51b01472832aabcd9336cf9"
+    },
+    "macros/t8-LladaInstructGsm": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/LladaInstructGsm/macros.tex",
+      "sha256": "37b1a08aceb9be988fa3bcc03676603db92c7065daf73bcb3cd1296754cd5caf"
+    },
+    "macros/t8-LladaInstructMbpp": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/LladaInstructMbpp/macros.tex",
+      "sha256": "5cc64b81c55d508ca228a7ffa7fe78e4fe7ab71414727e8652e37500277ad579"
+    },
+    "macros/t8-Mdlm": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/Mdlm/macros.tex",
+      "sha256": "e24bbf4592e55c222d37c84473acfbdfb65520b850621d1718a918927ae006d9"
+    },
+    "t8/DreamBase/ablation.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/DreamBase/ablation.json",
+      "sha256": "5f560f78dee13979e46e7c86c422143a8767e2fce4c56faa0152b0fcf30d60ef",
+      "hf_path": "prereg-v1.1-results/t8/DreamBase/ablation.json"
+    },
+    "t8/DreamInstructGsm/ablation.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/DreamInstructGsm/ablation.json",
+      "sha256": "a684649ab27a87b38115f59a29b42cfb435496afea2dd92dfbf910062d241ea7",
+      "hf_path": "prereg-v1.1-results/t8/DreamInstructGsm/ablation.json"
+    },
+    "t8/DreamInstructMbpp/ablation.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/DreamInstructMbpp/ablation.json",
+      "sha256": "b05c7692e42669c79bdc097d43102a4f5e17aed5ed893785af2f6a098b70f4af",
+      "hf_path": "prereg-v1.1-results/t8/DreamInstructMbpp/ablation.json"
+    },
+    "t8/LladaBase/ablation.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/LladaBase/ablation.json",
+      "sha256": "4fe8ddf235f61346b98327e193c151a6ae46334b538a85ec6ac482501f020f33",
+      "ada_path": "/share1/parth.sharma/prereg-v1.1-results/t8/LladaBase/ablation.json",
+      "hf_path": "prereg-v1.1-results/t8/LladaBase/ablation.json"
+    },
+    "t8/LladaBasePrecision/ablation.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/LladaBasePrecision/ablation.json",
+      "sha256": "a739c49f718909fc2b61174dbef49cb3de9fd872044565830c4de4f44a000360",
+      "ada_path": "/share1/parth.sharma/prereg-v1.1-results/t8/LladaBasePrecision/ablation.json",
+      "hf_path": "prereg-v1.1-results/t8/LladaBasePrecision/ablation.json"
+    },
+    "t8/LladaInstructGsm/ablation.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/LladaInstructGsm/ablation.json",
+      "sha256": "f56561b5c65f8f3e992b0fc51c474c8c0d813d7169b929168001e25f4e4a6db5",
+      "hf_path": "prereg-v1.1-results/t8/LladaInstructGsm/ablation.json"
+    },
+    "t8/LladaInstructMbpp/ablation.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/LladaInstructMbpp/ablation.json",
+      "sha256": "00083e3e313df45565b4c077e69e4e80fbb92bbcea78f6a856fdcdf3c54ac599",
+      "hf_path": "prereg-v1.1-results/t8/LladaInstructMbpp/ablation.json"
+    },
+    "t8/Mdlm/ablation.json": {
+      "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/Mdlm/ablation.json",
+      "sha256": "78ab39753af20feaf74bb125f369bacbcf26452e7c23b576a47f141677685cf3",
+      "hf_path": "prereg-v1.1-results/t8/Mdlm/ablation.json"
+    }
+  },
+  "outputs": [
+    "c1_beta.tex",
+    "c1_delta_m_LladaBase.pdf",
+    "c1_delta_m_LladaBase.png",
+    "c1_delta_m_all.pdf",
+    "c1_delta_m_all.png",
+    "c1_e3.tex",
+    "c1_e3_LladaBase.pdf",
+    "c1_e3_LladaBase.png",
+    "c1_field_m_all.pdf",
+    "c1_field_m_all.png",
+    "c1_gamma.tex",
+    "c1_main.tex",
+    "c1_main_col.tex",
+    "c1_mechanisms.pdf",
+    "c1_mechanisms.png",
+    "c1_overview.pdf",
+    "c1_overview.png",
+    "c1_reliability_LladaBase.pdf",
+    "c1_reliability_LladaBase.png",
+    "c1_sensitivity.tex",
+    "c1_shared.tex",
+    "c1_t8.tex",
+    "c1_t8_precision.tex",
+    "c1_timesplit.tex",
+    "macros_c1.tex"
+  ],
+  "provenance": {
+    "git_commit": "7872ac8a746d607a4db69e6c666e9a4592e3b1ed",
+    "git_dirty": true,
+    "python": "3.12.12",
+    "platform": "Linux-7.2.11-arch1-1-x86_64-with-glibc2.44",
+    "host": "arch",
+    "slurm_job_id": null,
+    "packages": {
+      "numpy": "2.5.4",
+      "scipy": "1.18.1",
+      "pandas": "3.0.6",
+      "pyarrow": "26.0.0",
+      "torch": "2.14.1+cpu",
+      "transformers": "4.46.3",
+      "matplotlib": "3.11.2"
+    }
   }
- },
- "outputs": [
-  "c1_beta.tex",
-  "c1_delta_m_LladaBase.pdf",
-  "c1_delta_m_LladaBase.png",
-  "c1_delta_m_all.pdf",
-  "c1_delta_m_all.png",
-  "c1_e3.tex",
-  "c1_e3_LladaBase.pdf",
-  "c1_e3_LladaBase.png",
-  "c1_field_m_all.pdf",
-  "c1_field_m_all.png",
-  "c1_gamma.tex",
-  "c1_main.tex",
-  "c1_main_col.tex",
-  "c1_mechanisms.pdf",
-  "c1_mechanisms.png",
-  "c1_overview.pdf",
-  "c1_overview.png",
-  "c1_reliability_LladaBase.pdf",
-  "c1_reliability_LladaBase.png",
-  "c1_sensitivity.tex",
-  "c1_shared.tex",
-  "c1_t8.tex",
-  "c1_t8_precision.tex",
-  "c1_timesplit.tex",
-  "macros_c1.tex"
- ],
- "provenance": {
-  "git_commit": "7872ac8a746d607a4db69e6c666e9a4592e3b1ed",
-  "git_dirty": true,
-  "python": "3.12.12",
-  "platform": "Linux-7.2.11-arch1-1-x86_64-with-glibc2.44",
-  "host": "arch",
-  "slurm_job_id": null,
-  "packages": {
-   "numpy": "2.5.4",
-   "scipy": "1.18.1",
-   "pandas": "3.0.6",
-   "pyarrow": "26.0.0",
-   "torch": "2.14.1+cpu",
-   "transformers": "4.46.3",
-   "matplotlib": "3.11.2"
-  }
- }
 }
