@@ -169,6 +169,13 @@ Items 7-14 are reserved for the T13 ablation entries (branch `t13-ablations`).
       is a forward-pass count and does not depend on the GPU, and matching uses each
       configuration's report-half speed. No task mixes machines. The first attempt's partial
       RTX PRO records are kept as an unreported cross-check.
+    - Execution detail (recorded 28 Oct after the H200 launch; no change to decoding, knobs,
+      grids or precision): one worker per GPU left the H200 ~44% idle (per-step Python
+      bound), so the run uses 3 worker processes per GPU (`T12_WORKERS_PER_GPU`, commit
+      a9abd7b on `ayush/t12-grids` = ffff6cb plus that option), and the two tasks run on
+      separate 1x H200 instances (GSM8K and MBPP, each task wholly on one instance, 3
+      shards). The 1-worker GSM8K start (213 records) is set aside unreported, like the RTX
+      PRO attempt.
 
 18. **Step order: E1/E2 banked before Eq. 2/3 (scheduling only).** The Eq. 2/3 FE bootstrap
     did not fit the 96 h Ada job cap on the 120M-row arms (measured: LladaBase job 39851,
