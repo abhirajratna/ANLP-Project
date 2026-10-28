@@ -177,25 +177,18 @@ without fixed effects (\S\ref{sec:validation}), so we read
 $\beta_z$ only beside the sign of E2. For LLaDA-8B-Base in uniform states it is
 $\Cres{COneLladaBaseBetaZNoFEUni}$ without fixed effects and $\Cres{COneLladaBaseBetaZFEUni}$
 with them (Table~\ref{tab:c1-main}).
-% TODO(results): keep the reading that matches most arms (count the \ddagger markers in tab:c1-main):
-%   (a) beta_z < 0 without FE (CI excludes 0), FE interval holds 0, E2 > 0:
-%       "The pattern is that of a field effect, and it agrees with E2."
-%   (b) beta_z > 0 without FE and E2 < 0:
-%       "The pattern is the one shared errors produced in simulation: positions of a state
-%        are wrong together, Proposition 1 does not hold, and E2 is not a field effect."
-%   (c) beta_z with FE excludes 0:
-%       "Rank predicts correctness within a state, so errors are shared within states and
-%        eq:gapsplit gains its third term."
-%   (d) every interval holds 0: "beta_z shows no selection effect in either form."
+Without fixed effects $\beta_z$ excludes 0 in all 14 cells and is negative in 12, and with them
+its interval holds 0 in 10: the pattern of a field effect (small in the base and 110M models, as E2 is). The two positive cells, decoder states of LLaDA-8B-Base and of the 110M model, have
+E2 at the estimator's bias.
+% counts: \ddagger markers of tab:c1-main (regen of 28 Oct; recheck at the final regen)
 Of the \Cres{COneHolmGammaFamily} tests of $\gamma_2,\gamma_3,\gamma_4$ (Eq.~\ref{eq:eqthree}),
 Holm rejects \Cres{COneHolmGammaReject}, in \Cres{COneHolmGammaRows} rows; LLaDA-8B-Base,
 uniform: $\gamma_2=\Cres{COneLladaBaseGammaTwoUni}$, $p_{\mathrm{Holm}}=\Cres{COneHolmPGammaTwoLladaBaseUni}$
-(Table~\ref{tab:c1-gamma}, Appendix); none is a claim.
-% TODO(results): if most rejections are at k = 2 with gamma_2 < 0:
-%   "Rank 2 is right less often than rank 1 at equal confidence within a state: the ordering
-%    inside a state carries information the confidence does not."  if gamma_2 > 0: "more
-%    often: the confidence over-orders the top positions."  if no rejection: "No rank
-%    differs from rank 1 once the state is held fixed."  (Unclear sign: name the rows.)
+(Table~\ref{tab:c1-gamma}, Appendix). Every rejected $\gamma_k$ is positive, all in the instruct
+models and Dream-7B-Base decoder states: within a state, at equal confidence, lower-ranked pool
+members are right more often than the winner, which Proposition~\ref{prop:select} excludes when its
+conditions hold. Like the ICC, we read this as a sign of shared errors (or of a calibration slope
+that varies by state); none is a claim.
 
 % ------------------------------------------------------------------- E3
 \subsection{Decoder states}
@@ -225,18 +218,12 @@ LLaDA-8B-Base at $k=4$ the difference, positive if decoder-state tokens are righ
 often, is \CresCI{EThreeLladaBaseTypeEffectTopkConfKFourMatched} against matched uniform
 states (sup-$t$ $p=\Cres{EThreeLladaBaseTypeTestPTopkConfKFourMatched}$) and
 \CresCI{EThreeLladaBaseTypeEffectTopkConfKFourGrid} against the reweighted uniform grid.
-% TODO(results): if most matched-uniform rows are positive with intervals excluding 0:
-%   "Confidence means less in the states a decoder actually visits: a calibration curve fitted
-%    on training-style masks overstates accuracy there, so a calibrator for decoding should
-%    be fitted on decoder states (sec:c3)."
-% if negative: "Decoder-state tokens are right more often than their confidence suggests
-%   relative to uniform states: the decoder's states are, if anything, easier at equal
-%   confidence."
-% if intervals hold 0 / sup-t p > 0.05 for most rows: "At equal confidence and mask rate,
-%   decoder states and uniform states give the same accuracy: the state pattern does not
-%   shift calibration."
-% Wide figure available: figures/c1/c1_e3_LladaBase.pdf (reliability + difference curve,
-% 6.9 in); add as figure* only if space allows.
+Against matched uniform states it is positive, its interval excluding 0, in every arm and at
+every $k\in\{2,4,8\}$ (sup-$t$ $p\le0.002$): at equal confidence and mask rate, tokens are
+right less often in the states a decoder visits, by 0.001 to 0.006 in the base and 110M
+models and 0.03 to 0.06 in the instruct models. A calibrator for decoding should be fitted on
+decoder states, as C3a's is (\S\ref{sec:c3}).
+% ranges and p from tables/c1/c1_e3.tex, matched columns (regen of 28 Oct; recheck)
 
 % ------------------------------------------------------------------- T8
 \subsection{Controls}
@@ -252,13 +239,12 @@ paired difference. For LLaDA-8B-Base in uniform states the change in E1 is
 \CresCI{TEightLladaBaseTemperatureLogoddsEOneUniDifference} for a temperature per mask-rate
 bin.
 % E2 differences if wanted: TEightLladaBase{Position,TokenType}ETwoUniDifference[Lo|Hi].
-% TODO(results): for each control, if its difference excludes 0 in most rows:
-%   "<Control> accounts for part of E1: with it, E1 moves from <Without> to <With>." /
-%   if the with-control E1 interval holds 0: "... and nothing is left once it is removed."
-% else: "<Control> leaves E1 where it was."
-% Temperature, specifically: if E1 survives it, "the growth is not an overall
-%   over- or underconfidence that one temperature per mask rate could fix"; if it removes it,
-%   "the growth is a mask-rate-wide miscalibration, which temperature scaling fixes."
+In decoder states E1 keeps its sign under every control in every arm and moves by at most
+0.03 (temperature, LLaDA-8B-Instruct on MBPP: 0.156 to 0.125): the growth is not where
+winners sit, what kind of token they are, or an over- or underconfidence by mask rate. In
+uniform states the small base and 110M contrasts move by up to 0.004, so their sign is not
+robust.
+% from tables/c1/c1_t8.tex (regen of 28 Oct; recheck)
 
 \paragraph{Precision.}
 % 4-bit run: \VivaLladaBaseFourBitDocs documents (tab:runs); prereg: 200 listed in
@@ -285,9 +271,7 @@ Without the documents the screen flagged (\VivaLladaContamFlagged{} for LLaDA,
 \VivaDreamContamFlagged{} for Dream; \S\ref{sec:models}), E1 in uniform states is
 \CresCI{COneLladaBaseCleanContrastUni} for LLaDA-8B-Base and
 \CresCI{COneDreamBaseCleanContrastUni} for Dream-7B-Base.
-% TODO(results): if the clean intervals overlap the main ones: "Removing them changes
-%   nothing, as expected of so few documents." else: "Removing <n> documents moves E1 by
-%   <...>, more than their share would suggest; <investigate before writing>."
+Both equal their main values, in decoder states too; so few documents cannot move them.
 
 \paragraph{Time split.}
 On the report half of the \VivaLladaBaseTimeSplitDocs{} time-split articles, which no model
@@ -310,20 +294,17 @@ E2 keeps its sign and declared flag with 5 and with
 cells (full table in the code archive). These runs refit
 Eqs.~\ref{eq:eqtwo} and~\ref{eq:eqthree} only 200 times, so their $\beta_z$ and $\gamma_k$ intervals are descriptive only;
 E2 keeps \VivaNBoot{} resamples.
-% TODO(results): if E2 at 5 and 13 knots keeps the sign of 9 knots, with its interval still
-%   excluding 0, in every claimed cell: "The knots do not change any claim."
-%   else: "<cell> depends on the knots:
-%   E2 is <...> with 5 and <...> with 13; we do not rely on it."
+The knots do not change any claim.
 
 \paragraph{Context calibrator.}
 With the additive calibrator (\S\ref{sec:estimands}), E2 keeps its sign
 and declared flag in \Cres{COneAdditiveAgree} of \Cres{COneAdditiveCells} cells;
 LLaDA-8B-Base, uniform: \Cres{COneFieldContrastLladaBaseAdditiveUni}
 vs \Cres{COneFieldContrastLladaBaseUni}.
-% TODO(results): if COneAdditiveAgree = COneAdditiveCells: "The form of the calibrator does
-%   not change any claim." else name the cells (the E2 add. column; COneFieldAdditiveAgree<Label><Tag>
-%   = no): "E2 in <cell> depends on the form of the calibrator; we do not rely on it."
-%   (COneFieldAdditiveShift<Label><Tag> is additive minus interacted.)
+The two that do not are claimed cells: uniform states of LLaDA-8B-Instruct on MBPP, whose
+interval now holds 0, and 110M decoder states, already at the estimator's bias; there E2
+depends on the form of the calibrator, and we do not rely on it.
+% cells: COneFieldAdditiveAgree<Label><Tag> = no (regen of 28 Oct; recheck)
 
 \paragraph{Independent estimator.}
 % dorigo/report-40754 (HF 21130a52), report half, k4 arms; numbers hand-typed from summary_e2.csv
