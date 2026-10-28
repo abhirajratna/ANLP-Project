@@ -62,15 +62,11 @@ larger field, and how much of that is the field term of Proposition~\ref{prop:sp
 number is from the report half (\S\ref{sec:instrument}).
 
 \paragraph{Arms and claims.}
-The seven arms at the top of Table~\ref{tab:runs} are analysed in uniform states and in those
-of the teacher-forced top-$k$ decoder at $k=4$ (\S\ref{sec:traces}). The E1 contrast
-$\Delta(\VivaPoolMax)-\Delta(1)$ and the E2 contrast field$(\VivaPoolMax)-$field$(1)$ each form one
-Holm family over these 14 cells, and $\gamma_2,\gamma_3,\gamma_4$ of Eq.~\ref{eq:eqthree} one
-within each arm and kind of state (\S\ref{sec:inference}).
 % Claim rule: prereg/frozen_config.json settled.claim_rule (PR #19, deviations.md 16c,d);
 % alpha 0.05, family size 14, a missing member counts as p = 1.
-We claim an E1 or E2 effect only if it is declared, its 95\% interval excluding 0, \emph{and}
-Holm rejects it at $\alpha=0.05$ within its family (14 tests; a missing cell counts as $p=1$).
+We claim an E1 or E2 effect only if it is declared \emph{and} Holm rejects it at $\alpha=0.05$
+in its family: the seven arms in uniform and $k{=}4$ decoder states (\S\ref{sec:inference};
+a missing cell counts as $p=1$).
 Everything else is exploratory, reported with its interval and no claim: decoder states at
 $k\in\{2,8\}$, matched uniform states, $\beta_z$, $\gamma_k$, E3, the native gap, the controls
 and the robustness runs (\S\ref{sec:c1-robust}).
@@ -152,7 +148,7 @@ in simulation (\S\ref{sec:validation}), so we read it beside the sign of E2.
 Without fixed effects it excludes 0 in all 14 cells (Table~\ref{tab:c1-main}) and is negative in
 12, and with them its interval holds 0 in 10: the pattern of a field effect (small in the base
 and 110M models, as E2 is). The two positive cells, decoder states of LLaDA-8B-Base and of the
-110M model, have E2 at the estimator's bias (the 110M model's negative, as simulated shared errors gave).
+110M model, have E2 near the estimator's bias (the 110M model's negative, as simulated shared errors gave).
 % counts: \ddagger markers of tab:c1-main (regen of 28 Oct; recheck at the final regen)
 Of the \Cres{COneHolmGammaFamily} tests of $\gamma_2,\gamma_3,\gamma_4$ (Eq.~\ref{eq:eqthree}),
 Holm rejects \Cres{COneHolmGammaReject}, in \Cres{COneHolmGammaRows} rows (code archive), all
