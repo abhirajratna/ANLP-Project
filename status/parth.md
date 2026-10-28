@@ -1,6 +1,6 @@
 ---
 member: parth
-updated: 2026-10-26T21:05:56Z
+updated: 2026-10-28T11:29:49Z
 branch: parth/t12-driver
 ---
-Ada: 41132 LladaBase @ prereg-v1.1 (warm) + 41133 precision v1.1 chained; old v1 jobs cancelled
+Ada: LladaBase v1.1 41132 on T8 (last step), precision 41133 next; PR #62 c3_paper_outputs (review pls); PR #61 realised-risk (stacked); T12 report running on Jarvis (ayush)
