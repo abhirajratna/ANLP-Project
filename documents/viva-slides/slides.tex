@@ -205,6 +205,9 @@
 % C3 outputs: PROPOSED names, nothing writes them yet (T12 scoring writes JSON,
 % artifacts/t12/<model>_<precision>_<run>.json; T11 writes the calibrator, artifacts/c3/).
 \newcommand{\CThreeAnswer}{\color{ink2}\textit{pending (T12)}}
+% C3 macros (T11 diagnostics, T12 numbers): written by scripts/c3_paper_outputs.py
+\newif\ifCThreeMacros
+\IfFileExists{../../artifacts/c3/macros_c3.tex}{\input{../../artifacts/c3/macros_c3.tex}\CThreeMacrostrue}{}
 \newcommand{\CThreeOut}{../../artifacts/t12}
 \newcommand{\CThreeTable}[5]{%
   \IfFileExists{\CThreeOut/#1.tex}{\fitbox{\linewidth}{#2}{\input{\CThreeOut/#1.tex}}}{%
@@ -955,9 +958,20 @@
       \end{itemize}
     \end{column}
     \begin{column}{0.47\textwidth}
-      \IfFileExists{../../artifacts/c3/macros_c3.tex}{%
-        % PROPOSED name: a macros file for the T11 diagnostics; set the panel once it exists
-        \begin{panel}\paneltitle{Calibrator diagnostics}\input{../../artifacts/c3/macros_c3.tex}\end{panel}}{%
+      \ifCThreeMacros
+        {\begin{panel}\paneltitle{Calibrator, fit half only (T11)}
+          {\footnotesize\setlength{\tabcolsep}{4pt}\arrayrulecolor{base}
+          \begin{tabular}{@{}l r r@{}}
+            & {\color{ink2}GSM8K} & {\color{ink2}MBPP} \\ \midrule
+            fit documents & \Cres{CThreeTElevenGsmFitDocs} & \Cres{CThreeTElevenMbppFitDocs} \\
+            ECE, raw $\sigma(\ell)$ & \Cres{CThreeTElevenGsmDevECERaw} & \Cres{CThreeTElevenMbppDevECERaw} \\
+            ECE, recalibrated $\hat c$ & \Cres{CThreeTElevenGsmDevECECal} & \Cres{CThreeTElevenMbppDevECECal} \\
+            states with $\hat c$ monotone in $\ell$ & \Cres{CThreeTElevenGsmMonotoneShare} & \Cres{CThreeTElevenMbppMonotoneShare} \\
+            decode steps outside fit range & \Cres{CThreeTTwelveGsmOutsideShare} & \Cres{CThreeTTwelveMbppOutsideShare} \\
+          \end{tabular}}\par\vspace{1mm}
+          {\scriptsize\color{ink2}ECE on held-out fit-half documents: a development check, not a result.}
+        \end{panel}}% braces, not a group: an \else straight after \end{panel} upsets TeX
+      \else
         \Pend{40mm}{THU 29 OCT}{Waits for the frozen calibrators in \texttt{artifacts/c3/}
           (\texttt{scripts/fit\_c3a\_calibrator.py}) and a macros file for their diagnostics.}{%
           \begin{stubs}\scriptsize
@@ -965,13 +979,15 @@
                   held-out fit-half documents (not a headline).
             \item Share of decode steps outside the fit range, per task.
             \item Share of fit states where $\hat c$ never decreases with $\ell$.
-          \end{stubs}}}
+          \end{stubs}}
+      \fi
     \end{column}
   \end{columns}
-  \note{Design is plan v2 T11 (policy and fit script: parth/t11-c3a, parth/t12-driver; not main when this
-  deck was prepared), so check the wording against what merged. The fit reads fit-half traces only.
-  Proposed output name artifacts/c3/macros_c3.tex does not exist yet; ask Parth. If T11 is not done,
-  say C3a is specified and implemented but not evaluated.}
+  \note{The calibrators are frozen in artifacts/c3/ (fit half only; report halves never read). On held-out
+  fit-half documents it cuts the ECE of the commit confidence from 0.061 to 0.006 (GSM8K) and 0.039 to 0.007
+  (MBPP), and c-hat never decreases with l in any fit state, so C3a's commits keep the calibrated-error
+  guarantee there. That is a development check, not a result. The last row needs the T12 run: how often
+  free-running states fall outside what the calibrator saw.}
 \end{frame}
 
 % ================================================================ 16 C3: matched-speed comparison
