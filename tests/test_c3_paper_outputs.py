@@ -101,11 +101,28 @@ def write_jsonl(path, rows):
     path.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
 
 
+JUNK_DOC = 1000                                      # a fit-half doc_id in the fixture manifests
+
+
+def meta_of(task, shard, **over):
+    """The meta file ``run_t12.py`` writes for one shard (the fields score_t12.RUN_FIELDS and
+    the completeness checks read)."""
+    m = {"task": task, "half": "report", "gen_length": 256, "run_id": f"run{shard}", "precision": "fp16",
+         "model": "llada-8b-instruct", "model_revision": "rev1", "task_jsonl_sha256": "t" * 8,
+         "manifest_sha256": "m" * 8, "configs_sha256": "c" * 8, "calibrator_sha256": "k" * 8,
+         "c3a_clamp": False, "pc_sampler_variant": "full", "decoding": "greedy", "block_length": 32,
+         "prompt": {"format": "chat", "fewshot": 0}, "limit": 0, "shard": shard, "num_shards": 2,
+         "doc_ids": [i for i in range(N_DOCS) if i % 2 == shard]}
+    m.update(over)
+    return m
+
+
 def make_fixture(root: Path, with_records=True, with_verdicts=True, with_grids=True,
-                 with_cal=True, with_sanity=True):
+                 with_cal=True, with_sanity=True, with_manifests=True):
     """Write every input under ``root``; returns the paths."""
     paths = {"records": root / "runs", "verdicts": root / "verdicts.jsonl", "grids": root / "grids",
-             "cal": root / "cal", "sanity": root / "sanity.json", "out": root / "out"}
+             "cal": root / "cal", "sanity": root / "sanity.json", "out": root / "out",
+             "manifests": root / "manifests"}
     verdicts = []
     for task in TASKS:
         shard_rows = {0: [], 1: []}
@@ -130,7 +147,7 @@ def make_fixture(root: Path, with_records=True, with_verdicts=True, with_grids=T
                                             for st in range(10)]
                     shard_rows[i % 2].append(rec)
                     ok = (not failed(task, dec, s, i)) and correct_of(task, dec, s, i)
-                    verdicts.append({"run": "r", "run_id": f"run{i % 2}", "prompt_format": "chat",
+                    verdicts.append({"run": P.run_key(meta_of(task, i % 2)), "run_id": f"run{i % 2}", "prompt_format": "chat",
                                      "task": task, "config": key, "doc_id": i, "stopped": True,
                                      "correct": bool(ok), "extracted": None, "driver_error": failed(task, dec, s, i),
                                      "error": None})
@@ -139,9 +156,11 @@ def make_fixture(root: Path, with_records=True, with_verdicts=True, with_grids=T
             d.mkdir(parents=True, exist_ok=True)
             for sh, rows in shard_rows.items():
                 write_jsonl(d / f"t12.shard{sh}of2.jsonl", rows)
-                (d / f"t12.shard{sh}of2.meta.json").write_text(json.dumps(
-                    {"task": task, "half": "report", "gen_length": 256, "run_id": f"run{sh}",
-                     "prompt": {"format": "chat", "fewshot": 0}}))
+                (d / f"t12.shard{sh}of2.meta.json").write_text(json.dumps(meta_of(task, sh)))
+        if with_manifests:
+            paths["manifests"].mkdir(exist_ok=True)
+            man = {str(i): 1 for i in range(N_DOCS)} | {str(JUNK_DOC + i): 0 for i in range(10)}
+            (paths["manifests"] / f"split_manifest_{task}.json").write_text(json.dumps(man))
         if with_grids:
             paths["grids"].mkdir(exist_ok=True)
             (paths["grids"] / f"t12_grid_{task}.json").write_text(json.dumps(make_grid(task)))
@@ -166,7 +185,7 @@ def make_fixture(root: Path, with_records=True, with_verdicts=True, with_grids=T
     return paths
 
 
-def run_main(paths, *extra, records=True, verdicts=True, grids=True, cal=True, sanity=True):
+def run_main(paths, *extra, records=True, verdicts=True, grids=True, cal=True, sanity=True, manifests=True):
     argv = ["--out-dir", str(paths["out"])]
     if records:
         argv += ["--records", str(paths["records"])]
@@ -176,6 +195,7 @@ def run_main(paths, *extra, records=True, verdicts=True, grids=True, cal=True, s
     argv += ["--grids", str(paths["grids"]) if grids else nope]
     argv += ["--calibrators", str(paths["cal"]) if cal else nope]
     argv += ["--sanity", str(paths["sanity"]) if sanity else nope]
+    argv += ["--manifest-dir", str(paths["manifests"]) if manifests else nope]
     return P.main(argv + list(extra))
 
 
@@ -270,22 +290,24 @@ def test_match_is_dashed_where_the_grid_says_unmatched_at_target():
     assert P.match_baseline(3, 8.0, klass) is None
 
 
-def test_bootstrap_is_deterministic_and_pins_the_algorithm():
+def test_bootstrap_known_numbers():
+    """Pinned values (numpy default_rng, seed 20261030, 2,000 resamples), not a re-implementation."""
+    assert P.SEED == 20261030 and P.N_BOOT == 2000
+    # d = [1, 0, -1, 1, 0, 0]: mean 1/6; resampled means are multiples of 1/6
+    a = {0: 1, 1: 1, 2: 0, 3: 1, 4: 1, 5: 0}
+    b = {0: 0, 1: 1, 2: 1, 3: 0, 4: 1, 5: 0}
+    r = P.paired_bootstrap(a, b)
+    assert r["n"] == 6
+    assert (r["diff"], r["lo"], r["hi"]) == pytest.approx((1 / 6, -1 / 3, 2 / 3), abs=1e-12)
+    # every problem favours a: a zero-width interval at 1
+    r = P.paired_bootstrap({0: 1, 1: 1, 2: 1, 3: 1}, {0: 0, 1: 0, 2: 0, 3: 0})
+    assert (r["diff"], r["lo"], r["hi"], r["n"]) == (1.0, 1.0, 1.0, 4)
     a = {i: int(i % 4 != 0) for i in range(40)}
     b = {i: int(i % 3 != 0) for i in range(40)}
-    r1 = P.paired_bootstrap(a, b)
-    assert r1 == P.paired_bootstrap(a, b)
-    assert P.SEED == 20261030 and P.N_BOOT == 2000
-    # the specified algorithm: sorted shared doc_ids, 2,000 resamples of problems, percentile CI
-    ids = sorted(a)
-    d = np.array([a[i] - b[i] for i in ids], dtype=float)
-    idx = np.random.default_rng(20261030).integers(0, len(ids), size=(2000, len(ids)))
-    means = d[idx].mean(axis=1)
-    assert r1["diff"] == pytest.approx(d.mean())
-    assert r1["lo"] == pytest.approx(np.percentile(means, 2.5))
-    assert r1["hi"] == pytest.approx(np.percentile(means, 97.5))
-    assert r1["n"] == 40
-    assert P.paired_bootstrap(a, b, seed=1) != r1
+    r = P.paired_bootstrap(a, b)
+    assert (r["diff"], r["lo"], r["hi"]) == pytest.approx((0.1, -0.075625, 0.3), abs=1e-12)
+    assert r == P.paired_bootstrap(a, b)                        # deterministic
+    assert P.paired_bootstrap(a, b, seed=1)["lo"] == pytest.approx(-0.1, abs=1e-12)
 
 
 def test_bootstrap_is_paired_on_shared_doc_ids_and_ignores_order():
@@ -332,8 +354,8 @@ def test_klass_unmatched_at_target_gives_dash_even_at_equal_speed(built):
     assert t["matched"]["3"]["Klass"]["matched"] is False
     assert t["matched"]["3"]["Klass"]["reason"] == "unmatched_at_target"
     assert t["matched"]["2"]["Klass"]["matched"] is True
-    assert built["macros"]["CThreeTTwelveGsmMatchedDiffKlassSpeedThree"] == "---"
-    assert built["macros"]["CThreeTTwelveGsmMatchedDiffKlassSpeedThreeLo"] == "---"
+    assert built["macros"]["CThreeTTwelveGsmMatchedDiffKlassSpeedThree"] == DASH_MACRO
+    assert built["macros"]["CThreeTTwelveGsmMatchedDiffKlassSpeedThreeLo"] == DASH_MACRO
     # KLASS's own speed-3 setting is still reported
     assert "CThreeTTwelveGsmKlassSpeedThreeAcc" in built["macros"]
 
@@ -381,6 +403,7 @@ def test_sanity_macros(built):
     assert mac["CThreeTTwelveSanityThresholdAccHi"] == "0.889"
 
 
+DASH_MACRO = r"\textnormal{---}"        # an em dash in text, never a minus inside the ensuremath of CresCI
 NUMBER = re.compile(r"^(\\ensuremath\{-\})?\d+(\.\d+)?$")
 
 
@@ -388,10 +411,10 @@ def test_macros_are_wellformed_latex_with_three_decimals(built):
     for name, body in built["macros"].items():
         assert re.fullmatch(r"[A-Za-z]+", name)
         assert name.startswith(("CThreeTEleven", "CThreeTTwelve"))
-        assert body == "---" or NUMBER.match(body), (name, body)
+        assert body == DASH_MACRO or NUMBER.match(body), (name, body)
         assert body.count("{") == body.count("}")
         three_dp = re.search(r"(Acc|AccLo|AccHi|MatchedDiff\w*|Share|Alpha|AlphaPrimary|DevECE\w+)$", name)
-        if three_dp and body != "---":
+        if three_dp and body != DASH_MACRO:
             assert re.search(r"\.\d{3}$", body), (name, body)
         if name.endswith("N") or name.endswith("FitDocs"):
             assert re.fullmatch(r"\d+", body), (name, body)
@@ -413,7 +436,7 @@ def test_macro_value_of_matched_difference(built):
     assert mac["CThreeTTwelveGsmMatchedDiffTopKSpeedTwo"] == "0.133"
     lo, hi = val(mac["CThreeTTwelveGsmMatchedDiffTopKSpeedTwoLo"]), val(mac["CThreeTTwelveGsmMatchedDiffTopKSpeedTwoHi"])
     assert lo <= 0.133 <= hi
-    assert mac["CThreeTTwelveGsmMatchedDiffEntropySpeedTwo"] == "---"
+    assert mac["CThreeTTwelveGsmMatchedDiffEntropySpeedTwo"] == DASH_MACRO
     assert not any(k.startswith("CThreeTTwelveGsmMatchedDiffCThreeA") for k in mac)
 
 
@@ -443,7 +466,7 @@ def test_table_is_a_bare_booktabs_tabular_one_row_per_decoder_and_task(built):
         assert tex.count(name) >= 2, name                         # once per task
     # entropy is unmatched at speed 2: its row is dashes
     row = next(l for l in tex.splitlines() if l.startswith("Entropy"))
-    assert row.count("---") == 3
+    assert row.count("---") == 4                                   # tok/step, acc, diff, n
     # C3a's own row is the reference: no difference
     assert not any(c in tex for c in ("nan", "None"))
     # ~1 column: five narrow columns
@@ -464,7 +487,7 @@ def test_sanity_cost_table_rows_and_columns(built):
     assert "[$0.777$, $0.880$]" in tex                            # the Wilson interval of top-k
     # MBPP top-k: speed-3 has one failed problem -> fail column 1
     row = [l for l in tex.splitlines() if l.startswith("Top-$k$ &")][1]
-    assert row.rstrip(" \\").endswith("& 1")
+    assert row.rstrip(" \\").endswith("& $1$ & $0$ & $0$")             # errors, timeouts, unstopped
     assert "tok/st" in tex and "NFE" in tex
 
 
@@ -533,7 +556,8 @@ def test_records_are_read_from_a_glob_and_report_half_only(tmp_path):
     (cal / "t12.shard0of1.meta.json").write_text(json.dumps({"task": "gsm8k", "half": "fit", "gen_length": 256}))
     argv = ["--out-dir", str(paths["out"]), "--records", str(paths["records"] / "*" / "t12.shard*.jsonl"),
             "--verdicts", str(paths["verdicts"]), "--grids", str(paths["grids"]),
-            "--calibrators", str(paths["cal"]), "--sanity", str(paths["sanity"])]
+            "--calibrators", str(paths["cal"]), "--sanity", str(paths["sanity"]),
+            "--manifest-dir", str(paths["manifests"])]
     assert P.main(argv) == 0
     mac = parse_macros((paths["out"] / "c3" / "macros_c3.tex").read_text())
     assert mac["CThreeTTwelveGsmN"] == "30"
@@ -677,3 +701,217 @@ def test_no_macro_is_defined_that_the_naming_scheme_does_not_allow(built):
 def test_cost_table_never_uses_scientific_notation(built):
     tex = (built["out"] / "t12" / "t12_sanity_cost.tex").read_text()
     assert "\times" not in tex and "$128.0$" in tex
+
+
+# ------------------------------------------------------------------ plumbing: completeness, runs, halves
+def edit_rows(path, fn):
+    rows = [json.loads(l) for l in path.read_text().splitlines()]
+    write_jsonl(path, fn(rows))
+
+
+def cap_at(paths, k, tasks=("gsm8k", "mbpp")):
+    """Every configuration stopped after doc k-1 (problems are the outer loop: a time cap)."""
+    for t in tasks:
+        for f in (paths["records"] / f"sweep-{t}").glob("t12.shard*.jsonl"):
+            edit_rows(f, lambda rows: [r for r in rows if r["doc_id"] < k])
+
+
+def summary_of(paths):
+    return json.loads((paths["out"] / "t12" / "llada-8b-instruct_fp16_t12-summary.json").read_text())
+
+
+def test_missing_shard_is_refused_and_writes_nothing(tmp_path):
+    paths = make_fixture(tmp_path)
+    d = paths["records"] / "sweep-gsm8k"
+    (d / "t12.shard1of2.jsonl").unlink()
+    (d / "t12.shard1of2.meta.json").unlink()
+    with pytest.raises(SystemExit) as e:
+        run_main(paths)
+    assert "shard" in str(e.value) and "gsm8k" in str(e.value)
+    assert not (paths["out"] / "c3" / "macros_c3.tex").exists()
+
+
+def test_a_cap_at_doc_k_is_refused_with_and_without_the_manifest(tmp_path):
+    paths = make_fixture(tmp_path)
+    cap_at(paths, 20)
+    with pytest.raises(SystemExit) as e:
+        run_main(paths)
+    assert "20/30" in str(e.value)
+    with pytest.raises(SystemExit):                       # the metas' doc_ids alone give the 30
+        run_main(paths, manifests=False)
+
+
+def test_a_config_cut_short_inside_the_last_problem_is_refused(tmp_path):
+    paths = make_fixture(tmp_path)
+    f = paths["records"] / "sweep-gsm8k" / "t12.shard0of2.jsonl"
+    edit_rows(f, lambda rows: [r for r in rows if not (r["doc_id"] == 28 and r["config"].startswith("c3a"))])
+    with pytest.raises(SystemExit) as e:
+        run_main(paths)
+    assert "29/30" in str(e.value)
+
+
+def test_allow_partial_reports_x_of_y_everywhere(tmp_path):
+    paths = make_fixture(tmp_path)
+    d = paths["records"] / "sweep-gsm8k"
+    (d / "t12.shard1of2.jsonl").unlink()
+    (d / "t12.shard1of2.meta.json").unlink()
+    assert run_main(paths, "--allow-partial") == 0
+    s = summary_of(paths)
+    g = s["tasks"]["gsm8k"]
+    assert (g["n"], g["n_expected"], g["partial"]) == (15, 30, True)
+    assert g["decoders"]["TopK"]["speeds"]["2"]["n_expected"] == 30
+    assert s["tasks"]["mbpp"]["partial"] is False
+    tex = (paths["out"] / "t12" / "t12_matched_speed.tex").read_text()
+    assert "$N=15/30$ (partial)" in tex and "$N=30$" in tex
+    mtex = (paths["out"] / "c3" / "macros_c3.tex").read_text()
+    assert "% PARTIAL: gsm8k N=15/30" in mtex
+    assert "N=15/30 (partial)" in (paths["out"] / "t12" / "zip" / "t12_sanity_cost.md").read_text()
+
+
+def test_complete_run_has_no_partial_marker(built):
+    assert "partial" not in (built["out"] / "t12" / "t12_matched_speed.tex").read_text()
+    assert "PARTIAL" not in (built["out"] / "c3" / "macros_c3.tex").read_text()
+    g = built["summary"]["tasks"]["gsm8k"]
+    assert (g["n"], g["n_expected"], g["partial"]) == (30, 30, False)
+
+
+def test_two_runs_for_one_task_are_refused(tmp_path):
+    paths = make_fixture(tmp_path)
+    # an Ada copy of the same sweep next to the Jarvis run: different model revision / machine
+    src = paths["records"] / "sweep-gsm8k"
+    dst = paths["records"] / "ada-copy-gsm8k"
+    dst.mkdir()
+    for f in src.glob("t12.shard*"):
+        (dst / f.name).write_text(f.read_text())
+    for sh in (0, 1):
+        m = json.loads((dst / f"t12.shard{sh}of2.meta.json").read_text())
+        m["model_revision"] = "other"
+        (dst / f"t12.shard{sh}of2.meta.json").write_text(json.dumps(m))
+    with pytest.raises(SystemExit) as e:
+        run_main(paths)
+    assert "more than one run" in str(e.value) and "gsm8k" in str(e.value)
+
+
+def test_verdicts_of_another_run_are_ignored_and_non_verdict_lines_skipped(tmp_path):
+    paths = make_fixture(tmp_path)
+    key = config_key(cfg_of("CThreeA", 2, "gsm8k"))
+    vs = [json.loads(l) for l in paths["verdicts"].read_text().splitlines()]
+    other = [dict(v, run="deadbeef0000", correct=False) for v in vs if v["config"] == key and v["task"] == "gsm8k"]
+    rec_line = {"config": key, "task": "gsm8k", "doc_id": 0, "completion": "x", "n_forward": 1}   # no `correct`
+    write_jsonl(paths["verdicts"], other + vs[:1] + [rec_line] + vs[1:])
+    assert run_main(paths) == 0
+    s = summary_of(paths)["tasks"]["gsm8k"]["decoders"]["CThreeA"]["speeds"]["2"]
+    assert s["n_correct"] == 24 and s["n_scored"] == 30
+
+
+def test_a_fit_half_doc_id_is_refused(tmp_path):
+    paths = make_fixture(tmp_path)
+    f = paths["records"] / "sweep-gsm8k" / "t12.shard0of2.jsonl"
+    edit_rows(f, lambda rows: rows + [dict(rows[0], doc_id=JUNK_DOC)])
+    with pytest.raises(SystemExit) as e:
+        run_main(paths)
+    assert "fit" in str(e.value)
+
+
+def test_a_shard_without_a_meta_file_is_refused(tmp_path):
+    paths = make_fixture(tmp_path)
+    (paths["records"] / "sweep-gsm8k" / "t12.shard0of2.meta.json").unlink()
+    with pytest.raises(SystemExit) as e:
+        run_main(paths)
+    assert "meta" in str(e.value)
+
+
+@pytest.mark.parametrize("over,word", [({"precision": "bf16"}, "fp16"),
+                                       ({"prompt": {"format": "lmeval", "fewshot": 5}}, "chat")])
+def test_meta_must_say_fp16_and_the_chat_prompt(tmp_path, over, word):
+    paths = make_fixture(tmp_path)
+    for sh in (0, 1):
+        mp = paths["records"] / "sweep-gsm8k" / f"t12.shard{sh}of2.meta.json"
+        m = json.loads(mp.read_text())
+        m.update(over)
+        mp.write_text(json.dumps(m))
+    with pytest.raises(SystemExit) as e:
+        run_main(paths)
+    assert word in str(e.value)
+
+
+def test_duplicate_with_a_different_completion_warns_but_identical_does_not(tmp_path):
+    paths = make_fixture(tmp_path)
+    f = paths["records"] / "sweep-gsm8k" / "t12.shard0of2.jsonl"
+    rows = [json.loads(l) for l in f.read_text().splitlines()]
+    write_jsonl(f, rows + [rows[0]])                       # identical resumed line
+    assert run_main(paths) == 0
+    assert not any("different completion" in w for w in summary_of(paths)["warnings"])
+    write_jsonl(f, rows + [dict(rows[0], completion="y")])
+    assert run_main(paths) == 0
+    assert any("different completion" in w for w in summary_of(paths)["warnings"])
+
+
+# ------------------------------------------------------------------ driver errors, columns, rule text
+def inject_driver_error(paths, dec="TopK", slot=2, doc=5, task="gsm8k"):
+    key = config_key(cfg_of(dec, slot, task))
+    f = paths["records"] / f"sweep-{task}" / f"t12.shard{doc % 2}of2.jsonl"
+
+    def fn(rows):
+        for r in rows:
+            if r["config"] == key and r["doc_id"] == doc:
+                for k in ("n_forward", "n_committed", "tokens_per_step", "seconds", "stopped"):
+                    r.pop(k, None)
+                r.update({"completion": None, "error": "OutOfMemoryError: out of memory"})
+        return rows
+    edit_rows(f, fn)
+    vs = [json.loads(l) for l in paths["verdicts"].read_text().splitlines()]
+    for v in vs:
+        if v["task"] == task and v["config"] == key and v["doc_id"] == doc:
+            v.update({"correct": False, "driver_error": True})
+    write_jsonl(paths["verdicts"], vs)
+    return key
+
+
+def test_driver_errors_warn_are_scored_wrong_and_leave_the_speed_over_the_rest(tmp_path):
+    paths = make_fixture(tmp_path)
+    inject_driver_error(paths)
+    assert run_main(paths) == 0
+    s = summary_of(paths)
+    sp = s["tasks"]["gsm8k"]["decoders"]["TopK"]["speeds"]["2"]
+    assert (sp["n"], sp["n_ok"], sp["failures"]) == (30, 29, 1)
+    nfes = [nfe_of("TopK", 2, i) for i in range(N_DOCS) if i != 5]
+    assert sp["tps"] == pytest.approx(256 * 29 / sum(nfes))               # 256 N_ok / sum NFE_ok, no imputing
+    assert sp["n_scored"] == 30 and sp["n_correct"] == sum(correct_of("gsm8k", "TopK", 2, i) for i in range(N_DOCS) if i != 5)
+    assert any("driver error" in w and "TopK" in w or "driver error" in w and "topk_conf" in w for w in s["warnings"])
+    tex = (paths["out"] / "t12" / "t12_matched_speed.tex").read_text()
+    assert "Speed over the $N-k$ problems that decoded; $k$ driver errors scored wrong" in tex
+    assert "GSM8K Top-$k$: 29/30 decoded" in tex
+
+
+def test_no_driver_errors_no_footnote(built):
+    assert "driver errors scored wrong" not in (built["out"] / "t12" / "t12_matched_speed.tex").read_text()
+
+
+def test_n_ok_is_in_the_zip_tables(built):
+    z = built["out"] / "t12" / "zip"
+    head = (z / "t12_sanity_cost.csv").read_text().splitlines()[0].split(",")
+    assert "n_ok" in head
+    row = next(r for r in (z / "t12_sanity_cost.csv").read_text().splitlines() if r.startswith("mbpp,TopK,3,"))
+    assert row.split(",")[head.index("n_ok")] == "29"
+    assert "n_ok" in (z / "t12_speed1_speed3.csv").read_text().splitlines()[0].split(",")
+
+
+def test_matched_table_shows_n_paired(built):
+    tex = (built["out"] / "t12" / "t12_matched_speed.tex").read_text()
+    assert "& $n$" in tex or "& n " in tex
+    row = next(l for l in tex.splitlines() if l.startswith("Top-$k$ &"))
+    assert row.rstrip(" \\").endswith("& $30$")
+    assert built["summary"]["tasks"]["gsm8k"]["matched"]["2"]["TopK"]["n_paired"] == 30
+
+
+def test_fail_columns_are_split(built):
+    tex = (built["out"] / "t12" / "t12_sanity_cost.tex").read_text()
+    assert "err" in tex and "t/o" in tex and "uns" in tex
+    assert tex.count("{13}") >= 1 and "{11}" not in tex
+
+
+def test_tie_rule_is_in_the_pairing_rule(built):
+    assert "tie" in built["summary"]["pairing"]["rule"] and "lower" in built["summary"]["pairing"]["rule"]
+    equal = {1: {"tps": 3.6, "unmatched": False}, 2: {"tps": 4.4, "unmatched": False}}
+    assert P.match_baseline(2, 4.0, equal)["slot"] == 1               # equidistant: the lower slot

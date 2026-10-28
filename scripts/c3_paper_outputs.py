@@ -51,6 +51,7 @@ from __future__ import annotations
 import argparse
 import csv
 import glob as _glob
+import hashlib
 import json
 import math
 import re
@@ -78,6 +79,15 @@ except Exception:                                         # pragma: no cover - s
         half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / (1 + z * z / n)
         return centre - half, centre + half
 
+# score_t12.RUN_FIELDS: what makes shards one run
+RUN_FIELDS = ("model", "model_revision", "precision", "task", "task_jsonl_sha256",
+              "manifest_sha256", "half", "gen_length", "block_length", "decoding", "prompt",
+              "configs_sha256", "calibrator_sha256", "c3a_clamp", "pc_sampler_variant")
+try:
+    from score_t12 import RUN_FIELDS                      # noqa: E402,F811
+except Exception:                                         # pragma: no cover
+    pass
+DASH_MACRO = "\\textnormal{---}"          # an em dash in text; a bare --- is a minus inside \\CresCI
 SEED = 20261030
 N_BOOT = 2000
 TOL = 0.10
@@ -104,7 +114,8 @@ RULE = ("each baseline is taken at its setting whose aggregate tokens per step (
         "the task's report-half problems) is nearest to C3a's at that slot, within +-10%, else '---' "
         "(KLASS: '---' where the grid says unmatched_at_target); difference = C3a minus baseline "
         "accuracy, paired on the shared doc_ids, 95% percentile CI from 2,000 bootstrap resamples "
-        "of problems, seed 20261030 (reseeded per comparison)")
+        "of problems, seed 20261030 (reseeded per comparison); on a tie (two settings equally near) the "
+        "lower speed slot is taken")
 MODEL_TAG = "llada-8b-instruct_fp16"
 
 
@@ -246,22 +257,75 @@ def load_grids(specs, warnings: list, inputs: dict) -> dict:
     return out
 
 
-def load_records(specs, warnings: list, inputs: dict) -> dict:
-    """``{task: {config_key: {doc_id: record}}}`` of the report half."""
-    out, gen_length = {}, {}
-    skipped = 0
+def run_key(meta: dict) -> str:
+    """The run a shard belongs to: score_t12's hash of ``RUN_FIELDS`` (the shard number left out),
+    so a verdict's ``run`` and a record's run agree."""
+    ident = {f: meta.get(f) for f in RUN_FIELDS}
+    return hashlib.sha256(json.dumps(ident, sort_keys=True, default=str).encode()).hexdigest()[:12]
+
+
+def _prompt_format(meta: dict):
+    p = meta.get("prompt")
+    return p.get("format") if isinstance(p, dict) else p
+
+
+def load_manifest(manifest_dir, task: str, warnings: list, inputs: dict):
+    """``(report doc_ids, fit doc_ids)`` of ``<manifest_dir>/split_manifest_<task>.json``, or None."""
+    f = Path(manifest_dir) / f"split_manifest_{task}.json" if manifest_dir else None
+    if f is None or not f.is_file():
+        warnings.append(f"{task}: no split manifest ({f}); the fit-half check and the expected "
+                        "problem count use the shard metas only")
+        return None
+    d = _read_json(f, warnings)
+    if not isinstance(d, dict):
+        return None
+    inputs[f"manifest:{task}"] = {"path": str(f), "sha256": sha256_file(f)}
+    return ({int(k) for k, v in d.items() if int(v) == 1}, {int(k) for k, v in d.items() if int(v) == 0})
+
+
+def load_records(specs, warnings: list, inputs: dict, manifest_dir=None) -> dict:
+    """The report-half records, ``{task: {config_key: {doc_id: record}}}``, and how complete they are.
+
+    Refuses (``SystemExit``): a shard without a meta file, a report-half shard whose meta is not
+    fp16 and the chat prompt, a doc_id that is not in the manifest's report half, more than one run
+    for a task (deviation 17: one machine per task).  Shards whose meta says ``half: fit`` (the
+    calibration and sanity runs) are skipped.  Shortfalls (a shard missing, a configuration with
+    fewer than the expected problems) go in ``out["_shortfalls"]`` for ``main`` to refuse or allow.
+    ``out["_meta"][task]``: ``run``, ``n_expected``, ``shards_missing``."""
+    by_run = {}                                           # task -> run -> {config: {doc: record}}
+    info = {}                                             # task -> run -> shard bookkeeping
+    gen_length, skipped, dup_diff = {}, 0, {}
     for f in _expand(specs, "t12.shard*.jsonl"):
         if f.name.endswith(".meta.json"):
             continue
-        meta, meta_path = None, f.with_name(f.name[:-len(".jsonl")] + ".meta.json")
-        if meta_path.exists():
-            meta = _read_json(meta_path, warnings)
-        meta = meta if isinstance(meta, dict) else {}
-        fmt = (meta.get("prompt") or {}).get("format") if isinstance(meta.get("prompt"), dict) else meta.get("prompt")
-        if meta.get("half") not in (None, "report") or fmt == "lmeval":
+        meta_path = f.with_name(f.name[:-len(".jsonl")] + ".meta.json")
+        meta = _read_json(meta_path, warnings) if meta_path.exists() else None
+        if not isinstance(meta, dict):
+            raise SystemExit(f"{f}: no readable meta file ({meta_path.name}); cannot tell its half, "
+                             "precision, prompt or run")
+        if meta.get("half") == "fit":
             skipped += 1
             continue
+        if meta.get("half") != "report":
+            raise SystemExit(f"{f}: meta half is {meta.get('half')!r}, not 'report'")
+        if meta.get("precision") != "fp16":
+            raise SystemExit(f"{f}: meta precision is {meta.get('precision')!r}; T12 is fp16 (deviation 17)")
+        if _prompt_format(meta) != "chat":
+            raise SystemExit(f"{f}: meta prompt format is {_prompt_format(meta)!r}; the sweep uses the chat prompt")
+        task = meta.get("task")
+        if task not in TASKS:
+            continue
+        rk = run_key(meta)
         inputs[f"records:{f}"] = {"path": str(f), "sha256": sha256_file(f)}
+        ri = info.setdefault(task, {}).setdefault(rk, {"shards": set(), "num_shards": set(), "doc_ids": set(),
+                                                       "limit": set(), "files": []})
+        ri["shards"].add(meta.get("shard"))
+        ri["num_shards"].add(meta.get("num_shards"))
+        ri["doc_ids"] |= {int(d) for d in meta.get("doc_ids") or []}
+        ri["limit"].add(meta.get("limit") or 0)
+        ri["files"].append(str(f))
+        gen_length.setdefault(task, meta.get("gen_length"))
+        cfgs = by_run.setdefault(task, {}).setdefault(rk, {})
         for line in f.read_text(encoding="utf-8").splitlines():
             if not line.strip():
                 continue
@@ -269,16 +333,57 @@ def load_records(specs, warnings: list, inputs: dict) -> dict:
                 r = json.loads(line)
             except ValueError:
                 continue
-            if r.get("half") not in (None, "report"):
+            if "config" not in r or "doc_id" not in r or r.get("task", task) != task:
                 continue
-            task = r.get("task") or meta.get("task")
-            if task not in TASKS or "config" not in r or "doc_id" not in r:
-                continue
-            gen_length.setdefault(task, meta.get("gen_length"))
-            out.setdefault(task, {}).setdefault(r["config"], {}).setdefault(int(r["doc_id"]), r)
+            d = int(r["doc_id"])
+            old = cfgs.setdefault(r["config"], {}).get(d)
+            if old is None:
+                cfgs[r["config"]][d] = r
+            elif old.get("completion") != r.get("completion"):
+                dup_diff[task] = dup_diff.get(task, 0) + 1
     if skipped:
-        warnings.append(f"{skipped} record shard(s) skipped: not the report half, or the lmeval prompt")
-    out["_gen_length"] = {t: g or GEN_LENGTH for t, g in gen_length.items()}
+        warnings.append(f"{skipped} record shard(s) skipped: fit half (calibration / sanity runs)")
+    out = {"_gen_length": {t: g or GEN_LENGTH for t, g in gen_length.items()}, "_meta": {}, "_shortfalls": []}
+    for task, runs in by_run.items():
+        if len(runs) > 1:
+            where = "; ".join(f"{rk}: {info[task][rk]['files'][0]} (+{len(info[task][rk]['files']) - 1})"
+                              for rk in sorted(runs))
+            raise SystemExit(f"{task}: records of more than one run under --records ({where}); one machine "
+                             "per task (prereg/deviations.md 17): pass the directory of one run")
+        (rk, cfgs), = runs.items()
+        ri = info[task][rk]
+        out[task] = cfgs
+        if dup_diff.get(task):
+            warnings.append(f"{task}: {dup_diff[task]} repeated (config, doc_id) with a different completion; "
+                            "the first was used")
+        man = load_manifest(manifest_dir, task, warnings, inputs)
+        rec_ids = {d for docs in cfgs.values() for d in docs}
+        if man:
+            report, fit = man
+            bad = (rec_ids | ri["doc_ids"]) - report
+            if bad:
+                raise SystemExit(f"{task}: doc_ids {sorted(bad)[:5]} are not in the report half of "
+                                 f"split_manifest_{task}.json (fit-half ids: {sorted(bad & fit)[:5]}...); "
+                                 "refusing a fit-half record")
+            limit = max(ri["limit"]) if ri["limit"] else 0
+            expected = set(sorted(report)[:limit]) if limit else set(report)
+        else:
+            expected = set(ri["doc_ids"])
+            if rec_ids - expected:
+                raise SystemExit(f"{task}: record doc_ids {sorted(rec_ids - expected)[:5]} are not in the metas' doc_ids")
+        shard_n = {n for n in ri["num_shards"] if n}
+        missing = []
+        if len(shard_n) == 1:
+            missing = sorted(set(range(shard_n.pop())) - {s for s in ri["shards"] if s is not None})
+        out["_meta"][task] = {"run": rk, "n_expected": len(expected) or None, "shards_missing": missing,
+                              "files": ri["files"]}
+        if missing:
+            out["_shortfalls"].append(f"{task}: shard(s) {missing} missing")
+        short = {k: len(docs) for k, docs in cfgs.items() if len(docs) < len(expected)}
+        if short:
+            k, n = min(short.items(), key=lambda kv: kv[1])
+            out["_shortfalls"].append(f"{task}: {len(short)} configuration(s) have fewer than the "
+                                      f"{len(expected)} expected report problems; fewest {n}/{len(expected)} ({k})")
     return out
 
 
@@ -290,9 +395,12 @@ class Verdicts(dict):
         self.timeouts = {}
 
 
-def load_verdicts(specs, warnings: list, inputs: dict) -> Verdicts:
-    """Verdicts of ``score_t12.py --per-record`` (lmeval verdicts, the sanity run's, are ignored)."""
+def load_verdicts(specs, warnings: list, inputs: dict, runs=None) -> Verdicts:
+    """Verdicts of ``score_t12.py --per-record``.  Lines that are not verdicts (no ``correct``: a record
+    file) and lmeval verdicts (the sanity run's) are skipped; a verdict whose ``run`` is not one of
+    ``runs`` (the records' run hashes) belongs to another run and is skipped."""
     out = Verdicts()
+    other = 0
     for f in _expand(specs, "*.jsonl"):
         inputs[f"verdicts:{f}"] = {"path": str(f), "sha256": sha256_file(f)}
         for line in f.read_text(encoding="utf-8").splitlines():
@@ -302,15 +410,20 @@ def load_verdicts(specs, warnings: list, inputs: dict) -> Verdicts:
                 v = json.loads(line)
             except ValueError:
                 continue
-            if v.get("prompt_format") == "lmeval" or "doc_id" not in v or "config" not in v:
+            if v.get("prompt_format") == "lmeval" or "doc_id" not in v or "config" not in v or "correct" not in v:
+                continue
+            if runs and v.get("run") is not None and v["run"] not in runs:
+                other += 1
                 continue
             out.setdefault((v.get("task"), v["config"]), {}).setdefault(int(v["doc_id"]), int(bool(v.get("correct"))))
             if v.get("error") == "timeout":
                 out.timeouts.setdefault((v.get("task"), v["config"]), set()).add(int(v["doc_id"]))
+    if other:
+        warnings.append(f"{other} verdict(s) of another run ignored (their run is not the records' run)")
     return out
 
 
-def load_scores(specs, warnings: list, inputs: dict) -> dict:
+def load_scores(specs, warnings: list, inputs: dict, runs=None) -> dict:
     """``{(task, config): row}`` of the report half, chat prompt, from ``score_t12.py --out``."""
     out = {}
     for f in _expand(specs, "*.json"):
@@ -319,7 +432,8 @@ def load_scores(specs, warnings: list, inputs: dict) -> dict:
             continue
         inputs[f"scores:{f}"] = {"path": str(f), "sha256": sha256_file(f)}
         for r in d.get("rows", []):
-            if r.get("prompt_format") in (None, "chat") and r.get("half") in (None, "report"):
+            if r.get("prompt_format") in (None, "chat") and r.get("half") in (None, "report") \
+                    and not (runs and r.get("run") is not None and r["run"] not in runs):
                 out.setdefault((r.get("task"), r.get("config")), r)
     return out
 
@@ -396,10 +510,16 @@ def outside_share(recs_by_config: dict, keys: list) -> dict | None:
 def build_task(task, recs, verdicts, scores, grid, warnings) -> dict:
     gen_length = (recs or {}).get("_gen_length", {}).get(task, GEN_LENGTH) if recs else GEN_LENGTH
     by_cfg = (recs or {}).get(task, {})
-    t = {"n": None, "decoders": {}, "matched": {}, "alpha": {}, "outside_share": None}
+    t = {"n": None, "n_expected": None, "partial": False, "shards_missing": [], "run": None, "decoders": {},
+         "matched": {}, "alpha": {}, "outside_share": None}
+    rmeta = ((recs or {}).get("_meta") or {}).get(task) or {}
     if by_cfg:
         sizes = {len(v) for v in by_cfg.values()}
         t["n"] = max(sizes)
+        t["n_expected"] = rmeta.get("n_expected") or t["n"]
+        t["shards_missing"] = rmeta.get("shards_missing") or []
+        t["run"] = rmeta.get("run")
+        t["partial"] = bool(t["shards_missing"]) or min(sizes) < t["n_expected"] or t["n"] < t["n_expected"]
         if len(sizes) > 1:
             warnings.append(f"{task}: configurations have different numbers of problems {sorted(sizes)}")
     correct = {}                                          # (dec, slot) -> {doc_id: 0/1}
@@ -414,6 +534,7 @@ def build_task(task, recs, verdicts, scores, grid, warnings) -> dict:
             continue
         st = config_stats(docs, gen_length, (getattr(verdicts, 'timeouts', {}) or {}).get((task, key), frozenset()))
         st["config"] = key
+        st["n_expected"] = t["n_expected"]
         vmap = {d: v for d, v in (verdicts.get((task, key)) or {}).items() if d in docs}
         if verdicts:
             for d, r in docs.items():                    # a failed record with no verdict is wrong
@@ -432,6 +553,11 @@ def build_task(task, recs, verdicts, scores, grid, warnings) -> dict:
             st.update({"n_correct": row.get("n_correct"), "n_scored": row["n"], "acc": row["accuracy"],
                        "ci95": list(row["ci95"])})
         t["decoders"].setdefault(dec, {"speeds": {}})["speeds"][str(slot)] = st
+    errs = [(st["config"], st["failures"]) for d in t["decoders"].values() for st in d["speeds"].values()
+            if st["failures"]]
+    if errs:
+        warnings.append(f"{task}: driver errors, scored wrong; speed is over the problems that decoded: "
+                        + ", ".join(f"{k} {n}" for k, n in errs))
     # matching
     unmatched = (g or {}).get("unmatched", {})
     for s in SLOTS:
@@ -487,7 +613,13 @@ def build_macros(S: dict) -> Macros:
     m.comment("Generated by scripts/c3_paper_outputs.py -- do not edit by hand.")
     m.comment("Names: paper/sections/06_c3.tex.  Fractions on the 0-1 scale, 3 decimals; TPS and Sec 2,")
     m.comment("NFE 1; N and FitDocs integers.  --- = a comparison with no match (no setting within 10%,")
-    m.comment("or KLASS unmatched at the target).  A macro that is not defined has no input yet.")
+    m.comment("or KLASS unmatched at the target), written \\textnormal{---}.  A macro that is not defined has")
+    m.comment("no input yet.")
+    for task in TASKS:
+        if S["tasks"][task]["partial"]:
+            t = S["tasks"][task]
+            m.comment(f"PARTIAL: {task} N={t['n']}/{t['n_expected']} (--allow-partial); shards missing: "
+                      f"{t['shards_missing'] or 'none'}")
     for task in TASKS:
         w = TASK_WORD[task]
         c = S["calibrators"].get(task)
@@ -529,7 +661,7 @@ def build_macros(S: dict) -> Macros:
                     m.add(base + "Hi", fnum(e["hi"], 3))
                 elif not e["matched"] and e["reason"] in ("unmatched_at_target", "outside_tolerance"):
                     for suffix in ("", "Lo", "Hi"):
-                        m.add(base + suffix, DASH)
+                        m.add(base + suffix, DASH_MACRO)
         if t["outside_share"]:
             m.add(f"CThreeTTwelve{w}OutsideShare", fnum(t["outside_share"]["share"], 3))
         for s, a in t["alpha"].items():
@@ -567,74 +699,105 @@ def _est(acc, ci) -> str:
     return est_ci({"value": acc, "ci": list(ci) if ci and all(_finite(x) for x in ci) else None})
 
 
+def nlabel(t: dict, tex: bool = True) -> str:
+    """``$N=30$``, or ``$N=15/30$ (partial)`` for a run reported with --allow-partial."""
+    if not t["n"]:
+        return ""
+    body = f"N={t['n']}/{t['n_expected']}" if t["partial"] else f"N={t['n']}"
+    s = f"${body}$" if tex else body
+    return s + " (partial)" if t["partial"] else s
+
+
 def matched_table(S: dict) -> str:
-    """Sec. 6's table: per task, one row per decoder at the setting matched to C3a's speed-2 slot."""
+    """Sec. 6's table: per task, one row per decoder at the setting matched to C3a's speed-2 slot;
+    ``n`` is the number of problems the difference is paired on."""
     s = PRIMARY_SPEED
     rows = [HEADER.format(src="the T12 report-half records, verdicts and grids"), OPEN,
-            "\\begin{tabular}{lrll}\n\\toprule\n",
-            "Decoder & tok/step & Acc.\\ [95\\% CI] & $\\Delta$ vs C3a [95\\% CI] \\\\\n"]
+            "\\begin{tabular}{lrllr}\n\\toprule\n",
+            "Decoder & tok/step & Acc.\\ [95\\% CI] & $\\Delta$ vs C3a [95\\% CI] & $n$ \\\\\n"]
+    notes = []
     for task in TASKS:
         t = S["tasks"][task]
-        head = f"{TASK_LABEL[task]}" + (f" ($N={t['n']}$)" if t["n"] else "")
+        head = TASK_LABEL[task] + (f" ({nlabel(t)})" if t["n"] else "")
         rows.append("\\midrule\n")
-        rows.append(f"\\multicolumn{{4}}{{l}}{{\\textbf{{{head}}}}} \\\\\n")
+        rows.append(f"\\multicolumn{{5}}{{l}}{{\\textbf{{{head}}}}} \\\\\n")
         c3a = t["decoders"].get("CThreeA", {}).get("speeds", {}).get(str(s))
         for dec in DECODERS:
             if dec == "CThreeA":
                 if c3a and _finite(c3a["tps"]):
                     rows.append(" & ".join([LABEL[dec], num(c3a["tps"], 2), _est(c3a.get("acc"), c3a.get("ci95")),
-                                            "ref."]) + " \\\\\n")
+                                            "ref.", _int(c3a.get("n_scored"))]) + " \\\\\n")
+                    shown = c3a
                 else:
-                    rows.append(" & ".join([LABEL[dec], DASH, DASH, DASH]) + " \\\\\n")
-                continue
-            e = (t["matched"].get(str(s)) or {}).get(dec)
-            if not e or not e["matched"]:
-                rows.append(" & ".join([LABEL[dec], DASH, DASH, DASH]) + " \\\\\n")
-                continue
-            st = t["decoders"][dec]["speeds"][str(e["slot"])]
-            diff = DASH if e["diff"] is None else est_ci({"value": e["diff"], "ci": [e["lo"], e["hi"]]})
-            rows.append(" & ".join([LABEL[dec], num(e["tps"], 2), _est(st.get("acc"), st.get("ci95")), diff])
-                        + " \\\\\n")
+                    rows.append(" & ".join([LABEL[dec], DASH, DASH, DASH, DASH]) + " \\\\\n")
+                    shown = None
+            else:
+                e = (t["matched"].get(str(s)) or {}).get(dec)
+                if not e or not e["matched"]:
+                    rows.append(" & ".join([LABEL[dec], DASH, DASH, DASH, DASH]) + " \\\\\n")
+                    continue
+                shown = t["decoders"][dec]["speeds"][str(e["slot"])]
+                diff = DASH if e["diff"] is None else est_ci({"value": e["diff"], "ci": [e["lo"], e["hi"]]})
+                rows.append(" & ".join([LABEL[dec], num(e["tps"], 2), _est(shown.get("acc"), shown.get("ci95")), diff,
+                                        _int(e["n_paired"] or None)]) + " \\\\\n")
+            if shown and shown["failures"]:
+                notes.append(f"{TASK_LABEL[task]} {LABEL[dec]}: {shown['n_ok']}/{shown['n']} decoded")
+    if notes:
+        rows.append("\\midrule\n")
+        rows.append("\\multicolumn{5}{p{7.2cm}}{\\scriptsize Speed over the $N-k$ problems that decoded; $k$ driver "
+                    "errors scored wrong (" + "; ".join(notes) + ").} \\\\\n")
     rows += ["\\bottomrule\n\\end{tabular}\n", CLOSE]
     return "".join(rows)
 
 
+def _int(x) -> str:
+    return f"${int(x)}$" if _finite(x) and x else DASH
+
+
 def sanity_cost_table(S: dict) -> str:
     """The sanity rows and the cost (tokens per step, forward passes, seconds per problem) per
-    decoder and speed, for the slides and the code archive's README."""
+    decoder and speed, for the slides and the code archive's README.  Problems that went wrong are
+    counted apart: ``err`` driver errors (scored wrong), ``t/o`` scoring timeouts (wrong), ``uns``
+    generations with no stop string in 256 tokens (not necessarily wrong); each over the three speeds."""
     rows = [HEADER.format(src="the Ada sanity run and the T12 report-half records"), OPEN,
-            "\\begin{tabular}{l" + "rrr" * 3 + "r}\n\\toprule\n"]
+            "\\begin{tabular}{l" + "rrr" * 4 + "}\n\\toprule\n"]
     san = S["sanity"]
-    rows.append("\\multicolumn{11}{l}{\\textbf{Sanity: GSM8K fit half"
+    rows.append("\\multicolumn{13}{l}{\\textbf{Sanity: GSM8K fit half"
                 + (f", $n={san['n']}$" if san else "") + ", 5-shot, Fast-dLLM settings}} \\\\\n")
     for key, dec in SANITY_DEC.items():
         r = (san or {}).get("rows", {}).get(key)
         ours = _est(r["acc"], r["ci95"]) if r else DASH
         rows.append(f"\\multicolumn{{4}}{{l}}{{{LABEL[dec]} ({tex_cfg(key)})}} & "
-                    f"\\multicolumn{{4}}{{l}}{{ours {ours}}} & "
-                    f"\\multicolumn{{3}}{{l}}{{published ${PUBLISHED[key]:.3f}$}} \\\\\n")
+                    f"\\multicolumn{{5}}{{l}}{{ours {ours}}} & "
+                    f"\\multicolumn{{4}}{{l}}{{published ${PUBLISHED[key]:.3f}$}} \\\\\n")
     rows.append("\\midrule\n")
-    rows.append("Decoder & " + " & ".join(f"\\multicolumn{{3}}{{c}}{{speed {s}}}" for s in SLOTS) + " & fail \\\\\n")
-    rows.append(" & " + " & ".join("tok/st & NFE & s" for _ in SLOTS) + " & \\\\\n")
+    rows.append("Decoder & " + " & ".join(f"\\multicolumn{{3}}{{c}}{{speed {s}}}" for s in SLOTS)
+                + " & \\multicolumn{3}{c}{problems} \\\\\n")
+    rows.append(" & " + " & ".join("tok/st & NFE & s" for _ in SLOTS) + " & err & t/o & uns \\\\\n")
     for task in TASKS:
         t = S["tasks"][task]
         rows.append("\\midrule\n")
-        rows.append(f"\\multicolumn{{11}}{{l}}{{\\textbf{{{TASK_LABEL[task]}}}"
-                    + (f" ($N={t['n']}$)" if t["n"] else "") + "} \\\\\n")
+        rows.append(f"\\multicolumn{{13}}{{l}}{{\\textbf{{{TASK_LABEL[task]}}}"
+                    + (f" ({nlabel(t)})" if t["n"] else "") + "} \\\\\n")
         for dec in DECODERS:
-            cells, fails = [], 0
+            cells, tot = [], [0, 0, 0]
             for s in SLOTS:
                 st = t["decoders"].get(dec, {}).get("speeds", {}).get(str(s))
                 if st:
                     cells += [_plain(st["tps"], 2), _plain(st["nfe"], 1), _plain(st["seconds"], 2)]
-                    fails += st["n_failed_any"]
+                    for i, k in enumerate(("failures", "n_timeout", "n_unstopped")):
+                        tot[i] += st[k]
                 else:
                     cells += [DASH] * 3
             have = t["decoders"].get(dec)
-            rows.append(" & ".join([LABEL[dec]] + cells + [str(fails) if have else DASH]) + " \\\\\n")
+            rows.append(" & ".join([LABEL[dec]] + cells + ([f"${x}$" for x in tot] if have else [DASH] * 3))
+                        + " \\\\\n")
         o = t["outside_share"]
-        rows.append("\\multicolumn{11}{l}{C3a steps outside the fit range: "
+        rows.append("\\multicolumn{13}{l}{C3a steps outside the fit range: "
                     + (num(o["share"], 3) if o else DASH) + "} \\\\\n")
+    rows.append("\\midrule\n\\multicolumn{13}{l}{\\scriptsize err: driver errors (scored wrong); t/o: scoring "
+                "timeouts (wrong); uns: no stop string in 256 tokens (not necessarily wrong); each summed over the "
+                "three speeds.} \\\\\n")
     rows += ["\\bottomrule\n\\end{tabular}\n", CLOSE]
     return "".join(rows)
 
@@ -678,7 +841,7 @@ def write_zip_tables(S: dict, d: Path) -> None:
                       f"{PUBLISHED[key]:.3f}", _fmt(r["acc"] - PUBLISHED[key]) if r else ""])
     shead = ["task", "decoder", "config", "n", "acc", "acc_lo", "acc_hi", "published", "acc_minus_published"]
     _csv(d / "t12_sanity.csv", shead, srows)
-    chead = ["task", "decoder", "speed", "config", "n", "failures", "unstopped", "timeouts", "failed_any", "tokens_per_step", "nfe",
+    chead = ["task", "decoder", "speed", "config", "n", "n_ok", "failures", "unstopped", "timeouts", "failed_any", "tokens_per_step", "nfe",
              "seconds_per_problem", "outside_share"]
     crows = []
     for task in TASKS:
@@ -688,21 +851,22 @@ def write_zip_tables(S: dict, d: Path) -> None:
                 st = t["decoders"].get(dec, {}).get("speeds", {}).get(str(s))
                 if st:
                     o = t["outside_share"]["per_slot"].get(str(s)) if (dec == "CThreeA" and t["outside_share"]) else None
-                    crows.append([task, dec, s, st["config"], st["n"], st["failures"], st["n_unstopped"],
+                    crows.append([task, dec, s, st["config"], st["n"], st["n_ok"], st["failures"], st["n_unstopped"],
                                   st["n_timeout"], st["n_failed_any"], _fmt(st["tps"], 3),
                                   _fmt(st["nfe"], 2), _fmt(st["seconds"], 3), _fmt(o["share"]) if o else ""])
     _csv(d / "t12_sanity_cost.csv", chead, crows)
-    md = ["# T12 sanity check and cost\n",
+    nnote = "Report problems: " + "; ".join(f"{t} {nlabel(S['tasks'][t], False) or DASH}" for t in TASKS) + ".\n"
+    md = ["# T12 sanity check and cost\n", nnote,
           "Sanity: the Ada fit-half GSM8K run (5-shot, Fast-dLLM settings, fp16, 2080 Ti) against the "
           "published LLaDA-8B-Instruct numbers (0.793 top-k k=1; 0.792 threshold tau=0.9); 95% Wilson "
           "intervals.\n", _md(shead, srows),
           "\nCost, report halves (zero-shot chat, 256 tokens, blocks of 32, greedy): tokens per step = "
-          "256 N / sum NFE; NFE and seconds are per-problem means over problems that decoded; failures = "
+          "256 N_ok / sum NFE over the n_ok problems that decoded (driver errors are not imputed); NFE and seconds are per-problem means over them; failures = "
           "problems the driver could not decode (scored wrong); unstopped = no stop string within 256 tokens; "
           "timeouts = programs that timed out when scored; failed_any = problems with any of the three.\n", _md(chead, crows)]
     (d / "t12_sanity_cost.md").write_text("\n".join(md), encoding="utf-8")
 
-    hhead = ["task", "decoder", "speed", "config", "tokens_per_step", "acc", "acc_lo", "acc_hi",
+    hhead = ["task", "decoder", "speed", "config", "n", "n_ok", "tokens_per_step", "acc", "acc_lo", "acc_hi",
              "matched_slot", "matched_tps", "matched_diff", "diff_lo", "diff_hi", "n_paired"]
     hrows = []
     for task in TASKS:
@@ -714,7 +878,7 @@ def write_zip_tables(S: dict, d: Path) -> None:
                     continue
                 e = None if dec == "CThreeA" else (t["matched"].get(str(s)) or {}).get(dec)
                 lo, hi = st.get("ci95") or (None, None)
-                hrows.append([task, dec, s, st["config"], _fmt(st["tps"], 3), _fmt(st.get("acc")), _fmt(lo), _fmt(hi),
+                hrows.append([task, dec, s, st["config"], st["n"], st["n_ok"], _fmt(st["tps"], 3), _fmt(st.get("acc")), _fmt(lo), _fmt(hi),
                               e["slot"] if e and e["matched"] else "", _fmt(e["tps"], 3) if e and e["matched"] else "",
                               _fmt(e["diff"]) if e and e["matched"] and e["diff"] is not None else "",
                               _fmt(e["lo"]) if e and e["matched"] and e["lo"] is not None else "",
@@ -722,7 +886,7 @@ def write_zip_tables(S: dict, d: Path) -> None:
                               e["n_paired"] if e and e["matched"] else ""])
     _csv(d / "t12_speed1_speed3.csv", hhead, hrows)
     (d / "t12_speed1_speed3.md").write_text(
-        "# T12 at speeds 1 and 3\n\nPer decoder: accuracy at its own speed-s setting (95% Wilson), and, "
+        "# T12 at speeds 1 and 3\n\n" + nnote + "\nPer decoder: accuracy at its own speed-s setting (95% Wilson), and, "
         "when matched, the paired accuracy difference C3a minus the decoder at the setting nearest to "
         "C3a's slot s (within 10%; matched_slot / matched_tps), 95% percentile bootstrap CI (2,000 "
         "resamples of problems, seed 20261030). A blank is '---': no setting within 10%, or KLASS "
@@ -811,13 +975,25 @@ def main(argv=None) -> int:
                     help="llada-8b-instruct_fp16_c3a-<task>.json files or a directory")
     ap.add_argument("--sanity", default="artifacts/t12/llada-8b-instruct_fp16_gsm8k-sanity.json")
     ap.add_argument("--out-dir", default="artifacts", help="artifacts root: c3/ and t12/ below it")
+    ap.add_argument("--manifest-dir", default="artifacts",
+                    help="where split_manifest_<task>.json are: the report-half ids the records must cover")
+    ap.add_argument("--allow-partial", action="store_true",
+                    help="report an incomplete run (a shard missing, a time cap) as N=x/y (partial) "
+                         "instead of refusing it")
     ap.add_argument("--no-figures", action="store_true")
     a = ap.parse_args(argv)
 
     warnings, inputs = [], {}
-    recs = load_records(a.records, warnings, inputs) if a.records else {}
-    verdicts = load_verdicts(a.verdicts, warnings, inputs) if a.verdicts else {}
-    scores = load_scores(a.scores, warnings, inputs) if a.scores else {}
+    recs = load_records(a.records, warnings, inputs, a.manifest_dir) if a.records else {}
+    short = recs.get("_shortfalls") or []
+    if short and not a.allow_partial:
+        raise SystemExit("refusing a partial T12 run (nothing written):\n  " + "\n  ".join(short)
+                         + "\npass --allow-partial to report it as N=x/y (partial)")
+    for w in short:
+        warnings.append(f"PARTIAL (--allow-partial): {w}")
+    runs = {m["run"] for m in (recs.get("_meta") or {}).values()}
+    verdicts = load_verdicts(a.verdicts, warnings, inputs, runs) if a.verdicts else {}
+    scores = load_scores(a.scores, warnings, inputs, runs) if a.scores else {}
     grid = load_grids(a.grids, warnings, inputs)
     cal = load_calibrators(a.calibrators, warnings, inputs)
     sanity = load_sanity(a.sanity, warnings, inputs)
@@ -834,7 +1010,7 @@ def main(argv=None) -> int:
 
     S = {"what": "T12 summary for the paper (scripts/c3_paper_outputs.py): LLaDA-8B-Instruct fp16, "
                  "report halves of GSM8K and MBPP, zero-shot chat, 256 tokens, blocks of 32, greedy",
-         "primary_speed": PRIMARY_SPEED,
+         "primary_speed": PRIMARY_SPEED, "allow_partial": bool(a.allow_partial),
          "pairing": {"rule": RULE, "seed": SEED, "n_boot": N_BOOT, "tolerance": TOL,
                      "speed_metric": "256 N / sum(NFE) over the task's report-half problems",
                      "deviation": "prereg/deviations.md entry 17"},
