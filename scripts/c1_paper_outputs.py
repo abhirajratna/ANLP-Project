@@ -544,7 +544,8 @@ def t8_table(R: Results) -> str:
         return out
 
     head = ["Arm", "Masks", "E1", "+pos.", "+type", "+temp.", "E2", "+pos.", "+type", "+temp."]
-    body = _arm_rows(R, labels_for_main(R), cells, 8)
+    # no control runs on the time-split set: its rows would be all dashes
+    body = _arm_rows(R, [l for l in labels_for_main(R) if not l.endswith("TimeSplit")], cells, 8)
     return _table("llrrrrrrrr", head, body, "results/t8/<Label>/ablation.json") + (
         "% E1 = Delta(32)-Delta(1), E2 = field(32)-field(1), without control and with it.  There is\n"
         "% no E2 row for temperature (it recalibrates Delta only).  Markers: \\ddagger = the paired\n"
@@ -556,7 +557,10 @@ def point_only(e) -> str:
 
 
 def precision_table(R: Results) -> str:
-    rows = [r for r in (R.precision or {}).get("rows", []) if r["control"] == "precision"]
+    # the two kinds of state of the Holm families only; ablation.json (code archive) has the rest
+    rows = [r for r in (R.precision or {}).get("rows", [])
+            if r["control"] == "precision" and r["arm"] in PRIMARY_MASKS]
+    rows.sort(key=lambda r: PRIMARY_MASKS.index(r["arm"]))
     body = []
     for r in rows:
         eff = {"E1_contrast": "E1", "E2_field_contrast": "E2", "beta_z_noFE": "$\\beta_z$, no FE"}.get(

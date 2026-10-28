@@ -35,8 +35,8 @@
 %   Difference}[Lo|Hi];  TEightLladaBasePrecisionPrecision{EOne,ETwo}<Tag>...      t8
 %
 % Labels defined here: sec:c1, sec:c1-main, sec:c1-beta, sec:c1-e3, sec:c1-t8,
-% sec:c1-robust, tab:c1-main, fig:c1-delta; in appendix_c1.tex: sec:c1-app, tab:c1-t8,
-% tab:c1-gamma.  The E3, robustness, shared-error and beta_z tables are not in the paper (space):
+% sec:c1-robust, tab:c1-main; in appendix_c1.tex: sec:c1-app, sec:c1-app-native, tab:c1-t8.
+% The gamma, E3, robustness, shared-error and beta_z tables are not in the paper (space):
 % c1_paper_outputs.py still writes them, and the code archive carries them.
 % Used from Secs. 2-3: sec:setup, eq:gap, prop:select, prop:split,
 % eq:gapsplit, sec:instrument, tab:runs, sec:traces, sec:estimands, eq:eqtwo, eq:eqthree,
@@ -72,9 +72,8 @@ within each arm and kind of state (\S\ref{sec:inference}).
 We claim an E1 or E2 effect only if it is declared, its 95\% interval excluding 0, \emph{and}
 Holm rejects it at $\alpha=0.05$ within its family (14 tests; a missing cell counts as $p=1$).
 Everything else is exploratory, reported with its interval and no claim: decoder states at
-$k\in\{2,8\}$, matched uniform states, $\beta_z$, $\gamma_k$, E3, the native gap, the controls,
-and the contamination-filtered, time-split, additive-calibrator, knot and independent-estimator
-runs.
+$k\in\{2,8\}$, matched uniform states, $\beta_z$, $\gamma_k$, E3, the native gap, the controls
+and the robustness runs (\S\ref{sec:c1-robust}).
 
 % ------------------------------------------------------------------- floats
 \begin{table*}[t]
@@ -89,16 +88,6 @@ runs.
   \label{tab:c1-main}
   \par\smallskip{\footnotesize\raggedright\Cres{COneHolmFootnote}\par}
 \end{table*}
-
-\begin{figure}[t]
-  \centering
-  \IfFileExists{figures/c1/c1_delta_m_LladaBase.pdf}%
-    {\includegraphics[width=\columnwidth]{figures/c1/c1_delta_m_LladaBase}}%
-    {\Cpending{Figure $\Delta(m)$, LLaDA-8B-Base}}
-  \caption{LLaDA-8B-Base: $\Delta(m)$ (solid, 95\% band) and its field term (dashed)
-    against field size $m$. Solid minus dashed is own miscalibration plus the third term of Eq.~\ref{eq:gapsplit}.}
-  \label{fig:c1-delta}
-\end{figure}
 
 % ------------------------------------------------------------------- E1 / E2
 \subsection{Does the gap grow with the field?}
@@ -120,13 +109,9 @@ MBPP and of the 110M model, are both declared but not claimed
 % ties them on v1 and the v1.1 dry run); if they differ, name both.
 Sizes differ as much as signs: $|\mathrm{E1}|\le0.015$ for the base and 110M models, up to
 0.26 for the instruct models on MBPP.
-
-For LLaDA-8B-Base in uniform states (Figure~\ref{fig:c1-delta}), $\Delta(1)$, the ordinary
-signed calibration error of a masked position in states of at least \VivaPoolMax{} masked
-positions, is \CresCI{COneLladaBaseGapOneUni}, beside a 15-bin ECE of
-$\Cres{COneLladaBaseECEUni}$ over all masked positions, and $\Delta(\VivaPoolMax)$ is
-\CresCI{COneLladaBaseGapThirtyTwoUni}: E1 is \CresCI{COneLladaBaseContrastUni}. In $k{=}4$
-decoder states E1 is \CresCI{COneLladaBaseContrastDecTopkConfKFour}.
+For LLaDA-8B-Base in uniform states $\Delta(1)$ is \CresCI{COneLladaBaseGapOneUni} (15-bin ECE
+$\Cres{COneLladaBaseECEUni}$) and E1 is \CresCI{COneLladaBaseContrastUni}; in decoder states E1 is
+\CresCI{COneLladaBaseContrastDecTopkConfKFour}.
 Decoder states change the picture: E1 changes sign for both base models and
 LLaDA-8B-Instruct on GSM8K, and is claimed only in decoder states for LLaDA-8B-Instruct on MBPP
 and the 110M model. Uniform states matched to the decoder's mask counts (exploratory) keep the base models'
@@ -136,183 +121,100 @@ they are already positive (\CresCI{COneLladaInstructGsmContrastUniMatchedTopkCon
 there it comes partly from how many.
 
 \paragraph{How much is the field term?}
-At $m=\VivaPoolMax$ the gap splits into own miscalibration
+At $m=\VivaPoolMax$ LLaDA-8B-Base's uniform-state gap splits into own miscalibration
 $\Cres{COneLladaBaseOwnThirtyTwoUni}$, field term $\Cres{COneLladaBaseFieldThirtyTwoUni}$
-and a residual, and E2 is \CresCI{COneFieldContrastLladaBaseUni}
+and a residual; E2 is \CresCI{COneFieldContrastLladaBaseUni}
 (decoder states: \CresCI{COneFieldContrastLladaBaseDecTopkConfKFour}).
 E2 is claimed in all \Cres{COneHolmETwoFamily} cells and positive in 12. For the base and 110M
 models every $|\mathrm{E2}|$ is below 0.005, of the order of what the estimator read on
-simulated traces with no field term (\S\ref{sec:validation}); we do not read these as a winner's
-curse; under an independent estimator the LLaDA-8B-Base decoder-state field term is not
-identified (\S\ref{sec:c1-robust}). In seven
+simulated traces with no field term (\S\ref{sec:validation}), so we do not read these as a
+winner's curse. In seven
 of the eight instruct cells E2 is 0.013 to \Cres{COneFieldContrastDreamInstructMbppUni}
 (Dream-7B-Instruct, MBPP, uniform states, where E1 is \Cres{COneDreamInstructMbppContrastUni}):
-there the field term grows with $m$, as a winner's curse predicts. There, at equal confidence,
+there the field term grows with $m$, as a winner's curse predicts: at equal confidence,
 winners of large fields come from contexts where tokens are right less often. The eighth,
 LLaDA-8B-Instruct on GSM8K in uniform states, is negative. E2 intervals condition on the
 fitted calibrators (\S\ref{sec:inference}).
-The third term of the split, $\E_m[\hat\pi(\ell,s)-a]$, zero without shared errors, is
-\CresCI{COneLladaBaseResidualOneUni} at $m=1$ and \CresCI{COneLladaBaseResidualThirtyTwoUni}
-at $m=\VivaPoolMax$, and the within-state ICC of residuals is \CresCI{COneLladaBaseICCUni}
-(full table in the code archive).
-Positions of a state share errors in every arm, the ICC interval excluding 0 throughout:
-weakly in the base and 110M models (ICC at most 0.006), clearly in the instruct models (0.036
-to 0.056). The residual at $m=\VivaPoolMax$ is near 0 in the base and 110M models except in
-LLaDA-8B-Base decoder states (\CresCI{COneLladaBaseResidualThirtyTwoDecTopkConfKFour}, larger
-in size than that cell's E1). It is 0.055 to 0.103 on MBPP and in uniform states of
-Dream-7B-Instruct on GSM8K, larger than E2 in four of these five cells: there the split has
-its third term, and E2 and $\beta_z$ are read with that in mind (\S\ref{sec:c1-beta}). In the
-simulated shared-error world the field term at $m=\VivaPoolMax$ was \CresCI{TZeroFieldMisreading}
-(\S\ref{sec:validation}), below zero; its third term was negative, unlike these cells, so this
-does not rule shared errors out.
+Positions of a state share errors in every arm (within-state ICC of residuals above 0
+throughout: at most 0.006 in the base and 110M models, 0.036 to 0.056 in the instruct models),
+so the split has its third term, $\E_m[\hat\pi(\ell,s)-a]$. At $m=\VivaPoolMax$ it is near 0 in
+the base and 110M models except LLaDA-8B-Base decoder states
+(\CresCI{COneLladaBaseResidualThirtyTwoDecTopkConfKFour}), and 0.055 to 0.103 on MBPP and in
+uniform states of Dream-7B-Instruct on GSM8K, larger than E2 in four of these five cells; there
+E2 and $\beta_z$ are read with that in mind. The simulated shared-error world gave a field term
+of \CresCI{TZeroFieldMisreading} with a negative third term, unlike these cells; this does not
+rule shared errors out (full table in the code archive).
 
 % ------------------------------------------------------------------- beta_z
 \subsection{The selection diagnostic $\beta_z$}
 \label{sec:c1-beta}
 
-$\beta_z$ (Eq.~\ref{eq:eqtwo}) asks the same question by regression: does winning a larger field
-($z_{1,m}$, the expected maximum of $m$ standard normals) predict correctness beyond the winner's
-own log-odds (\S\ref{sec:estimands})? In simulation shared errors gave a \emph{positive} $\beta_z$
-without fixed effects (\S\ref{sec:validation}), so we read
-$\beta_z$ only beside the sign of E2. For LLaDA-8B-Base in uniform states it is
-$\Cres{COneLladaBaseBetaZNoFEUni}$ without fixed effects and $\Cres{COneLladaBaseBetaZFEUni}$
-with them (Table~\ref{tab:c1-main}).
-Without fixed effects $\beta_z$ excludes 0 in all 14 cells and is negative in 12, and with them
-its interval holds 0 in 10: the pattern of a field effect (small in the base and 110M models, as E2 is). The two positive cells, decoder states of LLaDA-8B-Base and of the 110M model, have
-E2 at the estimator's bias.
+$\beta_z$ (Eq.~\ref{eq:eqtwo}) asks whether winning a larger field predicts correctness beyond
+the winner's own log-odds; shared errors gave a \emph{positive} $\beta_z$ without fixed effects
+in simulation (\S\ref{sec:validation}), so we read it beside the sign of E2.
+Without fixed effects it excludes 0 in all 14 cells (Table~\ref{tab:c1-main}) and is negative in
+12, and with them its interval holds 0 in 10: the pattern of a field effect (small in the base
+and 110M models, as E2 is). The two positive cells, decoder states of LLaDA-8B-Base and of the
+110M model, have E2 at the estimator's bias.
 % counts: \ddagger markers of tab:c1-main (regen of 28 Oct; recheck at the final regen)
 Of the \Cres{COneHolmGammaFamily} tests of $\gamma_2,\gamma_3,\gamma_4$ (Eq.~\ref{eq:eqthree}),
-Holm rejects \Cres{COneHolmGammaReject}, in \Cres{COneHolmGammaRows} rows; LLaDA-8B-Base,
-uniform: $\gamma_2=\Cres{COneLladaBaseGammaTwoUni}$, $p_{\mathrm{Holm}}=\Cres{COneHolmPGammaTwoLladaBaseUni}$
-(Table~\ref{tab:c1-gamma}, Appendix). Every rejected $\gamma_k$ is positive, all in the instruct
-models and Dream-7B-Base decoder states: within a state, at equal confidence, lower-ranked pool
-members are right more often than the winner, which Proposition~\ref{prop:select} excludes when its
-conditions hold. Like the ICC, we read this as a sign of shared errors (or of a calibration slope
-that varies by state); none is a claim.
+Holm rejects \Cres{COneHolmGammaReject}, in \Cres{COneHolmGammaRows} rows (code archive), all
+positive and all in the instruct models and Dream-7B-Base decoder states: within a state, at
+equal confidence, lower-ranked pool members are right more often than the winner, which
+Proposition~\ref{prop:select} excludes when its conditions hold. Like the ICC, we read this as a
+sign of shared errors (or of a calibration slope that varies by state); none is a claim.
 
-% ------------------------------------------------------------------- E3
+% ------------------------------------------------------------------- E3, native gap
 \subsection{Decoder states}
 \label{sec:c1-e3}
 
-\paragraph{Committed tokens.}
-% Native gap (sec:estimands): macros COne<Label>Native<level>DecTopkConfKFour[Lo|Hi] (PR #57),
-% groups of >= 10 documents.  Ranges below from the v1.1 dry run (res/dry, 27 Oct): native at
-% |M_t| 32-63 / uniform-state ECE = 1.85 (DreamBase) .. 4.35 (DreamInstructMbpp), CI low end
-% above the ECE in all 7; / Delta(1) = 1.84 .. 3.29.  Re-check after the Thursday regen.
-The native gap measures what a decoder actually commits. For tokens the $k{=}4$ decoder
-commits with 32--63 positions masked it is
-\CresCI{COneLladaInstructGsmNativeThirtyTwoDecTopkConfKFour} for LLaDA-8B-Instruct on GSM8K,
-against an ECE of \Cres{COneLladaInstructGsmECEUni} over random masks. In all seven arms it is
-1.8 to 4.4 times its arm's random-mask ECE, its interval above it (the native gap is 0.013 to 0.018 for the base
-and 110M models, 0.079 to 0.176 for the instruct models), and the instruct models reach 0.15 to
-0.27 with 128--255 positions masked. Commit-time miscalibration has been reported for whole
-answers \citep{jiang2026bayeser}; here it holds per committed token, in every arm. The mask
-count mixes field size with lost context, so this describes and does not test E1.
-% Hand-typed, re-check at the regen: 1.8, 4.4, 0.013-0.018, 0.079-0.176, 0.15-0.27.
-
-\paragraph{E3.}
-E3 compares accuracy at equal confidence and mask rate in decoder and in uniform states
-(\S\ref{sec:estimands}); the decoder is teacher-forced, so a difference comes from which
-positions remain masked, not from its own mistakes. All E3 rows are exploratory (full table in the code archive). For
-LLaDA-8B-Base at $k=4$ the difference, positive if decoder-state tokens are right less
-often, is \CresCI{EThreeLladaBaseTypeEffectTopkConfKFourMatched} against matched uniform
-states (sup-$t$ $p=\Cres{EThreeLladaBaseTypeTestPTopkConfKFourMatched}$) and
-\CresCI{EThreeLladaBaseTypeEffectTopkConfKFourGrid} against the reweighted uniform grid.
-Against matched uniform states it is positive, its interval excluding 0, in every arm and at
-every $k\in\{2,4,8\}$ (sup-$t$ $p\le0.002$): at equal confidence and mask rate, tokens are
-right less often in the states a decoder visits, by 0.001 to 0.006 in the base and 110M
-models and 0.03 to 0.06 in the instruct models. A calibrator for decoding should be fitted on
-decoder states, as C3a's is (\S\ref{sec:c3}).
+E3 compares accuracy at equal confidence and mask rate in decoder and matched uniform states
+(Appendix~\ref{sec:c1-app}); the decoder is teacher-forced, so a difference comes from which
+positions remain masked, not from its own mistakes. It is positive, its interval excluding 0,
+in every arm and at every $k\in\{2,4,8\}$ (sup-$t$ $p\le0.002$; exploratory, full table in the
+code archive): tokens are right less often in the states a decoder visits, by 0.001 to 0.006 in
+the base and 110M models and 0.03 to 0.06 in the instruct models (LLaDA-8B-Base, $k=4$:
+\CresCI{EThreeLladaBaseTypeEffectTopkConfKFourMatched}). A calibrator for decoding should
+therefore be fitted on decoder states, as C3a's is (\S\ref{sec:c3}).
 % ranges and p from tables/c1/c1_e3.tex, matched columns (regen of 28 Oct; recheck)
+The tokens a decoder commits are themselves more overconfident than random masks suggest:
+with 32--63 positions masked, $c-a$ on the $k{=}4$ decoder's commits is 1.8 to 4.4 times its
+arm's random-mask ECE in every arm, its interval above it (descriptive;
+Appendix~\ref{sec:c1-app-native}).
+% Hand-typed, re-check at the regen: 1.8, 4.4 (unrounded ratios 1.85 DreamBase .. 4.35 DreamInstructMbpp).
 
-% ------------------------------------------------------------------- T8
-\subsection{Controls}
+% ------------------------------------------------------------------- controls, robustness
+\subsection{Controls and robustness}
 \label{sec:c1-t8}
-
-A change of $\Delta$ with $m$ could come from what winners are rather than from winning:
-where they sit, what kind of token they are, or a model over- or underconfident by mask
-rate. Each control removes one (\S\ref{sec:estimands}); Table~\ref{tab:c1-t8}
-(Appendix~\ref{sec:c1-app}) gives E1 and E2 (temperature: E1 only) without and with it and the
-paired difference. For LLaDA-8B-Base in uniform states the change in E1 is
-\CresCI{TEightLladaBasePositionEOneUniDifference} for position,
-\CresCI{TEightLladaBaseTokenTypeEOneUniDifference} for token type and
-\CresCI{TEightLladaBaseTemperatureLogoddsEOneUniDifference} for a temperature per mask-rate
-bin.
-% E2 differences if wanted: TEightLladaBase{Position,TokenType}ETwoUniDifference[Lo|Hi].
-In decoder states E1 keeps its sign under every control in every arm and moves by at most
-0.03 (temperature, LLaDA-8B-Instruct on MBPP: 0.156 to 0.125): the growth is not where
-winners sit, what kind of token they are, or an over- or underconfidence by mask rate. In
-uniform states the small base and 110M contrasts move by up to 0.004, so their sign is not
-robust.
-% from tables/c1/c1_t8.tex (regen of 28 Oct; recheck)
-
-\paragraph{Precision.}
-% 4-bit run: \VivaLladaBaseFourBitDocs documents (tab:runs); prereg: 200 listed in
-% artifacts/t8_precision_docs.json.
-The 7--8B models' traces are fp16 (\S\ref{sec:models}). On the report half of the \VivaLladaBaseFourBitDocs{} documents
-of the 4-bit run (fit half for calibrators), 4-bit NF4 in place of fp16 changes E1 by
-\CresCI{TEightLladaBasePrecisionPrecisionEOneUniDifference} in uniform states and by
-\CresCI{TEightLladaBasePrecisionPrecisionEOneDecTopkConfKFourDifference} in decoder states
-(Table~\ref{tab:c1-t8}, bottom).
-% TODO(results): if both intervals hold 0: "Quantisation does not move the endpoint, so
-%   fp16 in place of the models' bfloat16, a smaller change, is unlikely to matter."
-%   else: "Precision moves E1 by <...>; how far fp16 sits from bfloat16 we cannot say."
-
-% ------------------------------------------------------------------- robustness
-\subsection{Robustness}
 \label{sec:c1-robust}
 
-E1 and E2 are repeated without contaminated documents, on time-split text and with an
-independent estimator, and E2 under two calibrator changes (E1 uses no calibrator); none of these is in a Holm family (full table
-in the code archive).
-
-\paragraph{Contamination-filtered.}
-Without the documents the screen flagged (\VivaLladaContamFlagged{} for LLaDA,
-\VivaDreamContamFlagged{} for Dream; \S\ref{sec:models}), E1 in uniform states is
-\CresCI{COneLladaBaseCleanContrastUni} for LLaDA-8B-Base and
-\CresCI{COneDreamBaseCleanContrastUni} for Dream-7B-Base.
-Both equal their main values, in decoder states too; so few documents cannot move them.
-
-\paragraph{Time split.}
-On the report half of the \VivaLladaBaseTimeSplitDocs{} time-split articles, which no model
-has seen, E1 in uniform states is \CresCI{COneLladaBaseTimeSplitContrastUni} for
-LLaDA-8B-Base, \CresCI{COneDreamBaseTimeSplitContrastUni} for Dream-7B-Base and
-\CresCI{COneMdlmTimeSplitContrastUni} for the 110M model (E2: TS rows of
-Table~\ref{tab:c1-main}); a quarter of the documents, so wider intervals.
-% E2 macros if wanted: COneFieldContrast{LladaBase,DreamBase,Mdlm}TimeSplitUni[Lo|Hi].
-On unseen text the small negative E1 of the two base models is not reproduced: both
-intervals hold 0, so their FineWeb-Edu result may owe something to text they have seen or to the
-change of domain from web pages to Wikipedia, or be too small to detect here. The 110M model's
-is larger than on FineWeb-Edu (\Cres{COneMdlmContrastUni} there); it saw neither set, so domain
-(it was trained on FineWeb-Edu), not contamination, explains the move. In decoder states E1 stays
-positive, its interval excluding 0, for all three models, so the decoder-state result is not
-confined to text the models may have seen.
-
-\paragraph{Spline knots.}
-E2 keeps its sign and declared flag with 5 and with
-13 knots, instead of the primary \VivaKnots{}, in \Cres{COneKnotsAgree} of \Cres{COneKnotsCells}
-cells (full table in the code archive). These runs refit
-Eqs.~\ref{eq:eqtwo} and~\ref{eq:eqthree} only 200 times, so their $\beta_z$ and $\gamma_k$ intervals are descriptive only;
-E2 keeps \VivaNBoot{} resamples.
-The knots do not change any claim.
-
-\paragraph{Context calibrator.}
-With the additive calibrator (\S\ref{sec:estimands}), E2 keeps its sign
-and declared flag in \Cres{COneAdditiveAgree} of \Cres{COneAdditiveCells} cells;
-LLaDA-8B-Base, uniform: \Cres{COneFieldContrastLladaBaseAdditiveUni}
-vs \Cres{COneFieldContrastLladaBaseUni}.
-The two that do not are claimed cells: uniform states of LLaDA-8B-Instruct on MBPP, whose
-interval now holds 0, and 110M decoder states, already at the estimator's bias; there E2
-depends on the form of the calibrator, and we do not rely on it.
+Position, token type, a temperature per mask-rate bin and 4-bit precision in place of fp16
+leave decoder-state E1 with its sign in every arm they were run on
+(Appendix~\ref{sec:c1-app}). Five checks repeat the contrasts outside the Holm families (full
+tables in the code archive).
+\emph{Contamination:} without the \VivaLladaContamFlagged{} LLaDA and \VivaDreamContamFlagged{}
+Dream documents the screen flagged (\S\ref{sec:models}), both base models' E1 equal their main
+values.
+\emph{Time split:} on unseen Wikipedia articles (a quarter of the documents) the small negative
+uniform-state E1 of the base models is not reproduced (LLaDA-8B-Base:
+\CresCI{COneLladaBaseTimeSplitContrastUni}): seen text, the change of domain, or too small to
+detect here; the 110M model's grows (\Cres{COneMdlmTimeSplitContrastUni}); it saw neither set, so
+domain, not contamination, moves it. Decoder-state E1 stays positive, its interval excluding 0, for all three.
+\emph{Knots:} E2 keeps its sign and declared flag with 5 and 13 knots in \Cres{COneKnotsAgree} of
+\Cres{COneKnotsCells} cells.
+\emph{Calibrator form:} with the additive calibrator (\S\ref{sec:estimands}) it does in
+\Cres{COneAdditiveAgree} of \Cres{COneAdditiveCells}; the two others, uniform states of
+LLaDA-8B-Instruct on MBPP (interval now holding 0) and 110M decoder states, are claimed cells
+whose E2 we therefore do not rely on.
 % cells: COneFieldAdditiveAgree<Label><Tag> = no (regen of 28 Oct; recheck)
-
-\paragraph{Independent estimator.}
+\emph{Independent estimator:}
 % dorigo/report-40754 (HF 21130a52), report half, k4 arms; numbers hand-typed from summary_e2.csv
 % (E1 rounded to 3 dp as in tab:c1-main); field_contrast_est decoder:topk_conf:k4 from summary_e2.csv;
 % null floor 0.0031 from summary.md.  Text: abhiraj 20261027T203627Z-abhiraj-f000 (ayush agreed).
-An exact all-subsets estimator of $\Delta(m)$ with its own spline-logistic calibrator and
+an exact all-subsets estimator of $\Delta(m)$ with its own spline-logistic calibrator and
 own/field split (after \citealt{dorigo2026greedy}) reproduces E1 in all four base cells (LLaDA,
-Dream; decoder $k{=}4$: $0.007$, $0.015$; uniform: $-0.003$, $-0.003$). The decoder growth is
-mostly the own term. Its field terms match E2 in sign and size, no larger than the $0.003$ it
-reads with no field term, except LLaDA's in decoder states ($-0.0004$ vs $0.004$), which is not
-identified (residual at $m=\VivaPoolMax$ $-0.005$ [$-0.007$, $-0.004$], refits of opposite sign).
+Dream; decoder $k{=}4$: $0.007$, $0.015$; uniform: $-0.003$, $-0.003$), the decoder growth mostly
+in the own term. Its field terms match E2 in sign and size (no larger than the $0.003$ it reads with no field
+term), except LLaDA's in decoder states
+($-0.0004$ vs $0.004$), which is not identified (residual at $m=\VivaPoolMax$ $-0.005$ [$-0.007$,
+$-0.004$], refits of opposite sign).

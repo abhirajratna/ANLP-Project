@@ -294,6 +294,16 @@ def test_native_macros_per_level_with_doc_counts():
 
 
 
+def test_precision_table_keeps_the_two_primary_kinds_of_state_uniform_first():
+    e = {"value": 0.001, "ci": [-0.002, 0.004]}
+    rows = [{"control": "precision", "arm": a, "effect": "E1_contrast", "without": e, "with": e,
+             "difference": e} for a in ("decoder:topk_conf:k2", "decoder:topk_conf:k4", "uniform",
+                                        "uniform_matched:topk_conf:k4")]
+    R = type("R", (), {"precision": {"rows": rows}})()
+    body = [l for l in P.precision_table(R).splitlines() if l.endswith("\\\\") and "E1" in l]
+    assert len(body) == 2 and body[0].startswith("uniform") and "k{=}4" in body[1]
+
+
 # ---------------------------------------------------------------- claimed, family footnote
 def _summary(results):
     return json.loads((results / "c1" / "summary" / "c1_summary.json").read_text())
