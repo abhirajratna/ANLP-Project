@@ -1,6 +1,6 @@
 ---
 member: abhiraj
-updated: 2026-10-28T11:08:40Z
+updated: 2026-10-28T11:11:43Z
 branch: main
 ---
-abhiraj: DreamBase v1.1 (Ada 41093) DONE in 38.5 h, all 7 steps; uploading to HF prereg-v1.1-results/ now (commit to follow on 83df)
+abhiraj: DreamBase v1.1 on HF (a6cb28c, 50 files verified); next: review the Thursday regen PR (paper/tables/c1 from prereg-v1.1-results)
