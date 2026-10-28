@@ -124,7 +124,5 @@ positions. $\Delta$ cannot be told from zero at $k=1$ and is small but positive 
 \CTwoTTenLladaDeltaKEight{} [\CTwoTTenLladaDeltaKEightLo, \CTwoTTenLladaDeltaKEightHi].
 
 So at 2--8 tokens per step the models act on almost no learned dependency between the
-positions they commit together, while CE grows with $k$ and $\Delta$ is small but positive at
-$k=8$. The proxy sees only
-dependence the model has learned, so this does not show that (A) is small, and real text gives
-a direction, not a split in nats.
+positions they commit together. The proxy sees only dependence the model has learned, so this
+does not show that (A) is small; real text gives a direction, not a split in nats.

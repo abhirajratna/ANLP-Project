@@ -39,7 +39,7 @@ question visible and only the reference answer maskable;
 % MBPP test 482 (3,986 tokens), --max-doc-tokens 1024: prereg/deviations.md item 6.
 one MBPP document over 1,024 tokens is excluded. A time-split set of 500 English Wikipedia
 % artifacts/timesplit_manifest.json; artifacts/README.md (created 2025-04-04 .. 2026-08-29).
-articles created after both LLaDA and Dream were released, unseen by every model, is a robustness check. A document is contaminated if a 7--8B Base model, given its first \VivaLladaContamPrefix{} tokens, greedily reproduces a run of $\ge\VivaContamThreshold$ of
+articles written after LLaDA and Dream were released, unseen by every model, is a robustness check. A document is contaminated if a 7--8B Base model, given its first \VivaLladaContamPrefix{} tokens, greedily reproduces a run of $\ge\VivaContamThreshold$ of
 the next 50 (\VivaLladaContamFlagged/\VivaLladaContamDocs{} LLaDA,
 \VivaDreamContamFlagged/\VivaDreamContamDocs{} Dream); LLaDA and Dream FineWeb endpoints are also reported without them.
 % Seed 20260917: artifacts/split_manifest.meta.json; tasks: scripts/make_task_split.py.
@@ -130,17 +130,15 @@ ${\approx}0$ with them points to a field effect, $\beta_z\neq0$ with them to sha
 the reading is approximate (\S\ref{sec:validation}), so $\beta_z$ is a diagnostic.
 
 \paragraph{E3, trajectory shift.}
-For decoder states at each $k$ we fit, on their positions (mask rate in $[0.05,0.95)$) and those of
-reference states,
-$\Pr(a{=}1)=\sigma(\alpha_b+f(\ell)+\textit{dec}\cdot(g_0+h(\ell)))$, with $\alpha_b$ an intercept
-per mask-rate bin (centred on $0.1,\dots,0.9$). The reference is matched uniform states
-(secondary: the uniform grid, reweighted to the decoder's rate mix). The endpoint is
-$\E_{\mathrm{dec}}[\pi_{\mathrm{ref}}(\ell,b)-\pi_{\mathrm{dec}}(\ell,b)]$, positive if
-decoder-state tokens are right less often at equal confidence and mask rate; $(g_0,h)$ are tested jointly by a sup-$t$ test.
+On the positions of decoder states at each $k$ and of matched uniform states (secondary: the
+uniform grid, reweighted to the decoder's rate mix), mask rate in $[0.05,0.95)$, we fit
+$\Pr(a{=}1)=\sigma(\alpha_b+f(\ell)+\textit{dec}\cdot(g_0+h(\ell)))$, $\alpha_b$ per mask-rate bin (centred on $0.1,\dots,0.9$).
+The endpoint $\E_{\mathrm{dec}}[\pi_{\mathrm{ref}}(\ell,b)-\pi_{\mathrm{dec}}(\ell,b)]$ is positive if
+decoder-state tokens are right less often at equal confidence and mask rate; a sup-$t$ test checks $(g_0,h)$ jointly.
 
-\paragraph{T8 controls.}
-Each control gives the E1 and E2 contrasts (temperature: E1 only) without and with it, and their
-paired difference. \emph{Position} (absolute position, distance to the nearest unmasked token,
+\paragraph{Controls.}
+Each gives E1 and E2 (temperature: E1 only) without and with it, and the paired difference.
+\emph{Position} (absolute position, distance to the nearest unmasked token,
 PC-Sampler's position weight; \citealp{huang2025pcsampler}) and \emph{token type} (of the true
 token: punctuation, stop-word or content) are covariates $x$: $\E_m[\pi(\ell)-\pi(\ell,x)]$
 is removed from $\Delta(m)$ and $x$ enters both field-term calibrators. \emph{Temperature}
@@ -162,7 +160,7 @@ Calibrators are not refitted, so E2 intervals condition on the fit half.
 An effect is declared only if its interval excludes 0 \emph{and} its magnitude exceeds twice
 the non-determinism floor, the largest change in $\Delta(m)$ over five repeats of 20
 reserve documents per model family. Repeats were bitwise identical, so every floor is
-\VivaLladaFloor{} and the interval decides; $\delta_{\min}=\VivaDeltaMin$ is for power only.
+\VivaLladaFloor{} and the interval decides.
 % PRIMARY_ARMS=(uniform decoder:topk_conf:k4) x 7 ARMS in prereg/analysis_commands.sh;
 % scripts/summarize_c1.py (Holm on two-sided bootstrap p-values).
 Holm's correction (two-sided bootstrap $p$-values) runs within families: the E1 contrasts and the
