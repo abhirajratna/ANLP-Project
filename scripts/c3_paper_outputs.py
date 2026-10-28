@@ -294,7 +294,8 @@ def load_records(specs, warnings: list, inputs: dict, manifest_dir=None) -> dict
     ``out["_meta"][task]``: ``run``, ``n_expected``, ``shards_missing``."""
     by_run = {}                                           # task -> run -> {config: {doc: record}}
     info = {}                                             # task -> run -> shard bookkeeping
-    gen_length, skipped, dup_diff = {}, 0, {}
+    gen_length, skipped, dup_diff, dup_same = {}, 0, {}, {}
+    first, origin = {}, {}                                # task -> identity of its first shard; (task, config, doc) -> file
     for f in _expand(specs, "t12.shard*.jsonl"):
         if f.name.endswith(".meta.json"):
             continue
@@ -316,6 +317,19 @@ def load_records(specs, warnings: list, inputs: dict, manifest_dir=None) -> dict
         if task not in TASKS:
             continue
         rk = run_key(meta)
+        prov = meta.get("provenance") if isinstance(meta.get("provenance"), dict) else {}
+        ident = {"run hash": rk, "num_shards": meta.get("num_shards"), "label": meta.get("label"),
+                 "host": prov.get("host"), "gpu": prov.get("gpu"), "output directory": str(f.parent.resolve())}
+        if task not in first:
+            first[task] = (str(f), ident)
+        else:
+            diff = [k for k in ident if ident[k] != first[task][1][k]]
+            if diff:
+                raise SystemExit(
+                    f"{task}: records of more than one run under --records: {first[task][0]} and {f} differ in "
+                    + ", ".join(f"{k} ({first[task][1][k]!r} vs {ident[k]!r})" for k in diff)
+                    + "; one run, one machine, one output directory per task (prereg/deviations.md 17): "
+                      "pass the directory of one run")
         inputs[f"records:{f}"] = {"path": str(f), "sha256": sha256_file(f)}
         ri = info.setdefault(task, {}).setdefault(rk, {"shards": set(), "num_shards": set(), "doc_ids": set(),
                                                        "limit": set(), "files": []})
@@ -339,8 +353,16 @@ def load_records(specs, warnings: list, inputs: dict, manifest_dir=None) -> dict
             old = cfgs.setdefault(r["config"], {}).get(d)
             if old is None:
                 cfgs[r["config"]][d] = r
-            elif old.get("completion") != r.get("completion"):
-                dup_diff[task] = dup_diff.get(task, 0) + 1
+                origin[(task, r["config"], d)] = str(f)
+            else:
+                if origin[(task, r["config"], d)] != str(f):
+                    raise SystemExit(f"{task}: ({r['config']}, doc {d}) is in two shard files, "
+                                     f"{origin[(task, r['config'], d)]} and {f}: two runs or two copies of one "
+                                     "shard; refusing to merge them")
+                if old.get("completion") != r.get("completion"):
+                    dup_diff[task] = dup_diff.get(task, 0) + 1
+                else:
+                    dup_same[task] = dup_same.get(task, 0) + 1
     if skipped:
         warnings.append(f"{skipped} record shard(s) skipped: fit half (calibration / sanity runs)")
     out = {"_gen_length": {t: g or GEN_LENGTH for t, g in gen_length.items()}, "_meta": {}, "_shortfalls": []}
@@ -353,6 +375,9 @@ def load_records(specs, warnings: list, inputs: dict, manifest_dir=None) -> dict
         (rk, cfgs), = runs.items()
         ri = info[task][rk]
         out[task] = cfgs
+        if dup_same.get(task):
+            warnings.append(f"{task}: {dup_same[task]} identical repeated (config, doc_id) line(s) within a shard "
+                            "file (a resumed run); counted once")
         if dup_diff.get(task):
             warnings.append(f"{task}: {dup_diff[task]} repeated (config, doc_id) with a different completion; "
                             "the first was used")

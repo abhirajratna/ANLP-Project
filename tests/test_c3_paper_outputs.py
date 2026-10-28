@@ -112,6 +112,7 @@ def meta_of(task, shard, **over):
          "manifest_sha256": "m" * 8, "configs_sha256": "c" * 8, "calibrator_sha256": "k" * 8,
          "c3a_clamp": False, "pc_sampler_variant": "full", "decoding": "greedy", "block_length": 32,
          "prompt": {"format": "chat", "fewshot": 0}, "limit": 0, "shard": shard, "num_shards": 2,
+         "label": "jl-report", "provenance": {"host": "jarvis-1", "gpu": "RTX PRO 6000", "git_commit": "abc1234"},
          "doc_ids": [i for i in range(N_DOCS) if i % 2 == shard]}
     m.update(over)
     return m
@@ -915,3 +916,74 @@ def test_tie_rule_is_in_the_pairing_rule(built):
     assert "tie" in built["summary"]["pairing"]["rule"] and "lower" in built["summary"]["pairing"]["rule"]
     equal = {1: {"tps": 3.6, "unmatched": False}, 2: {"tps": 4.4, "unmatched": False}}
     assert P.match_baseline(2, 4.0, equal)["slot"] == 1               # equidistant: the lower slot
+
+
+# ------------------------------------------------------------------ a second complete run of a task
+def copy_run(paths, dst_name, num_shards=None, **meta_over):
+    """A complete copy of the gsm8k sweep in a sibling directory (the reviewer's 'Ada copy next to
+    the Jarvis run'), optionally with another num_shards / meta fields.  The pinned inputs are the same, so
+    score_t12's RUN_FIELDS hash is the same: only the other facts can tell the two apart."""
+    src = paths["records"] / "sweep-gsm8k"
+    dst = paths["records"] / dst_name
+    dst.mkdir()
+    for sh in (0, 1):
+        n = num_shards or 2
+        (dst / f"t12.shard{sh}of{n}.jsonl").write_text((src / f"t12.shard{sh}of2.jsonl").read_text())
+        m = json.loads((src / f"t12.shard{sh}of2.meta.json").read_text())
+        m.update({"num_shards": n, **meta_over})
+        (dst / f"t12.shard{sh}of{n}.meta.json").write_text(json.dumps(m))
+    return dst
+
+
+def test_the_runs_of_two_copies_share_the_run_key():
+    # the premise of the reviewer's case: nothing in RUN_FIELDS tells the copies apart
+    assert P.run_key(meta_of("gsm8k", 0)) == P.run_key(meta_of("gsm8k", 0, num_shards=12, label="ada"))
+
+
+def test_a_complete_copy_with_other_num_shards_is_refused(tmp_path):
+    paths = make_fixture(tmp_path)
+    copy_run(paths, "ada-copy-gsm8k", num_shards=12)
+    with pytest.raises(SystemExit) as e:
+        run_main(paths)
+    assert "more than one run" in str(e.value) and "num_shards" in str(e.value)
+    assert not (paths["out"] / "c3" / "macros_c3.tex").exists()
+
+
+def test_a_complete_copy_with_the_same_num_shards_in_another_directory_is_refused(tmp_path):
+    paths = make_fixture(tmp_path)
+    copy_run(paths, "ada-copy-gsm8k")
+    with pytest.raises(SystemExit) as e:
+        run_main(paths)
+    assert "more than one run" in str(e.value) and "director" in str(e.value)
+
+
+@pytest.mark.parametrize("over,word", [({"label": "ada"}, "label"),
+                                       ({"provenance": {"host": "gnode006", "gpu": "RTX 2080 Ti"}}, "host")])
+def test_shards_of_one_task_must_agree_on_label_and_machine(tmp_path, over, word):
+    paths = make_fixture(tmp_path)
+    mp = paths["records"] / "sweep-gsm8k" / "t12.shard1of2.meta.json"
+    m = json.loads(mp.read_text())
+    m.update(over)
+    mp.write_text(json.dumps(m))
+    with pytest.raises(SystemExit) as e:
+        run_main(paths)
+    assert word in str(e.value)
+
+
+def test_the_same_problem_in_two_shard_files_is_refused(tmp_path):
+    paths = make_fixture(tmp_path)
+    d = paths["records"] / "sweep-gsm8k"
+    rows0 = [json.loads(l) for l in (d / "t12.shard0of2.jsonl").read_text().splitlines()]
+    f1 = d / "t12.shard1of2.jsonl"
+    edit_rows(f1, lambda rows: rows + [rows0[0]])            # doc 0 is shard 0's
+    with pytest.raises(SystemExit) as e:
+        run_main(paths)
+    assert "two shard files" in str(e.value)
+
+
+def test_an_identical_duplicate_inside_one_shard_file_still_only_warns(tmp_path):
+    paths = make_fixture(tmp_path)
+    f = paths["records"] / "sweep-gsm8k" / "t12.shard0of2.jsonl"
+    f.write_text(f.read_text() + f.read_text().splitlines()[0] + "\n")
+    assert run_main(paths) == 0
+    assert any("repeated" in w for w in summary_of(paths)["warnings"])
