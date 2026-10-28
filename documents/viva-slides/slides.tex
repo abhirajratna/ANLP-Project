@@ -477,56 +477,6 @@
   \end{columns}
 \end{frame}
 
-% ================================================================ 7 C1 sweep
-\begin{frame}{C1: the trace sweep}
-  \framesubtitle{Collect once on GPU, one row per (masked state, position); draw pools and fit on CPU}
-  \vspace{0.5mm}
-  \begin{columns}[T,onlytextwidth]
-    \begin{column}{0.53\textwidth}
-      \scriptsize
-      \setlength{\tabcolsep}{3.2pt}
-      \renewcommand{\arraystretch}{1.02}
-      \arrayrulecolor{base}
-      \begin{tabular}{@{}l l l r r r@{}}
-        \toprule
-        {\color{ink2}Model} & {\color{ink2}Text} & {\color{ink2}Prec.} & {\color{ink2}Docs}
-          & {\color{ink2}Rows (M)} & {\color{ink2}GPU-h} \\
-        \midrule
-        LLaDA-8B Base & FineWeb-Edu & \VivaLladaBasePrecision & \VivaLladaBaseDocs & \VivaLladaBaseRowsM & \VivaLladaBaseGpuH \\
-        Dream-7B Base & FineWeb-Edu & \VivaDreamBasePrecision & \VivaDreamBaseDocs & \VivaDreamBaseRowsM & \VivaDreamBaseGpuH \\
-        Our 110M MDLM & FineWeb-Edu & \VivaMdlmPrecision & \VivaMdlmDocs & \VivaMdlmRowsM & \VivaMdlmGpuH \\
-        LLaDA-8B Instruct & GSM8K & \VivaLladaInstructGsmPrecision & \VivaLladaInstructGsmDocs & \VivaLladaInstructGsmRowsM & \VivaLladaInstructGsmGpuH \\
-        LLaDA-8B Instruct & MBPP & \VivaLladaInstructMbppPrecision & \VivaLladaInstructMbppDocs & \VivaLladaInstructMbppRowsM & \VivaLladaInstructMbppGpuH \\
-        Dream-7B Instruct & GSM8K & \VivaDreamInstructGsmPrecision & \VivaDreamInstructGsmDocs & \VivaDreamInstructGsmRowsM & \VivaDreamInstructGsmGpuH \\
-        Dream-7B Instruct & MBPP & \VivaDreamInstructMbppPrecision & \VivaDreamInstructMbppDocs & \VivaDreamInstructMbppRowsM & \VivaDreamInstructMbppGpuH \\
-        \midrule
-        {\color{ink2}LLaDA-8B Base} & {\color{ink2}time-split} & \VivaLladaBaseTimeSplitPrecision & \VivaLladaBaseTimeSplitDocs & \VivaLladaBaseTimeSplitRowsM & \VivaLladaBaseTimeSplitGpuH \\
-        {\color{ink2}Dream-7B Base} & {\color{ink2}time-split} & \VivaDreamBaseTimeSplitPrecision & \VivaDreamBaseTimeSplitDocs & \VivaDreamBaseTimeSplitRowsM & \VivaDreamBaseTimeSplitGpuH \\
-        {\color{ink2}Our 110M MDLM} & {\color{ink2}time-split} & \VivaMdlmTimeSplitPrecision & \VivaMdlmTimeSplitDocs & \VivaMdlmTimeSplitRowsM & \VivaMdlmTimeSplitGpuH \\
-        {\color{ink2}LLaDA-8B Base} & {\color{ink2}FineWeb-Edu} & 4-bit & \VivaLladaBaseFourBitDocs & \VivaLladaBaseFourBitRowsM & \VivaLladaBaseFourBitGpuH \\
-        \bottomrule
-      \end{tabular}
-      \par\vspace{0.8mm}
-      \fnote{Top: the primary arms. Grey: the unseen time-split set and the 4-bit
-      control (T8). RTX 2080 Ti: \VivaCOneGpuH{} GPU-hours, \VivaCOneRowsB{} billion rows.}
-    \end{column}
-    \begin{column}{0.44\textwidth}
-      \begin{itemize}\scriptsize
-        \item \textbf{States per document}: uniform masks at rates
-              \VivaMaskRateMin–\VivaMaskRateMax; teacher-forced confidence top-$k$
-              trajectories, $k \in \{\VivaDecoderK\}$; uniform masks matched to them
-              (\VivaPassesPerDoc{} passes per document).
-        \item \textbf{Per row}: candidate, confidence, logit, correctness, $p$(true), entropy,
-              margin, top-\VivaTopK.
-        \item \textbf{Halves}: \VivaNFit{} fit / \VivaNReport{} report documents. Calibrators,
-              splines and knots from the fit half; every C1 number from the report half.
-        \item \textbf{Deterministic}: repeats are bitwise identical, so the floor is
-              \VivaLladaFloor{} for every family.
-      \end{itemize}
-    \end{column}
-  \end{columns}
-\end{frame}
-
 % ================================================================ 8 T0 validation
 \begin{frame}{The instrument recovers known truth (T0)}
   \framesubtitle{Four simulated worlds · fit half $\rightarrow$ report half · document bootstrap}
@@ -621,61 +571,6 @@
   is 1.8 to 4.4 times the random-mask ECE in every arm, its interval above it; the instruct models reach 0.15
   to 0.27 with 128-255 masked. The mask count mixes field size with lost context, so this panel describes and
   does not test anything. Main-arm detail and the mechanism split: backup.}
-\end{frame}
-
-% ================================================================ 11 C1 diagnostic: beta_z
-\begin{frame}{C1 diagnostic: does winning a larger field predict correctness? ($\beta_z$)}
-  \framesubtitle{$\Pr(a_i{=}1)=\sigma(\alpha\,[+\alpha_s]+f(\ell_i)+\beta_z z_{r,m})$, without and with state effects $\alpha_s$}
-  \vspace{0.5mm}
-  \begin{columns}[T,onlytextwidth]
-    \begin{column}{0.575\textwidth}
-      \ifCOneMacros
-        {\footnotesize\setlength{\tabcolsep}{4pt}\renewcommand{\arraystretch}{1.18}
-        \arrayrulecolor{base}
-        \begin{tabular}{@{}l r r r r@{}}
-          \toprule
-          & \multicolumn{2}{c}{$\beta_z$, no state effects} & \multicolumn{2}{c}{$\beta_z$, state effects} \\
-          \cmidrule(lr){2-3}\cmidrule(lr){4-5}
-          {\color{ink2}Arm} & {\color{ink2}uniform} & {\color{ink2}decoder} & {\color{ink2}uniform} & {\color{ink2}decoder} \\
-          \midrule
-          \CBetaRow{LLaDA Base}{LladaBase}
-          \CBetaRow{Dream Base}{DreamBase}
-          \CBetaRow{LLaDA-I GSM8K}{LladaInstructGsm}
-          \CBetaRow{LLaDA-I MBPP}{LladaInstructMbpp}
-          \CBetaRow{Dream-I GSM8K}{DreamInstructGsm}
-          \CBetaRow{Dream-I MBPP}{DreamInstructMbpp}
-          \CBetaRow{MDLM-110M}{Mdlm}
-          \bottomrule
-        \end{tabular}}% braces, not a group: an \else straight after a tabular upsets TeX
-      \else
-        \Pend{52mm}{TUE 27 OCT}{Waits for \texttt{paper/tables/c1/macros\_c1.tex}, written by
-          \texttt{scripts/c1\_paper\_outputs.py} from \texttt{results/c1/<Label>/results.json}
-          (\texttt{regression.eq2\_nofe}, \texttt{eq2\_fe}).}{$\beta_z$ without and with state effects, one
-          row per arm, uniform and decoder ($k{=}4$) states. Point estimates; intervals: backup.}
-      \fi
-    \end{column}
-    \begin{column}{0.395\textwidth}
-      \footnotesize\raggedright
-      \lbl{Field effect.} $\beta_z<0$ without state effects and $\approx 0$ with them; it
-      should agree with a positive E2.\par\vspace{1mm}
-      \lbl{Shared errors.} $\beta_z\neq 0$ with state effects: positions of a state are wrong
-      together, Proposition 1 fails, and E2 is not a field effect.\par\vspace{1mm}
-      \lbl{Caution.} In T0, shared errors gave a \emph{positive} $\beta_z$ without state effects and
-      a negative field term, so we read $\beta_z$ only beside the sign of E2.\par\vspace{1.5mm}
-      \begin{takeaway}[fontupper=\footnotesize]
-        \textbf{Reading.} No state effects: excludes 0 in 14 of 14, negative in 12. With
-        them: holds 0 in 10. A field effect, small where E2 is. Diagnostic only.
-      \end{takeaway}
-    \end{column}
-  \end{columns}
-  \note{Reading (a) of four: negative without state effects, about zero with them, E2 positive, so a field
-  effect. Without FE the interval excludes 0 in all 14 cells and is negative in 12; with FE it holds 0 in 10 of 14.
-  The two positive cells, LLaDA Base and MDLM-110M decoder states, have E2 at the estimator's T0 bias; the
-  110M one has a negative E2 beside its positive beta_z, the pattern T0's shared-error world gave, at small size. Intervals: backup table. If asked about gamma (Eq. 3, the lower-ranked pool members):
-  Holm rejects 24 of 42 tests, in 8 rows, all positive, all in the instruct models and Dream Base decoder
-  states: at equal confidence lower-ranked members are right more often than the winner, which Proposition 1
-  excludes when its conditions hold. We read it, like the within-state ICC (above 0 in every arm), as a sign
-  of shared errors or of a calibration slope that varies by state. None of it is a claim.}
 \end{frame}
 
 % ================================================================ 12 C1 results: E3
@@ -1016,32 +911,8 @@
   \end{columns}
   \note{Pending until Thu 29. T12 settings (final-plan.md, Parth items 3-5): chat prompt, greedy, one
   seed, three speeds per decoder, fp16 throughout (an overflow run covers a whole task, so no
-  comparison mixes precisions). If T12 is not done at the Fri 30 freeze, this becomes "C3: future work".}
-\end{frame}
-
-% ================================================================ 17 C3: sanity, wall-clock
-\begin{frame}{C3: does the harness reproduce known decoders, and at what cost?}
-  \framesubtitle{Fewer steps need not mean less time: wall-clock and forward passes beside tokens per step}
-  \vspace{0.5mm}
-  \CThreeTable{t12_sanity_cost}{38mm}{THU 29 OCT}{the T12 scoring summaries
-    (\texttt{scripts/score\_t12.py}) and the sanity run}{%
-    \begin{stubs}
-      \item Sanity row: top-$k$ and the Fast-dLLM threshold on about 200 fit-half GSM8K problems
-            at Fast-dLLM's settings (5-shot), against the published numbers; the plan's bar is
-            1--2 points.
-      \item Per decoder and speed: tokens per step, forward passes per problem, wall-clock per
-            problem, and the share of problems that failed to decode.
-      \item C3a only: the share of steps outside the calibrator's fit range.
-    \end{stubs}}\par
-  \vspace{1.2mm}
-  \begin{takeaway}[fontupper=\footnotesize]
-    \textbf{How to read.} If the sanity row misses the published numbers, nothing after it is
-    comparable and we say that first. A faster decoder in steps that is not faster in seconds is
-    reported as such.
-  \end{takeaway}
-  \note{Pending until Thu 29. Sanity check is plan item 4 (Sun 25): within 1-2 points of the published
-  top-k and threshold numbers. Cost: about 30 A100-hours at batch size 1 by Parth's estimate; drop speeds
-  before the credit runs out and say which.}
+  comparison mixes precisions). If T12 is not done at the Fri 30 freeze, this becomes "C3: future work".
+  Harness sanity check (top-k and Fast-dLLM threshold against published numbers) and cost: backup.}
 \end{frame}
 
 % ================================================================ 16 summary
@@ -1247,6 +1118,56 @@
   \end{itemize}
 \end{frame}
 
+% ================================================================ 7 C1 sweep
+\begin{frame}{Backup: C1: the trace sweep}
+  \framesubtitle{Collect once on GPU, one row per (masked state, position); draw pools and fit on CPU}
+  \vspace{0.5mm}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.53\textwidth}
+      \scriptsize
+      \setlength{\tabcolsep}{3.2pt}
+      \renewcommand{\arraystretch}{1.02}
+      \arrayrulecolor{base}
+      \begin{tabular}{@{}l l l r r r@{}}
+        \toprule
+        {\color{ink2}Model} & {\color{ink2}Text} & {\color{ink2}Prec.} & {\color{ink2}Docs}
+          & {\color{ink2}Rows (M)} & {\color{ink2}GPU-h} \\
+        \midrule
+        LLaDA-8B Base & FineWeb-Edu & \VivaLladaBasePrecision & \VivaLladaBaseDocs & \VivaLladaBaseRowsM & \VivaLladaBaseGpuH \\
+        Dream-7B Base & FineWeb-Edu & \VivaDreamBasePrecision & \VivaDreamBaseDocs & \VivaDreamBaseRowsM & \VivaDreamBaseGpuH \\
+        Our 110M MDLM & FineWeb-Edu & \VivaMdlmPrecision & \VivaMdlmDocs & \VivaMdlmRowsM & \VivaMdlmGpuH \\
+        LLaDA-8B Instruct & GSM8K & \VivaLladaInstructGsmPrecision & \VivaLladaInstructGsmDocs & \VivaLladaInstructGsmRowsM & \VivaLladaInstructGsmGpuH \\
+        LLaDA-8B Instruct & MBPP & \VivaLladaInstructMbppPrecision & \VivaLladaInstructMbppDocs & \VivaLladaInstructMbppRowsM & \VivaLladaInstructMbppGpuH \\
+        Dream-7B Instruct & GSM8K & \VivaDreamInstructGsmPrecision & \VivaDreamInstructGsmDocs & \VivaDreamInstructGsmRowsM & \VivaDreamInstructGsmGpuH \\
+        Dream-7B Instruct & MBPP & \VivaDreamInstructMbppPrecision & \VivaDreamInstructMbppDocs & \VivaDreamInstructMbppRowsM & \VivaDreamInstructMbppGpuH \\
+        \midrule
+        {\color{ink2}LLaDA-8B Base} & {\color{ink2}time-split} & \VivaLladaBaseTimeSplitPrecision & \VivaLladaBaseTimeSplitDocs & \VivaLladaBaseTimeSplitRowsM & \VivaLladaBaseTimeSplitGpuH \\
+        {\color{ink2}Dream-7B Base} & {\color{ink2}time-split} & \VivaDreamBaseTimeSplitPrecision & \VivaDreamBaseTimeSplitDocs & \VivaDreamBaseTimeSplitRowsM & \VivaDreamBaseTimeSplitGpuH \\
+        {\color{ink2}Our 110M MDLM} & {\color{ink2}time-split} & \VivaMdlmTimeSplitPrecision & \VivaMdlmTimeSplitDocs & \VivaMdlmTimeSplitRowsM & \VivaMdlmTimeSplitGpuH \\
+        {\color{ink2}LLaDA-8B Base} & {\color{ink2}FineWeb-Edu} & 4-bit & \VivaLladaBaseFourBitDocs & \VivaLladaBaseFourBitRowsM & \VivaLladaBaseFourBitGpuH \\
+        \bottomrule
+      \end{tabular}
+      \par\vspace{0.8mm}
+      \fnote{Top: the primary arms. Grey: the unseen time-split set and the 4-bit
+      control (T8). RTX 2080 Ti: \VivaCOneGpuH{} GPU-hours, \VivaCOneRowsB{} billion rows.}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{itemize}\scriptsize
+        \item \textbf{States per document}: uniform masks at rates
+              \VivaMaskRateMin–\VivaMaskRateMax; teacher-forced confidence top-$k$
+              trajectories, $k \in \{\VivaDecoderK\}$; uniform masks matched to them
+              (\VivaPassesPerDoc{} passes per document).
+        \item \textbf{Per row}: candidate, confidence, logit, correctness, $p$(true), entropy,
+              margin, top-\VivaTopK.
+        \item \textbf{Halves}: \VivaNFit{} fit / \VivaNReport{} report documents. Calibrators,
+              splines and knots from the fit half; every C1 number from the report half.
+        \item \textbf{Deterministic}: repeats are bitwise identical, so the floor is
+              \VivaLladaFloor{} for every family.
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
 \begin{frame}{Backup: data, contamination and our 110M model}
   \vspace{1.5mm}
   \begin{columns}[T,onlytextwidth]
@@ -1304,6 +1225,61 @@
     without and with state effects.}
   \note{Source: paper/tables/c1/c1\_main.tex. $^{*}$ Holm-rejected, $^{\dagger}$ declared, $^{\ddagger}$ interval
   of $\beta_z$ excludes 0, $^{\S}$ Eq. 2 fit did not converge.}
+\end{frame}
+
+% ================================================================ 11 C1 diagnostic: beta_z
+\begin{frame}{Backup: C1 diagnostic: does winning a larger field predict correctness? ($\beta_z$)}
+  \framesubtitle{$\Pr(a_i{=}1)=\sigma(\alpha\,[+\alpha_s]+f(\ell_i)+\beta_z z_{r,m})$, without and with state effects $\alpha_s$}
+  \vspace{0.5mm}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.575\textwidth}
+      \ifCOneMacros
+        {\footnotesize\setlength{\tabcolsep}{4pt}\renewcommand{\arraystretch}{1.18}
+        \arrayrulecolor{base}
+        \begin{tabular}{@{}l r r r r@{}}
+          \toprule
+          & \multicolumn{2}{c}{$\beta_z$, no state effects} & \multicolumn{2}{c}{$\beta_z$, state effects} \\
+          \cmidrule(lr){2-3}\cmidrule(lr){4-5}
+          {\color{ink2}Arm} & {\color{ink2}uniform} & {\color{ink2}decoder} & {\color{ink2}uniform} & {\color{ink2}decoder} \\
+          \midrule
+          \CBetaRow{LLaDA Base}{LladaBase}
+          \CBetaRow{Dream Base}{DreamBase}
+          \CBetaRow{LLaDA-I GSM8K}{LladaInstructGsm}
+          \CBetaRow{LLaDA-I MBPP}{LladaInstructMbpp}
+          \CBetaRow{Dream-I GSM8K}{DreamInstructGsm}
+          \CBetaRow{Dream-I MBPP}{DreamInstructMbpp}
+          \CBetaRow{MDLM-110M}{Mdlm}
+          \bottomrule
+        \end{tabular}}% braces, not a group: an \else straight after a tabular upsets TeX
+      \else
+        \Pend{52mm}{TUE 27 OCT}{Waits for \texttt{paper/tables/c1/macros\_c1.tex}, written by
+          \texttt{scripts/c1\_paper\_outputs.py} from \texttt{results/c1/<Label>/results.json}
+          (\texttt{regression.eq2\_nofe}, \texttt{eq2\_fe}).}{$\beta_z$ without and with state effects, one
+          row per arm, uniform and decoder ($k{=}4$) states. Point estimates; intervals: backup.}
+      \fi
+    \end{column}
+    \begin{column}{0.395\textwidth}
+      \footnotesize\raggedright
+      \lbl{Field effect.} $\beta_z<0$ without state effects and $\approx 0$ with them; it
+      should agree with a positive E2.\par\vspace{1mm}
+      \lbl{Shared errors.} $\beta_z\neq 0$ with state effects: positions of a state are wrong
+      together, Proposition 1 fails, and E2 is not a field effect.\par\vspace{1mm}
+      \lbl{Caution.} In T0, shared errors gave a \emph{positive} $\beta_z$ without state effects and
+      a negative field term, so we read $\beta_z$ only beside the sign of E2.\par\vspace{1.5mm}
+      \begin{takeaway}[fontupper=\footnotesize]
+        \textbf{Reading.} No state effects: excludes 0 in 14 of 14, negative in 12. With
+        them: holds 0 in 10. A field effect, small where E2 is. Diagnostic only.
+      \end{takeaway}
+    \end{column}
+  \end{columns}
+  \note{Reading (a) of four: negative without state effects, about zero with them, E2 positive, so a field
+  effect. Without FE the interval excludes 0 in all 14 cells and is negative in 12; with FE it holds 0 in 10 of 14.
+  The two positive cells, LLaDA Base and MDLM-110M decoder states, have E2 at the estimator's T0 bias; the
+  110M one has a negative E2 beside its positive beta_z, the pattern T0's shared-error world gave, at small size. Intervals: backup table. If asked about gamma (Eq. 3, the lower-ranked pool members):
+  Holm rejects 24 of 42 tests, in 8 rows, all positive, all in the instruct models and Dream Base decoder
+  states: at equal confidence lower-ranked members are right more often than the winner, which Proposition 1
+  excludes when its conditions hold. We read it, like the within-state ICC (above 0 in every arm), as a sign
+  of shared errors or of a calibration slope that varies by state. None of it is a claim.}
 \end{frame}
 
 \begin{frame}{Backup: $\beta_z$ with intervals}
@@ -1408,6 +1384,31 @@
   \framesubtitle{Type effect at equal confidence against matched uniform states and the reweighted uniform grid}
   \COneTable{c1_e3}{52mm}{TUE 27 OCT}{\texttt{results/e3/<Label>/results.json}}{The E3 type effect with
     95\% interval and the sup-$t$ $p$ of the whole curve, per arm and decoder $k$.}
+\end{frame}
+
+% ================================================================ 17 C3: sanity, wall-clock
+\begin{frame}{Backup: C3: does the harness reproduce known decoders, and at what cost?}
+  \framesubtitle{Fewer steps need not mean less time: wall-clock and forward passes beside tokens per step}
+  \vspace{0.5mm}
+  \CThreeTable{t12_sanity_cost}{38mm}{THU 29 OCT}{the T12 scoring summaries
+    (\texttt{scripts/score\_t12.py}) and the sanity run}{%
+    \begin{stubs}
+      \item Sanity row: top-$k$ and the Fast-dLLM threshold on about 200 fit-half GSM8K problems
+            at Fast-dLLM's settings (5-shot), against the published numbers; the plan's bar is
+            1--2 points.
+      \item Per decoder and speed: tokens per step, forward passes per problem, wall-clock per
+            problem, and the share of problems that failed to decode.
+      \item C3a only: the share of steps outside the calibrator's fit range.
+    \end{stubs}}\par
+  \vspace{1.2mm}
+  \begin{takeaway}[fontupper=\footnotesize]
+    \textbf{How to read.} If the sanity row misses the published numbers, nothing after it is
+    comparable and we say that first. A faster decoder in steps that is not faster in seconds is
+    reported as such.
+  \end{takeaway}
+  \note{Pending until Thu 29. Sanity check is plan item 4 (Sun 25): within 1-2 points of the published
+  top-k and threshold numbers. Cost: about 30 A100-hours at batch size 1 by Parth's estimate; drop speeds
+  before the credit runs out and say which.}
 \end{frame}
 
 \begin{frame}{Backup: references}
