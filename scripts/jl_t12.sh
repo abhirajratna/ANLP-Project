@@ -193,6 +193,7 @@ if [ "${T12_DRYRUN:-0}" != 1 ]; then
     export T12_WATCHED_PID=$$      # the job restarts the watchdog for this pid if it dies
 fi
 REPO="$BASE/ANLP-Project"
+rm -f "$REPO/runs/t12/.job-$PHASE.status"   # a marker of an earlier attempt on this instance is not this job's end
 SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 IN="$BASE/c3-t12-upload-$PHASE"
 rm -rf "$IN"
@@ -786,7 +787,9 @@ finalize() {
         sleep "$NAP"
     done
     case "$state" in
-        running|unknown)
+        succeeded|failed) ;;     # jl read the run's exit_code file over ssh: the job's process is gone
+        none) ;;                 # no local run record (another clone): the marker below decides
+        *)
             cat >&2 <<EOF
 ================================================================================
  JOB '$phase' IS STILL RUNNING or its state is unknown (state: $state) on instance $id: IT KEEPS BILLING.
@@ -798,6 +801,12 @@ finalize() {
 EOF
             return 2 ;;
     esac
+    # `jl run status` can report a finished state when it cannot reach the machine (seen on 551207:
+    # "Connection failed", then a mid-run pause).  Only the job's own end marker says it is over.
+    if [ "$state" = none ] && ! { timeout 120 jl exec "$id" -- sh -c "test -s /home/ANLP-Project/runs/t12/.job-$phase.status && echo T12_JOB_ENDED" 2>/dev/null || true; } | grep -q T12_JOB_ENDED; then
+        info "jl reports the run as '$state', but instance $id has no runs/t12/.job-$phase.status (or cannot be read): treating it as still running"
+        return 2
+    fi
     fetch_outputs "$phase" "$id" "$rid" || info "FETCH FAILED: the outputs stay on the instance (/home/ANLP-Project/runs/t12-out); pausing anyway, \`fetch $phase\` retries"
     pause_instance "$id" "$name" || { LOOKUP_DOWN=1; return 2; }
     rm -f "$dir/resume.pending"

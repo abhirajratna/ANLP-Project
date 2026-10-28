@@ -144,6 +144,12 @@ detect_gpus() {
         n="${NGPU:-$("$PY" -c 'import torch; print(torch.cuda.device_count())')}"
         for ((i = 0; i < n; i++)); do GPU_IDS+=("$i"); done
     fi
+    # T12_WORKERS_PER_GPU=k runs k shards on each GPU.  One decoding process is bound by its
+    # single-threaded per-step Python (an H200 sat at ~56% busy), so k=3 nearly doubles throughput;
+    # each worker still sees one device (CUDA_VISIBLE_DEVICES rejects a repeated id).
+    local k="${T12_WORKERS_PER_GPU:-1}" ids=() g j
+    for g in "${GPU_IDS[@]}"; do for ((j = 0; j < k; j++)); do ids+=("$g"); done; done
+    GPU_IDS=("${ids[@]}")
     [ "${#GPU_IDS[@]}" -ge 1 ] || die "no visible GPU"
 }
 
