@@ -1,6 +1,6 @@
 ---
 member: ayush
-updated: 2026-10-28T15:39:15Z
+updated: 2026-10-28T16:31:40Z
 branch: main
 ---
-T12: report RUNNING fresh on 1x H200 (552039, IN2, ffff6cb) since ~15:30Z per deviation 17 amendment c94c534; ETA after first speed reading
+T12: GSM8K on H200 552084, MBPP on H200 552094 (3 workers each, a9abd7b); ETA ~22:30Z
