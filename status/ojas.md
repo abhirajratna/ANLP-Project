@@ -1,6 +1,6 @@
 ---
 member: ojas
-updated: 2026-10-28T07:32:38Z
+updated: 2026-10-28T12:01:30Z
 branch: main
 ---
-ojas: Mdlm v1.1 done + on HF (e22c125/5d4c285/91d1c7f); waiting on DreamBase + LladaBase v1.1 for the regen (#58/#59 drafts ready)
+ojas: #62 reviewed (changes requested, 2 fixes); #58 regen waits on LladaBase v1.1 + precision
