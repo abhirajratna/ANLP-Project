@@ -18,12 +18,24 @@ Inputs
   --verdicts    ``scripts/score_t12.py --per-record`` JSONL: whether each record is correct.  The
                 scoring is not redone here.
   --scores      ``scripts/score_t12.py --out`` JSON: when there are no verdicts for a configuration,
-                its row (n, n_correct, ci95) gives the accuracy; differences need the verdicts.
+                its row (n, n_correct, ci95) gives the accuracy; differences need the verdicts.  Not used
+                for a task from which problems were dropped (its rows cover the dropped problems too).
   --grids       ``prereg/t12_grid_{gsm8k,mbpp}.json`` (``scripts/pick_knobs.py``): which configuration
                 is which decoder at which speed slot, C3a's alpha per slot, and ``picks[*]
                 .unmatched_at_target``.
   --calibrators ``artifacts/c3/llada-8b-instruct_fp16_c3a-{gsm8k,mbpp}.json`` (T11).
   --sanity      the Ada sanity run, ``score_t12.py`` output.
+
+Completeness rule (prereg/deviations.md, entry 17), the only thing ``--allow-partial`` changes
+  Per task the kept problems are the report-half doc_ids that have a record for EVERY configuration of
+  the task's committed grid (an ``error`` record counts as finished; a driver error is scored wrong).
+  Records of every other problem are dropped before anything is computed.  Accuracy, speed, matching,
+  the paired bootstrap, OutsideShare, every macro, table, the figure, the zip tables and the summary
+  use only the kept problems; ``N`` in every header is ``n_complete``.  Without ``--allow-partial`` an
+  incomplete run (a shard missing, a configuration short of problems) is refused instead.  Per task the
+  summary records n_planned, n_complete, n_dropped_problems, n_dropped_records and the rule text.
+  Sanity: within a shard file the kept problems should be a prefix of its problem order (run_t12.py
+  runs problem by problem); if not, a loud warning goes to stderr, the macros file and the summary.
 
 Computation (prereg/deviations.md, entry 17)
   speed of a configuration   256 N / sum(NFE) over its N problems, not the mean of per-problem ratios.
@@ -116,6 +128,10 @@ RULE = ("each baseline is taken at its setting whose aggregate tokens per step (
         "accuracy, paired on the shared doc_ids, 95% percentile CI from 2,000 bootstrap resamples "
         "of problems, seed 20261030 (reseeded per comparison); on a tie (two settings equally near) the "
         "lower speed slot is taken")
+COMPLETE_RULE = ("kept problems: the report-half problems with a record for every configuration of the task's "
+                 "committed grid (an error record counts as finished); the records of every other problem are "
+                 "dropped before accuracy, speed, matching and the paired bootstrap are computed, so all of them, "
+                 "and N, use only the kept problems (prereg/deviations.md entry 17)")
 MODEL_TAG = "llada-8b-instruct_fp16"
 
 
@@ -212,7 +228,7 @@ def paired_bootstrap(a: dict, b: dict, n_boot: int = N_BOOT, seed: int = SEED) -
 # --------------------------------------------------------------------------- loading
 def load_grids(specs, warnings: list, inputs: dict) -> dict:
     """``{task: {"slot_of": {config_key: slot}, "dec_of": {config_key: decoder}, "unmatched":
-    {(decoder, slot): bool}, "alpha": {slot: alpha}}}``."""
+    {(decoder, slot): bool}, "alpha": {slot: alpha}, "keys": [every committed config key]}}``."""
     out = {}
     for f in _expand(specs, "t12_grid_*.json"):
         d = _read_json(f, warnings)
@@ -253,7 +269,8 @@ def load_grids(specs, warnings: list, inputs: dict) -> dict:
                 m3 = re.search(r"alpha=([0-9.eE+-]+)", key)
                 if m3:
                     alpha[s] = float(m3.group(1))
-        out[task] = {"slot_of": slot_of, "dec_of": dec_of, "unmatched": unmatched, "alpha": alpha}
+        out[task] = {"slot_of": slot_of, "dec_of": dec_of, "unmatched": unmatched, "alpha": alpha,
+                     "keys": sorted(set(keys))}
     return out
 
 
@@ -291,11 +308,14 @@ def load_records(specs, warnings: list, inputs: dict, manifest_dir=None) -> dict
     for a task (deviation 17: one machine per task), and a shard whose meta says ``half: fit`` (the
     calibration and sanity runs).  Shortfalls (a shard missing, a configuration with
     fewer than the expected problems) go in ``out["_shortfalls"]`` for ``main`` to refuse or allow.
-    ``out["_meta"][task]``: ``run``, ``n_expected``, ``shards_missing``."""
+    ``out["_meta"][task]``: ``run``, ``n_expected``, ``shards_missing``.  ``out["_order"][task]``:
+    shard file -> its doc_ids in order of first appearance.  The records are not yet reduced to the
+    complete problems: ``reduce_to_complete`` does that."""
     by_run = {}                                           # task -> run -> {config: {doc: record}}
     info = {}                                             # task -> run -> shard bookkeeping
     gen_length, dup_diff, dup_same = {}, {}, {}
     first, origin = {}, {}                                # task -> identity of its first shard; (task, config, doc) -> file
+    order = {}                                            # task -> shard file -> {doc_id: rank of first appearance}
     for f in _expand(specs, "t12.shard*.jsonl"):
         if f.name.endswith(".meta.json"):
             continue
@@ -348,6 +368,8 @@ def load_records(specs, warnings: list, inputs: dict, manifest_dir=None) -> dict
             if "config" not in r or "doc_id" not in r or r.get("task", task) != task:
                 continue
             d = int(r["doc_id"])
+            seen = order.setdefault(task, {}).setdefault(str(f), {})
+            seen.setdefault(d, len(seen))
             old = cfgs.setdefault(r["config"], {}).get(d)
             if old is None:
                 cfgs[r["config"]][d] = r
@@ -361,7 +383,9 @@ def load_records(specs, warnings: list, inputs: dict, manifest_dir=None) -> dict
                     dup_diff[task] = dup_diff.get(task, 0) + 1
                 else:
                     dup_same[task] = dup_same.get(task, 0) + 1
-    out = {"_gen_length": {t: g or GEN_LENGTH for t, g in gen_length.items()}, "_meta": {}, "_shortfalls": []}
+    out = {"_gen_length": {t: g or GEN_LENGTH for t, g in gen_length.items()}, "_meta": {}, "_shortfalls": [],
+           "_order": {t: {f: sorted(ds, key=ds.get) for f, ds in files.items()} for t, files in order.items()},
+           "_reduced": {}}
     for task, runs in by_run.items():
         if len(runs) > 1:
             where = "; ".join(f"{rk}: {info[task][rk]['files'][0]} (+{len(info[task][rk]['files']) - 1})"
@@ -406,6 +430,67 @@ def load_records(specs, warnings: list, inputs: dict, manifest_dir=None) -> dict
             out["_shortfalls"].append(f"{task}: {len(short)} configuration(s) have fewer than the "
                                       f"{len(expected)} expected report problems; fewest {n}/{len(expected)} ({k})")
     return out
+
+
+def reduce_to_complete(recs: dict, grid: dict, warnings: list) -> dict:
+    """The completeness rule (prereg/deviations.md 17), applied in place to ``recs``.
+
+    Per task the kept doc_ids are those with a record for every configuration key of the task's
+    committed grid (``grid[task]["keys"]``; with no grid, every configuration seen in the records, with
+    a warning).  An ``error`` record counts as finished.  The records of every other doc_id are removed
+    from ``recs[task]`` (and a configuration left with none), so nothing downstream can see them.
+    Returns ``{task: info}`` (also in ``recs["_reduced"]``): ``n_planned``, ``n_complete``,
+    ``n_dropped_problems``, ``n_dropped_records``, ``n_configs_required``, ``missing_configs``,
+    ``prefix_check`` ``{"ok", "violations"}`` and ``rule``.  A grid configuration with no record at
+    all makes every problem incomplete (``n_complete`` 0) and is added to ``recs["_shortfalls"]``."""
+    info = {}
+    for task in TASKS:
+        cfgs = recs.get(task)
+        if not cfgs:
+            continue
+        g = (grid or {}).get(task)
+        required = list(g["keys"]) if g and g.get("keys") else sorted(cfgs)
+        if not (g and g.get("keys")):
+            warnings.append(f"{task}: no committed grid; the completeness rule uses the {len(required)} "
+                            "configuration(s) seen in the records")
+        all_docs = {d for docs in cfgs.values() for d in docs}
+        missing_cfgs = [k for k in required if not cfgs.get(k)]
+        kept = set() if missing_cfgs else set.intersection(*(set(cfgs[k]) for k in required))
+        dropped = all_docs - kept
+        n_dropped_records = sum(1 for docs in cfgs.values() for d in docs if d in dropped)
+        recs[task] = {k: {d: r for d, r in docs.items() if d in kept} for k, docs in cfgs.items()
+                      if any(d in kept for d in docs)}
+        planned = (recs["_meta"].get(task) or {}).get("n_expected") or len(all_docs)
+        violations = []
+        for f, docs in (recs.get("_order") or {}).get(task, {}).items():
+            flags = [d in kept for d in docs]
+            n_prefix = 0
+            while n_prefix < len(flags) and flags[n_prefix]:
+                n_prefix += 1
+            if any(flags[n_prefix:]):
+                violations.append({"file": f, "n_problems": len(docs), "n_kept": sum(flags),
+                                   "first_dropped": docs[n_prefix],
+                                   "kept_after_gap": [d for d, k in zip(docs[n_prefix:], flags[n_prefix:]) if k][:10]})
+        info[task] = {"n_planned": planned, "n_complete": len(kept), "n_dropped_problems": len(dropped),
+                      "n_dropped_records": n_dropped_records, "n_configs_required": len(required),
+                      "missing_configs": missing_cfgs, "rule": COMPLETE_RULE,
+                      "prefix_check": {"ok": not violations, "violations": violations}}
+        if missing_cfgs:
+            recs["_shortfalls"].append(f"{task}: {len(missing_cfgs)} configuration(s) of the grid have no records "
+                                       f"(first: {missing_cfgs[0]})")
+        elif len(kept) < planned and not any(x.startswith(f"{task}:") for x in recs["_shortfalls"]):
+            recs["_shortfalls"].append(f"{task}: only {len(kept)}/{planned} report problems have a record for "
+                                       f"all {len(required)} configurations")
+        if dropped:
+            warnings.append(f"{task}: completeness rule: kept {len(kept)} of {planned} planned problems; dropped "
+                            f"{len(dropped)} incomplete problem(s) = {n_dropped_records} record(s)")
+        for v in violations:
+            warnings.append(f"WARNING (NOT A PREFIX): {task}: in {v['file']} the kept problems are not a prefix of "
+                            f"the shard's problem order: problem {v['first_dropped']} is incomplete but "
+                            f"later problem(s) are complete ({v['kept_after_gap']}); a crash or a resume that "
+                            "skipped problems? check before using these numbers")
+    recs["_reduced"] = info
+    return info
 
 
 class Verdicts(dict):
@@ -541,16 +626,20 @@ def outside_share(recs_by_config: dict, keys: list) -> dict | None:
 def build_task(task, recs, verdicts, scores, grid, warnings) -> dict:
     gen_length = (recs or {}).get("_gen_length", {}).get(task, GEN_LENGTH) if recs else GEN_LENGTH
     by_cfg = (recs or {}).get(task, {})
-    t = {"n": None, "n_expected": None, "partial": False, "shards_missing": [], "run": None, "decoders": {},
-         "matched": {}, "alpha": {}, "outside_share": None}
+    t = {"n": None, "n_planned": None, "n_complete": None, "n_dropped_problems": None, "n_dropped_records": None,
+         "rule": COMPLETE_RULE, "prefix_check": None, "partial": False, "shards_missing": [], "run": None,
+         "decoders": {}, "matched": {}, "alpha": {}, "outside_share": None}
     rmeta = ((recs or {}).get("_meta") or {}).get(task) or {}
-    if by_cfg:
-        sizes = {len(v) for v in by_cfg.values()}
-        t["n"] = max(sizes)
-        t["n_expected"] = rmeta.get("n_expected") or t["n"]
+    red = ((recs or {}).get("_reduced") or {}).get(task)
+    if red:                                               # N is the number of complete problems, everywhere
+        t.update({k: red[k] for k in ("n_planned", "n_complete", "n_dropped_problems", "n_dropped_records",
+                                      "prefix_check")})
+        t["n"] = red["n_complete"]
         t["shards_missing"] = rmeta.get("shards_missing") or []
         t["run"] = rmeta.get("run")
-        t["partial"] = bool(t["shards_missing"]) or min(sizes) < t["n_expected"] or t["n"] < t["n_expected"]
+        t["partial"] = bool(t["shards_missing"]) or red["n_complete"] < red["n_planned"]
+    if by_cfg:
+        sizes = {len(v) for v in by_cfg.values()}
         if len(sizes) > 1:
             warnings.append(f"{task}: configurations have different numbers of problems {sorted(sizes)}")
     correct = {}                                          # (dec, slot) -> {doc_id: 0/1}
@@ -565,7 +654,7 @@ def build_task(task, recs, verdicts, scores, grid, warnings) -> dict:
             continue
         st = config_stats(docs, gen_length, (getattr(verdicts, "timeouts", {}) or {}).get((t["run"], task, key), frozenset()))
         st["config"] = key
-        st["n_expected"] = t["n_expected"]
+        st["n_planned"] = t["n_planned"]
         run = t["run"]
         real = {d: v for d, v in (verdicts.get((run, task, key)) or {}).items() if d in docs}
         row = (scores or {}).get((task, key))
@@ -584,7 +673,8 @@ def build_task(task, recs, verdicts, scores, grid, warnings) -> dict:
                 lo, hi = wilson(k, n)
                 st.update({"n_correct": k, "n_scored": n, "acc": k / n, "ci95": [lo, hi]})
                 correct[(dec, slot)] = vmap
-        elif row and row.get("n") == len(docs):
+        elif row and row.get("n") == len(docs) and not t["n_dropped_records"]:
+            # an aggregate over the problems score_t12 saw: only when none were dropped here
             st.update({"n_correct": row.get("n_correct"), "n_scored": row["n"], "acc": row["accuracy"],
                        "ci95": list(row["ci95"])})
         elif verdicts or row:
@@ -670,8 +760,12 @@ def build_macros(S: dict) -> Macros:
     for task in TASKS:
         if S["tasks"][task]["partial"]:
             t = S["tasks"][task]
-            m.comment(f"PARTIAL: {task} N={t['n']}/{t['n_expected']} (--allow-partial); shards missing: "
-                      f"{t['shards_missing'] or 'none'}")
+            m.comment(f"PARTIAL: {task} N={t['n_complete']} of {t['n_planned']} planned (--allow-partial: only "
+                      f"problems with every configuration; {t['n_dropped_problems']} problem(s) = "
+                      f"{t['n_dropped_records']} record(s) dropped); shards missing: {t['shards_missing'] or 'none'}")
+        for v in ((S["tasks"][task]["prefix_check"] or {}).get("violations") or []):
+            m.comment(f"WARNING: {task}: kept problems are NOT a prefix of the problem order in "
+                      f"{Path(v['file']).name} (problem {v['first_dropped']} incomplete, later ones complete)")
     for task in TASKS:
         w = TASK_WORD[task]
         c = S["calibrators"].get(task)
@@ -684,7 +778,7 @@ def build_macros(S: dict) -> Macros:
                     m.add(f"CThreeTEleven{w}{name}", fnum(c[key], 3))
     for task in TASKS:
         w, t = TASK_WORD[task], S["tasks"][task]
-        if t["n"]:
+        if t["n"] is not None:
             m.add(f"CThreeTTwelve{w}N", str(t["n"]))
         for dec in DECODERS:
             for s in SLOTS:
@@ -746,12 +840,10 @@ def _est(acc, ci) -> str:
 
 
 def nlabel(t: dict, tex: bool = True) -> str:
-    """``$N=30$``, or ``$N=15/30$ (partial)`` for a run reported with --allow-partial."""
-    if not t["n"]:
+    """``$N=30$``: the number of complete problems (the problems every figure in the output is over)."""
+    if t["n"] is None:
         return ""
-    body = f"N={t['n']}/{t['n_expected']}" if t["partial"] else f"N={t['n']}"
-    s = f"${body}$" if tex else body
-    return s + " (partial)" if t["partial"] else s
+    return f"$N={t['n']}$" if tex else f"N={t['n']}"
 
 
 def matched_table(S: dict) -> str:
@@ -765,7 +857,7 @@ def matched_table(S: dict) -> str:
     groups, rules = [], []
     for i, task in enumerate(TASKS):
         t = S["tasks"][task]
-        label = TASK_LABEL[task] + (f" ({nlabel(t)})" if t["n"] else "")
+        label = TASK_LABEL[task] + (f" ({nlabel(t)})" if t["n"] is not None else "")
         groups.append(f"\\multicolumn{{3}}{{c}}{{\\textbf{{{label}}}}}")
         rules.append(f"\\cmidrule(lr){{{2 + 3 * i}-{4 + 3 * i}}}")
     head.append(" & ".join([""] + groups) + " \\\\\n" + "".join(rules) + "\n")
@@ -792,7 +884,7 @@ def matched_table(S: dict) -> str:
                 shown = t["decoders"][dec]["speeds"][str(e["slot"])]
                 diff = DASH if e["diff"] is None else est_ci({"value": e["diff"], "ci": [e["lo"], e["hi"]]})
                 cells[dec] += [num(e["tps"], 2), _est(shown.get("acc"), shown.get("ci95")), diff]
-                if e["n_paired"] and t["n"] and e["n_paired"] != t["n"]:
+                if e["n_paired"] and t["n"] is not None and e["n_paired"] != t["n"]:
                     paired.append(f"{TASK_LABEL[task]} {LABEL[dec]}: {int(e['n_paired'])}")
             if shown and shown["failures"]:
                 notes.append(f"{TASK_LABEL[task]} {LABEL[dec]}: {shown['n_ok']}/{shown['n']} decoded")
@@ -837,7 +929,7 @@ def sanity_cost_table(S: dict) -> str:
         t = S["tasks"][task]
         rows.append("\\midrule\n")
         rows.append(f"\\multicolumn{{13}}{{l}}{{\\textbf{{{TASK_LABEL[task]}}}"
-                    + (f" ({nlabel(t)})" if t["n"] else "") + "} \\\\\n")
+                    + (f" ({nlabel(t)})" if t["n"] is not None else "") + "} \\\\\n")
         for dec in DECODERS:
             cells, tot = [], [0, 0, 0]
             for s in SLOTS:
@@ -1038,23 +1130,28 @@ def main(argv=None) -> int:
     ap.add_argument("--manifest-dir", default="artifacts",
                     help="where split_manifest_<task>.json are: the report-half ids the records must cover")
     ap.add_argument("--allow-partial", action="store_true",
-                    help="report an incomplete run (a shard missing, a time cap) as N=x/y (partial) "
-                         "instead of refusing it")
+                    help="accept an incomplete run (a shard missing, a time cap): report each task on the "
+                         "report-half problems that have a record for every configuration of its grid "
+                         "(N = their number; the other problems' records are dropped before anything is "
+                         "computed; prereg/deviations.md 17) instead of refusing the run")
     ap.add_argument("--no-figures", action="store_true")
     a = ap.parse_args(argv)
 
     warnings, inputs = [], {}
     recs = load_records(a.records, warnings, inputs, a.manifest_dir) if a.records else {}
+    grid = load_grids(a.grids, warnings, inputs)
+    if a.records:
+        reduce_to_complete(recs, grid, warnings)          # drops the incomplete problems' records, in place
     short = recs.get("_shortfalls") or []
     if short and not a.allow_partial:
         raise SystemExit("refusing a partial T12 run (nothing written):\n  " + "\n  ".join(short)
-                         + "\npass --allow-partial to report it as N=x/y (partial)")
+                         + "\npass --allow-partial to report each task on the problems for which all of its "
+                           "configurations finished (prereg/deviations.md 17)")
     for w in short:
         warnings.append(f"PARTIAL (--allow-partial): {w}")
     runs = {m["run"] for m in (recs.get("_meta") or {}).values()}
     verdicts = load_verdicts(a.verdicts, warnings, inputs, runs) if a.verdicts else {}
     scores = load_scores(a.scores, warnings, inputs, runs) if a.scores else {}
-    grid = load_grids(a.grids, warnings, inputs)
     cal = load_calibrators(a.calibrators, warnings, inputs)
     sanity = load_sanity(a.sanity, warnings, inputs)
 
@@ -1070,7 +1167,7 @@ def main(argv=None) -> int:
 
     S = {"what": "T12 summary for the paper (scripts/c3_paper_outputs.py): LLaDA-8B-Instruct fp16, "
                  "report halves of GSM8K and MBPP, zero-shot chat, 256 tokens, blocks of 32, greedy",
-         "primary_speed": PRIMARY_SPEED, "allow_partial": bool(a.allow_partial),
+         "primary_speed": PRIMARY_SPEED, "allow_partial": bool(a.allow_partial), "completeness_rule": COMPLETE_RULE,
          "pairing": {"rule": RULE, "seed": SEED, "n_boot": N_BOOT, "tolerance": TOL,
                      "speed_metric": "256 N / sum(NFE) over the task's report-half problems",
                      "deviation": "prereg/deviations.md entry 17"},

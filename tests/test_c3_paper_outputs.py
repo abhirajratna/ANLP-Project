@@ -104,35 +104,35 @@ def write_jsonl(path, rows):
 JUNK_DOC = 1000                                      # a fit-half doc_id in the fixture manifests
 
 
-def meta_of(task, shard, **over):
+def meta_of(task, shard, nshards=2, n_docs=N_DOCS, **over):
     """The meta file ``run_t12.py`` writes for one shard (the fields score_t12.RUN_FIELDS and
     the completeness checks read)."""
     m = {"task": task, "half": "report", "gen_length": 256, "run_id": f"run{shard}", "precision": "fp16",
          "model": "llada-8b-instruct", "model_revision": "rev1", "task_jsonl_sha256": "t" * 8,
          "manifest_sha256": "m" * 8, "configs_sha256": "c" * 8, "calibrator_sha256": "k" * 8,
          "c3a_clamp": False, "pc_sampler_variant": "full", "decoding": "greedy", "block_length": 32,
-         "prompt": {"format": "chat", "fewshot": 0}, "limit": 0, "shard": shard, "num_shards": 2,
+         "prompt": {"format": "chat", "fewshot": 0}, "limit": 0, "shard": shard, "num_shards": nshards,
          "label": "jl-report", "provenance": {"host": "jarvis-1", "gpu": "RTX PRO 6000", "git_commit": "abc1234"},
-         "doc_ids": [i for i in range(N_DOCS) if i % 2 == shard]}
+         "doc_ids": [i for i in range(n_docs) if i % nshards == shard]}
     m.update(over)
     return m
 
 
 def make_fixture(root: Path, with_records=True, with_verdicts=True, with_grids=True,
-                 with_cal=True, with_sanity=True, with_manifests=True):
+                 with_cal=True, with_sanity=True, with_manifests=True, nshards=2, n_docs=N_DOCS):
     """Write every input under ``root``; returns the paths."""
     paths = {"records": root / "runs", "verdicts": root / "verdicts.jsonl", "grids": root / "grids",
              "cal": root / "cal", "sanity": root / "sanity.json", "out": root / "out",
              "manifests": root / "manifests"}
     verdicts = []
     for task in TASKS:
-        shard_rows = {0: [], 1: []}
-        for i in range(N_DOCS):
+        shard_rows = {sh: [] for sh in range(nshards)}
+        for i in range(n_docs):
             for dec in DEC_POLICY:
                 for s in (1, 2, 3):
                     cfg = cfg_of(dec, s, task)
                     key = config_key(cfg)
-                    rec = {"config": key, **cfg, "task": task, "doc_id": i, "run_id": f"run{i % 2}",
+                    rec = {"config": key, **cfg, "task": task, "doc_id": i, "run_id": f"run{i % nshards}",
                            "precision": "fp16", "git_commit": "abc1234"}
                     if failed(task, dec, s, i):
                         rec.update({"completion": None, "error": "OutOfMemoryError: out of memory"})
@@ -146,9 +146,9 @@ def make_fixture(root: Path, with_records=True, with_verdicts=True, with_grids=T
                                              "median_ell": 0.1, "mask_rate": 0.5, "log_n_masked": 3.0,
                                              "outside": ["mask_rate"] if (st == 0 and outside_of(task, i)) else []}
                                             for st in range(10)]
-                    shard_rows[i % 2].append(rec)
+                    shard_rows[i % nshards].append(rec)
                     ok = (not failed(task, dec, s, i)) and correct_of(task, dec, s, i)
-                    verdicts.append({"run": P.run_key(meta_of(task, i % 2)), "run_id": f"run{i % 2}", "prompt_format": "chat",
+                    verdicts.append({"run": P.run_key(meta_of(task, i % nshards, nshards, n_docs)), "run_id": f"run{i % nshards}", "prompt_format": "chat",
                                      "task": task, "config": key, "doc_id": i, "stopped": True,
                                      "correct": bool(ok), "extracted": None, "driver_error": failed(task, dec, s, i),
                                      "error": None})
@@ -156,11 +156,11 @@ def make_fixture(root: Path, with_records=True, with_verdicts=True, with_grids=T
             d = paths["records"] / f"sweep-{task}"
             d.mkdir(parents=True, exist_ok=True)
             for sh, rows in shard_rows.items():
-                write_jsonl(d / f"t12.shard{sh}of2.jsonl", rows)
-                (d / f"t12.shard{sh}of2.meta.json").write_text(json.dumps(meta_of(task, sh)))
+                write_jsonl(d / f"t12.shard{sh}of{nshards}.jsonl", rows)
+                (d / f"t12.shard{sh}of{nshards}.meta.json").write_text(json.dumps(meta_of(task, sh, nshards, n_docs)))
         if with_manifests:
             paths["manifests"].mkdir(exist_ok=True)
-            man = {str(i): 1 for i in range(N_DOCS)} | {str(JUNK_DOC + i): 0 for i in range(10)}
+            man = {str(i): 1 for i in range(n_docs)} | {str(JUNK_DOC + i): 0 for i in range(10)}
             (paths["manifests"] / f"split_manifest_{task}.json").write_text(json.dumps(man))
         if with_grids:
             paths["grids"].mkdir(exist_ok=True)
@@ -767,7 +767,7 @@ def test_a_config_cut_short_inside_the_last_problem_is_refused(tmp_path):
     assert "29/30" in str(e.value)
 
 
-def test_allow_partial_reports_x_of_y_everywhere(tmp_path):
+def test_allow_partial_with_a_missing_shard_reports_n_of_the_complete_problems(tmp_path):
     paths = make_fixture(tmp_path)
     d = paths["records"] / "sweep-gsm8k"
     (d / "t12.shard1of2.jsonl").unlink()
@@ -775,21 +775,26 @@ def test_allow_partial_reports_x_of_y_everywhere(tmp_path):
     assert run_main(paths, "--allow-partial") == 0
     s = summary_of(paths)
     g = s["tasks"]["gsm8k"]
-    assert (g["n"], g["n_expected"], g["partial"]) == (15, 30, True)
-    assert g["decoders"]["TopK"]["speeds"]["2"]["n_expected"] == 30
+    assert (g["n"], g["n_complete"], g["n_planned"], g["partial"]) == (15, 15, 30, True)
+    assert (g["n_dropped_problems"], g["n_dropped_records"]) == (0, 0)     # the shard is absent, not cut
+    assert g["decoders"]["TopK"]["speeds"]["2"]["n_planned"] == 30
     assert s["tasks"]["mbpp"]["partial"] is False
     tex = (paths["out"] / "t12" / "t12_matched_speed.tex").read_text()
-    assert "$N=15/30$ (partial)" in tex and "$N=30$" in tex
+    assert "$N=15$" in tex and "$N=30$" in tex and "partial" not in tex
     mtex = (paths["out"] / "c3" / "macros_c3.tex").read_text()
-    assert "% PARTIAL: gsm8k N=15/30" in mtex
-    assert "N=15/30 (partial)" in (paths["out"] / "t12" / "zip" / "t12_sanity_cost.md").read_text()
+    assert "% PARTIAL: gsm8k N=15 of 30 planned" in mtex
+    assert "\\newcommand{\\CThreeTTwelveGsmN}{15}" in mtex
+    assert "gsm8k N=15" in (paths["out"] / "t12" / "zip" / "t12_sanity_cost.md").read_text()
 
 
 def test_complete_run_has_no_partial_marker(built):
     assert "partial" not in (built["out"] / "t12" / "t12_matched_speed.tex").read_text()
     assert "PARTIAL" not in (built["out"] / "c3" / "macros_c3.tex").read_text()
     g = built["summary"]["tasks"]["gsm8k"]
-    assert (g["n"], g["n_expected"], g["partial"]) == (30, 30, False)
+    assert (g["n"], g["n_complete"], g["n_planned"], g["partial"]) == (30, 30, 30, False)
+    assert (g["n_dropped_problems"], g["n_dropped_records"]) == (0, 0)
+    assert g["prefix_check"] == {"ok": True, "violations": []}
+    assert "kept problems" in g["rule"] and built["summary"]["completeness_rule"] == g["rule"]
 
 
 def test_two_runs_for_one_task_are_refused(tmp_path):
@@ -1138,3 +1143,180 @@ def test_a_fit_half_shard_under_records_is_refused(tmp_path):
     with pytest.raises(SystemExit) as e:
         run_main(paths)
     assert "fit" in str(e.value)
+
+
+# ------------------------------------------------------------------ the completeness rule (deviation 17)
+# 3 shards of 4 problems (shard s holds docs s, s+3, s+6, s+9); the last problem of each shard (9, 10,
+# 11) is incomplete: doc 9 lacks C3a, doc 10 has top-k only, doc 11 lacks one configuration.
+R_DOCS, R_SHARDS = 12, 3
+PARTIAL_DOCS = (9, 10, 11)
+KEPT_N = 9
+
+
+def _keep(doc, r):
+    if doc == 9:
+        return not r["config"].startswith("c3a")
+    if doc == 10:
+        return r["config"].startswith("topk_conf")
+    return r["config"] != config_key(cfg_of("Klass", 3, r["task"]))
+
+
+def partial_fixture(root):
+    paths = make_fixture(root, nshards=R_SHARDS, n_docs=R_DOCS)
+    for task in TASKS:
+        for f in (paths["records"] / f"sweep-{task}").glob("t12.shard*.jsonl"):
+            edit_rows(f, lambda rows: [r for r in rows if r["doc_id"] not in PARTIAL_DOCS or _keep(r["doc_id"], r)])
+    return paths
+
+
+def n_records_cut():
+    return sum(1 for doc in PARTIAL_DOCS for dec in DEC_POLICY for s in (1, 2, 3)
+               if _keep(doc, {"config": config_key(cfg_of(dec, s, "gsm8k")), "task": "gsm8k"}))
+
+
+def test_partial_problems_are_refused_without_the_flag_and_nothing_is_written(tmp_path):
+    paths = partial_fixture(tmp_path)
+    with pytest.raises(SystemExit) as e:
+        run_main(paths)
+    assert "--allow-partial" in str(e.value) and "fewer than the 12" in str(e.value)
+    assert not (paths["out"] / "c3" / "macros_c3.tex").exists()
+
+
+def test_n_is_the_number_of_complete_problems_everywhere(tmp_path):
+    paths = partial_fixture(tmp_path)
+    assert run_main(paths, "--allow-partial") == 0
+    s = summary_of(paths)
+    for task in TASKS:
+        t = s["tasks"][task]
+        assert (t["n"], t["n_complete"], t["n_planned"]) == (KEPT_N, KEPT_N, R_DOCS)
+        assert t["n_dropped_problems"] == 3
+        assert t["n_dropped_records"] == n_records_cut() == 18 + 3 + 20
+        assert "kept problems" in t["rule"] and "every configuration" in t["rule"]
+        assert t["prefix_check"] == {"ok": True, "violations": []}
+        assert {sp["n"] for d in t["decoders"].values() for sp in d["speeds"].values()} == {KEPT_N}
+        assert {sp["n_scored"] for d in t["decoders"].values() for sp in d["speeds"].values()
+                if "n_scored" in sp} == {KEPT_N}
+        assert {e["n_paired"] for per in t["matched"].values() for e in per.values() if e["matched"]} == {KEPT_N}
+    mac = parse_macros((paths["out"] / "c3" / "macros_c3.tex").read_text())
+    assert mac["CThreeTTwelveGsmN"] == mac["CThreeTTwelveMbppN"] == str(KEPT_N)
+    tex = (paths["out"] / "t12" / "t12_matched_speed.tex").read_text()
+    assert tex.count(f"$N={KEPT_N}$") == 2 and "/12" not in tex and "partial" not in tex
+    assert f"$N={KEPT_N}$" in (paths["out"] / "t12" / "t12_sanity_cost.tex").read_text()
+    assert "% PARTIAL: gsm8k N=9 of 12 planned" in (paths["out"] / "c3" / "macros_c3.tex").read_text()
+    assert any("kept 9 of 12 planned problems" in w for w in s["warnings"])
+
+
+def _artifacts(paths):
+    out = paths["out"]
+    files = {"macros": out / "c3" / "macros_c3.tex", "table": out / "t12" / "t12_matched_speed.tex",
+             "cost": out / "t12" / "t12_sanity_cost.tex"}
+    files |= {f"zip:{f.name}": f for f in sorted((out / "t12" / "zip").glob("*.csv"))}
+    return {k: f.read_text() for k, f in files.items()}
+
+
+def test_dropped_records_change_no_number(tmp_path):
+    """The same run without the three incomplete problems at all gives identical accuracy, speed,
+    matching, bootstrap, macros, tables and CSVs."""
+    a = partial_fixture(tmp_path / "partial")
+    b = make_fixture(tmp_path / "clean", nshards=R_SHARDS, n_docs=KEPT_N)
+    assert run_main(a, "--allow-partial") == 0
+    assert run_main(b) == 0
+    sa, sb = summary_of(a), summary_of(b)
+    for task in TASKS:
+        ta, tb = sa["tasks"][task], sb["tasks"][task]
+        for t in (ta, tb):                                             # only the planned N differs (12 vs 9)
+            for d in t["decoders"].values():
+                for sp in d["speeds"].values():
+                    sp.pop("n_planned")
+        assert ta["decoders"] == tb["decoders"]                        # acc, ci, tps, nfe, seconds, counts
+        assert ta["matched"] == tb["matched"]                          # diff, lo, hi (the bootstrap), n_paired
+        assert ta["outside_share"] == tb["outside_share"]
+        assert ta["alpha"] == tb["alpha"]
+        assert tb["n_dropped_problems"] == 0 and ta["n_dropped_problems"] == 3
+        assert {m["n_paired"] for per in ta["matched"].values() for m in per.values() if m["matched"]} == {KEPT_N}
+        assert any(m["lo"] is not None for per in ta["matched"].values() for m in per.values() if m["matched"])
+    art_a, art_b = _artifacts(a), _artifacts(b)
+    macros_a = parse_macros(art_a.pop("macros"))
+    macros_b = parse_macros(art_b.pop("macros"))
+    assert macros_a == macros_b
+    assert art_a == art_b
+
+
+def test_an_error_record_counts_as_finished(tmp_path):
+    """A driver error is a finished record (scored wrong): its problem is kept, no flag needed."""
+    paths = make_fixture(tmp_path, nshards=R_SHARDS, n_docs=R_DOCS)
+    key = config_key(cfg_of("CThreeA", 2, "gsm8k"))
+
+    def to_error(rows):
+        for r in rows:
+            if r["doc_id"] == R_DOCS - 1 and r["config"] == key:
+                r.update({"completion": None, "error": "OutOfMemoryError: out of memory", "n_forward": None,
+                          "tokens_per_step": None, "seconds": None})
+                r.pop("c3a_steps", None)
+        return rows
+
+    for f in (paths["records"] / "sweep-gsm8k").glob("t12.shard*.jsonl"):
+        edit_rows(f, to_error)
+    assert run_main(paths) == 0                                        # complete: no --allow-partial
+    g = summary_of(paths)["tasks"]["gsm8k"]
+    assert (g["n"], g["n_complete"], g["n_dropped_problems"], g["n_dropped_records"]) == (R_DOCS, R_DOCS, 0, 0)
+    sp = g["decoders"]["CThreeA"]["speeds"]["2"]
+    assert (sp["n"], sp["failures"], sp["n_ok"]) == (R_DOCS, 1, R_DOCS - 1)
+
+
+def test_a_missing_record_is_not_an_error_record(tmp_path):
+    paths = make_fixture(tmp_path, nshards=R_SHARDS, n_docs=R_DOCS)
+    key = config_key(cfg_of("CThreeA", 2, "gsm8k"))
+    for f in (paths["records"] / "sweep-gsm8k").glob("t12.shard*.jsonl"):
+        edit_rows(f, lambda rows: [r for r in rows if not (r["doc_id"] == R_DOCS - 1 and r["config"] == key)])
+    assert run_main(paths, "--allow-partial") == 0
+    g = summary_of(paths)["tasks"]["gsm8k"]
+    assert (g["n"], g["n_dropped_problems"], g["n_dropped_records"]) == (R_DOCS - 1, 1, 20)
+    assert summary_of(paths)["tasks"]["mbpp"]["n"] == R_DOCS
+
+
+def test_a_gap_that_is_not_a_prefix_is_a_loud_warning_not_a_failure(tmp_path, capsys):
+    paths = make_fixture(tmp_path, nshards=R_SHARDS, n_docs=R_DOCS)
+    key = config_key(cfg_of("CThreeA", 2, "gsm8k"))
+    f = paths["records"] / "sweep-gsm8k" / "t12.shard0of3.jsonl"              # shard 0: docs 0, 3, 6, 9
+    edit_rows(f, lambda rows: [r for r in rows if not (r["doc_id"] == 3 and r["config"] == key)])
+    assert run_main(paths, "--allow-partial") == 0                     # warns, does not fail
+    s = summary_of(paths)
+    g = s["tasks"]["gsm8k"]
+    assert g["n"] == R_DOCS - 1 and g["n_dropped_problems"] == 1
+    pc = g["prefix_check"]
+    assert pc["ok"] is False and len(pc["violations"]) == 1
+    v = pc["violations"][0]
+    assert v["file"].endswith("t12.shard0of3.jsonl") and v["first_dropped"] == 3 and v["kept_after_gap"] == [6, 9]
+    assert any("NOT A PREFIX" in w for w in s["warnings"])
+    assert "NOT A PREFIX" in capsys.readouterr().err
+    assert "% WARNING: gsm8k: kept problems are NOT a prefix" in (paths["out"] / "c3" / "macros_c3.tex").read_text()
+    assert s["tasks"]["mbpp"]["prefix_check"]["ok"] is True
+
+
+def test_a_grid_configuration_with_no_records_is_refused_or_gives_n_zero(tmp_path):
+    paths = make_fixture(tmp_path, nshards=R_SHARDS, n_docs=R_DOCS)
+    key = config_key(cfg_of("Klass", 3, "gsm8k"))
+    for f in (paths["records"] / "sweep-gsm8k").glob("t12.shard*.jsonl"):
+        edit_rows(f, lambda rows: [r for r in rows if r["config"] != key])
+    with pytest.raises(SystemExit) as e:
+        run_main(paths)
+    assert "no records" in str(e.value)
+    assert run_main(paths, "--allow-partial") == 0
+    g = summary_of(paths)["tasks"]["gsm8k"]
+    assert (g["n"], g["n_complete"], g["n_planned"], g["n_dropped_problems"]) == (0, 0, R_DOCS, R_DOCS)
+    assert "$N=0$" in (paths["out"] / "t12" / "t12_matched_speed.tex").read_text()
+
+
+def test_score_rows_are_not_used_for_a_task_that_lost_problems(tmp_path):
+    """A score_t12 aggregate covers the dropped problems too, so with drops the accuracy is blank
+    (never an aggregate), even when its n happens to equal the kept number."""
+    paths = partial_fixture(tmp_path)
+    drop_verdicts(paths, C3A_KEY)
+    sc = tmp_path / "scores.json"
+    run = P.run_key(meta_of("gsm8k", 0))
+    sc.write_text(json.dumps({"rows": [{"task": "gsm8k", "config": C3A_KEY, "half": "report", "prompt_format": "chat",
+                                        "run": run, "n": KEPT_N, "n_correct": 7, "accuracy": 7 / KEPT_N,
+                                        "ci95": [0.4, 0.9]}]}))
+    assert run_main(paths, "--scores", str(sc), "--allow-partial") == 0
+    assert summary_of(paths)["tasks"]["gsm8k"]["decoders"]["CThreeA"]["speeds"]["2"].get("acc") is None
