@@ -10,20 +10,20 @@
 \subsection{C1: controls and rank diagnostic}
 \label{sec:c1-app}
 
-Table~\ref{tab:c1-t8} gives the T8 controls (\S\ref{sec:c1-t8}) and Table~\ref{tab:c1-gamma}
+Table~\ref{tab:c1-t8} gives the controls (\S\ref{sec:c1-t8}) and Table~\ref{tab:c1-gamma}
 $\gamma_2,\gamma_3,\gamma_4$ of Eq.~\ref{eq:eqthree} (\S\ref{sec:c1-beta}).
 
 \begin{table*}[t]
   \centering
-  \IfFileExists{tables/c1/c1_t8.tex}{\Cfit{\input{tables/c1/c1_t8.tex}}}{\Cpending{C1 T8 table}}
+  \IfFileExists{tables/c1/c1_t8.tex}{\Cfit{\input{tables/c1/c1_t8.tex}}}{\Cpending{C1 controls table}}
   \par\medskip
   \IfFileExists{tables/c1/c1_t8_precision.tex}%
-    {\Cfit{\input{tables/c1/c1_t8_precision.tex}}}{\Cpending{C1 T8 precision table}}
-  \caption{T8 controls. Top: E1 and E2 without a control and with position, token type, or
+    {\Cfit{\input{tables/c1/c1_t8_precision.tex}}}{\Cpending{C1 precision table}}
+  \caption{Controls. Top: E1 and E2 without a control and with position, token type, or
     a temperature per mask-rate bin (log-odds; it rescales confidence only, so its E2
     column is empty). $^\ddagger$the paired with-minus-without difference has a 95\% interval
     excluding 0. Bottom: LLaDA-8B-Base on the documents of the 4-bit run, fp16 against
-    4-bit NF4, with the difference and its interval. T8's E2 uses logistic calibrators for both
+    4-bit NF4, with the difference and its interval. Here E2 uses logistic calibrators for both
     $\hat\pi(\ell)$ and $\hat\pi(\ell,s)$, so that with and without differ only by the control;
     its ``without'' value differs from the isotonic E2 of Table~\ref{tab:c1-main}. Exploratory.}
   \label{tab:c1-t8}
