@@ -1,0 +1,164 @@
+{
+ "what": "C3a calibrator (plan v2 T11), frozen: pi_hat(ell, s) on the decode-time field features, fitted on the fit half only",
+ "calibrator": {
+  "kind": "context_logistic",
+  "features": [
+   "median_ell",
+   "mask_rate",
+   "log_n_masked"
+  ],
+  "interactions": true,
+  "knots": [
+   -2.303426170349121,
+   -2.0083789825439453,
+   -1.7914257049560547,
+   -1.5640497207641602,
+   -1.3062191009521484,
+   -0.9955196380615234,
+   -0.5069814682006841,
+   0.3526954650878906,
+   3.202872848510742
+  ],
+  "intercept": -0.36542968919002944,
+  "beta": [
+   0.7724306215058642,
+   -2.4402038088628997,
+   2.6858070421165308,
+   19.299443562119095,
+   -60.16055529835107,
+   85.93234692313716,
+   -64.96147344989501,
+   22.24270118543677,
+   0.011768350361216035,
+   -0.6240703815335924,
+   0.03298624203872442,
+   -0.017733734673474777,
+   -0.2655422178528847,
+   0.03327004305173648
+  ],
+  "converged": true,
+  "feature_ranges": {
+   "median_ell": {
+    "min": -2.7572202682495117,
+    "max": 16.971567153930664
+   },
+   "mask_rate": {
+    "min": 0.003952569169960474,
+    "max": 1.0
+   },
+   "log_n_masked": {
+    "min": 0.0,
+    "max": 5.545177444479562
+   }
+  }
+ },
+ "features_requested": [
+  "median_ell",
+  "mask_rate",
+  "log_n_masked"
+ ],
+ "arms": [
+  "decoder:topk_conf:k2",
+  "decoder:topk_conf:k4",
+  "decoder:topk_conf:k8"
+ ],
+ "weights": "pool (calibrators.pool_weights)",
+ "n_fit_docs": 660,
+ "n_fit_positions": 3239553,
+ "n_fit_states": 56090,
+ "feature_quantiles": {
+  "median_ell": {
+   "p05": -2.0239696025848386,
+   "p50": -0.9129307270050049,
+   "p95": 3.724954414367673
+  },
+  "mask_rate": {
+   "p05": 0.05531914893617021,
+   "p50": 0.5111111111111111,
+   "p95": 0.9682539682539683
+  },
+  "log_n_masked": {
+   "p05": 1.6094379124341003,
+   "p50": 3.912023005428146,
+   "p95": 4.927253685157205
+  }
+ },
+ "monotone_share": 1.0,
+ "traces": {
+  "path": "/ssd_scratch/parth.sharma/fit-c3a/c1-llada-instruct-gsm8k/c1-llada-instruct-gsm8k.dataset.json",
+  "sha256": "ff2917ea79a6d7757c91d675b0a81b59092e24554a077a85138456dc8c598341",
+  "model": "llada-8b-instruct",
+  "variant": "instruct",
+  "precision": "fp16",
+  "dataset": "gsm8k",
+  "git_commit": "c072bc6406555f6a0609f353223c0c1113360298",
+  "revision": "08b83a6feb34df1a6011b80c3c00c7563e963b07"
+ },
+ "split": {
+  "path": "artifacts/split_manifest_gsm8k.json",
+  "sha256": "b6d65073f57ebb3df0675469b2120b68eba14281ca811e59efdf40ac004603f6",
+  "fit_half": 0
+ },
+ "dev_check": {
+  "n_dev_fit_docs": 324,
+  "n_dev_eval_docs": 336,
+  "features_used": [
+   "median_ell",
+   "mask_rate",
+   "log_n_masked"
+  ],
+  "converged": true,
+  "log_loss": {
+   "raw": 0.4819859234522889,
+   "calibrated": 0.46057765517684873,
+   "gain": 0.02140826827544018,
+   "gain_ci": [
+    0.01788634880970325,
+    0.024930953230494234
+   ]
+  },
+  "brier": {
+   "raw": 0.157076478214531,
+   "calibrated": 0.1496690720488674,
+   "gain": 0.007407406165663599,
+   "gain_ci": [
+    0.0062577302163019394,
+    0.008608945854407666
+   ]
+  },
+  "ece": {
+   "raw": {
+    "value": 0.06074037559739758,
+    "ci": [
+     0.05483786387713313,
+     0.06690669058947388
+    ]
+   },
+   "calibrated": {
+    "value": 0.005898273108220382,
+    "ci": [
+     0.0033166048095640047,
+     0.009915229159613684
+    ]
+   }
+  }
+ },
+ "provenance": {
+  "git_commit": "0b5c8b865b89502c893fd63f20887587bb30d016",
+  "git_dirty": false,
+  "python": "3.12.4",
+  "platform": "Linux-5.15.0-194-generic-x86_64-with-glibc2.35",
+  "host": "gnode006",
+  "slurm_job_id": "38705",
+  "packages": {
+   "numpy": "2.5.3",
+   "scipy": "1.18.1",
+   "pandas": "3.0.6",
+   "pyarrow": "25.0.1",
+   "torch": "2.6.0+cu124",
+   "transformers": "4.46.3",
+   "bitsandbytes": "0.50.2",
+   "accelerate": "1.15.0"
+  }
+ }
+}
