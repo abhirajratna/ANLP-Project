@@ -176,6 +176,16 @@ Items 7-14 are reserved for the T13 ablation entries (branch `t13-ablations`).
       separate 1x H200 instances (GSM8K and MBPP, each task wholly on one instance, 3
       shards). The 1-worker GSM8K start (213 records) is set aside unreported, like the RTX
       PRO attempt.
+    - Reduced GSM8K report (recorded 28 Oct ~19:00Z, before any report-half record is
+      scored): the team Jarvis wallet does not cover the full GSM8K sweep, and no further
+      spend is approved, so GSM8K stops early. It is reported on the report-half problems
+      for which all 21 configurations finished. The runner completes every configuration of
+      one problem before starting the next, so within each of the 3 shards these problems
+      are a prefix of the shard's fixed problem order and do not depend on outcomes. Records
+      of problems with fewer than 21 configurations are dropped. Accuracy, speed, matching
+      and the paired bootstrap use only this subset, and the paper states N per task. MBPP
+      is reported in full if it completes, otherwise under the same rule. No problem is run
+      on another machine.
 
 18. **Step order: E1/E2 banked before Eq. 2/3 (scheduling only).** The Eq. 2/3 FE bootstrap
     did not fit the 96 h Ada job cap on the 120M-row arms (measured: LladaBase job 39851,
