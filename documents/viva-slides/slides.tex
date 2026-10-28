@@ -560,8 +560,8 @@
     tokens the decoder commits with 32--63 and 128--255 positions masked.}
   \par\vspace{1mm}
   \begin{takeaway}[fontupper=\footnotesize]
-    E1 is positive and claimed in all seven decoder-state cells. Committed tokens are
-    1.8--4.4$\times$ as overconfident as the random-mask ECE says, in every model (descriptive).
+    E1 is positive and claimed in all seven decoder-state cells. Tokens committed with 32--63
+    masked are 1.8--4.4$\times$ as overconfident as the random-mask ECE says, in every model (descriptive).
   \end{takeaway}
   \note{Blue: uniform states; orange: the states the top-k decoder visits. Dotted line: the arm's ECE
   over random masks, the usual calibration number. In decoder states Delta rises with m in every arm, so a
@@ -578,7 +578,7 @@
   \framesubtitle{Decoder-state tokens against uniform states with as many masks, at equal confidence}
   \vspace{0.5mm}
   \centering
-  \COneFigure{c1_e3_\VivaCOneMainArm}{33mm}{TUE 27 OCT}{\texttt{results/e3/\VivaCOneMainArm/results.json}
+  \COneFigure{c1_e3_\VivaCOneMainArm}{30mm}{TUE 27 OCT}{\texttt{results/e3/\VivaCOneMainArm/results.json}
     (\texttt{scripts/analyze\_e3.py})}{Left: reliability of decoder states against matched-uniform
     states, with bin intervals. Right: the accuracy difference against confidence, with pointwise and
     simultaneous 95\% bands. Main arm \VivaCOneMainArmName{}, $k{=}4$.}\par
@@ -593,9 +593,9 @@
     \end{column}
     \begin{column}{0.38\textwidth}
       \begin{takeaway}[fontupper=\footnotesize]
-        Positive, interval excluding 0, in every arm at every $k\in\{2,4,8\}$
-        (sup-$t$ $p\le0.002$): $0.001$--$0.006$ base and 110M, $0.03$--$0.06$ instruct.
-        So C3a's calibrator is fitted on decoder states.
+        Positive, interval excluding 0, in every arm and $k$ (sup-$t$ $p\le0.002$):
+        $0.001$--$0.006$ base, 110M; $0.03$--$0.06$ instruct. A random-mask curve
+        overstates decoder-state accuracy by this much.
       \end{takeaway}
     \end{column}
   \end{columns}
@@ -603,8 +603,9 @@
   its interval excluding 0 in all 21 rows (7 arms, k = 2, 4, 8), sup-t p at most 0.002. Small for the base and
   110M models (0.001 to 0.006), 0.03 to 0.06 for the instruct models. Against the plain uniform grid the
   interval holds 0 for LLaDA Base at k = 2 and 4. Teacher-forced, so it is about which positions are left
-  masked, not about the decoder's own errors. Consequence: a calibrator for decoding should be fitted on
-  decoder states, which is what C3a does. Every arm: backup.}
+  masked, not about the decoder's own errors. So a calibration curve fitted on random masks of the same mask
+  rate overstates accuracy in decoder states by about this much; C3a's calibrator is fitted on decoder states.
+  E3 is exploratory and says nothing yet about decoding quality: that is the C3 comparison. Every arm: backup.}
 \end{frame}
 
 % ================================================================ 13 C1 results: T8 controls
@@ -654,16 +655,19 @@
   \vspace{1.2mm}
   \begin{takeaway}[fontupper=\footnotesize]
     \textbf{Result.} Decoder-state E1 keeps its sign under every control in every arm (largest
-    move: LLaDA-I MBPP, temperature, $0.156\to0.125$). $^{\ddagger}$: the paired with-minus-without
+    move: LLaDA-I MBPP, temperature, $0.156\to0.125$); LLaDA Base's small uniform E1 does not (token type).
+    4-bit: a precision effect is not ruled out. $^{\ddagger}$: the paired with-minus-without
     95\% interval excludes 0; paired differences are precise, so most do, but they are small.
   \end{takeaway}
   \note{A column close to plain: the control did not matter. Decoder-state E1 keeps its sign under position,
   token type and a temperature per mask-rate bin in all seven arms; the largest move is LLaDA-I MBPP with a
   temperature, 0.156 to 0.125. So the growth is not where winners sit, what kind of token they are, or an
   overall over- or underconfidence one temperature per mask rate could fix. Uniform-state E1 of the base and
-  110M models moves by up to 0.004, the size of those effects, so there the controls matter. 4-bit against
-  fp16: both intervals hold 0, but the decoder-state one is as wide as that cell's E1, so a precision effect
-  there is not ruled out. Exploratory: no Holm family. Every arm: backup.}
+  110M models moves by up to 0.004, the size of those effects, so there the controls matter: token type takes
+  LLaDA Base's claimed uniform E1 to 0.0002 [-0.0010, 0.0014]. 4-bit against fp16: both intervals hold 0, but
+  in decoder states the difference (0.0055) is as large as that cell's E1 (0.006), and fp16 E1 on these 198
+  documents is itself about 0 (0.0003), so a precision effect is not ruled out. Decoder-state E2 changes by
+  -0.0025 [-0.0030, -0.0021], the size of the base models' E2. Exploratory: no Holm family. Every arm: backup.}
 \end{frame}
 
 % ================================================================ 11 C2 probe
@@ -933,7 +937,7 @@
           Claims: E1 \Cres{COneConfirmedEOne} of \Cres{COneHolmEOneFamily} cells, E2
           \Cres{COneConfirmedETwo} of \Cres{COneHolmETwoFamily}. In decoder states the gap grows
           with the field for every model; the field term grows clearly only for the instruct
-          models. Committed tokens: 1.8--4.4$\times$ the random-mask ECE.
+          models. Committed tokens (32--63 masked): 1.8--4.4$\times$ the random-mask ECE.
         \else
           {\color{ink2}Pending: the answers to H1–H3 on three model families, from the
           report half (Tue 27).}
@@ -1268,12 +1272,14 @@
       a negative field term, so we read $\beta_z$ only beside the sign of E2.\par\vspace{1.5mm}
       \begin{takeaway}[fontupper=\footnotesize]
         \textbf{Reading.} No state effects: excludes 0 in 14 of 14, negative in 12. With
-        them: holds 0 in 10. A field effect, small where E2 is. Diagnostic only.
+        them: holds 0 in 8 of those 12. A field effect, small where E2 is. Diagnostic only.
       \end{takeaway}
     \end{column}
   \end{columns}
   \note{Reading (a) of four: negative without state effects, about zero with them, E2 positive, so a field
-  effect. Without FE the interval excludes 0 in all 14 cells and is negative in 12; with FE it holds 0 in 10 of 14.
+  effect. Without FE the interval excludes 0 in all 14 cells and is negative in 12; with FE it holds 0 in 8 of those 12 (E2 positive in all 8 but LLaDA-I GSM8K uniform). The other 4
+  negative cells (LLaDA Base uniform, Dream Base decoder, LLaDA-I MBPP uniform, Dream-I GSM8K decoder) exclude 0
+  with FE as well: shared errors there.
   The two positive cells, LLaDA Base and MDLM-110M decoder states, have E2 at the estimator's T0 bias; the
   110M one has a negative E2 beside its positive beta_z, the pattern T0's shared-error world gave, at small size. Intervals: backup table. If asked about gamma (Eq. 3, the lower-ranked pool members):
   Holm rejects 24 of 42 tests, in 8 rows, all positive, all in the instruct models and Dream Base decoder
