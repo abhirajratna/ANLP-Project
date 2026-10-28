@@ -660,15 +660,19 @@
       \lbl{Caution.} In T0, shared errors gave a \emph{positive} $\beta_z$ without state effects and
       a negative field term, so we read $\beta_z$ only beside the sign of E2.\par\vspace{1.5mm}
       \begin{takeaway}[fontupper=\footnotesize]
-        A diagnostic: no Holm family, no decision. Point estimates here; intervals and
-        convergence flags are in the backup.
+        \textbf{Reading.} No state effects: excludes 0 in 14 of 14, negative in 12. With
+        them: holds 0 in 10. A field effect, small where E2 is. Diagnostic only.
       \end{takeaway}
     \end{column}
   \end{columns}
-  \note{Pending until Tue 27. Cells are COne<Label>BetaZNoFE / BetaZFE; the macros carry no interval, so
-  quote intervals from the backup table (c1\_beta.tex). Keep it to one reading: (a) negative without FE, about zero
-  with FE, E2 positive: field effect; (b) positive without FE and E2 negative: shared errors; (c) FE
-  interval excludes 0: shared errors; (d) all intervals hold 0: no selection effect.}
+  \note{Reading (a) of four: negative without state effects, about zero with them, E2 positive, so a field
+  effect. Without FE the interval excludes 0 in all 14 cells and is negative in 12; with FE it holds 0 in 10 of 14.
+  The two positive cells, LLaDA Base and MDLM-110M decoder states, have E2 at the estimator's T0 bias, so read
+  nothing into them. Intervals: backup table. If asked about gamma (Eq. 3, the lower-ranked pool members):
+  Holm rejects 24 of 42 tests, in 8 rows, all positive, all in the instruct models and Dream Base decoder
+  states: at equal confidence lower-ranked members are right more often than the winner, which Proposition 1
+  excludes when its conditions hold. We read it, like the within-state ICC (above 0 in every arm), as a sign
+  of shared errors or of a calibration slope that varies by state. None of it is a claim.}
 \end{frame}
 
 % ================================================================ 12 C1 results: E3
@@ -685,20 +689,24 @@
     \begin{column}{0.58\textwidth}
       \footnotesize\raggedright
       \lbl{Right panel.} Type effect $>0$: at equal confidence decoder-state tokens are right
-      less often. Teacher-forced: this is which positions remain masked, not the decoder's own
-      mistakes. All E3 rows are exploratory.
+      less often. \VivaCOneMainArmName{}, $k{=}4$: $0.0011$\;\ci{$0.0003,\,0.0020$}, sup-$t$
+      $p<0.001$. Teacher-forced: this is which positions remain masked, not the decoder's own
+      mistakes. Exploratory.
     \end{column}
     \begin{column}{0.38\textwidth}
       \begin{takeaway}[fontupper=\footnotesize]
-        $k{=}4$, matched uniform: type effect
-        \CresCI{EThree\VivaCOneMainArm TypeEffectTopkConfKFourMatched},
-        sup-$t$ $p=\Cres{EThree\VivaCOneMainArm TypeTestPTopkConfKFourMatched}$.
+        Positive, interval excluding 0, in every arm at every $k\in\{2,4,8\}$
+        (sup-$t$ $p\le0.002$): $0.001$--$0.006$ base and 110M, $0.03$--$0.06$ instruct.
+        So C3a's calibrator is fitted on decoder states.
       \end{takeaway}
     \end{column}
   \end{columns}
-  \note{Pending until Tue 27. Answer H3 for the main arm, then say how many arms agree (backup table
-  lists every arm and k). If the type effect is positive, this motivates fitting the C3a calibrator on
-  decoder states rather than uniform ones.}
+  \note{H3: yes. Against uniform states matched to the decoder's mask counts, the type effect is positive with
+  its interval excluding 0 in all 21 rows (7 arms, k = 2, 4, 8), sup-t p at most 0.002. Small for the base and
+  110M models (0.001 to 0.006), 0.03 to 0.06 for the instruct models. Against the plain uniform grid the
+  interval holds 0 for LLaDA Base at k = 2 and 4. Teacher-forced, so it is about which positions are left
+  masked, not about the decoder's own errors. Consequence: a calibrator for decoding should be fitted on
+  decoder states, which is what C3a does. Every arm: backup.}
 \end{frame}
 
 % ================================================================ 13 C1 results: T8 controls
@@ -747,12 +755,17 @@
   \fi
   \vspace{1.2mm}
   \begin{takeaway}[fontupper=\footnotesize]
-    \textbf{How to read.} A column close to plain: the control did not matter; near 0: the growth was
-    where or what winners are. $^{\ddagger}$: the paired with-minus-without 95\% interval excludes 0.
+    \textbf{Result.} Decoder-state E1 keeps its sign under every control in every arm (largest
+    move: LLaDA-I MBPP, temperature, $0.156\to0.125$). $^{\ddagger}$: the paired with-minus-without
+    95\% interval excludes 0; paired differences are precise, so most do, but they are small.
   \end{takeaway}
-  \note{Pending until Tue 27. Main arm from the TEight macros; every arm is in the backup
-  (paper/tables/c1/c1\_t8.tex). Temperature: if E1 survives it, the growth is not an overall over- or
-  underconfidence that one temperature per mask rate could fix. T8 is exploratory: no Holm family.}
+  \note{A column close to plain: the control did not matter. Decoder-state E1 keeps its sign under position,
+  token type and a temperature per mask-rate bin in all seven arms; the largest move is LLaDA-I MBPP with a
+  temperature, 0.156 to 0.125. So the growth is not where winners sit, what kind of token they are, or an
+  overall over- or underconfidence one temperature per mask rate could fix. Uniform-state E1 of the base and
+  110M models moves by up to 0.004, the size of those effects, so there the controls matter. 4-bit against
+  fp16: both intervals hold 0, but the decoder-state one is as wide as that cell's E1, so a precision effect
+  there is not ruled out. Exploratory: no Holm family. Every arm: backup.}
 \end{frame}
 
 % ================================================================ 11 C2 probe
@@ -1033,7 +1046,7 @@
           Claims: E1 \Cres{COneConfirmedEOne} of \Cres{COneHolmEOneFamily} cells, E2
           \Cres{COneConfirmedETwo} of \Cres{COneHolmETwoFamily}. In decoder states the gap grows
           with the field for every model; the field term grows clearly only for the instruct
-          models.
+          models. Committed tokens: 1.8--4.4$\times$ the random-mask ECE.
         \else
           {\color{ink2}Pending: the answers to H1–H3 on three model families, from the
           report half (Tue 27).}
