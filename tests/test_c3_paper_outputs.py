@@ -456,22 +456,45 @@ def test_summary_carries_provenance_inputs_and_the_pairing_rule(built):
     assert s["sanity"]["published"] == {"topk_conf[k=1]": 0.793, "threshold[tau=0.9]": 0.792}
 
 
-def test_table_is_a_bare_booktabs_tabular_one_row_per_decoder_and_task(built):
+def body_rows(tex):
+    """The data rows of the tabular: the lines ending in a row break between the first and the last
+    rule (midrules and cmidrules end no row)."""
+    lines = tex.splitlines()
+    i = next(k for k, l in enumerate(lines) if l.startswith("\\toprule"))
+    j = next(k for k, l in enumerate(lines) if l.startswith("\\bottomrule"))
+    return [l for l in lines[i + 1:j] if l.rstrip().endswith("\\\\")]
+
+
+def test_table_is_a_bare_booktabs_tabular_one_row_per_decoder_tasks_side_by_side(built):
     tex = (built["out"] / "t12" / "t12_matched_speed.tex").read_text()
     assert "\\begin{tabular}" in tex and "\\end{tabular}" in tex
-    assert "\\toprule" in tex and "\\bottomrule" in tex and "\\midrule" in tex
+    assert "\\toprule" in tex and "\\bottomrule" in tex and "\\midrule" in tex and "\\cmidrule" in tex
     assert "\\begin{table" not in tex and "\\caption" not in tex
     assert tex.count("\\begingroup") == tex.count("\\endgroup") == 1
     assert "GSM8K" in tex and "MBPP" in tex
     for name in ("Top-$k$", "Threshold", "Margin", "Entropy", "KLASS", "PC-Sampler", "C3a"):
-        assert tex.count(name) >= 2, name                         # once per task
-    # entropy is unmatched at speed 2: its row is dashes
+        assert sum(l.startswith(name + " &") for l in tex.splitlines()) == 1, name   # one row, both tasks
+    # entropy is unmatched at speed 2: both of its task groups are dashes
     row = next(l for l in tex.splitlines() if l.startswith("Entropy"))
-    assert row.count("---") == 4                                   # tok/step, acc, diff, n
-    # C3a's own row is the reference: no difference
+    assert row.count("---") == 6                                   # (tok/step, acc, diff) x 2 tasks
+    # C3a's own row is the reference: no difference, in either task
+    assert next(l for l in tex.splitlines() if l.startswith("C3a &")).count("ref.") == 2
     assert not any(c in tex for c in ("nan", "None"))
-    # ~1 column: five narrow columns
-    assert re.search(r"\\begin\{tabular\}\{l[rcl]+\}", tex)
+    # seven columns: the decoder, then tok/step, acc, diff per task
+    assert re.search(r"\\begin\{tabular\}\{lrll(@\{\\hspace\{[^}]*\}\})?rll\}", tex)
+
+
+def test_table_is_compact_at_most_nine_body_rows(built):
+    """Sec. 6 has ~0.15 page: 2 header lines + one row per decoder, the tasks side by side."""
+    tex = (built["out"] / "t12" / "t12_matched_speed.tex").read_text()
+    rows = body_rows(tex)
+    assert len(rows) <= 9
+    assert len(rows) == 2 + len(P.DECODERS)
+    assert rows[0].count("\\multicolumn{3}") == 2                  # the task groups
+    assert rows[1].startswith("Decoder")
+    assert all(r.count("&") == 6 for r in rows[1:])               # 7 columns
+    assert "\\footnotesize" in tex and "\\tabcolsep" in tex
+    assert "$n$" not in tex                                       # no n column
 
 
 def test_sanity_cost_table_for_the_slides_and_makefile(built):
@@ -874,8 +897,12 @@ def test_driver_errors_warn_are_scored_wrong_and_leave_the_speed_over_the_rest(t
     assert sp["n_scored"] == 30 and sp["n_correct"] == sum(correct_of("gsm8k", "TopK", 2, i) for i in range(N_DOCS) if i != 5)
     assert any("driver error" in w and "TopK" in w or "driver error" in w and "topk_conf" in w for w in s["warnings"])
     tex = (paths["out"] / "t12" / "t12_matched_speed.tex").read_text()
-    assert "Speed over the $N-k$ problems that decoded; $k$ driver errors scored wrong" in tex
-    assert "GSM8K Top-$k$: 29/30 decoded" in tex
+    # Sec. 6 has no line to spare: the matched table carries the note as a LaTeX comment only; the
+    # footnote is in the sanity/cost table, n_ok in the zip tables, the counts in the summary JSON
+    assert "% driver errors scored wrong; speed is over the problems that decoded: GSM8K Top-$k$: 29/30 decoded" in tex
+    assert "\\scriptsize" not in tex.replace("{\\scriptsize[", "") and len(body_rows(tex)) == 2 + len(P.DECODERS)
+    cost = (paths["out"] / "t12" / "t12_sanity_cost.tex").read_text()
+    assert "speed is over the problems that decoded" in cost
 
 
 def test_no_driver_errors_no_footnote(built):
@@ -891,12 +918,16 @@ def test_n_ok_is_in_the_zip_tables(built):
     assert "n_ok" in (z / "t12_speed1_speed3.csv").read_text().splitlines()[0].split(",")
 
 
-def test_matched_table_shows_n_paired(built):
+def test_matched_table_has_no_n_column_but_names_a_short_pairing(built):
     tex = (built["out"] / "t12" / "t12_matched_speed.tex").read_text()
-    assert "& $n$" in tex or "& n " in tex
-    row = next(l for l in tex.splitlines() if l.startswith("Top-$k$ &"))
-    assert row.rstrip(" \\").endswith("& $30$")
+    assert "$n$" not in tex and "$N=30$" in tex                       # N is in the task header
+    assert "paired on fewer" not in tex                               # every difference is paired on all N
     assert built["summary"]["tasks"]["gsm8k"]["matched"]["2"]["TopK"]["n_paired"] == 30
+    S = json.loads(json.dumps(built["summary"]))
+    S["tasks"]["gsm8k"]["matched"]["2"]["TopK"]["n_paired"] = 28
+    tex = P.matched_table(S)
+    assert "% difference paired on fewer than N problems: GSM8K Top-$k$: 28" in tex
+    assert len(body_rows(tex)) == 2 + len(P.DECODERS)                 # still no footnote row
 
 
 def test_fail_columns_are_split(built):
