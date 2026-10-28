@@ -34,8 +34,8 @@ Table~\ref{tab:c1-t8} gives each control. For LLaDA-8B-Base in uniform states th
 is below $0.0001$ for position,
 \CresCI{TEightLladaBaseTokenTypeEOneUniDifference} for token type and
 \CresCI{TEightLladaBaseTemperatureLogoddsEOneUniDifference} for a temperature per mask-rate bin.
-In decoder states E1 keeps its sign under every control in every arm and moves by at most
-0.03 (temperature, LLaDA-8B-Instruct on MBPP: 0.156 to 0.125): the growth is not where
+In decoder states E1 keeps its sign under every control in every arm and moves by about
+0.03 at most (temperature, LLaDA-8B-Instruct on MBPP: 0.156 to 0.125): the growth is not where
 winners sit, what kind of token they are, or an over- or underconfidence by mask rate. In
 uniform states the small base and 110M contrasts move by up to 0.004, so their sign is not
 robust.
@@ -44,8 +44,12 @@ On the report half of the \VivaLladaBaseFourBitDocs{} documents of the 4-bit run
 from their fit half), 4-bit NF4 in place of fp16 changes LLaDA-8B-Base's E1 by
 \CresCI{TEightLladaBasePrecisionPrecisionEOneUniDifference} in uniform states and by
 \CresCI{TEightLladaBasePrecisionPrecisionEOneDecTopkConfKFourDifference} in decoder states
-(Table~\ref{tab:c1-t8}, bottom): both intervals hold 0, but the decoder-state one is as wide as
-that cell's E1, so a precision effect there is not ruled out.
+(Table~\ref{tab:c1-t8}, bottom): both intervals hold 0, but in decoder states the difference is as large as that cell's E1
+in Table~\ref{tab:c1-main}, and fp16 E1 on these documents is itself
+\Cres{TEightLladaBasePrecisionPrecisionEOneDecTopkConfKFourWithout}, so a precision effect
+there is not ruled out. Decoder-state E2 changes by
+\CresCI{TEightLladaBasePrecisionPrecisionETwoDecTopkConfKFourDifference}, of the size of the
+base models' E2.
 
 \paragraph{Committed tokens.}
 \label{sec:c1-app-native}

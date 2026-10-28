@@ -209,7 +209,9 @@
    "ada_sha256": "dfa0b62a3cc0254c660204946a9e9265e6248c204d5a885b41276abaada02d45",
    "bytes": 1124590015,
    "slim": "by_mask_kind.*.calibrators removed",
-   "hf_path": "prereg-v1.1-results/c1/LladaBase_clean/results.json.gz"
+   "hf_path": "prereg-v1.1-results/c1/LladaBase_clean/results.json.gz",
+   "hf_sha256": "e212245c21dece51a4ba6d3994a571d48dfb57ac785a66a669d753ab31bd765a",
+   "hf_gunzipped_sha256": "dfa0b62a3cc0254c660204946a9e9265e6248c204d5a885b41276abaada02d45"
   },
   "c1/LladaBase_knots13/results.json": {
    "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaBase_knots13/results.json",
@@ -218,7 +220,9 @@
    "ada_sha256": "9d43d42f501bbcf27845b393ab5d250063b295d4e271ce9339919d8bac1464f6",
    "bytes": 1125310273,
    "slim": "by_mask_kind.*.calibrators removed",
-   "hf_path": "prereg-v1.1-results/c1/LladaBase_knots13/results.json.gz"
+   "hf_path": "prereg-v1.1-results/c1/LladaBase_knots13/results.json.gz",
+   "hf_sha256": "53bcb98b118b818448265a1ccbad52b3167711933145c3b2dc4b728ee5470074",
+   "hf_gunzipped_sha256": "9d43d42f501bbcf27845b393ab5d250063b295d4e271ce9339919d8bac1464f6"
   },
   "c1/LladaBase_knots5/results.json": {
    "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaBase_knots5/results.json",
@@ -227,7 +231,9 @@
    "ada_sha256": "98dd1c37fa2008d0e3eac04afb2c115958b0cb0a52656f9f5951e065d62c567e",
    "bytes": 1125306456,
    "slim": "by_mask_kind.*.calibrators removed",
-   "hf_path": "prereg-v1.1-results/c1/LladaBase_knots5/results.json.gz"
+   "hf_path": "prereg-v1.1-results/c1/LladaBase_knots5/results.json.gz",
+   "hf_sha256": "6ffeb4b2c18b1e2a01c25834763bca545f2062d5890af0231f2f1fbb92e61a4d",
+   "hf_gunzipped_sha256": "98dd1c37fa2008d0e3eac04afb2c115958b0cb0a52656f9f5951e065d62c567e"
   },
   "c1/LladaInstructGsm/results.json": {
    "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/c1/LladaInstructGsm/results.json",
@@ -356,7 +362,8 @@
    "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/LladaBase/results.json",
    "sha256": "f713986fbae2c92ebc752e9899b407fb329b7e324aac8cfecfd96673a36846be",
    "ada_path": "/share1/parth.sharma/prereg-v1.1-results/e3/LladaBase/results.json",
-   "hf_path": "prereg-v1.1-results/e3/LladaBase/results.json"
+   "hf_path": "prereg-v1.1-results/e3/LladaBase/results.json",
+   "hf_sha256": "f713986fbae2c92ebc752e9899b407fb329b7e324aac8cfecfd96673a36846be"
   },
   "e3/LladaInstructGsm/results.json": {
    "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/e3/LladaInstructGsm/results.json",
@@ -584,13 +591,15 @@
    "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/LladaBase/ablation.json",
    "sha256": "4fe8ddf235f61346b98327e193c151a6ae46334b538a85ec6ac482501f020f33",
    "ada_path": "/share1/parth.sharma/prereg-v1.1-results/t8/LladaBase/ablation.json",
-   "hf_path": "prereg-v1.1-results/t8/LladaBase/ablation.json"
+   "hf_path": "prereg-v1.1-results/t8/LladaBase/ablation.json",
+   "hf_sha256": "4fe8ddf235f61346b98327e193c151a6ae46334b538a85ec6ac482501f020f33"
   },
   "t8/LladaBasePrecision/ablation.json": {
    "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/LladaBasePrecision/ablation.json",
    "sha256": "a739c49f718909fc2b61174dbef49cb3de9fd872044565830c4de4f44a000360",
    "ada_path": "/share1/parth.sharma/prereg-v1.1-results/t8/LladaBasePrecision/ablation.json",
-   "hf_path": "prereg-v1.1-results/t8/LladaBasePrecision/ablation.json"
+   "hf_path": "prereg-v1.1-results/t8/LladaBasePrecision/ablation.json",
+   "hf_sha256": "a739c49f718909fc2b61174dbef49cb3de9fd872044565830c4de4f44a000360"
   },
   "t8/LladaInstructGsm/ablation.json": {
    "path": "/tmp/claude-1000/-home-irishbumfuzzle-Assignments-ANLP-project/4421cc8e-ea9b-47c5-8c76-7dc4ff2cf7ee/scratchpad/res/dry7/t8/LladaInstructGsm/ablation.json",

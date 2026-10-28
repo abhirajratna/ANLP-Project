@@ -2,9 +2,8 @@
 % Sec. 4  Selection and confidence (C1).  Owner: abhiraj.  FALLBACK skeleton by ojas
 % (branch ojas/paper-c1): abhiraj may rewrite any of it; his draft wins.
 %
-% E1/E2 results are in (all 7 Holm arms + 3 time-split, HF prereg-v1-e1e2 / prereg-v1-results);
-% the beta_z, gamma, E3, T8, precision, clean, knots and additive slots wait for the
-% prereg-v1.1 runs.  Every number is a macro from paper/tables/c1/macros_c1.tex (written
+% All results are in: prereg-v1.1 runs of the 7 Holm arms (E1/E2, beta_z, gamma, E3, T8,
+% precision, clean, knots, additive) and the 3 time-split arms (prereg-v1-results).  Every number is a macro from paper/tables/c1/macros_c1.tex (written
 % by scripts/c1_paper_outputs.py from the report-half results; main.tex \inputs it when it
 % exists), or a design macro (\Viva...) of documents/viva-slides/macros_setup.tex.  Result
 % macros are called through \Cres{<name>} / \CresCI{<name>}, which print a bold ? while the
@@ -102,6 +101,8 @@ MBPP and of the 110M model, are both declared but not claimed
 (both $p_{\mathrm{Holm}}=\Cres{COneHolmPEOneLladaInstructMbppUni}$).
 % Regen check: COneHolmPEOneMdlmUni must equal COneHolmPEOneLladaInstructMbppUni (Holm step-down
 % ties them on v1 and the v1.1 dry run); if they differ, name both.
+% Hand-typed from c1_main.tex / c1_shared.tex (regen 9b4edab): 0.015, 0.26, 12, 0.005, 0.013,
+% ICC 0.006 / 0.036-0.056, residual 0.055-0.103, four of five.
 Sizes differ as much as signs: $|\mathrm{E1}|\le0.015$ for the base and 110M models, up to
 0.26 for the instruct models on MBPP.
 
@@ -146,12 +147,14 @@ $\beta_z$ (Eq.~\ref{eq:eqtwo}) asks whether winning a larger field predicts corr
 the winner's own log-odds; shared errors gave a \emph{positive} $\beta_z$ without fixed effects
 in simulation (\S\ref{sec:validation}), so we read it beside the sign of E2.
 Without fixed effects it excludes 0 in all 14 cells (Table~\ref{tab:c1-main}) and is negative in
-12, and with them its interval holds 0 in 10: the pattern of a field effect (small in the base
-and 110M models, as E2 is). The two positive cells, decoder states of LLaDA-8B-Base and of the
-110M model, have E2 near the estimator's bias (the 110M model's negative, as simulated shared errors gave).
+12, and with them its interval holds 0 in 8 of those 12: the pattern of a field effect (small in the base
+and 110M models, as E2 is); E2 is positive in all of them but uniform states of LLaDA-8B-Instruct on GSM8K.
+The two positive cells, decoder states of LLaDA-8B-Base and of the
+110M model, have E2 near the estimator's bias (the 110M model's negative, the sign simulated shared errors gave).
 % counts: \ddagger markers of tab:c1-main (regen of 28 Oct; recheck at the final regen)
-Of the \Cres{COneHolmGammaFamily} tests of $\gamma_2,\gamma_3,\gamma_4$ (Eq.~\ref{eq:eqthree}),
-Holm rejects \Cres{COneHolmGammaReject}, in \Cres{COneHolmGammaRows} rows (code archive), all
+Holm, run within each arm and kind of state, rejects \Cres{COneHolmGammaReject} of the
+\Cres{COneHolmGammaFamily} tests of $\gamma_2,\gamma_3,\gamma_4$ (Eq.~\ref{eq:eqthree}), in
+\Cres{COneHolmGammaRows} of the 14 rows (code archive), all
 positive and all in the instruct models and Dream-7B-Base decoder states: within a state, at
 equal confidence, lower-ranked pool members are right more often than the winner, which
 Proposition~\ref{prop:select} excludes when its conditions hold. Like the ICC, we read this as a
@@ -166,8 +169,8 @@ E3 compares accuracy at equal confidence and mask rate in decoder and matched un
 positions remain masked, not from its own mistakes. It is positive, its interval excluding 0,
 in every arm and at every $k\in\{2,4,8\}$ (sup-$t$ $p\le0.002$; exploratory, full table in the
 code archive): tokens are right less often in the states a decoder visits, by 0.001 to 0.006 in
-the base and 110M models and 0.03 to 0.06 in the instruct models. A calibrator for decoding should
-therefore be fitted on decoder states, as C3a's is (\S\ref{sec:c3}).
+the base and 110M models and 0.03 to 0.06 in the instruct models. A calibration curve fitted on random masks of the same mask rate therefore overstates
+accuracy in decoder states by about this much; C3a's is fitted on decoder states (\S\ref{sec:c3}).
 % ranges and p from tables/c1/c1_e3.tex, matched columns (regen of 28 Oct; recheck)
 The tokens a decoder commits are themselves more overconfident than random masks suggest:
 with 32--63 positions masked, $c-a$ on the $k{=}4$ decoder's commits is 1.8 to 4.4 times its
@@ -180,9 +183,9 @@ Appendix~\ref{sec:c1-app-native}).
 \label{sec:c1-t8}
 \label{sec:c1-robust}
 
-Position, token type, a temperature per mask-rate bin and 4-bit precision in place of fp16
-leave decoder-state E1 with its sign in every arm they were run on
-(Appendix~\ref{sec:c1-app}). Five checks repeat the contrasts outside the Holm families (full
+Position, token type and a temperature per mask-rate bin leave decoder-state E1 with its
+sign in every arm, but not LLaDA-8B-Base's small uniform-state E1, which token type takes
+to 0; a 4-bit check does not rule out an effect of precision (Appendix~\ref{sec:c1-app}). Five checks repeat the contrasts outside the Holm families (full
 tables in the code archive).
 \emph{Contamination:} without the \VivaLladaContamFlagged{} LLaDA and \VivaDreamContamFlagged{}
 Dream documents the screen flagged (\S\ref{sec:models}), both base models' E1 equal their main
@@ -195,7 +198,8 @@ domain, not contamination, moves it. Decoder-state E1 stays positive, its interv
 \emph{Knots:} E2 keeps its sign and declared flag with 5 and 13 knots in \Cres{COneKnotsAgree} of
 \Cres{COneKnotsCells} cells.
 \emph{Calibrator form:} with the additive calibrator (\S\ref{sec:estimands}) it does in
-\Cres{COneAdditiveAgree} of \Cres{COneAdditiveCells}; the two others, uniform states of
+\Cres{COneAdditiveAgree} of \Cres{COneAdditiveCells}, though the seven positive instruct-model E2s
+shrink under it, to 0.000--0.098; the two others, uniform states of
 LLaDA-8B-Instruct on MBPP (interval now holding 0) and 110M decoder states, are claimed cells
 whose E2 we therefore do not rely on.
 % cells: COneFieldAdditiveAgree<Label><Tag> = no (regen of 28 Oct; recheck)
