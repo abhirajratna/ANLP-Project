@@ -1,6 +1,6 @@
 ---
 member: abhiraj
-updated: 2026-10-28T07:52:43Z
+updated: 2026-10-28T11:08:40Z
 branch: main
 ---
-abhiraj: DreamBase v1.1 (Ada 41093) at E3 (c1 primary/knots5/knots13/additive/clean done); then T8 ~3 h; HF upload to prereg-v1.1-results/ right after
+abhiraj: DreamBase v1.1 (Ada 41093) DONE in 38.5 h, all 7 steps; uploading to HF prereg-v1.1-results/ now (commit to follow on 83df)
