@@ -1,6 +1,6 @@
 ---
 member: ayush
-updated: 2026-10-28T16:31:40Z
+updated: 2026-10-28T22:19:09Z
 branch: main
 ---
-T12: GSM8K on H200 552084, MBPP on H200 552094 (3 workers each, a9abd7b); ETA ~22:30Z
+T12: GSM8K complete 659/659 on HF (87aa056); MBPP partial 121/250 on HF (6c6113c), 552265 paused; awaiting parth on MBPP
