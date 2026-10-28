@@ -626,10 +626,11 @@
   "c1_shared.tex",
   "c1_t8.tex",
   "c1_t8_precision.tex",
+  "c1_timesplit.tex",
   "macros_c1.tex"
  ],
  "provenance": {
-  "git_commit": "23f5b1a8c8f92f4fecee21579447ce7fe733b3b7",
+  "git_commit": "7872ac8a746d607a4db69e6c666e9a4592e3b1ed",
   "git_dirty": true,
   "python": "3.12.12",
   "platform": "Linux-7.2.11-arch1-1-x86_64-with-glibc2.44",
