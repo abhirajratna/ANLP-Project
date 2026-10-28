@@ -66,7 +66,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from c3.provenance import collect as provenance, sha256_file  # noqa: E402
-from c1_paper_outputs import DASH, Macros, est_ci, num  # noqa: E402
+from c1_paper_outputs import DASH, Macros, ci_decimals, est_ci, num  # noqa: E402
 
 try:                                                      # one Wilson interval for the whole project
     from score_t12 import wilson                          # noqa: E402
@@ -288,13 +288,13 @@ def load_records(specs, warnings: list, inputs: dict, manifest_dir=None) -> dict
 
     Refuses (``SystemExit``): a shard without a meta file, a report-half shard whose meta is not
     fp16 and the chat prompt, a doc_id that is not in the manifest's report half, more than one run
-    for a task (deviation 17: one machine per task).  Shards whose meta says ``half: fit`` (the
-    calibration and sanity runs) are skipped.  Shortfalls (a shard missing, a configuration with
+    for a task (deviation 17: one machine per task), and a shard whose meta says ``half: fit`` (the
+    calibration and sanity runs).  Shortfalls (a shard missing, a configuration with
     fewer than the expected problems) go in ``out["_shortfalls"]`` for ``main`` to refuse or allow.
     ``out["_meta"][task]``: ``run``, ``n_expected``, ``shards_missing``."""
     by_run = {}                                           # task -> run -> {config: {doc: record}}
     info = {}                                             # task -> run -> shard bookkeeping
-    gen_length, skipped, dup_diff, dup_same = {}, 0, {}, {}
+    gen_length, dup_diff, dup_same = {}, {}, {}
     first, origin = {}, {}                                # task -> identity of its first shard; (task, config, doc) -> file
     for f in _expand(specs, "t12.shard*.jsonl"):
         if f.name.endswith(".meta.json"):
@@ -304,11 +304,9 @@ def load_records(specs, warnings: list, inputs: dict, manifest_dir=None) -> dict
         if not isinstance(meta, dict):
             raise SystemExit(f"{f}: no readable meta file ({meta_path.name}); cannot tell its half, "
                              "precision, prompt or run")
-        if meta.get("half") == "fit":
-            skipped += 1
-            continue
         if meta.get("half") != "report":
-            raise SystemExit(f"{f}: meta half is {meta.get('half')!r}, not 'report'")
+            raise SystemExit(f"{f}: meta half is {meta.get('half')!r}, not 'report'; a fit-half shard (a "
+                             "calibration or sanity run) must not be under --records: pass the report run's directory")
         if meta.get("precision") != "fp16":
             raise SystemExit(f"{f}: meta precision is {meta.get('precision')!r}; T12 is fp16 (deviation 17)")
         if _prompt_format(meta) != "chat":
@@ -363,8 +361,6 @@ def load_records(specs, warnings: list, inputs: dict, manifest_dir=None) -> dict
                     dup_diff[task] = dup_diff.get(task, 0) + 1
                 else:
                     dup_same[task] = dup_same.get(task, 0) + 1
-    if skipped:
-        warnings.append(f"{skipped} record shard(s) skipped: fit half (calibration / sanity runs)")
     out = {"_gen_length": {t: g or GEN_LENGTH for t, g in gen_length.items()}, "_meta": {}, "_shortfalls": []}
     for task, runs in by_run.items():
         if len(runs) > 1:
@@ -413,7 +409,8 @@ def load_records(specs, warnings: list, inputs: dict, manifest_dir=None) -> dict
 
 
 class Verdicts(dict):
-    """``{(task, config): {doc_id: 0/1}}`` plus ``timeouts``: ``{(task, config): {doc_id}}``."""
+    """``{(run, task, config): {doc_id: 0/1}}`` plus ``timeouts``: ``{(run, task, config): {doc_id}}``.
+    ``run`` is score_t12's run hash, which is the records' ``run_key``."""
 
     def __init__(self):
         super().__init__()
@@ -422,10 +419,11 @@ class Verdicts(dict):
 
 def load_verdicts(specs, warnings: list, inputs: dict, runs=None) -> Verdicts:
     """Verdicts of ``score_t12.py --per-record``.  Lines that are not verdicts (no ``correct``: a record
-    file) and lmeval verdicts (the sanity run's) are skipped; a verdict whose ``run`` is not one of
-    ``runs`` (the records' run hashes) belongs to another run and is skipped."""
+    file) and lmeval verdicts (the sanity run's) are skipped.  Once the records are loaded (``runs``, their
+    run hashes) a verdict must carry a ``run`` that is one of them: a run-less line (an older file) or
+    another run's is ignored and counted in a warning."""
     out = Verdicts()
-    other = 0
+    other = runless = 0
     for f in _expand(specs, "*.jsonl"):
         inputs[f"verdicts:{f}"] = {"path": str(f), "sha256": sha256_file(f)}
         for line in f.read_text(encoding="utf-8").splitlines():
@@ -437,14 +435,22 @@ def load_verdicts(specs, warnings: list, inputs: dict, runs=None) -> Verdicts:
                 continue
             if v.get("prompt_format") == "lmeval" or "doc_id" not in v or "config" not in v or "correct" not in v:
                 continue
-            if runs and v.get("run") is not None and v["run"] not in runs:
-                other += 1
-                continue
-            out.setdefault((v.get("task"), v["config"]), {}).setdefault(int(v["doc_id"]), int(bool(v.get("correct"))))
+            if runs:
+                if v.get("run") is None:
+                    runless += 1
+                    continue
+                if v["run"] not in runs:
+                    other += 1
+                    continue
+            key = (v.get("run"), v.get("task"), v["config"])
+            out.setdefault(key, {}).setdefault(int(v["doc_id"]), int(bool(v.get("correct"))))
             if v.get("error") == "timeout":
-                out.timeouts.setdefault((v.get("task"), v["config"]), set()).add(int(v["doc_id"]))
+                out.timeouts.setdefault(key, set()).add(int(v["doc_id"]))
     if other:
         warnings.append(f"{other} verdict(s) of another run ignored (their run is not the records' run)")
+    if runless:
+        warnings.append(f"{runless} verdict(s) without a run ignored (an older score_t12 file?): a verdict must "
+                        "name the run of the records")
     return out
 
 
@@ -458,7 +464,7 @@ def load_scores(specs, warnings: list, inputs: dict, runs=None) -> dict:
         inputs[f"scores:{f}"] = {"path": str(f), "sha256": sha256_file(f)}
         for r in d.get("rows", []):
             if r.get("prompt_format") in (None, "chat") and r.get("half") in (None, "report") \
-                    and not (runs and r.get("run") is not None and r["run"] not in runs):
+                    and not (runs and r.get("run") not in runs):
                 out.setdefault((r.get("task"), r.get("config")), r)
     return out
 
@@ -557,26 +563,33 @@ def build_task(task, recs, verdicts, scores, grid, warnings) -> dict:
             if g:
                 warnings.append(f"{task}: record configuration {key} is not in the grid; ignored")
             continue
-        st = config_stats(docs, gen_length, (getattr(verdicts, 'timeouts', {}) or {}).get((task, key), frozenset()))
+        st = config_stats(docs, gen_length, (getattr(verdicts, "timeouts", {}) or {}).get((t["run"], task, key), frozenset()))
         st["config"] = key
         st["n_expected"] = t["n_expected"]
-        vmap = {d: v for d, v in (verdicts.get((task, key)) or {}).items() if d in docs}
-        if verdicts:
-            for d, r in docs.items():                    # a failed record with no verdict is wrong
+        run = t["run"]
+        real = {d: v for d, v in (verdicts.get((run, task, key)) or {}).items() if d in docs}
+        row = (scores or {}).get((task, key))
+        if real:
+            # a failed record with no verdict is wrong (score_t12 would have said so); only imputed
+            # next to verdicts that are real, never as the whole accuracy
+            vmap = dict(real)
+            for d, r in docs.items():
                 if d not in vmap and (r.get("error") is not None or r.get("completion") is None):
                     vmap[d] = 0
-            missing = len(docs) - len(vmap)
-            if vmap and missing:
-                warnings.append(f"{task} {key}: {missing} record(s) without a verdict; left out of the accuracy")
-        row = (scores or {}).get((task, key))
-        if vmap:
-            k, n = sum(vmap.values()), len(vmap)
-            lo, hi = wilson(k, n)
-            st.update({"n_correct": k, "n_scored": n, "acc": k / n, "ci95": [lo, hi]})
-            correct[(dec, slot)] = vmap
-        elif row and row.get("n"):
+            if len(vmap) < len(docs):
+                warnings.append(f"{task} {key}: {len(docs) - len(vmap)} of {len(docs)} record(s) without a "
+                                "verdict; accuracy left blank")
+            else:
+                k, n = sum(vmap.values()), len(vmap)
+                lo, hi = wilson(k, n)
+                st.update({"n_correct": k, "n_scored": n, "acc": k / n, "ci95": [lo, hi]})
+                correct[(dec, slot)] = vmap
+        elif row and row.get("n") == len(docs):
             st.update({"n_correct": row.get("n_correct"), "n_scored": row["n"], "acc": row["accuracy"],
                        "ci95": list(row["ci95"])})
+        elif verdicts or row:
+            warnings.append(f"{task} {key}: no usable verdicts or score row for its {len(docs)} records; "
+                            "accuracy left blank")
         t["decoders"].setdefault(dec, {"speeds": {}})["speeds"][str(slot)] = st
     errs = [(st["config"], st["failures"]) for d in t["decoders"].values() for st in d["speeds"].values()
             if st["failures"]]
@@ -633,6 +646,20 @@ def build_task(task, recs, verdicts, scores, grid, warnings) -> dict:
 
 
 # --------------------------------------------------------------------------- macros
+def est_macros(m: Macros, name: str, value, lo=None, hi=None) -> None:
+    """``name``, ``name``Lo and ``name``Hi at the decimals ``est_ci`` prints in the tables
+    (c1_paper_outputs.ci_decimals: 3, raised where rounding would show an interval end as 0.000 or
+    [x, x]), so the prose and the table agree."""
+    if not _finite(value):
+        return
+    has_ci = _finite(lo) and _finite(hi)
+    nd = ci_decimals({"value": value, "ci": [lo, hi]}, 3) if has_ci else 3
+    m.add(name, fnum(value, nd))
+    if has_ci:
+        m.add(name + "Lo", fnum(lo, nd))
+        m.add(name + "Hi", fnum(hi, nd))
+
+
 def build_macros(S: dict) -> Macros:
     m = Macros()
     m.comment("Generated by scripts/c3_paper_outputs.py -- do not edit by hand.")
@@ -666,11 +693,7 @@ def build_macros(S: dict) -> Macros:
                     continue
                 base = f"CThreeTTwelve{w}{dec}{SPEED_WORD[s]}"
                 if _finite(st.get("acc")):
-                    m.add(base + "Acc", fnum(st["acc"], 3))
-                    lo, hi = st["ci95"]
-                    if _finite(lo) and _finite(hi):
-                        m.add(base + "AccLo", fnum(lo, 3))
-                        m.add(base + "AccHi", fnum(hi, 3))
+                    est_macros(m, base + "Acc", st["acc"], *st["ci95"])
                 if _finite(st["tps"]):
                     m.add(base + "TPS", fnum(st["tps"], 2))
                 if _finite(st["nfe"]):
@@ -681,9 +704,7 @@ def build_macros(S: dict) -> Macros:
             for dec, e in (t["matched"].get(str(s)) or {}).items():
                 base = f"CThreeTTwelve{w}MatchedDiff{dec}{SPEED_WORD[s]}"
                 if e["matched"] and e["diff"] is not None:
-                    m.add(base, fnum(e["diff"], 3))
-                    m.add(base + "Lo", fnum(e["lo"], 3))
-                    m.add(base + "Hi", fnum(e["hi"], 3))
+                    est_macros(m, base, e["diff"], e["lo"], e["hi"])
                 elif not e["matched"] and e["reason"] in ("unmatched_at_target", "outside_tolerance"):
                     for suffix in ("", "Lo", "Hi"):
                         m.add(base + suffix, DASH_MACRO)
@@ -699,10 +720,7 @@ def build_macros(S: dict) -> Macros:
         for key, dec in SANITY_DEC.items():
             r = san["rows"].get(key)
             if r:
-                m.add(f"CThreeTTwelveSanity{dec}Acc", fnum(r["acc"], 3))
-                if all(_finite(x) for x in r["ci95"]):
-                    m.add(f"CThreeTTwelveSanity{dec}AccLo", fnum(r["ci95"][0], 3))
-                    m.add(f"CThreeTTwelveSanity{dec}AccHi", fnum(r["ci95"][1], 3))
+                est_macros(m, f"CThreeTTwelveSanity{dec}Acc", r["acc"], *r["ci95"])
     return m
 
 
@@ -739,7 +757,7 @@ def matched_table(S: dict) -> str:
     s = PRIMARY_SPEED
     rows = [HEADER.format(src="the T12 report-half records, verdicts and grids"), OPEN,
             "\\begin{tabular}{lrllr}\n\\toprule\n",
-            "Decoder & tok/step & Acc.\\ [95\\% CI] & $\\Delta$ vs C3a [95\\% CI] & $n$ \\\\\n"]
+            "Decoder & tok/step & Acc.\\ [95\\% CI] & C3a $-$ decoder [95\\% CI] & $n$ \\\\\n"]
     notes = []
     for task in TASKS:
         t = S["tasks"][task]

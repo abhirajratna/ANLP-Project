@@ -416,7 +416,7 @@ def test_macros_are_wellformed_latex_with_three_decimals(built):
         assert body.count("{") == body.count("}")
         three_dp = re.search(r"(Acc|AccLo|AccHi|MatchedDiff\w*|Share|Alpha|AlphaPrimary|DevECE\w+)$", name)
         if three_dp and body != DASH_MACRO:
-            assert re.search(r"\.\d{3}$", body), (name, body)
+            assert re.search(r"\.\d{3,5}$", body), (name, body)
         if name.endswith("N") or name.endswith("FitDocs"):
             assert re.fullmatch(r"\d+", body), (name, body)
     # no placeholders, no nan, and the name set carries no digit
@@ -546,16 +546,9 @@ def test_rerun_is_byte_stable(tmp_path):
     assert (paths["out"] / "t12" / "t12_matched_speed.tex").read_bytes() == t
 
 
-def test_records_are_read_from_a_glob_and_report_half_only(tmp_path):
+def test_records_are_read_from_a_glob(tmp_path):
     paths = make_fixture(tmp_path)
-    # a fit-half calibration directory next to the sweeps must not leak into the report numbers
-    cal = paths["records"] / "calibrate-gsm8k"
-    cal.mkdir()
-    bogus = [{"config": "topk_conf[k=2]", "policy": "topk_conf", "k": 2, "task": "gsm8k", "doc_id": 999,
-              "completion": "x", "n_forward": 1, "n_committed": 256, "seconds": 1.0, "error": None}]
-    write_jsonl(cal / "t12.shard0of1.jsonl", bogus)
-    (cal / "t12.shard0of1.meta.json").write_text(json.dumps({"task": "gsm8k", "half": "fit", "gen_length": 256}))
-    argv = ["--out-dir", str(paths["out"]), "--records", str(paths["records"] / "*" / "t12.shard*.jsonl"),
+    argv = ["--out-dir", str(paths["out"]), "--records", str(paths["records"] / "sweep-*" / "t12.shard*.jsonl"),
             "--verdicts", str(paths["verdicts"]), "--grids", str(paths["grids"]),
             "--calibrators", str(paths["cal"]), "--sanity", str(paths["sanity"]),
             "--manifest-dir", str(paths["manifests"])]
@@ -578,7 +571,7 @@ def test_score_rows_are_the_accuracy_when_there_are_no_verdicts(tmp_path):
     paths = make_fixture(tmp_path, with_verdicts=False)
     key = config_key(cfg_of("CThreeA", 2, "gsm8k"))
     rows = [{"task": "gsm8k", "config": key, "half": "report", "prompt_format": "chat",
-             "n": 30, "n_correct": 24, "accuracy": 0.8, "ci95": [0.627, 0.905]}]
+             "run": P.run_key(meta_of("gsm8k", 0)), "n": 30, "n_correct": 24, "accuracy": 0.8, "ci95": [0.627, 0.905]}]
     sc = tmp_path / "scores.json"
     sc.write_text(json.dumps({"rows": rows}))
     assert run_main(paths, "--scores", str(sc), verdicts=False) == 0
@@ -987,3 +980,130 @@ def test_an_identical_duplicate_inside_one_shard_file_still_only_warns(tmp_path)
     f.write_text(f.read_text() + f.read_text().splitlines()[0] + "\n")
     assert run_main(paths) == 0
     assert any("repeated" in w for w in summary_of(paths)["warnings"])
+
+
+# ------------------------------------------------------------------ PR #62 review: accuracy and verdict plumbing
+C3A_KEY = config_key(cfg_of("CThreeA", 2, "gsm8k"))
+
+
+def drop_verdicts(paths, key, keep=lambda v: False):
+    vs = [json.loads(l) for l in paths["verdicts"].read_text().splitlines()]
+    write_jsonl(paths["verdicts"], [v for v in vs if not (v["config"] == key and v["task"] == "gsm8k") or keep(v)])
+
+
+def test_failures_alone_never_become_the_accuracy(tmp_path):
+    """C3a with driver errors and no verdict at all used to score 0.0 on its two failures, and a
+    paired difference of -1.0."""
+    paths = make_fixture(tmp_path)
+    inject_driver_error(paths, "CThreeA", 2, 5)
+    inject_driver_error(paths, "CThreeA", 2, 6)
+    drop_verdicts(paths, C3A_KEY, keep=lambda v: v["driver_error"])      # only the two failed docs have verdicts
+    drop_verdicts(paths, C3A_KEY)                                        # ... and now none at all
+    assert run_main(paths) == 0
+    s = summary_of(paths)
+    sp = s["tasks"]["gsm8k"]["decoders"]["CThreeA"]["speeds"]["2"]
+    assert sp.get("acc") is None and "n_scored" not in sp
+    mac = parse_macros((paths["out"] / "c3" / "macros_c3.tex").read_text())
+    assert "CThreeTTwelveGsmCThreeASpeedTwoAcc" not in mac
+    assert "CThreeTTwelveGsmMatchedDiffTopKSpeedTwo" not in mac           # a difference needs both accuracies
+    assert not any(v.endswith("1.000") for k, v in mac.items() if "MatchedDiff" in k)
+    assert s["tasks"]["gsm8k"]["matched"]["2"]["TopK"]["diff"] is None
+    assert any("accuracy left blank" in w and "gsm8k" in w for w in s["warnings"])
+
+
+def test_failures_are_imputed_to_zero_next_to_real_verdicts_only(tmp_path):
+    paths = make_fixture(tmp_path)
+    inject_driver_error(paths, "CThreeA", 2, 5)                          # its verdict says wrong; keep it
+    drop_verdicts(paths, C3A_KEY, keep=lambda v: v["doc_id"] != 5)       # the failed doc has no verdict line
+    assert run_main(paths) == 0
+    sp = summary_of(paths)["tasks"]["gsm8k"]["decoders"]["CThreeA"]["speeds"]["2"]
+    assert (sp["n_scored"], sp["n_correct"]) == (30, 24 - (1 if correct_of("gsm8k", "CThreeA", 2, 5) else 0))
+
+
+def test_the_score_row_is_used_when_a_config_has_no_verdicts(tmp_path):
+    paths = make_fixture(tmp_path)
+    inject_driver_error(paths, "CThreeA", 2, 5)
+    inject_driver_error(paths, "CThreeA", 2, 6)
+    drop_verdicts(paths, C3A_KEY)
+    sc = tmp_path / "scores.json"
+    sc.write_text(json.dumps({"rows": [{"task": "gsm8k", "config": C3A_KEY, "half": "report", "prompt_format": "chat",
+                                        "run": P.run_key(meta_of("gsm8k", 0)), "n": 30, "n_correct": 22,
+                                        "accuracy": 22 / 30, "ci95": [0.55, 0.85]}]}))
+    assert run_main(paths, "--scores", str(sc)) == 0
+    s = summary_of(paths)
+    sp = s["tasks"]["gsm8k"]["decoders"]["CThreeA"]["speeds"]["2"]
+    assert (sp["n_correct"], sp["n_scored"]) == (22, 30)
+    assert s["tasks"]["gsm8k"]["matched"]["2"]["TopK"]["diff"] is None   # no verdicts: no paired difference
+
+
+def test_a_score_row_with_fewer_problems_than_records_is_blank(tmp_path):
+    paths = make_fixture(tmp_path)
+    drop_verdicts(paths, C3A_KEY)
+    sc = tmp_path / "scores.json"
+    sc.write_text(json.dumps({"rows": [{"task": "gsm8k", "config": C3A_KEY, "half": "report", "prompt_format": "chat",
+                                        "run": P.run_key(meta_of("gsm8k", 0)), "n": 20, "n_correct": 15,
+                                        "accuracy": 0.75, "ci95": [0.5, 0.9]}]}))
+    assert run_main(paths, "--scores", str(sc)) == 0
+    assert summary_of(paths)["tasks"]["gsm8k"]["decoders"]["CThreeA"]["speeds"]["2"].get("acc") is None
+
+
+def test_a_config_with_some_verdicts_missing_has_no_accuracy(tmp_path):
+    paths = make_fixture(tmp_path)
+    drop_verdicts(paths, C3A_KEY, keep=lambda v: v["doc_id"] < 22)       # 8 records lack a verdict
+    assert run_main(paths) == 0
+    s = summary_of(paths)
+    assert s["tasks"]["gsm8k"]["decoders"]["CThreeA"]["speeds"]["2"].get("acc") is None
+    assert any("8 of 30" in w for w in s["warnings"])
+
+
+def test_a_stale_run_less_verdict_file_in_the_directory_does_not_win(tmp_path):
+    paths = make_fixture(tmp_path)
+    good = [json.loads(l) for l in paths["verdicts"].read_text().splitlines()]
+    vdir = tmp_path / "verdicts"
+    vdir.mkdir()
+    stale = [{k: v for k, v in dict(g, correct=False).items() if k != "run"} for g in good]
+    write_jsonl(vdir / "a_stale.jsonl", stale)                       # read first, no run key
+    write_jsonl(vdir / "b_current.jsonl", good)
+    paths["verdicts"] = vdir
+    assert run_main(paths) == 0
+    s = summary_of(paths)
+    sp = s["tasks"]["gsm8k"]["decoders"]["CThreeA"]["speeds"]["2"]
+    assert sp["n_correct"] == 24
+    assert any("without a run" in w for w in s["warnings"])
+
+
+def test_verdicts_are_keyed_by_run(tmp_path):
+    paths = make_fixture(tmp_path)
+    vs = [json.loads(l) for l in paths["verdicts"].read_text().splitlines()]
+    write_jsonl(paths["verdicts"], vs)
+    vd = P.load_verdicts([paths["verdicts"]], [], {}, {P.run_key(meta_of("gsm8k", 0))})
+    assert (P.run_key(meta_of("gsm8k", 0)), "gsm8k", C3A_KEY) in vd
+
+
+def test_macros_round_like_the_table():
+    # a CI that excludes 0 but prints 0.000 at 3 decimals: both raise the decimals together
+    m = P.Macros()
+    P.est_macros(m, "X", 0.0004, 0.0002, 0.0007)
+    bodies = {line.split("{")[1][1:-1]: line.split("}{")[1][:-1] for line in m.lines}
+    assert bodies == {"X": "0.0004", "XLo": "0.0002", "XHi": "0.0007"}
+    cell = P.est_ci({"value": 0.0004, "ci": [0.0002, 0.0007]})
+    assert "0.0004" in cell and "0.0002" in cell and "0.0007" in cell
+    m = P.Macros()
+    P.est_macros(m, "Y", -0.0204, -0.04, 0.0004)
+    assert [line.split("}{")[1][:-1] for line in m.lines] == ["\\ensuremath{-}0.020", "\\ensuremath{-}0.040", "0.000"]
+
+
+def test_the_difference_header_matches_the_caption(built):
+    tex = (built["out"] / "t12" / "t12_matched_speed.tex").read_text()
+    assert "C3a $-$ decoder [95\\% CI]" in tex and "\\Delta" not in tex
+
+
+def test_a_fit_half_shard_under_records_is_refused(tmp_path):
+    paths = make_fixture(tmp_path)
+    cal = paths["records"] / "calibrate-gsm8k"
+    cal.mkdir()
+    write_jsonl(cal / "t12.shard0of1.jsonl", [{"config": "topk_conf[k=2]", "task": "gsm8k", "doc_id": 1000}])
+    (cal / "t12.shard0of1.meta.json").write_text(json.dumps(meta_of("gsm8k", 0, half="fit", num_shards=1)))
+    with pytest.raises(SystemExit) as e:
+        run_main(paths)
+    assert "fit" in str(e.value)
