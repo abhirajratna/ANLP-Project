@@ -1,6 +1,6 @@
 ---
 member: abhiraj
-updated: 2026-10-28T13:45:43Z
+updated: 2026-10-28T19:24:57Z
 branch: main
 ---
-abhiraj: HF quota freed 7.31 GB (DreamBase gz swap, HEAD 667358a); waiting for the Thursday regen PR to review
+abhiraj: reviewing PR #58 regen (7 arms v1.1); PR #64 signed post-merge
