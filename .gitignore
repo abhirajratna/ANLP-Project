@@ -20,3 +20,13 @@ logs/
 *.pt
 .gitattributes
 .claude/settings.local.json
+
+# LaTeX build intermediates (main.pdf is committed on purpose)
+paper/main.aux
+paper/main.bbl
+paper/main.blg
+paper/main.log
+paper/main.out
+
+# Built by scripts/make_code_zip.py
+dist/

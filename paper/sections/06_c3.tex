@@ -1,0 +1,151 @@
+% =====================================================================================
+% Sec. 6  A recalibrated commit rule (C3).  Owner: parth.  FALLBACK skeleton by ojas
+% (branch ojas/paper-c3): parth fills in or approves every TODO(results) below once the
+% T12 report-half numbers exist, and may rewrite any of it.
+%
+% NO RESULTS EXIST YET.  Every number is a macro from artifacts/c3/macros_c3.tex (written by
+% scripts/c3_paper_outputs.py, parth's names on the team bus, msg 20261025T143320Z-parth-6800;
+% main.tex \inputs it when it exists) or a design macro (\Viva...).  Result macros are called
+% through \Cres{<name>} / \CresCI{<name>}, which print a bold ? while the macro is undefined, so
+% the paper builds before the results land.  \Cres, \CresCI, \Cfit are \providecommand'ed here
+% exactly as in 04_c1.tex (PR #28), so loading both is harmless.
+%
+% Macro names (letters only; Lo/Hi suffix for the ends of a CI):
+%   Task = Gsm | Mbpp.   Dec = TopK | Threshold | Margin | Entropy | Klass | PcSampler | CThreeA.
+%   Speed = SpeedOne | SpeedTwo | SpeedThree (the grid's order, slow to fast).
+%   CThreeTEleven<Task>{FitDocs,MonotoneShare,DevECERaw,DevECECal}       T11, fit half only
+%   CThreeTTwelve<Task>N                                                 report-half problems
+%   CThreeTTwelve<Task><Dec><Speed>{Acc[Lo|Hi],TPS,NFE,Sec}   TPS = aggregate 256N/sum(NFE)
+%   CThreeTTwelve<Task>CThreeA<Speed>Alpha               C3a's alpha at each speed, per task
+%   CThreeTTwelve{Gsm,Mbpp}AlphaPrimary                  alias: the speed-2 alpha (tab:c3-speed)
+%   CThreeTTwelve<Task>MatchedDiff<Dec><Speed>[Lo|Hi]    C3a minus that decoder at matched TPS
+%   CThreeTTwelve<Task>OutsideShare                      C3a steps outside the fit range
+%   CThreeTTwelveSanity{TopK,Threshold}{Acc[Lo|Hi]}, CThreeTTwelveSanityN        (appendix_c3.tex)
+% Units: every non-count macro is a fraction on the 0-1 scale with 3 decimals, never a percent
+% (as in C1); N and FitDocs are integers.  Acc intervals are 95% Wilson, MatchedDiff intervals
+% are paired 95% percentile bootstrap (2,000 resamples of problems).  T12 is exploratory: write
+% results as estimates with intervals, not as significant.
+% Files: artifacts/t12/t12_matched_speed.tex (tab:c3-speed, below) and
+% figures/t12_matched_speed.pdf (fig:c3-speed, appendix_c3.tex).  t12_sanity_cost.tex and the
+% speed-1/3 rows go to the code archive's results README, not the paper.
+%
+% Slots:  % TODO(results): ...  wording that depends on a sign or a decision; the phrasings
+%                               are written out; keep one, delete the rest.
+%         % TODO(outputs): ...  a number or fact the paper wants that no macro or file has yet.
+%         % TODO(check): ...    a fact taken from branch code that may still change.
+%
+% Design sources: C3a, c3/decode/policies.py (PR #7, origin/parth/t12-driver); calibrator fit,
+% scripts/fit_c3a_calibrator.py (PR #6, origin/parth/t11-c3a); driver, scripts/run_t12.py;
+% plan v2 T11-T12.  Labels defined: sec:c3, tab:c3-speed.  Used: sec:estimands, sec:models,
+% sec:setup, sec:c3-app (appendix_c3.tex).  Needs booktabs (the generated tables).
+% =====================================================================================
+
+\providecommand{\Cres}[1]{\ifcsname #1\endcsname\csname #1\endcsname\else\textbf{?}\fi}
+\providecommand{\CresCI}[1]{\ensuremath{\Cres{#1}\;[\Cres{#1Lo},\,\Cres{#1Hi}]}}
+% \Cfit{<table>}: the table at its natural width, shrunk to the line only if it is wider.
+\ifdefined\Cfitbox\else\newsavebox{\Cfitbox}\fi
+\providecommand{\Cfit}[1]{\sbox{\Cfitbox}{#1}%
+  \ifdim\wd\Cfitbox>\linewidth\resizebox{\linewidth}{!}{\usebox{\Cfitbox}}\else\usebox{\Cfitbox}\fi}
+% \CthreePending{<what>}: the box a generated table or figure is replaced by until it exists.
+\providecommand{\CthreePending}[1]{\fbox{\parbox{0.9\linewidth}{\centering\small #1: pending
+  results (\texttt{scripts/c3\_paper\_outputs.py})}}}
+
+\section{A recalibrated commit rule (C3)}
+\label{sec:c3}
+
+\begin{table*}[t]
+  \centering
+  \IfFileExists{../artifacts/t12/t12_matched_speed.tex}%
+    {\Cfit{\input{../artifacts/t12/t12_matched_speed.tex}}}%
+    {\CthreePending{T12 matched-speed table}}
+  \caption{T12 at matched speed: speed 2 (target 4 tokens per step) per task, with C3a at
+    $\alpha=\Cres{CThreeTTwelveGsmAlphaPrimary}$ on GSM8K and
+    $\Cres{CThreeTTwelveMbppAlphaPrimary}$ on MBPP. Accuracy with its 95\% Wilson interval;
+    paired difference C3a $-$ decoder on the same problems, with a 95\% percentile bootstrap
+    interval (2,000 resamples of problems); positive favours C3a.}
+  \label{tab:c3-speed}
+\end{table*}
+
+\paragraph{The rule.}
+A top-$k$ decoder fixes the number of tokens per step in advance; C3a lets calibrated
+confidence set it. At each step it computes $\hat c_i=\hat\pi(\ell_i,s)$ with the
+context-aware calibrator of \S\ref{sec:estimands} on three field
+features (median $\ell$, mask rate, $\log|M|$), and commits the $n$ masked positions of the
+active block with the highest $\ell$, where $n$ is the number with $\hat c_i\ge 1-\alpha$, or
+one if none qualifies. If $\hat c$ is non-decreasing in $\ell$ across a step's positions, these
+are exactly the positions with $\hat c_i\ge 1-\alpha$, so every committed token except a forced
+single commit has calibrated error probability $1-\hat c_i\le\alpha$. The $\ell\times$feature
+terms do not guarantee this; it holds in a fraction \Cres{CThreeTElevenGsmMonotoneShare} of
+GSM8K and \Cres{CThreeTElevenMbppMonotoneShare} of MBPP fit states. $\alpha$ is the one speed
+knob. C3a changes \emph{how many} tokens are committed, not \emph{which}, and needs no extra
+forward pass.
+
+\paragraph{T11: the calibrator.}
+One calibrator per task is fitted on teacher-forced decoder states ($k\in\{2,4,8\}$) of the
+fit-half LLaDA-8B-Instruct traces (\Cres{CThreeTElevenGsmFitDocs} GSM8K and
+\Cres{CThreeTElevenMbppFitDocs} MBPP documents) and frozen. A check inside the fit half (not
+a result) puts its ECE against the raw $\sigma(\ell)$ at \Cres{CThreeTElevenGsmDevECECal} from
+\Cres{CThreeTElevenGsmDevECERaw} on GSM8K and \Cres{CThreeTElevenMbppDevECECal} from
+\Cres{CThreeTElevenMbppDevECERaw} on MBPP. It is then applied to free generation, which starts
+from 256 masks; its fit states lie inside a reference answer. A fraction
+\Cres{CThreeTTwelveGsmOutsideShare} of C3a's GSM8K steps and
+\Cres{CThreeTTwelveMbppOutsideShare} of its MBPP steps have features outside the fitted range.
+% TODO(results): if the dev ECE does not fall (Cal >= Raw), say "does not improve on" instead
+%   of "from", and say the gain, if any, is not from better calibration.
+
+\paragraph{T12: matched speed.}
+LLaDA-8B-Instruct generates freely on the report halves of GSM8K
+(\Cres{CThreeTTwelveGsmN} problems) and MBPP (\Cres{CThreeTTwelveMbppN}): zero-shot chat prompt,
+256 tokens in blocks of 32, greedy, one seed, fp16, on two RTX PRO 6000 GPUs.
+C3a is compared with confidence top-$k$, Fast-dLLM's threshold \citep{wu2025fastdllm},
+margin \citep{kim2025worst}, entropy-bounded \citep{benhamu2025entropy},
+KLASS \citep{kim2025klass} and PC-Sampler \citep{huang2025pcsampler} (full variant, with
+background token frequencies from held-out FineWeb-Edu text rather than C4).
+Each decoder has one speed knob ($k$, $\tau$, $\gamma$, $\alpha$, \dots), calibrated per task on
+fit-half problems only to 2, 4 and 8 tokens per step (speeds 1 to 3). Top-$k$, margin and
+PC-Sampler are exact at $k=2,4,8$; the threshold, entropy-bounded, KLASS and C3a settings are
+interpolated in $\log$ speed. Every knob is chosen by speed alone, never by accuracy. Speed is
+aggregate tokens per step, $256N/\sum\mathrm{NFE}$ over a configuration's $N$ problems. If
+KLASS cannot reach 8 tokens per step within $\pm10\%$, its fastest setting fills the speed-3
+slot and that comparison reads ---. Table~\ref{tab:c3-speed} shows speed 2 (about 4 tokens
+per step); speeds 1 and 3 and the cost per decoder are in the code archive, and
+Appendix~\ref{sec:c3-app} has the sanity check and the speed curves. Each decoder is taken at
+its setting nearest to C3a's tokens per step, within $\pm10\%$ (else ---); the accuracy
+difference is paired on the shared problems, with a 95\% percentile bootstrap interval from
+2,000 resamples of problems. T12 is exploratory and outside the C1 analysis of
+\S\ref{sec:inference}: no multiple-testing correction is applied, and differences are reported
+as estimates with intervals.
+
+\paragraph{Result.}
+% TODO(results): first, the sanity check (appendix_c3.tex): if top-k or the threshold scores
+%   above its published number by more than 0.02 (parth's pilot: about 0.04--0.05 above, but
+%   with both published values inside the Wilson intervals at n = 200), say that here before
+%   anything else ("The harness scores above the published <decoder> by <...> (the published
+%   value lies inside / outside our interval), so the comparison below is not comparable to
+%   published numbers; the decoders share the harness, so the differences are still paired")
+%   and keep only the claims that survive; if both are within 0.02, no sentence is needed.
+%   Say "above" or "below", not "misses".
+% TODO(results): keep the sentence that matches \CThreeTTwelve<Task>MatchedDiff<Dec>SpeedTwo
+%   (Lo/Hi) across the six decoders in tab:c3-speed, per task; do not pool tasks.
+%   if the interval excludes 0 and is positive against every decoder with a value:
+%     "At matched speed C3a is estimated to be more accurate than <all / these> decoders on
+%      <task>, by
+%      \CresCI{CThreeTTwelveGsmMatchedDiffThresholdSpeedTwo} against the Fast-dLLM threshold,
+%      the closest competitor."
+%   if it is positive against some and holds 0 against others: name each group, with the
+%     strongest and weakest difference as intervals.
+%   if every interval holds 0:
+%     "At matched speed the estimated difference between C3a and the other decoders on <task>
+%      is small, and the intervals in Table~\ref{tab:c3-speed} include 0: they bound C3a's gain
+%      at <upper end> or less."
+%   if C3a is worse for some decoder (interval below 0): say so as plainly as a gain.
+%   Then which: the largest speed at which C3a keeps within <x> of top-k in accuracy (curve,
+%   appendix), and the wall-clock (\CThreeTTwelve<Task>CThreeASpeedTwoSec against
+%   \CThreeTTwelve<Task>TopKSpeedTwoSec): fewer forward passes need not mean less time.
+% TODO(results): the T11/T12 link.  Because the calibrator keeps the model's ranking, any
+%   gain over top-k comes from how many tokens it commits per step; if the intervals are
+%   positive say "the gain is in the count, not the order".  If they hold 0 say "calibrating
+%   the count did not help at matched speed", and if the share outside the fit range
+%   (OutsideShare) is large, add "C3a is applied to states unlike those it was fitted on;
+%   this may be why" as a possibility, not a finding.
+Results pending.

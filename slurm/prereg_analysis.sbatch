@@ -67,13 +67,54 @@
 #     T8: 4-6 h, 105 GB.  The 30M-row time-split run: ~15 min, 20 GB.
 #   - Eq. 2/3: 118 s per resample at 30M rows with one worker (two resamples 2,408 s in
 #     all, six 2,882 s), i.e. ~310-475 s at 120M (work grows with rows^0.7-1.0), summed
-#     over the 7 mask kinds and 4 fits.  With --eq-boot 1000 and 3 workers that is
-#     29-44 h per run, and the primary and the two knot runs make three: ~90-130 h, more
-#     than the 4-day limit with E3 and T8 added.  Submit it again: a step that finished
-#     is kept, but one that was killed starts over, so a single step (~45 h) must fit
-#     in a job.  --skip-regression runs (clean, time-split) cost minutes.
+#     over the 7 mask kinds and 4 fits (extrapolated, not measured at 120M).  With 3
+#     workers that is 29-45 h for the primary run (--eq-boot 1000) and ~7-10 h for each
+#     knot run (--eq-boot 200), so a whole FineWeb arm (primary, two knot runs, the
+#     additive and clean runs, E3, T8) takes ~50-76 h: it fits the 4-day limit, and two
+#     such arms on one account do not fit one job.  Submit it again: a step that finished
+#     is kept, but one that was killed starts over, so a single step (~45 h) must fit in a
+#     job.  --skip-regression runs (clean, time-split, additive) cost ~45 min each.
 # A 40-CPU, 120,000 MB, 4-day job is the most the account can ask for; no --constraint:
 # nothing here uses a GPU, and 2080 Ti nodes are rarely free of other jobs' CPUs.
+#
+# E1/E2-only mode (C3_E1E2_ONLY=1, opt-in).  The Eq. 2/3 fixed-effects bootstrap inside a
+# primary step is too slow to finish in one 96 h job, and the E1/E2 Holm-family numbers
+# come only from the reweighting bootstrap, so they are identical with --skip-regression
+# (scripts/analyze_traces.py).  This mode banks them first: the job runs only each arm's
+# primary scripts/analyze_traces.py step, `--out $OUT/c1/<Label>`, with --skip-regression
+# appended (so the .prereg-done stamp records it).  Every other step with an --out is
+# skipped and named: the knots5/knots13/additive/clean/time-split runs, E3, T8, the
+# summary.  OUT defaults to $C3_PERSIST/prereg-v1-e1e2 (never the full job's prereg-v1,
+# so a running full job's outputs are not touched).  A primary label is a directory
+# directly under c1/ whose name does not end in _knots5, _knots13, _additive, _clean or
+# TimeSplit.  The Holm summary (scripts/summarize_c1.py, c1/summary) passes the filter
+# unchanged.  Env interface of the mode:
+#   C3_E1E2_ONLY=1   switch it on (unset or 0: the normal job, unchanged).
+#   C3_REPO          clean checkout at prereg-v1; the script itself comes from main / the
+#                    branch that has it.
+#   OUT              default $C3_PERSIST/prereg-v1-e1e2; refused if it is the full
+#                    $C3_PERSIST/prereg-v1 root.
+#   C3_RUNS          one arm per job: c1-llada-base, c1-dream-base, c1-llada-instruct-gsm8k,
+#                    c1-llada-instruct-mbpp-v2, c1-dream-instruct-gsm8k,
+#                    c1-dream-instruct-mbpp (8B, TRACES_SRC=/share1/abhiraj.ratna/traces)
+#                    and main-110m-v3 (110M, ojas's account) = the 7 Holm arms.
+#   SUMMARY_ONLY=1  with C3_E1E2_ONLY=1 and OUT=<e1e2 root> holding all seven
+#                    c1/<Label>/results.json: the Holm summary alone (small job, no staging).
+#   Upload: HF repo ANLP-project/c3-traces-8b, under prereg-v1-e1e2/ (the c1/<Label> dirs).
+# Sizing: ~77 GB and ~45 min per FineWeb arm.  The analysis code stays fixed
+# at the tag: submit this script from main, with C3_REPO a clean checkout at prereg-v1
+# (the tag and clean-tree gates, analysis_commands.sh and activate_env.sh all come from
+# C3_REPO, not from the submit directory):
+#
+#   cd ~/c3-prereg   # clean, HEAD = prereg-v1
+#   C3_REPO=$PWD C3_E1E2_ONLY=1 C3_REPORT_HALF_OK=1 C3_RUNS=c1-dream-base \
+#       TRACES_SRC=/share1/abhiraj.ratna/traces C3_SCRATCH=/ssd_scratch/$USER/v2 HF_HUB_OFFLINE=0 \
+#       sbatch --cpus-per-task=38 --mem=120000M ~/c3/slurm/prereg_analysis.sbatch
+#
+# Later tag (the Eq. 2/3 warm start, deviations 18-19): C3_PREREG_TAG=prereg-v1.1 (any
+# prereg-v1.<digits> that descends from prereg-v1), C3_REPO a clean checkout at that tag,
+# normal mode; OUT defaults to $C3_PERSIST/prereg-v1.1 ($C3_PERSIST/$TAG-e1e2 with
+# C3_E1E2_ONLY=1).  Unset, the tag is prereg-v1 and everything above holds.
 #
 # Dry run of the runner itself, with a stub interpreter that reads no trace:
 #
@@ -81,12 +122,15 @@
 #       sbatch --cpus-per-task=2 --mem=5G --time=2:00:00 slurm/prereg_analysis.sbatch
 #
 # C3_PREREG_DRYRUN=1 skips the tag and clean-tree checks, and is refused unless PY is a
-# stub.  Its OUT defaults to $C3_PERSIST/prereg-dryrun/<job id>.
+# stub.  Its OUT defaults to $C3_PERSIST/prereg-dryrun/<job id> (prereg-dryrun-e1e2/<job id>
+# with C3_E1E2_ONLY=1).
 set -euo pipefail
 die() { echo "[prereg] refusing: $*" >&2; exit 1; }
 REPO_DIR="${C3_REPO:-${SLURM_SUBMIT_DIR:-$PWD}}"
-TAG=prereg-v1
+TAG="${C3_PREREG_TAG:-prereg-v1}"
+[[ "$TAG" =~ ^prereg-v1(\.[0-9]+)?$ ]] || die "C3_PREREG_TAG=$TAG: only prereg-v1 or prereg-v1.<digits> are accepted"
 DRYRUN="${C3_PREREG_DRYRUN:-0}"
+E1E2="${C3_E1E2_ONLY:-0}"
 
 # ---------------------------------------------------------------- 1. gates
 [ "${C3_REPORT_HALF_OK:-}" = 1 ] || die "C3_REPORT_HALF_OK=1 is not set in the submitting \
@@ -103,6 +147,8 @@ if [ "$DRYRUN" = 1 ]; then
     echo "[prereg] DRY RUN at ${HEAD:0:12}: tag and clean-tree checks skipped; PY=$PY"
 else
     [ -n "$TAGGED" ] || die "no tag $TAG in $REPO_DIR (from the laptop: git push ada:c3 $TAG)"
+    [ "$TAG" = prereg-v1 ] || git -C "$REPO_DIR" merge-base --is-ancestor prereg-v1 "$TAG" \
+        || die "$TAG does not descend from prereg-v1 in $REPO_DIR"
     [ "$HEAD" = "$TAGGED" ] || die "HEAD ${HEAD:0:12} is not $TAG (${TAGGED:0:12}): git checkout --detach $TAG"
     [ -z "$DIRTY" ] || die "$REPO_DIR has uncommitted changes: $DIRTY"
     echo "[prereg] $TAG = ${HEAD:0:12}, clean checkout $REPO_DIR"
@@ -122,11 +168,19 @@ export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
 TRACES_SRC="${TRACES_SRC:-/share1/$USER/traces}"
 STAGE="$C3_SCRATCH/prereg/traces"                 # node-local copies, reused by later jobs
 export TRACES="$C3_SCRATCH/prereg/view-${SLURM_JOB_ID:-$$}"    # only what this job verified
-if [ "$DRYRUN" = 1 ]; then
-    export OUT="${OUT:-$C3_PERSIST/prereg-dryrun/${SLURM_JOB_ID:-$$}}"
+if [ "$E1E2" = 1 ]; then
+    SFX=-e1e2
 else
-    export OUT="${OUT:-$C3_PERSIST/prereg-v1}"
+    SFX=
 fi
+if [ "$DRYRUN" = 1 ]; then
+    export OUT="${OUT:-$C3_PERSIST/prereg-dryrun$SFX/${SLURM_JOB_ID:-$$}}"
+else
+    export OUT="${OUT:-$C3_PERSIST/$TAG$SFX}"
+fi
+[ "$E1E2" != 1 ] || [ "$(realpath -m "$OUT")" != "$(realpath -m "$C3_PERSIST/$TAG")" ] \
+    || die "C3_E1E2_ONLY=1 would write into the full $TAG root ($OUT); unset OUT"
+[ "$E1E2" != 1 ] || echo "[prereg] C3_E1E2_ONLY=1: primary c1 steps only, --skip-regression, OUT=$OUT"
 export PY="${PY:-$C3_PY}"
 export CORPUS="${CORPUS:-$C3_PERSIST/corpus/calibration_docs.jsonl}"
 export TASKS_DIR="${TASKS_DIR:-$C3_PERSIST/corpus/tasks}"
@@ -244,6 +298,32 @@ PY
 # numbers, and a resubmission may change it.
 prereg_py() {
     local out= prev= a key=() stamp t0=$SECONDS
+    local args=("$@")
+    if [ "${C3_E1E2_ONLY:-0}" = 1 ]; then
+        for a in "$@"; do
+            [ "$prev" = --out ] && out=$a
+            prev=$a
+        done
+        if [ -n "$out" ]; then
+            local rel=${out#"$OUT"/} label
+            label=${rel#c1/}
+            case "$rel" in
+                c1/*/*|c1/*_knots5|c1/*_knots13|c1/*_additive|c1/*_clean|c1/*TimeSplit) label= ;;
+                c1/*) ;;
+                *) label= ;;
+            esac
+            if [ "$1" = scripts/summarize_c1.py ] && [ "$rel" = c1/summary ]; then
+                :                       # the Holm summary: runs as is, takes no --skip-regression
+            elif [ "$rel" = "$out" ] || [ -z "$label" ] || [ "$1" != scripts/analyze_traces.py ]; then
+                echo "[prereg] C3_E1E2_ONLY: skipped $out"
+                return 0
+            else
+                case " ${args[*]} " in *" --skip-regression "*) ;; *) args+=(--skip-regression) ;; esac
+            fi
+        fi
+        out= prev=
+    fi
+    set -- "${args[@]}"
     for a in "$@"; do
         [ "$prev" = --out ] && out=$a
         [ "$a" = --n-jobs ] || [ "$prev" = --n-jobs ] || key+=("${a//$TRACES/\$TRACES}")

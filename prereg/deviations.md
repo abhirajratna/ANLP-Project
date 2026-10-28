@@ -1,8 +1,9 @@
 # Deviations from plan v2 (documents/C3_Detailed_Plan_v2.pdf)
 
-Recorded before any report-half number was computed. Each entry gives what the plan
-says, what was done, and why. Later deviations are appended with a date; nothing
-above them is edited.
+Recorded before the tag `prereg-v1`. Entry 16 discloses report-half rows that an
+exploratory notebook read before the tag. Each entry gives what the plan says, what
+was done, and why. Later deviations are appended with a date; nothing above them is
+edited.
 
 ## Fixed before the freeze (12 Oct 2026)
 
@@ -49,6 +50,39 @@ above them is edited.
    re-collected from scratch at one commit as `c1-llada-instruct-mbpp-v2`. Dream-Instruct
    MBPP carries the cap from the start.
 
+## Added 24-25 Oct 2026, before the tag
+
+Items 7-14 are reserved for the T13 ablation entries (branch `t13-ablations`).
+
+15. **Eq. 2/3 bootstrap at 1,000 resamples.** Plan v2 Sec. 5 asks for 10,000 document
+    resamples for every interval. The Eq. 2/3 interval (beta_z, gamma_k) refits the
+    regression per resample: ~3.7 s on 150 documents with 8 CPUs (measured). On a whole
+    FineWeb run (~120M rows) it takes ~310-475 s with one worker, where memory allows
+    three workers; that figure is extrapolated from the 9M- and 30M-row jobs 36215, 36251
+    and 36422, not measured on a whole run. At 10,000 that is weeks per run. It runs at
+    1,000 in the primary run and in the T8 precision comparison's beta_z (Eq. 2 on
+    winners), and at 200 in the two knot runs. Counting fixed costs and E1/E2, a knot run
+    takes ~8-12 h and a whole FineWeb arm ~2.2-3.3 days. The knot runs are sensitivity
+    panels and their intervals are descriptive: at 200 resamples an endpoint's Monte Carlo
+    error is ~0.19 SE and p resolves only to 1/200, so nothing is declared from them. The
+    contamination-clean, time-split and additive-calibrator runs report E1/E2 only
+    (`--skip-regression`). Every other interval, including the E1 and E2 contrasts in the
+    Holm families, stays at 10,000.
+
+16. **Report-half rows read before the tag (disclosure).** On 24 Oct an exploratory
+    notebook (`notebooks/c3_dorigo_methods.py`, PR #18; not part of this pre-registration)
+    computed report-half statistics on `main-110m-v3` and `timesplit-110m-v3` before
+    `prereg-v1` existed. Only ayush saw the numbers; they were not committed or shared.
+    `main-110m-v3` is the `Mdlm` arm, a member of both Holm families. Since 2b72e12 the
+    notebook reads the fit half only by default. Most frozen choices were posted on 23 Oct,
+    before that run. Four were settled after it, on 25 Oct, and none depends on data:
+    (a) the knot runs at 200 resamples (item 15; proposed by ojas on 23 Oct, accepted by
+    abhiraj on 25 Oct); (b) the T8 precision beta_z at 1,000 resamples (item 15); (c) the
+    claim rule: a family member is claimed only if it is declared AND rejected by Holm,
+    which with every floor 0 is the Holm rejection alone, so it cannot change a result;
+    (d) each Holm family's size is fixed at 7 labels x 2 arms = 14, and a missing member
+    counts as p = 1, which can only make the test more conservative.
+
 ## Choices the plan leaves open, fixed here (for sign-off)
 
 - E1/E2 Holm families: arms `uniform` and `decoder:topk_conf:k4` across models x datasets.
@@ -72,4 +106,89 @@ above them is edited.
 
 ## After the freeze
 
-(none yet)
+### Added 26 Oct 2026, after the prereg-v1 tag (6b4c25e)
+
+17. **T12 decoder sweep: protocol fixed before any report-half generation (26 Oct 2026).**
+    T12 is not a pre-registered endpoint (`documents/final-plan.md:55-56`) and `prereg-v1`
+    freezes no T12 number. Its choices are fixed here, before any T12 report-half problem is
+    decoded, so none can depend on a report-half result. Plan v2 T12 runs eight decoders on
+    GSM8K, MBPP and HumanEval in bfloat16; the final plan defers (not run here) C3b and
+    HumanEval, leaving seven decoders x three speeds on GSM8K and MBPP.
+    - Fixed settings: LLaDA-8B-Instruct, zero-shot chat prompt, gen 256, block 32, greedy,
+      fp16 (as item 2; the C3a calibrator's traces are fp16), on the report halves of
+      `artifacts/split_manifest_{gsm8k,mbpp}.json`.
+    - Platform: Jarvis Labs, 2x RTX PRO 6000 (Blackwell). A machine is not mixed within a
+      task. The fit-half sanity reference ran on Ada (2080 Ti, fp16, lm-eval 5-shot) and
+      scored 83.5 / 84.5 (top-k k=1 / threshold 0.9) against the published 79.3 / 79.2.
+    - Speed of a configuration = 256 N / sum(NFE) over its N problems (total generated
+      positions over total forward passes), not the mean of per-problem ratios.
+    - Knobs are calibrated per task, on fit-half problems only (GSM8K and MBPP each from
+      their own run of `prereg/t12_cal.json`, 32 configurations (after the extension below); 32 and 24 problems in
+      `scripts/jarvis_t12.sh calibrate`). `scripts/pick_knobs.py` refuses any report-half
+      record. top-k, margin and PC-Sampler are exact at k = 2, 4, 8 tokens per step.
+      Threshold, entropy-bounded, KLASS and C3a knobs are interpolated, in log(speed), to
+      2, 4 and 8 tokens per step. They are chosen by speed alone, never by fit-half accuracy.
+    - Matching: for each C3a setting, each baseline is taken at its setting whose tokens per
+      step is nearest, within +-10% of C3a's, else '---'. The tokens per step matched is each
+      configuration's aggregate speed (256 N / sum(NFE)) in the report-half run of that
+      task. Per-configuration accuracy carries a 95% Wilson interval. The difference is the
+      paired accuracy difference on the shared doc_ids, with a 95% percentile CI from 2,000
+      bootstrap resamples of problems (seed 20261030). There is no Holm family and no
+      declaration rule: T12 numbers are exploratory.
+    - KLASS: if its fastest calibrated setting cannot reach 8 tokens per step within +-10%
+      (history 2 caps it at 32/3 = 10.7, and reaching 8 needs nearly every position stable
+      by step 3), that setting takes the speed-3 slot. `pick_knobs.py` records
+      `"unmatched_at_target": true` and the tokens per step achieved, and the speed-3
+      comparison reads '---'.
+    - Main-text table (primary operating point, chosen by parth on 26 Oct 2026, before any
+      report-half generation): §6's matched-speed table shows, per task, the speed-2 slot
+      (target 4 tokens per step), at the C3a alpha that `scripts/pick_knobs.py` writes to
+      `prereg/t12_grid_<task>.json`; speeds 1 and 3 appear in full in the appendix figure and
+      the code archive's results table, and no slot is chosen after a report-half number is read.
+    - Grid extension (fit half only). The first fit-half calibration (375b079, 25
+      configurations, Jarvis instance 550443, 1,400 records) could not reach 7.2 tokens per
+      step for MBPP threshold, C3a and entropy-bounded, or for GSM8K entropy-bounded, so
+      `pick_knobs.py` refused. Using those fit-half speeds only, the grid was extended to 32
+      configurations (threshold tau 0.2 and 0.1; entropy-bounded gamma 10, 30 and 100; C3a
+      alpha 0.75 and 0.9; `prereg/t12_cal.json` at 4435c13, sha256 7d58d9a0e633...) and
+      recalibrated (run 7d58d9a0, 1,792 records, 0 errors) before any report-half
+      generation. KLASS remains unmatched at speed 3 (4.77 and 4.32 tokens per step), as the
+      KLASS rule allows.
+    - Files: the calibration grid `prereg/t12_cal.json` is at branch `ayush/t12-grids`,
+      commit `4435c13041227cfd3d6f13a6d424300c6b2b3092`; `scripts/pick_knobs.py` is at
+      branch `parth/t12-driver`, commit `daff750c251f8e49fb62c40f8fad12b80cb4ee04`. The final per-task grids
+      (`prereg/t12_grid_gsm8k.json`, `prereg/t12_grid_mbpp.json`) are committed before the
+      report-half run, and their hashes are recorded on the coordination bus.
+    - No T12 result changes any choice frozen in prereg-v1 or prereg-v1.1.
+
+18. **Step order: E1/E2 banked before Eq. 2/3 (scheduling only).** The Eq. 2/3 FE bootstrap
+    did not fit the 96 h Ada job cap on the 120M-row arms (measured: LladaBase job 39851,
+    eq2_fe 5-8 min per resample per worker; DreamBase job 39510, eq3_fe ~100 s per resample
+    per worker, first of 7 mask kinds still running after 16 h). Each arm's primary
+    `c1/<Label>` command is therefore first run with `--skip-regression` into
+    `prereg-v1-e1e2/` (`slurm/prereg_analysis.sbatch`, `C3_E1E2_ONLY=1`, PR #47). The E1/E2
+    Holm families come only from the 10,000-draw reweighting bootstrap
+    (`scripts/analyze_traces.py:154-196` at `prereg-v1`; bootstrap counts drawn once at
+    `:401`), so their numbers are identical to a full run; Eq. 2/3 follows separately. No
+    frozen choice changes.
+
+19. **Eq. 2/3 bootstrap warm start.** From commits cc9cc85 and 51657cb (branch
+    `abhiraj/eq23-warm-start`) each Eq. 2/3 bootstrap resample's IRLS starts from the
+    full-sample fit instead of zero; estimator, ridge, tolerance, max_iter and resample
+    seeds unchanged. The penalised objective is strictly concave, so a converged draw does
+    not depend on where it started; against an independent high-precision solver warm draws
+    are exact to <=2e-9 and CI endpoints move by <=3e-10. Where the frozen cold start hit
+    max_iter, its draws were not optimal (errors up to 9e-2 on synthetic hard cases);
+    unconverged point fits and draws are now restarted once from their last iterate, and any
+    still unconverged are counted and marked §. `--eq-cold-start` reproduces `prereg-v1`
+    output exactly. On real data (fit-half documents only; 50 and 200 documents of LladaBase
+    decoder:topk_conf:k2; full-sample fit plus 10 bootstrap resamples each, using each tag's
+    own code), the prereg-v1 cold start converged in every case but slowly: median 49 IRLS
+    iterations (max 58) and about 270-340 step-halvings per fit, 16 s and 63 s per fit.
+    Under prereg-v1.1 every resample converged in 5 iterations with no step-halving, 29-32
+    times faster, and coefficients agreed with the cold fits to within 1.3e-12; the
+    full-sample fits were identical. On the observed data the change is therefore a speed
+    change only. Non-convergence was seen in synthetic hard cases only. Diagnostic scripts
+    and output: ANLP-project/c3-traces-8b, diagnostics/fediag-2026-10-26/. The library default stays cold, so other callers (`run_controls`,
+    `run_stage0`, `c3/sim`) are unchanged. Convergence of point fits and draws is now
+    recorded (`point_converged`, `point_restarted`, `n_nonconverged_draws`).

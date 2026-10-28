@@ -1,0 +1,39 @@
+% =====================================================================================
+% Limitations (unnumbered; ACL puts it before the references, outside the 8-page count, and
+% the course guidelines allow nothing but limitations / future work in it: no results).
+% Owner: ayush (writing lead).  Draft by ojas.  Numbers are design constants of Sec. 3.
+% =====================================================================================
+
+\section*{Limitations}
+
+\paragraph{Scope.}
+We audit two 8B-scale families and one 110M MDLM on FineWeb-Edu, GSM8K and MBPP, with model
+type and text type confounded; the 7--8B models' C1 traces are in fp16, as the GPUs we traced on lack bfloat16. C2's
+exact terms cover one synthetic distribution and one 110M fine-tune.
+
+\paragraph{Design and estimators.}
+C1 is teacher-forced: its states are those of an always-right decoder, not those after a free
+decoder's own mistakes, and a valid rewording counts as an error. The field term is only as
+context-aware as the state features of $\hat\pi(\ell,s)$: up to four, three in uniform states,
+where the step is constant.
+
+\paragraph{Contamination.}
+The screen flags only verbatim recall, and the time-split set mixes exposure with domain. Only
+the 110M model isolates the domain part. Our claims are about change with field size (E1, E2),
+not levels; where we read levels we rely on the 110M arm, and 110M levels need not transfer to 8B
+models.
+% TODO(results): check that Sec. 4 keeps to this levels/trends split; if it reads levels off
+%   the 8B arms, change this paragraph rather than Sec. 4.
+
+\paragraph{Exploratory analyses and C3.}
+Analyses outside the E1/E2 Holm families (decoder states at $k\in\{2,8\}$, matched uniform states,
+$\beta_z$, $\gamma_k$, E3, T8, the contamination-filtered and time-split runs) carry no claims. C3a is fitted on
+teacher-forced states but applied to free-running generation, and compared on one model, with
+greedy decoding, one seed and two tasks.
+% TODO(results): name the T12 precision (bf16 on an A100 or fp16 on Ada; PR #7 allows both),
+%   which differs from the fp16 traces C3a is fitted on if bf16.  Say whether C3b and HumanEval
+%   ran; if not, add "C3b, which can reorder positions, and HumanEval were not run."  If T12 is
+%   not done at the freeze, replace this paragraph's C3 part with one sentence saying C3 is
+%   untested.
+% TODO(results): the trace release (8B traces ~64 GB; final-plan.md: a subset or aggregates)
+%   is a limitation on repeating the audit if only part of it is public by 31 Oct.

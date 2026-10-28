@@ -70,7 +70,8 @@ def load(spec: str, extra_cols=()):
         return simulate_design(name, **kw), {"source": spec}
     from c3.assemble import read_trace_table, trace_meta
 
-    df = read_trace_table(spec, columns=list(BASE_COLUMNS) + list(extra_cols)).to_pandas()
+    cols = list(dict.fromkeys([*BASE_COLUMNS, *extra_cols]))     # a repeated column comes back twice
+    df = read_trace_table(spec, columns=cols).to_pandas()
     for c in ("mask_kind", "policy", "model", "dataset"):
         if c in df.columns:
             df[c] = df[c].astype(str)
@@ -458,8 +459,12 @@ def main() -> int:
     if "precision" in a.controls:
         if not a.precision_trace:
             raise SystemExit("--controls precision needs --precision-trace")
-        df_a, _ = load(a.traces, ["top1"])
-        df_b, meta_b = load(a.precision_trace, ["top1"])
+        if other or a.exclude_docs:
+            del df
+            df_a, _ = load(a.traces)
+        else:
+            df_a = df       # loaded above with the same columns: one copy of the fp16 trace, not two
+        df_b, meta_b = load(a.precision_trace)
         rows, extra = precision_section(df_a, df_b, a)
         result["rows"] += rows
         result["precision"] = {**extra, "input_4bit": meta_b}
