@@ -1,6 +1,6 @@
 ---
 member: ojas
-updated: 2026-10-28T15:48:35Z
+updated: 2026-10-29T03:40:25Z
 branch: main
 ---
-ojas: #58 ready (rounding + 110M beta_z clause pushed, body ~0.35 col free); #59 slides+Q&A have the v1.1 readings; waiting on T12 for §6/abstract C3 lines
+ojas: #58 approved on bus (abhiraj+ayush agents), waits for ayush's GitHub click to merge; #59 slides+Q&A at v1.1 (20 main slides); waiting on GSM8K scores + #62 merge to fill C3 lines
