@@ -5,6 +5,7 @@ calibrator metadata in the formats ``scripts/run_t12.py``, ``scripts/score_t12.p
 ``scripts/pick_knobs.py`` and ``scripts/fit_c3a_calibrator.py`` write, with numbers chosen so
 every expected value can be computed by hand.  A schema and arithmetic check, not results.
 """
+import csv
 import json
 import math
 import re
@@ -473,7 +474,9 @@ def test_table_is_a_bare_booktabs_tabular_one_row_per_decoder_tasks_side_by_side
     assert tex.count("\\begingroup") == tex.count("\\endgroup") == 1
     assert "GSM8K" in tex and "MBPP" in tex
     for name in ("Top-$k$", "Threshold", "Margin", "Entropy", "KLASS", "PC-Sampler", "C3a"):
-        assert sum(l.startswith(name + " &") for l in tex.splitlines()) == 1, name   # one row, both tasks
+        # one row, both tasks (KLASS carries the off-operating-point dagger)
+        assert sum(l.startswith(name + (r"$^\dagger$" if name == "KLASS" else "") + " &")
+                   for l in tex.splitlines()) == 1, name
     # entropy is unmatched at speed 2: both of its task groups are dashes
     row = next(l for l in tex.splitlines() if l.startswith("Entropy"))
     assert row.count("---") == 6                                   # (tok/step, acc, diff) x 2 tasks
@@ -1320,3 +1323,100 @@ def test_score_rows_are_not_used_for_a_task_that_lost_problems(tmp_path):
                                         "ci95": [0.4, 0.9]}]}))
     assert run_main(paths, "--scores", str(sc), "--allow-partial") == 0
     assert summary_of(paths)["tasks"]["gsm8k"]["decoders"]["CThreeA"]["speeds"]["2"].get("acc") is None
+
+
+
+# ----------------------------------------------------- off-operating-point marker (deviation 17 / PR #66)
+DAG = r"$^\dagger$"
+DAG_COMMENT = "% \\dagger: off the decoder's published operating point (caption explains)\n"
+
+
+def _matched_with(built, klass_slot, ref=2):
+    """The matched table of the fixture summary with KLASS matched at ``klass_slot`` in both tasks."""
+    S = json.loads(json.dumps(built["summary"]))
+    for task in P.TASKS:
+        S["tasks"][task]["matched"][str(ref)]["Klass"].update(
+            {"matched": True, "reason": None, "slot": klass_slot})
+    return S, P.matched_table(S)
+
+
+def test_the_off_operating_point_set_is_klass_slots_two_and_three():
+    assert P.OFF_OPERATING_POINT == {("Klass", 2), ("Klass", 3)}
+
+
+def test_matched_table_daggers_klass_at_slot_two_only_and_says_so_in_a_comment(built):
+    tex = (built["out"] / "t12" / "t12_matched_speed.tex").read_text()
+    assert built["summary"]["tasks"]["gsm8k"]["matched"]["2"]["Klass"]["slot"] == 2
+    labels = [l.split(" &")[0] for l in body_rows(tex)[2:]]
+    assert labels == [P.LABEL[d] + (DAG if d == "Klass" else "") for d in P.DECODERS]
+    assert tex.count(DAG) == 1                                     # no other decoder, no footnote row
+    assert tex.count(DAG_COMMENT) == 1
+    assert len(body_rows(tex)) == 2 + len(P.DECODERS)
+
+
+def test_matched_table_has_no_dagger_when_klass_is_shown_at_slot_one(built):
+    _, tex = _matched_with(built, 1)
+    assert "dagger" not in tex
+    assert any(l.startswith("KLASS &") for l in tex.splitlines())
+
+
+def test_the_dagger_follows_the_matched_slot_not_the_reference_slot(built):
+    # KLASS matched at slot 3 for the speed-2 reference: still off its operating point
+    assert DAG in _matched_with(built, 3)[1]
+    # another decoder matched at slot 3 gets no dagger
+    S = json.loads(json.dumps(built["summary"]))
+    for task in P.TASKS:
+        S["tasks"][task]["matched"]["2"]["TopK"]["slot"] = 3
+    tex = P.matched_table(S)
+    assert next(l for l in tex.splitlines() if l.startswith("Top-$k$")).split(" &")[0] == "Top-$k$"
+
+
+def test_summary_flags_klass_slots_two_and_three_only(built):
+    s = built["summary"]
+    assert s["off_operating_point_note"] == \
+        "KLASS slots 2-3: confidence threshold below its published range (deviation 17, PR #66)"
+    for task in P.TASKS:
+        for dec, d in s["tasks"][task]["decoders"].items():
+            for slot, st in d["speeds"].items():
+                assert st.get("off_operating_point", False) == (dec == "Klass" and slot in ("2", "3")), (dec, slot)
+        for per in s["tasks"][task]["matched"].values():
+            for dec, e in per.items():
+                if e["matched"]:
+                    assert e.get("off_operating_point", False) == (dec == "Klass" and e["slot"] in (2, 3))
+    for slot in ("2", "3"):
+        assert s["tasks"]["gsm8k"]["decoders"]["Klass"]["speeds"][slot]["off_operating_point"] is True
+    assert "off_operating_point" not in s["tasks"]["gsm8k"]["decoders"]["Klass"]["speeds"]["1"]
+
+
+def test_cost_table_and_zip_tables_mark_klass_slots_two_and_three(built):
+    tex = (built["out"] / "t12" / "t12_sanity_cost.tex").read_text()
+    klass = [l for l in tex.splitlines() if l.startswith("KLASS &")]
+    assert len(klass) == 2 and all(l.count(DAG) == 2 for l in klass)       # speeds 2 and 3, not 1
+    assert tex.count(DAG) == 5                                             # + one in the footnote
+    z = built["out"] / "t12" / "zip"
+    rows = list(csv.reader((z / "t12_sanity_cost.csv").read_text().splitlines()))
+    head, rows = rows[0], rows[1:]
+    for r in rows:
+        want = "true" if r[head.index("decoder")] == "Klass" and r[head.index("speed")] in ("2", "3") else "false"
+        assert r[head.index("off_operating_point")] == want, r
+    md = (z / "t12_sanity_cost.md").read_text(encoding="utf-8")
+    assert md.count("Klass †") == 4 and "| off_operating_point" not in md
+    rows = list(csv.reader((z / "t12_speed1_speed3.csv").read_text().splitlines()))
+    head, rows = rows[0], rows[1:]
+    assert [r[head.index("off_operating_point")] for r in rows if r[head.index("decoder")] == "Klass"] == \
+        ["false", "true", "false", "true"]
+    assert all(r[head.index("off_operating_point")] == "false" for r in rows if r[head.index("decoder")] != "Klass")
+    assert (z / "t12_speed1_speed3.md").read_text(encoding="utf-8").count("Klass †") == 2
+
+
+def test_the_marker_changes_nothing_else(built):
+    """Without the marker the matched table has the same rows, and no other summary entry gains a key."""
+    tex = (built["out"] / "t12" / "t12_matched_speed.tex").read_text()
+    plain = tex.replace(DAG, "").replace(DAG_COMMENT, "")
+    assert len(body_rows(plain)) == 2 + len(P.DECODERS)
+    assert [l.split(" &")[0] for l in body_rows(plain)[2:]] == [P.LABEL[d] for d in P.DECODERS]
+    s = built["summary"]
+    flagged = {(t, d, sl) for t in P.TASKS for d, v in s["tasks"][t]["decoders"].items()
+               for sl, st in v["speeds"].items() if "off_operating_point" in st}
+    assert flagged == {(t, "Klass", sl) for t in P.TASKS for sl in ("2", "3") if sl in
+                       s["tasks"][t]["decoders"]["Klass"]["speeds"]}

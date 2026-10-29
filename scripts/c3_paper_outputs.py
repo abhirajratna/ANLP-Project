@@ -118,7 +118,14 @@ LABEL = {"TopK": "Top-$k$", "Threshold": "Threshold", "Margin": "Margin", "Entro
          "Klass": "KLASS", "PcSampler": "PC-Sampler", "CThreeA": "C3a"}
 PLAIN = {"TopK": "top-k", "Threshold": "threshold", "Margin": "margin", "Entropy": "entropy-bounded",
          "Klass": "KLASS", "PcSampler": "PC-Sampler", "CThreeA": "C3a"}
-EXACT_K = {2: 1, 4: 2, 8: 3}                              # top-k, margin, PC-Sampler: k -> speed slot
+# (decoder, slot) pairs reported as computed but off the decoder's published operating point (daggered)
+OFF_OPERATING_POINT = frozenset({("Klass", 2), ("Klass", 3)})   # deviation 17 / PR #66: tau below published range
+OFF_OP_NOTE = "KLASS slots 2-3: confidence threshold below its published range (deviation 17, PR #66)"
+DAGGER = "$^\\dagger$"
+MD_DAGGER = "†"
+OFF_OP_MD = (f"{MD_DAGGER} = off the decoder's published operating point ({OFF_OP_NOTE}); "
+             "the CSV has it as a boolean column.\n\n")
+EXACT_K = {2: 1, 4: 2, 8: 3}                             # top-k, margin, PC-Sampler: k -> speed slot
 # Fast-dLLM, Table 1 (LLaDA-8B-Instruct, GSM8K, 5-shot): design constants of prereg/t12_sanity.json
 PUBLISHED = {"topk_conf[k=1]": 0.793, "threshold[tau=0.9]": 0.792}
 SANITY_DEC = {"topk_conf[k=1]": "TopK", "threshold[tau=0.9]": "Threshold"}
@@ -136,6 +143,10 @@ MODEL_TAG = "llada-8b-instruct_fp16"
 
 
 # --------------------------------------------------------------------------- small helpers
+def off_op(dec: str, slot) -> bool:
+    return (dec, int(slot)) in OFF_OPERATING_POINT
+
+
 def _finite(x) -> bool:
     return isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x)
 
@@ -680,6 +691,8 @@ def build_task(task, recs, verdicts, scores, grid, warnings) -> dict:
         elif verdicts or row:
             warnings.append(f"{task} {key}: no usable verdicts or score row for its {len(docs)} records; "
                             "accuracy left blank")
+        if off_op(dec, slot):
+            st["off_operating_point"] = True
         t["decoders"].setdefault(dec, {"speeds": {}})["speeds"][str(slot)] = st
     errs = [(st["config"], st["failures"]) for d in t["decoders"].values() for st in d["speeds"].values()
             if st["failures"]]
@@ -715,7 +728,9 @@ def build_task(task, recs, verdicts, scores, grid, warnings) -> dict:
                 continue
             e = {"matched": True, "reason": None, "slot": m["slot"], "tps": m["tps"],
                  "rel_diff": m["rel_diff"], "diff": None, "lo": None, "hi": None, "n_paired": 0}
-            a, b = correct.get(("CThreeA", s)), correct.get((dec, m["slot"]))
+            if off_op(dec, m["slot"]):
+                e["off_operating_point"] = True
+            a, b =correct.get(("CThreeA", s)), correct.get((dec, m["slot"]))
             if a and b:
                 r = paired_bootstrap(a, b)
                 if r["n"]:
@@ -864,7 +879,7 @@ def matched_table(S: dict) -> str:
     head.append(" & ".join(["Decoder"] + ["tok/step & Acc.\\ [95\\% CI] & C3a $-$ decoder [95\\% CI]"] * len(TASKS))
                 + " \\\\\n\\midrule\n")
     cells = {dec: [] for dec in DECODERS}
-    notes, paired = [], []
+    notes, paired, daggered = [], [], set()
     for task in TASKS:
         t = S["tasks"][task]
         c3a = t["decoders"].get("CThreeA", {}).get("speeds", {}).get(str(s))
@@ -882,17 +897,22 @@ def matched_table(S: dict) -> str:
                     cells[dec] += [DASH] * 3
                     continue
                 shown = t["decoders"][dec]["speeds"][str(e["slot"])]
+                if off_op(dec, e["slot"]):                # the slot shown is the matched one, not nec. s
+                    daggered.add(dec)
                 diff = DASH if e["diff"] is None else est_ci({"value": e["diff"], "ci": [e["lo"], e["hi"]]})
                 cells[dec] += [num(e["tps"], 2), _est(shown.get("acc"), shown.get("ci95")), diff]
                 if e["n_paired"] and t["n"] is not None and e["n_paired"] != t["n"]:
                     paired.append(f"{TASK_LABEL[task]} {LABEL[dec]}: {int(e['n_paired'])}")
             if shown and shown["failures"]:
                 notes.append(f"{TASK_LABEL[task]} {LABEL[dec]}: {shown['n_ok']}/{shown['n']} decoded")
-    rows = ["".join([LABEL[dec], " & ", " & ".join(cells[dec]), " \\\\\n"]) for dec in DECODERS]
+    rows = ["".join([LABEL[dec] + (DAGGER if dec in daggered else ""), " & ", " & ".join(cells[dec]), " \\\\\n"])
+            for dec in DECODERS]
     # No footnote row: Sec. 6 has no line to spare.  Driver errors and short pairings are LaTeX comments
     # here (no height), `err` and the footnote in t12_sanity_cost.tex, n_ok in the zip tables, and
     # `warnings` / `n_ok` / `n_paired` in the summary JSON.
     comments = []
+    if daggered:
+        comments.append("% \\dagger: off the decoder's published operating point (caption explains)\n")
     if notes:
         comments.append("% driver errors scored wrong; speed is over the problems that decoded: "
                         + "; ".join(notes) + "\n")
@@ -913,6 +933,7 @@ def sanity_cost_table(S: dict) -> str:
     rows = [HEADER.format(src="the Ada sanity run and the T12 report-half records"), OPEN,
             "\\begin{tabular}{l" + "rrr" * 4 + "}\n\\toprule\n"]
     san = S["sanity"]
+    daggered = False
     rows.append("\\multicolumn{13}{l}{\\textbf{Sanity: GSM8K fit half"
                 + (f", $n={san['n']}$" if san else "") + ", 5-shot, Fast-dLLM settings}} \\\\\n")
     for key, dec in SANITY_DEC.items():
@@ -935,7 +956,9 @@ def sanity_cost_table(S: dict) -> str:
             for s in SLOTS:
                 st = t["decoders"].get(dec, {}).get("speeds", {}).get(str(s))
                 if st:
-                    cells += [_plain(st["tps"], 2), _plain(st["nfe"], 1), _plain(st["seconds"], 2)]
+                    mark = DAGGER if off_op(dec, s) else ""
+                    daggered = daggered or bool(mark)
+                    cells += [_plain(st["tps"], 2) + mark, _plain(st["nfe"], 1), _plain(st["seconds"], 2)]
                     for i, k in enumerate(("failures", "n_timeout", "n_unstopped")):
                         tot[i] += st[k]
                 else:
@@ -949,7 +972,9 @@ def sanity_cost_table(S: dict) -> str:
     rows.append("\\midrule\n\\multicolumn{13}{l}{\\scriptsize err: driver errors (scored wrong; speed is over the "
                 "problems that decoded); t/o: scoring "
                 "timeouts (wrong); uns: no stop string in 256 tokens (not necessarily wrong); each summed over the "
-                "three speeds.} \\\\\n")
+                "three speeds."
+                + (f" {DAGGER}: off the decoder's published operating point (deviation 17)." if daggered else "")
+                + "} \\\\\n")
     rows += ["\\bottomrule\n\\end{tabular}\n", CLOSE]
     return "".join(rows)
 
@@ -976,6 +1001,27 @@ def _csv(path: Path, head: list, rows: list) -> None:
         w.writerows(rows)
 
 
+def _flag(b) -> str:
+    return "true" if b else "false"
+
+
+def _md_dagger(head: list, rows: list, flag_cols: list) -> tuple[list, list]:
+    """Markdown view of rows whose last columns are the boolean ``flag_cols``: the first flag puts a
+    plain dagger on the decoder, a second one (a matched setting) on its matched_slot; the flag columns
+    are dropped (the CSV keeps them)."""
+    n, di = len(flag_cols), head.index("decoder")
+    out = []
+    for r in rows:
+        flags, r = r[len(r) - n:], list(r[:len(r) - n])
+        if flags[0] == "true":
+            r[di] = f"{r[di]} {MD_DAGGER}"
+        if len(flags) > 1 and flags[1] == "true":
+            ms = head.index("matched_slot")
+            r[ms] = f"{r[ms]} {MD_DAGGER}"
+        out.append(r)
+    return head[:len(head) - n], out
+
+
 def _md(head: list, rows: list) -> str:
     out = ["| " + " | ".join(head) + " |", "|" + "|".join("---" for _ in head) + "|"]
     out += ["| " + " | ".join(str(c) if c != "" else DASH for c in r) + " |" for r in rows]
@@ -994,7 +1040,7 @@ def write_zip_tables(S: dict, d: Path) -> None:
     shead = ["task", "decoder", "config", "n", "acc", "acc_lo", "acc_hi", "published", "acc_minus_published"]
     _csv(d / "t12_sanity.csv", shead, srows)
     chead = ["task", "decoder", "speed", "config", "n", "n_ok", "failures", "unstopped", "timeouts", "failed_any", "tokens_per_step", "nfe",
-             "seconds_per_problem", "outside_share"]
+             "seconds_per_problem", "outside_share", "off_operating_point"]
     crows = []
     for task in TASKS:
         t = S["tasks"][task]
@@ -1005,8 +1051,10 @@ def write_zip_tables(S: dict, d: Path) -> None:
                     o = t["outside_share"]["per_slot"].get(str(s)) if (dec == "CThreeA" and t["outside_share"]) else None
                     crows.append([task, dec, s, st["config"], st["n"], st["n_ok"], st["failures"], st["n_unstopped"],
                                   st["n_timeout"], st["n_failed_any"], _fmt(st["tps"], 3),
-                                  _fmt(st["nfe"], 2), _fmt(st["seconds"], 3), _fmt(o["share"]) if o else ""])
+                                  _fmt(st["nfe"], 2), _fmt(st["seconds"], 3), _fmt(o["share"]) if o else "",
+                                  _flag(off_op(dec, s))])
     _csv(d / "t12_sanity_cost.csv", chead, crows)
+    mhead, mrows = _md_dagger(chead, crows, ["off_operating_point"])
     nnote = "Report problems: " + "; ".join(f"{t} {nlabel(S['tasks'][t], False) or DASH}" for t in TASKS) + ".\n"
     md = ["# T12 sanity check and cost\n", nnote,
           "Sanity: the Ada fit-half GSM8K run (5-shot, Fast-dLLM settings, fp16, 2080 Ti) against the "
@@ -1015,11 +1063,12 @@ def write_zip_tables(S: dict, d: Path) -> None:
           "\nCost, report halves (zero-shot chat, 256 tokens, blocks of 32, greedy): tokens per step = "
           "256 N_ok / sum NFE over the n_ok problems that decoded (driver errors are not imputed); NFE and seconds are per-problem means over them; failures = "
           "problems the driver could not decode (scored wrong); unstopped = no stop string within 256 tokens; "
-          "timeouts = programs that timed out when scored; failed_any = problems with any of the three.\n", _md(chead, crows)]
+          "timeouts = programs that timed out when scored; failed_any = problems with any of the three.\n\n" + OFF_OP_MD, _md(mhead, mrows)]
     (d / "t12_sanity_cost.md").write_text("\n".join(md), encoding="utf-8")
 
     hhead = ["task", "decoder", "speed", "config", "n", "n_ok", "tokens_per_step", "acc", "acc_lo", "acc_hi",
-             "matched_slot", "matched_tps", "matched_diff", "diff_lo", "diff_hi", "n_paired"]
+             "matched_slot", "matched_tps", "matched_diff", "diff_lo", "diff_hi", "n_paired",
+             "off_operating_point", "matched_off_operating_point"]
     hrows = []
     for task in TASKS:
         t = S["tasks"][task]
@@ -1035,14 +1084,16 @@ def write_zip_tables(S: dict, d: Path) -> None:
                               _fmt(e["diff"]) if e and e["matched"] and e["diff"] is not None else "",
                               _fmt(e["lo"]) if e and e["matched"] and e["lo"] is not None else "",
                               _fmt(e["hi"]) if e and e["matched"] and e["hi"] is not None else "",
-                              e["n_paired"] if e and e["matched"] else ""])
+                              e["n_paired"] if e and e["matched"] else "",
+                              _flag(off_op(dec, s)), _flag(e and e["matched"] and off_op(dec, e["slot"]))])
     _csv(d / "t12_speed1_speed3.csv", hhead, hrows)
+    hmhead, hmrows = _md_dagger(hhead, hrows, ["off_operating_point", "matched_off_operating_point"])
     (d / "t12_speed1_speed3.md").write_text(
         "# T12 at speeds 1 and 3\n\n" + nnote + "\nPer decoder: accuracy at its own speed-s setting (95% Wilson), and, "
         "when matched, the paired accuracy difference C3a minus the decoder at the setting nearest to "
         "C3a's slot s (within 10%; matched_slot / matched_tps), 95% percentile bootstrap CI (2,000 "
         "resamples of problems, seed 20261030). A blank is '---': no setting within 10%, or KLASS "
-        "unmatched at the target.\n\n" + _md(hhead, hrows), encoding="utf-8")
+        "unmatched at the target.\n\n" + OFF_OP_MD + _md(hmhead, hmrows), encoding="utf-8")
 
 
 # --------------------------------------------------------------------------- figure
@@ -1172,6 +1223,7 @@ def main(argv=None) -> int:
                      "speed_metric": "256 N / sum(NFE) over the task's report-half problems",
                      "deviation": "prereg/deviations.md entry 17"},
          "tasks": {t: build_task(t, recs, verdicts, scores, grid, warnings) for t in TASKS},
+         "off_operating_point_note": OFF_OP_NOTE,
          "calibrators": cal, "sanity": sanity,
          "inputs": inputs, "missing_inputs": missing, "warnings": warnings}
     S["provenance"] = provenance()
