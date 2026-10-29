@@ -21,7 +21,8 @@ and writes, under ``--out-tables`` (default paper/tables/c1) and ``--out-figures
 
   c1_main.tex          main table, page width (\\input in a table*): per arm and mask arm, E1 and
                        E2 with 95% CI and the Holm decision, beta_z of Eq. 2 without (beta_z) and
-                       with state FE (beta_z^FE), values only
+                       with state FE (beta_z^FE), values only; the seven Holm arms
+  c1_timesplit.tex     the same columns for the time-split arms (code archive)
   c1_main_col.tex      one column: E1 and E2 point estimates with the Holm / declared markers
   c1_beta.tex          beta_z with 95% CIs, no FE and FE
   c1_gamma.tex         gamma_2..gamma_4 of Eq. 3 (with state FE) and the Holm p within the arm
@@ -226,8 +227,8 @@ def ci_decimals(e, nd: int = 3) -> int:
     a 0.000 end, or a nonzero-width interval printed as [x, x]."""
     ci = e["ci"]
     while nd < 5:
-        lo, hi = f"{ci[0]:.{nd}f}", f"{ci[1]:.{nd}f}"
-        if not ((ci_excludes_zero(e) and 0.0 in (float(lo), float(hi))) or (lo == hi and ci[0] != ci[1])):
+        lo, hi = float(f"{ci[0]:.{nd}f}"), float(f"{ci[1]:.{nd}f}")   # floats: -0.000 == 0.000
+        if not ((ci_excludes_zero(e) and 0.0 in (lo, hi)) or (lo == hi and ci[0] != ci[1])):
             break
         nd += 1
     return nd
@@ -338,7 +339,9 @@ CLAIMED_NOTE = ("% * = claimed: declared (dagger) and rejected by Holm in its fa
                 "% of the Holm step alone (yes / no; expl. = exploratory arm, outside the families).\n")
 
 
-def main_table(R: Results) -> str:
+def main_table(R: Results, time_split: bool = False) -> str:
+    """The Holm arms (``time_split=False``, the paper's Table 2) or the time-split arms only
+    (``c1_timesplit``, code archive): the same columns either way."""
     def cells(label, mask):
         r, h = R.kind(label, mask), R.holm(label, mask)
         if r is None:
@@ -353,7 +356,8 @@ def main_table(R: Results) -> str:
                 point(b0, 2, m0), point(b1, 2, m1)]
 
     head = ["Arm", "Masks", "E1", "Holm", "E2", "Holm", "$\\beta_z$", "$\\beta_z^{\\mathrm{FE}}$"]
-    body = _arm_rows(R, labels_for_main(R), cells, 6)
+    labels = [l for l in labels_for_main(R) if l.endswith("TimeSplit") == time_split]
+    body = _arm_rows(R, labels, cells, 6)
     return _table("lllclcll", head, body,
                   "results/c1/<Label>/results.json, results/c1/summary/c1_summary.json") + CLAIMED_NOTE
 
@@ -544,7 +548,8 @@ def t8_table(R: Results) -> str:
         return out
 
     head = ["Arm", "Masks", "E1", "+pos.", "+type", "+temp.", "E2", "+pos.", "+type", "+temp."]
-    body = _arm_rows(R, labels_for_main(R), cells, 8)
+    # no control runs on the time-split set: its rows would be all dashes
+    body = _arm_rows(R, [l for l in labels_for_main(R) if not l.endswith("TimeSplit")], cells, 8)
     return _table("llrrrrrrrr", head, body, "results/t8/<Label>/ablation.json") + (
         "% E1 = Delta(32)-Delta(1), E2 = field(32)-field(1), without control and with it.  There is\n"
         "% no E2 row for temperature (it recalibrates Delta only).  Markers: \\ddagger = the paired\n"
@@ -556,7 +561,10 @@ def point_only(e) -> str:
 
 
 def precision_table(R: Results) -> str:
-    rows = [r for r in (R.precision or {}).get("rows", []) if r["control"] == "precision"]
+    # the two kinds of state of the Holm families only; ablation.json (code archive) has the rest
+    rows = [r for r in (R.precision or {}).get("rows", [])
+            if r["control"] == "precision" and r["arm"] in PRIMARY_MASKS]
+    rows.sort(key=lambda r: PRIMARY_MASKS.index(r["arm"]))
     body = []
     for r in rows:
         eff = {"E1_contrast": "E1", "E2_field_contrast": "E2", "beta_z_noFE": "$\\beta_z$, no FE"}.get(
@@ -1239,7 +1247,8 @@ def main(argv=None) -> int:
     main_arm = pick_main(R, a.main_arm)
 
     written = []
-    for name, fn in (("c1_main", main_table), ("c1_main_col", main_col_table), ("c1_beta", beta_table),
+    for name, fn in (("c1_main", main_table), ("c1_timesplit", lambda R: main_table(R, time_split=True)),
+                     ("c1_main_col", main_col_table), ("c1_beta", beta_table),
                      ("c1_gamma", gamma_table), ("c1_shared", shared_table),
                      ("c1_sensitivity", sensitivity_table), ("c1_e3", e3_table),
                      ("c1_t8", t8_table), ("c1_t8_precision", precision_table)):
