@@ -919,7 +919,7 @@
   \end{columns}
   \note{GSM8K, all 659 report-half problems, 21 settings. At about 4 tokens per step, C3a minus decoder,
   paired over problems: threshold -0.002 [-0.014, 0.012], entropy-bounded -0.005 [-0.035, 0.026], top-k
-  +0.059, margin +0.053, PC-Sampler +0.082 (all three intervals above 0). So C3a matches the raw
+  +0.059, margin +0.053, PC-Sampler +0.082 (all three intervals above 0). So C3a is indistinguishable from the raw
   threshold rule and beats the fixed-count decoders; calibration buys an interpretable alpha, not
   speed. At 8 tokens per step the raw threshold is ahead (0.674 against 0.610). KLASS's two faster
   rows are off its published operating point (tau lowered to 0.29 and 0.2, KL history kept per
@@ -964,9 +964,9 @@
       \begin{panel}[height=25mm, colback=wash, colframe=accent!40]
         \paneltitle{4 · C3 decoding}
         \ifcsname CThreeTTwelveGsmMatchedDiffThresholdSpeedTwo\endcsname
-          At matched speed on GSM8K, the calibrated rule C3a ties Fast-dLLM's raw threshold
-          (\CresCI{CThreeTTwelveGsmMatchedDiffThresholdSpeedTwo}) and beats top-$k$, margin and
-          PC-Sampler. Calibration buys an interpretable $\alpha$, not speed.
+          At matched speed on GSM8K, the calibrated rule C3a is no more accurate than Fast-dLLM's
+          raw threshold (\CresCI{CThreeTTwelveGsmMatchedDiffThresholdSpeedTwo}) but beats top-$k$,
+          margin and PC-Sampler. Calibration buys an interpretable $\alpha$, not speed.
         \else
           {\color{ink2}Pending: C3a against six decoders at matched tokens per step
           (Thu 29).}
