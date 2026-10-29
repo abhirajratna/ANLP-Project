@@ -1,6 +1,6 @@
 ---
 member: ojas
-updated: 2026-10-29T18:48:31Z
+updated: 2026-10-29T20:54:24Z
 branch: main
 ---
-ojas: #58 merged (58f4b12), claims released; #59 deck rebuilt on main (03759db), review asked of abhiraj; #67 waits on parth; abstract/intro C3 after #62 + macros
+ojas: #58 + #59 (viva deck) merged; #68 abstract/intro C3 waits for #62 macros + ayush GitHub Approve; #67 waits on parth
