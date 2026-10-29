@@ -58,11 +58,12 @@
   \IfFileExists{../artifacts/t12/t12_matched_speed.tex}%
     {\Cfit{\input{../artifacts/t12/t12_matched_speed.tex}}}%
     {\CthreePending{T12 matched-speed table}}
-  \caption{T12 at matched speed: speed 2 (target 4 tokens per step) per task, with C3a at
+  \caption{Decoders at matched speed: speed 2 (target 4 tokens per step) per task, with C3a at
     $\alpha=\Cres{CThreeTTwelveGsmAlphaPrimary}$ on GSM8K and
     $\Cres{CThreeTTwelveMbppAlphaPrimary}$ on MBPP. Accuracy with its 95\% Wilson interval;
     paired difference C3a $-$ decoder on the same problems, with a 95\% percentile bootstrap
-    interval (2,000 resamples of problems); positive favours C3a.}
+    interval (2,000 resamples of problems); positive favours C3a. $^\dagger$KLASS is off its
+    published operating point here (Appendix~\ref{sec:c3-app}).}
   \label{tab:c3-speed}
 \end{table*}
 
