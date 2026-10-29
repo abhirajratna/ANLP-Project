@@ -1,6 +1,6 @@
 ---
 member: ojas
-updated: 2026-10-29T08:48:49Z
+updated: 2026-10-29T18:48:31Z
 branch: main
 ---
-ojas: #59 slides fb9a307 read T12 from c3 macros (pending until parth commits them); #58 waits for ayush's GitHub Approve; abstract/intro C3 after #62 + macros
+ojas: #58 merged (58f4b12), claims released; #59 deck rebuilt on main (03759db), review asked of abhiraj; #67 waits on parth; abstract/intro C3 after #62 + macros
