@@ -71,8 +71,7 @@ $k=8$. At $\rho=1$, $k=8$ (confidence), (A) is \CTwoConfAatRhoOneKEight{}
 % Every cell where ConfB > RandB has overlapping 95% intervals (grid_ft110m-v3-visible.json,
 % B_per_field); at rho = 1, k >= 2 ConfB is below RandB.
 \paragraph{Confidence selection raises (A), not (B).}
-We expected ranking on noisy confidences to inflate (B), but where (B) is higher than
-at random the intervals overlap. (A) rises instead ($\rho=1$, $k=2$:
+Where (B) is higher under confidence ranking than at random, the intervals overlap. (A) rises instead ($\rho=1$, $k=2$:
 \CTwoConfAatRhoOneKTwo{} [\CTwoConfAatRhoOneKTwoLo, \CTwoConfAatRhoOneKTwoHi] against
 \CTwoRandAatRhoOneKTwo{} [\CTwoRandAatRhoOneKTwoLo, \CTwoRandAatRhoOneKTwoHi]): the ranking commits
 leaders with their followers more often than chance, bringing the crossover forward.
@@ -93,12 +92,11 @@ The exact values hold for one synthetic distribution and one 110M model; on real
 is unknown, so we use proxies. For (A), parallel--sequential disagreement: the fraction of the
 $k$ most confident masked positions whose token changes if committed one at a time (earlier
 ranks filled with the model's own tokens) instead of in one pass. For (B), the gap
-$\Delta=c-a$ (positive: overconfident) and the cross-entropy (CE) of the true token, at the
-same positions.
+$\Delta=c-a$ and the cross-entropy (CE) of the true token, at the same positions.
 % Precisions (110M fp32, LLaDA fp16) are in Table 1 (Sec. 3).
 % Mask rates 0.1, 0.2, ..., 1, one state each: config.rates in both T10 JSONs.
-We run the 110M model and LLaDA-8B-Base \citep{nie2025llada} on
-\CTwoTTenNDocs{} fit-half FineWeb-Edu documents \citep{penedo2024fineweb}, one state at each
+We run the 110M model and LLaDA-8B-Base on
+\CTwoTTenNDocs{} fit-half FineWeb-Edu documents, one state at each
 mask rate $0.1, \dots, 1$ (Appendix~\ref{sec:c2-app}), and the proxy on the probe.
 
 \paragraph{The proxy tracks (A) weakly.}
@@ -113,8 +111,7 @@ and \CTwoTTenProbeDisatRhoOneKEight{} at $\rho=1$.
 % "At most DisKFour at k <= 4": DisKTwo, DisKFour, LladaDisKTwo, LladaDisKFour are all <= DisKFour.
 % "Delta cannot be told from zero at k = 1": [DeltaKOneLo, DeltaKOneHi] and the Llada one hold 0.
 % "LLaDA does not disagree there": LladaDisKTwo/KFour/KEightRateOne are 0.
-Over mask rates 0.1--0.9,\footnote{At rate 1 the input is all-\texttt{[MASK]}; that state gives the 110M model nearly all its disagreement over all ten rates
-(\CTwoTTenDisAllRatesKEight{} at $k=8$), and LLaDA none.}
+Over mask rates 0.1--0.9,\footnote{At rate 1 (all-\texttt{[MASK]} input) the 110M model's disagreement over all ten rates is \CTwoTTenDisAllRatesKEight{} at $k=8$; LLaDA's is none.}
 disagreement at $k=8$ is \CTwoTTenDisKEight{} for the 110M model and \CTwoTTenLladaDisKEight{}
 for LLaDA, and at most \CTwoTTenDisKFour{} at $k\le4$. CE grows from \CTwoTTenCEKOne{} nats at
 $k=1$ to \CTwoTTenCEKEight{} at $k=8$ (LLaDA: \CTwoTTenLladaCEKOne{} to
