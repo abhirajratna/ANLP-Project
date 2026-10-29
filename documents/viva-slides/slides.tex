@@ -202,19 +202,24 @@
     \Pend{#2}{#3}{Waits for \texttt{paper/figures/c1/\fname{#1}.pdf}, written by
       \texttt{scripts/c1\_paper\_outputs.py} from #4.}{#5}}}
 
-% C3 outputs: PROPOSED names, nothing writes them yet (T12 scoring writes JSON,
-% artifacts/t12/<model>_<precision>_<run>.json; T11 writes the calibrator, artifacts/c3/).
-\newcommand{\CThreeAnswer}{\color{ink2}\textit{pending (T12)}}
+% C3 outputs: scripts/c3_paper_outputs.py writes artifacts/c3/macros_c3.tex and, under
+% artifacts/t12/, the tables and figures/. The T12 sentences wait for its matched-speed macros.
+\newcommand{\CThreeAnswer}{\ifcsname CThreeTTwelveGsmMatchedDiffThresholdSpeedTwo\endcsname
+  no gain over the raw threshold rule
+  (\CresCI{CThreeTTwelveGsmMatchedDiffThresholdSpeedTwo}); ahead of top-$k$, margin and PC-Sampler
+  by \Cres{CThreeTTwelveGsmMatchedDiffMarginSpeedTwo}--\Cres{CThreeTTwelveGsmMatchedDiffPcSamplerSpeedTwo}
+  (GSM8K, about 4 tokens per step).
+  \else{\color{ink2}\textit{pending (T12)}}\fi}
 % C3 macros (T11 diagnostics, T12 numbers): written by scripts/c3_paper_outputs.py
 \newif\ifCThreeMacros
 \IfFileExists{../../artifacts/c3/macros_c3.tex}{\input{../../artifacts/c3/macros_c3.tex}\CThreeMacrostrue}{}
 \newcommand{\CThreeOut}{../../artifacts/t12}
 \newcommand{\CThreeTable}[5]{%
   \IfFileExists{\CThreeOut/#1.tex}{\fitbox{\linewidth}{#2}{\input{\CThreeOut/#1.tex}}}{%
-    \Pend{#2}{#3}{Waits for \texttt{artifacts/t12/\fname{#1}.tex} (proposed name), from #4.}{#5}}}
+    \Pend{#2}{#3}{Waits for \texttt{artifacts/t12/\fname{#1}.tex} written by \texttt{scripts/c3\_paper\_outputs.py} from #4.}{#5}}}
 \newcommand{\CThreeFigure}[5]{%
   \IfFileExists{\CThreeOut/figures/#1.pdf}{\fitbox{\linewidth}{#2}{\includegraphics{\CThreeOut/figures/#1.pdf}}}{%
-    \Pend{#2}{#3}{Waits for \texttt{artifacts/t12/figures/\fname{#1}.pdf} (proposed name), from #4.}{#5}}}
+    \Pend{#2}{#3}{Waits for \texttt{artifacts/t12/figures/\fname{#1}.pdf} written by \texttt{scripts/c3\_paper\_outputs.py} from #4.}{#5}}}
 
 % big-number tile: value, label
 \newcommand{\stat}[2]{%
@@ -905,18 +910,22 @@
       and C3a, each at three speeds.\par\vspace{1mm}
       \lbl{Reading.} Up and to the right is better. Speed is matched by tokens per step, so
       compare accuracy at the same $x$.\par\vspace{1mm}
-      \lbl{Claim.} C3a is a gain only if it is more accurate than the other decoders at the same
-      tokens per step, beyond the intervals. Otherwise the answer is no gain at matched
-      speed, and we say so.\par\vspace{1.5mm}
+      \lbl{Claim.} A gain needs higher accuracy at the same tokens per step, beyond the
+      intervals.\par\vspace{1.5mm}
       \begin{takeaway}[fontupper=\footnotesize]
-        Answer in one line: \CThreeAnswer
+        \textbf{Answer:} \CThreeAnswer
       \end{takeaway}
     \end{column}
   \end{columns}
-  \note{Pending until Thu 29. T12 settings (final-plan.md, Parth items 3-5): chat prompt, greedy, one
-  seed, three speeds per decoder, fp16 throughout (an overflow run covers a whole task, so no
-  comparison mixes precisions). If T12 is not done at the Fri 30 freeze, this becomes "C3: future work".
-  Harness sanity check (top-k and Fast-dLLM threshold against published numbers) and cost: backup.}
+  \note{GSM8K, all 659 report-half problems, 21 settings. At about 4 tokens per step, C3a minus decoder,
+  paired over problems: threshold -0.002 [-0.014, 0.012], entropy-bounded -0.005 [-0.035, 0.026], top-k
+  +0.059, margin +0.053, PC-Sampler +0.082 (all three intervals above 0). So C3a matches the raw
+  threshold rule and beats the fixed-count decoders; calibration buys an interpretable alpha, not
+  speed. At 8 tokens per step the raw threshold is ahead (0.674 against 0.610). KLASS's two faster
+  rows are off its published operating point (tau lowered to 0.29 and 0.2, KL history kept per
+  32-token block), so no comparison rests on them. Settings: chat prompt, greedy, one seed, fp16,
+  one H200. MBPP: 121 of 250 problems ran before the GPU credit ran out (see the paper).
+  Sanity check and cost: backup.}
 \end{frame}
 
 % ================================================================ 16 summary
@@ -954,8 +963,14 @@
       \vspace{1.5mm}
       \begin{panel}[height=25mm, colback=wash, colframe=accent!40]
         \paneltitle{4 · C3 decoding}
-        {\color{ink2}Pending: C3a against six decoders at matched tokens per step
-        (Thu 29).}
+        \ifcsname CThreeTTwelveGsmMatchedDiffThresholdSpeedTwo\endcsname
+          At matched speed on GSM8K, the calibrated rule C3a ties Fast-dLLM's raw threshold
+          (\CresCI{CThreeTTwelveGsmMatchedDiffThresholdSpeedTwo}) and beats top-$k$, margin and
+          PC-Sampler. Calibration buys an interpretable $\alpha$, not speed.
+        \else
+          {\color{ink2}Pending: C3a against six decoders at matched tokens per step
+          (Thu 29).}
+        \fi
       \end{panel}
     \end{column}
   \end{columns}
@@ -991,7 +1006,8 @@
           \item 8B models in fp16, not bfloat16 (no bfloat16 on our GPUs); E3 for top-$k$
                 decoders only.
           \item C1 is teacher-forced, and E2 intervals condition on the fitted calibrators.
-          \item {\color{ink2}C3 limits: when T12 lands.}
+          \item C3: one model, greedy, one seed, exploratory; KLASS's two faster settings are off
+                its published operating point.
         \end{itemize}
       \end{panel}
     \end{column}
@@ -1408,13 +1424,22 @@
     \end{stubs}}\par
   \vspace{1.2mm}
   \begin{takeaway}[fontupper=\footnotesize]
-    \textbf{How to read.} If the sanity row misses the published numbers, nothing after it is
-    comparable and we say that first. A faster decoder in steps that is not faster in seconds is
-    reported as such.
+    \ifcsname CThreeTTwelveSanityTopKAcc\endcsname
+      \textbf{Reading.} Both published accuracies lie inside our 95\% intervals (top-$k$
+      \Cres{CThreeTTwelveSanityTopKAcc} against 0.793, threshold \Cres{CThreeTTwelveSanityThresholdAcc}
+      against 0.792), though our points are higher. A decoder faster in steps but not in seconds
+      is reported as such.
+    \else
+      \textbf{How to read.} If the sanity row misses the published numbers, nothing after it is
+      comparable and we say that first. A faster decoder in steps that is not faster in seconds is
+      reported as such.
+    \fi
   \end{takeaway}
-  \note{Pending until Thu 29. Sanity check is plan item 4 (Sun 25): within 1-2 points of the published
-  top-k and threshold numbers. Cost: about 30 A100-hours at batch size 1 by Parth's estimate; drop speeds
-  before the credit runs out and say which.}
+  \note{Sanity (plan item 4): 200 fit-half GSM8K problems at Fast-dLLM's settings, 5-shot. Top-k 0.835
+  [0.777, 0.880] against a published 0.793; threshold 0.845 [0.788, 0.889] against 0.792 (Wilson
+  intervals). Both published values are inside, but our points are 4 to 5 points higher, beyond the
+  plan's 1-2 point bar; 200 problems give intervals about 10 points wide. The run used
+  one H200 per task; MBPP stopped at 121 of 250 problems when the credit ran out.}
 \end{frame}
 
 \begin{frame}{Backup: references}
