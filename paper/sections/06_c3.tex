@@ -81,7 +81,7 @@ GSM8K and \Cres{CThreeTElevenMbppMonotoneShare} of MBPP fit states. $\alpha$ is 
 knob. C3a changes \emph{how many} tokens are committed, not \emph{which}, and needs no extra
 forward pass.
 
-\paragraph{T11: the calibrator.}
+\paragraph{The calibrator.}
 One calibrator per task is fitted on teacher-forced decoder states ($k\in\{2,4,8\}$) of the
 fit-half LLaDA-8B-Instruct traces (\Cres{CThreeTElevenGsmFitDocs} GSM8K and
 \Cres{CThreeTElevenMbppFitDocs} MBPP documents) and frozen. A check inside the fit half (not
@@ -94,10 +94,10 @@ from 256 masks; its fit states lie inside a reference answer. A fraction
 % TODO(results): if the dev ECE does not fall (Cal >= Raw), say "does not improve on" instead
 %   of "from", and say the gain, if any, is not from better calibration.
 
-\paragraph{T12: matched speed.}
+\paragraph{Matched speed.}
 LLaDA-8B-Instruct generates freely on the report halves of GSM8K
 (\Cres{CThreeTTwelveGsmN} problems) and MBPP (\Cres{CThreeTTwelveMbppN}): zero-shot chat prompt,
-256 tokens in blocks of 32, greedy, one seed, fp16, on two RTX PRO 6000 GPUs.
+256 tokens in blocks of 32, greedy, one seed, fp16, on one H200 GPU per task.
 C3a is compared with confidence top-$k$, Fast-dLLM's threshold \citep{wu2025fastdllm},
 margin \citep{kim2025worst}, entropy-bounded \citep{benhamu2025entropy},
 KLASS \citep{kim2025klass} and PC-Sampler \citep{huang2025pcsampler} (full variant, with
@@ -113,7 +113,7 @@ per step); speeds 1 and 3 and the cost per decoder are in the code archive, and
 Appendix~\ref{sec:c3-app} has the sanity check and the speed curves. Each decoder is taken at
 its setting nearest to C3a's tokens per step, within $\pm10\%$ (else ---); the accuracy
 difference is paired on the shared problems, with a 95\% percentile bootstrap interval from
-2,000 resamples of problems. T12 is exploratory and outside the C1 analysis of
+2,000 resamples of problems. This comparison is exploratory and outside the C1 analysis of
 \S\ref{sec:inference}: no multiple-testing correction is applied, and differences are reported
 as estimates with intervals.
 
