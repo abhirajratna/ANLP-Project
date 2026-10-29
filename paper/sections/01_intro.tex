@@ -57,16 +57,8 @@ Three contributions follow.
   at 2--8 tokens per step.
 \item \textbf{C3, a calibrated commitment policy} (\S\ref{sec:c3}). C3a commits as many
   positions as have recalibrated confidence at least $1-\alpha$, in
-  the model's own order, with no extra forward pass. We compare it with confidence decoders
-  at matched tokens per step on GSM8K and MBPP with LLaDA-8B-Instruct.
-  % TODO(results): the C3 sentence from the T12 matched-speed table (Sec. 6).  Name the
-  %   baselines actually run (final-plan.md: top-k, Fast-dLLM threshold, entropy-bounded,
-  %   margin, KLASS, PC-Sampler) in place of "confidence decoders".  Wording per outcome:
-  %   (a) gain: "At matched speed C3a is <more accurate than / as accurate as> the best
-  %       baseline on <tasks>."
-  %   (b) no gain: "At matched speed C3a is no more accurate than the Fast-dLLM threshold; we
-  %       report the null."
-  %   (c) T12 not done at the 30 Oct freeze: drop this item, say "We make two
-  %       contributions", and move C3a to future work in limitations.tex (final-plan.md,
-  %       "Cut to future work").
+  the model's own order, with no extra forward pass. At matched speed
+  (LLaDA-8B-Instruct, GSM8K) it beats top-$k$, margin and PC-Sampler but not the Fast-dLLM
+  threshold it recalibrates (exploratory).
+  % MBPP clause (N = \Cres{CThreeTTwelveMbppN} of 250, prereg deviation 17) once parth scores it.
 \end{itemize}
