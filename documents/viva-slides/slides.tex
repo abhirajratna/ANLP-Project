@@ -207,8 +207,8 @@
 \newcommand{\CThreeAnswer}{\ifcsname CThreeTTwelveGsmMatchedDiffThresholdSpeedTwo\endcsname
   no gain over the raw threshold rule
   (\CresCI{CThreeTTwelveGsmMatchedDiffThresholdSpeedTwo}); ahead of top-$k$, margin and PC-Sampler
-  by \Cres{CThreeTTwelveGsmMatchedDiffMarginSpeedTwo}--\Cres{CThreeTTwelveGsmMatchedDiffPcSamplerSpeedTwo}
-  (GSM8K, about 4 tokens per step).
+  by \Cres{CThreeTTwelveGsmMatchedDiffMarginSpeedTwo}--\Cres{CThreeTTwelveGsmMatchedDiffPcSamplerSpeedTwo},
+  a lead the raw threshold shares (GSM8K, about 4 tokens per step).
   \else{\color{ink2}\textit{pending (T12)}}\fi}
 % C3 macros (T11 diagnostics, T12 numbers): written by scripts/c3_paper_outputs.py
 \newif\ifCThreeMacros
@@ -444,16 +444,17 @@
     \end{column}
     \begin{column}{0.315\textwidth}
       \begin{panel}[height=23mm]
-        \paneltitle{E2 · field effect}
-        Observed $\Delta(m)$ minus the gap predicted by $\hat\pi(\ell)$, which sees only the
-        token's own confidence. A context-aware $\hat\pi(\ell, s)$ should cover the rest.
+        \paneltitle{E2 · field term}
+        field$(m)=\mathbb{E}_m[\hat\pi(\ell)-\hat\pi(\ell,s)]$: how far a context-aware curve puts
+        accuracy below the token's own-confidence curve. Contrast
+        field$(\VivaPoolMax)-$field$(1)$.
       \end{panel}
     \end{column}
     \begin{column}{0.315\textwidth}
       \begin{panel}[height=23mm]
         \paneltitle{E3 · trajectory shift}
-        Training uses uniform masks; decoders fill easy positions first. Are decoder states
-        less calibrated at equal confidence and matched mask rate?
+        Decoders fill easy positions first: are decoder-state tokens right less often at
+        equal confidence and mask rate?
       \end{panel}
     \end{column}
   \end{columns}
@@ -462,12 +463,12 @@
     \begin{column}{0.5\textwidth}
       \footnotesize\raggedright
       \textbf{Hypotheses.} \lbl{H1} $\Delta(\VivaPoolMax) - \Delta(1) > 0$;
-      \lbl{H2} the field term at $m = \VivaPoolMax$ is positive;
+      \lbl{H2} field$(\VivaPoolMax)-$field$(1) > 0$;
       \lbl{H3} decoder states are more overconfident than uniform ones.\par\vspace{1.5mm}
       \textbf{Declare rule.} The 95\% interval excludes zero \emph{and} the estimate exceeds
       twice the non-determinism floor. The floor is \VivaLladaFloor{} for all three model
-      families, so $\delta_{\min} = \VivaDeltaMin$, fixed in advance, sets power. Holm across
-      models $\times$ datasets.
+      families, so $\delta_{\min} = \VivaDeltaMin$, fixed in advance, sets power. Holm within each family
+      of 14 (7 arms $\times$ uniform / decoder $k{=}4$), one for E1, one for E2.
     \end{column}
     \begin{column}{0.47\textwidth}
       \footnotesize\raggedright
@@ -550,8 +551,9 @@
   all claimed. In uniform states the sign varies: negative and claimed for both base models and LLaDA-I GSM8K,
   positive for Dream-I; LLaDA-I MBPP and MDLM uniform are declared but not claimed. Sizes: |E1| at most 0.015
   for base and 110M, up to 0.26 for instruct MBPP. H2 (E2): claimed in all 14, positive in 12, but for base and
-  110M below 0.005, of the order of what the estimator reads with no field term in T0, so not a winner's curse
-  there. Instruct cells: 0.013 up to Dream-I MBPP uniform. E2 intervals condition on the fitted calibrators.
+  110M below 0.005, of the order of what the estimator reads with no field term in T0, so we do not read it as a
+  winner's curse there. Seven of eight instruct cells: 0.013 to 0.176 (Dream-I MBPP uniform); LLaDA-I
+  GSM8K uniform is negative (-0.003). E2 intervals condition on the fitted calibrators.
   Backup: full table with intervals, all-arm curves.}
 \end{frame}
 
@@ -565,8 +567,9 @@
     tokens the decoder commits with 32--63 and 128--255 positions masked.}
   \par\vspace{1mm}
   \begin{takeaway}[fontupper=\footnotesize]
-    E1 is positive and claimed in all seven decoder-state cells. Tokens committed with 32--63
-    masked are 1.8--4.4$\times$ as overconfident as the random-mask ECE says, in every model (descriptive).
+    E1 is positive and claimed in all seven decoder-state cells. On tokens committed while 32--63
+    positions are still masked, confidence exceeds accuracy by 1.8--4.4$\times$ the random-mask ECE,
+    in every arm (descriptive).
   \end{takeaway}
   \note{Blue: uniform states; orange: the states the top-k decoder visits. Dotted line: the arm's ECE
   over random masks, the usual calibration number. In decoder states Delta rises with m in every arm, so a
@@ -579,7 +582,7 @@
 \end{frame}
 
 % ================================================================ 12 C1 results: E3
-\begin{frame}{C1 results: are the states a decoder visits less calibrated? (E3)}
+\begin{frame}{C1 results: are decoder-state tokens right less often? (E3)}
   \framesubtitle{Decoder-state tokens against uniform states with as many masks, at equal confidence}
   \vspace{0.5mm}
   \centering
@@ -647,7 +650,7 @@
       \bottomrule
     \end{tabular}}\par\vspace{2mm}
     \raggedright\footnotesize
-    \lbl{4-bit against fp16} (\VivaLladaBaseFourBitDocs{} documents): E1 changes by
+    \lbl{4-bit against fp16} (report half of the \VivaLladaBaseFourBitDocs{} documents of the 4-bit run): E1 changes by
     \CresCI{TEightLladaBasePrecisionPrecisionEOneUniDifference} in uniform and
     \CresCI{TEightLladaBasePrecisionPrecisionEOneDecTopkConfKFourDifference} in decoder states.\par
   \else
@@ -670,9 +673,10 @@
   overall over- or underconfidence one temperature per mask rate could fix. Uniform-state E1 of the base and
   110M models moves by up to 0.004, the size of those effects, so there the controls matter: token type takes
   LLaDA Base's claimed uniform E1 to 0.0002 [-0.0010, 0.0014]. 4-bit against fp16: both intervals hold 0, but
-  in decoder states the difference (0.0055) is as large as that cell's E1 (0.006), and fp16 E1 on these 198
-  documents is itself about 0 (0.0003), so a precision effect is not ruled out. Decoder-state E2 changes by
-  -0.0025 [-0.0030, -0.0021], the size of the base models' E2. Exploratory: no Holm family. Every arm: backup.}
+  in decoder states the difference (0.0055) is as large as that cell's E1 (0.006), and fp16 E1 on that report half
+  is itself about 0 (0.0003), so a precision effect is not ruled out. Decoder-state E2 changes by
+  -0.0025 [-0.0030, -0.0021], the size of the base models' E2. Exploratory: no Holm family. Every arm: backup. E2 here uses logistic calibrators for both curves, as in
+  Table 4, so its plain value differs from slide 8's.}
 \end{frame}
 
 % ================================================================ 11 C2 probe
@@ -920,11 +924,11 @@
   \note{GSM8K, all 659 report-half problems, 21 settings. At about 4 tokens per step, C3a minus decoder,
   paired over problems: threshold -0.002 [-0.014, 0.012], entropy-bounded -0.005 [-0.035, 0.026], top-k
   +0.059, margin +0.053, PC-Sampler +0.082 (all three intervals above 0). So C3a is indistinguishable from the raw
-  threshold rule and beats the fixed-count decoders; calibration buys an interpretable alpha, not
-  speed. At 8 tokens per step the raw threshold is ahead (0.674 against 0.610). KLASS's two faster
+  threshold rule and beats the fixed-count decoders, as the raw threshold does; calibration gives alpha
+  a meaning, not extra accuracy. At 8 tokens per step the raw threshold is ahead (0.674 against 0.610). KLASS's two faster
   rows are off its published operating point (tau lowered to 0.29 and 0.2, KL history kept per
   32-token block), so no comparison rests on them. Settings: chat prompt, greedy, one seed, fp16,
-  one H200. MBPP: 121 of 250 problems ran before the GPU credit ran out (see the paper).
+  one H200. MBPP: 121 of 250 problems ran before the GPU credit ran out (deviation 17 amendment, PR \#65).
   Sanity check and cost: backup.}
 \end{frame}
 
@@ -946,7 +950,7 @@
           Claims: E1 \Cres{COneConfirmedEOne} of \Cres{COneHolmEOneFamily} cells, E2
           \Cres{COneConfirmedETwo} of \Cres{COneHolmETwoFamily}. In decoder states the gap grows
           with the field for every model; the field term grows clearly only for the instruct
-          models. Committed tokens (32--63 masked): 1.8--4.4$\times$ the random-mask ECE.
+          models. Committed tokens (32--63 masked): 1.8--4.4$\times$ the random-mask ECE (descriptive).
         \else
           {\color{ink2}Pending: the answers to H1–H3 on three model families, from the
           report half (Tue 27).}
@@ -965,8 +969,8 @@
         \paneltitle{4 · C3 decoding}
         \ifcsname CThreeTTwelveGsmMatchedDiffThresholdSpeedTwo\endcsname
           At matched speed on GSM8K, the calibrated rule C3a is no more accurate than Fast-dLLM's
-          raw threshold (\CresCI{CThreeTTwelveGsmMatchedDiffThresholdSpeedTwo}) but beats top-$k$,
-          margin and PC-Sampler. Calibration buys an interpretable $\alpha$, not speed.
+          raw threshold (\CresCI{CThreeTTwelveGsmMatchedDiffThresholdSpeedTwo}); like it, it beats
+          top-$k$, margin and PC-Sampler. Calibration gives $\alpha$ a meaning, not extra accuracy.
         \else
           {\color{ink2}Pending: C3a against six decoders at matched tokens per step
           (Thu 29).}
@@ -1239,11 +1243,11 @@
 \end{frame}
 
 \begin{frame}{Backup: C1 primary endpoints, every arm, with intervals}
-  \framesubtitle{95\% intervals and the Holm decision in the 14-test families; TS: time-split, outside them}
+  \framesubtitle{95\% intervals and the Holm decision in the 14-test families}
   \COneTable{c1_main}{54mm}{TUE 27 OCT}{\texttt{results/c1/<Label>/results.json} and the Holm
     summary}{Per arm and kind of state: E1 and E2 with 95\% intervals, the Holm decision, and $\beta_z$
     without and with state effects.}
-  \note{Source: paper/tables/c1/c1\_main.tex. $^{*}$ Holm-rejected, $^{\dagger}$ declared, $^{\ddagger}$ interval
+  \note{Source: paper/tables/c1/c1\_main.tex. $^{*}$ claimed (declared and Holm-rejected), $^{\dagger}$ declared, $^{\ddagger}$ interval
   of $\beta_z$ excludes 0, $^{\S}$ Eq. 2 fit did not converge.}
 \end{frame}
 
@@ -1296,9 +1300,9 @@
   effect. Without FE the interval excludes 0 in all 14 cells and is negative in 12; with FE it holds 0 in 8 of those 12 (E2 positive in all 8 but LLaDA-I GSM8K uniform). The other 4
   negative cells (LLaDA Base uniform, Dream Base decoder, LLaDA-I MBPP uniform, Dream-I GSM8K decoder) exclude 0
   with FE as well: shared errors there.
-  The two positive cells, LLaDA Base and MDLM-110M decoder states, have E2 at the estimator's T0 bias; the
+  The two positive cells, LLaDA Base and MDLM-110M decoder states, have E2 near the estimator's T0 bias; the
   110M one has a negative E2 beside its positive beta_z, the pattern T0's shared-error world gave, at small size. Intervals: backup table. If asked about gamma (Eq. 3, the lower-ranked pool members):
-  Holm rejects 24 of 42 tests, in 8 rows, all positive, all in the instruct models and Dream Base decoder
+  Holm, run within each arm and kind of state, rejects 24 of the 42 tests of gamma_2-4, in 8 of the 14 rows, all positive, all in the instruct models and Dream Base decoder
   states: at equal confidence lower-ranked members are right more often than the winner, which Proposition 1
   excludes when its conditions hold. We read it, like the within-state ICC (above 0 in every arm), as a sign
   of shared errors or of a calibration slope that varies by state. None of it is a claim.}
@@ -1369,8 +1373,9 @@
     \end{column}
   \end{columns}
   \note{LLaDA-8B-Base: in uniform states Delta(m) falls slightly with m (E1 small, negative); in decoder
-  states it rises (E1 positive). The dashed field terms stay near zero in both, so the change is own
-  miscalibration, not a winner's curse. Estimator reads the field term slightly high in T0, so a small
+  states it rises (E1 positive). The dashed field terms stay near zero in both, so the change is mostly own
+  miscalibration and we do not read it as a winner's curse; decoder states also carry a shared-error term
+  of -0.008 [-0.009, -0.006] at m = 32, and the independent estimator does not identify their field term. Estimator reads the field term slightly high in T0, so a small
   positive E2 is weaker than its interval suggests. Other arms: backup.}
 \end{frame}
 
@@ -1383,9 +1388,9 @@
   \note{Point values, no intervals; separate x scales for base/110M and instruct. Base and 110M decoder
   cells: the growth is mostly own miscalibration, the field term small (of the order of the estimator's
   T0 bias). Instruct cells: the field term is a real part of E1, largest for Dream-I MBPP; shared errors
-  are large on MBPP. Open squares: under the additive calibrator the field term is smaller in all eight
-  instruct cells (0 to 72\% of its primary size), so its size depends on the calibrator's form; it keeps its
-  sign with the interval excluding 0 in seven, not in LLaDA-I MBPP uniform, where it drops to 0.}
+  are large on MBPP. Open squares: under the additive calibrator the seven positive instruct E2s shrink, to
+  0.000-0.098, so its size depends on the calibrator's form; it keeps its sign with the interval excluding 0
+  in seven of the eight instruct cells, not in LLaDA-I MBPP uniform, where it drops to 0.}
 \end{frame}
 
 \begin{frame}{Backup: $\Delta(m)$ in every arm}
@@ -1438,8 +1443,8 @@
   \note{Sanity (plan item 4): 200 fit-half GSM8K problems at Fast-dLLM's settings, 5-shot. Top-k 0.835
   [0.777, 0.880] against a published 0.793; threshold 0.845 [0.788, 0.889] against 0.792 (Wilson
   intervals). Both published values are inside, but our points are 4 to 5 points higher, beyond the
-  plan's 1-2 point bar; 200 problems give intervals about 10 points wide. The run used
-  one H200 per task; MBPP stopped at 121 of 250 problems when the credit ran out.}
+  plan's 1-2 point bar; 200 problems give intervals about 10 points wide. The T12 report run used
+  one H200 per task (the sanity run was on Ada, 2080 Ti); MBPP stopped at 121 of 250 problems when the credit ran out.}
 \end{frame}
 
 \begin{frame}{Backup: references}
