@@ -856,17 +856,17 @@
     \end{column}
     \begin{column}{0.47\textwidth}
       \ifCThreeMacros
-        {\begin{panel}\paneltitle{Corrector, fit half only (T11)}
+        {\begin{panel}\paneltitle{Corrector (T11)}
           {\footnotesize\setlength{\tabcolsep}{4pt}\arrayrulecolor{base}
           \begin{tabular}{@{}l r r@{}}
             & {\color{ink2}GSM8K} & {\color{ink2}MBPP} \\ \midrule
             fit documents & \Cres{CThreeTElevenGsmFitDocs} & \Cres{CThreeTElevenMbppFitDocs} \\
-            ECE, raw $\sigma(\ell)$ & \Cres{CThreeTElevenGsmDevECERaw} & \Cres{CThreeTElevenMbppDevECERaw} \\
-            ECE, corrected $\hat c$ & \Cres{CThreeTElevenGsmDevECECal} & \Cres{CThreeTElevenMbppDevECECal} \\
+            ECE, raw $\sigma(\ell)$ & \Cres{CThreeTElevenGsmReportECERaw} & \Cres{CThreeTElevenMbppReportECERaw} \\
+            ECE, corrected $\hat c$ & \Cres{CThreeTElevenGsmReportECECal} & \Cres{CThreeTElevenMbppReportECECal} \\
             states where $\hat c$ rises with $\ell$ & \Cres{CThreeTElevenGsmMonotoneShare} & \Cres{CThreeTElevenMbppMonotoneShare} \\
             decode steps outside fit range & \Cres{CThreeTTwelveGsmOutsideShare} & \Cres{CThreeTTwelveMbppOutsideShare} \\
           \end{tabular}}\par\vspace{1mm}
-          {\scriptsize\color{ink2}ECE on held-out fit-half documents, used only as a development check.}
+          {\scriptsize\color{ink2}ECE on held-out report-half states (teacher-forced), as in \S6.}
         \end{panel}}% braces, not a group: an \else straight after \end{panel} upsets TeX
       \else
         \Pend{40mm}{THU 29 OCT}{Waits for the frozen calibrators in \texttt{artifacts/c3/}
@@ -880,11 +880,11 @@
       \fi
     \end{column}
   \end{columns}
-  \note{The calibrators are frozen in artifacts/c3/ (fit half only; report halves never read). On held-out
-  fit-half documents it cuts the ECE of the commit confidence from 0.061 to 0.006 (GSM8K) and 0.039 to 0.007
-  (MBPP), and c-hat never decreases with l in any fit state, so C3a's commits keep the calibrated-error
-  guarantee there. We use it only as a development check. The last row needs the T12 run: how often
-  free-running states fall outside what the calibrator saw.}
+  \note{The calibrators are fitted on the fit half only and frozen in artifacts/c3/. On held-out
+  report-half states (teacher-forced) they cut the ECE of the commit confidence from 0.060 to 0.004 (GSM8K)
+  and 0.040 to 0.005 (MBPP), and c-hat never decreases with l in any fit state, so C3a's commits keep the
+  calibrated-error guarantee there. The last row comes from the T12 run: how often free-running states
+  fall outside what the calibrator saw.}
 \end{frame}
 
 % ================================================================ 16 C3: matched-speed comparison
