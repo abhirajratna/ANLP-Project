@@ -5,6 +5,7 @@ calibrator metadata in the formats ``scripts/run_t12.py``, ``scripts/score_t12.p
 ``scripts/pick_knobs.py`` and ``scripts/fit_c3a_calibrator.py`` write, with numbers chosen so
 every expected value can be computed by hand.  A schema and arithmetic check, not results.
 """
+import csv
 import json
 import math
 import re
@@ -104,35 +105,35 @@ def write_jsonl(path, rows):
 JUNK_DOC = 1000                                      # a fit-half doc_id in the fixture manifests
 
 
-def meta_of(task, shard, **over):
+def meta_of(task, shard, nshards=2, n_docs=N_DOCS, **over):
     """The meta file ``run_t12.py`` writes for one shard (the fields score_t12.RUN_FIELDS and
     the completeness checks read)."""
     m = {"task": task, "half": "report", "gen_length": 256, "run_id": f"run{shard}", "precision": "fp16",
          "model": "llada-8b-instruct", "model_revision": "rev1", "task_jsonl_sha256": "t" * 8,
          "manifest_sha256": "m" * 8, "configs_sha256": "c" * 8, "calibrator_sha256": "k" * 8,
          "c3a_clamp": False, "pc_sampler_variant": "full", "decoding": "greedy", "block_length": 32,
-         "prompt": {"format": "chat", "fewshot": 0}, "limit": 0, "shard": shard, "num_shards": 2,
+         "prompt": {"format": "chat", "fewshot": 0}, "limit": 0, "shard": shard, "num_shards": nshards,
          "label": "jl-report", "provenance": {"host": "jarvis-1", "gpu": "RTX PRO 6000", "git_commit": "abc1234"},
-         "doc_ids": [i for i in range(N_DOCS) if i % 2 == shard]}
+         "doc_ids": [i for i in range(n_docs) if i % nshards == shard]}
     m.update(over)
     return m
 
 
 def make_fixture(root: Path, with_records=True, with_verdicts=True, with_grids=True,
-                 with_cal=True, with_sanity=True, with_manifests=True):
+                 with_cal=True, with_sanity=True, with_manifests=True, nshards=2, n_docs=N_DOCS):
     """Write every input under ``root``; returns the paths."""
     paths = {"records": root / "runs", "verdicts": root / "verdicts.jsonl", "grids": root / "grids",
              "cal": root / "cal", "sanity": root / "sanity.json", "out": root / "out",
              "manifests": root / "manifests"}
     verdicts = []
     for task in TASKS:
-        shard_rows = {0: [], 1: []}
-        for i in range(N_DOCS):
+        shard_rows = {sh: [] for sh in range(nshards)}
+        for i in range(n_docs):
             for dec in DEC_POLICY:
                 for s in (1, 2, 3):
                     cfg = cfg_of(dec, s, task)
                     key = config_key(cfg)
-                    rec = {"config": key, **cfg, "task": task, "doc_id": i, "run_id": f"run{i % 2}",
+                    rec = {"config": key, **cfg, "task": task, "doc_id": i, "run_id": f"run{i % nshards}",
                            "precision": "fp16", "git_commit": "abc1234"}
                     if failed(task, dec, s, i):
                         rec.update({"completion": None, "error": "OutOfMemoryError: out of memory"})
@@ -146,9 +147,9 @@ def make_fixture(root: Path, with_records=True, with_verdicts=True, with_grids=T
                                              "median_ell": 0.1, "mask_rate": 0.5, "log_n_masked": 3.0,
                                              "outside": ["mask_rate"] if (st == 0 and outside_of(task, i)) else []}
                                             for st in range(10)]
-                    shard_rows[i % 2].append(rec)
+                    shard_rows[i % nshards].append(rec)
                     ok = (not failed(task, dec, s, i)) and correct_of(task, dec, s, i)
-                    verdicts.append({"run": P.run_key(meta_of(task, i % 2)), "run_id": f"run{i % 2}", "prompt_format": "chat",
+                    verdicts.append({"run": P.run_key(meta_of(task, i % nshards, nshards, n_docs)), "run_id": f"run{i % nshards}", "prompt_format": "chat",
                                      "task": task, "config": key, "doc_id": i, "stopped": True,
                                      "correct": bool(ok), "extracted": None, "driver_error": failed(task, dec, s, i),
                                      "error": None})
@@ -156,11 +157,11 @@ def make_fixture(root: Path, with_records=True, with_verdicts=True, with_grids=T
             d = paths["records"] / f"sweep-{task}"
             d.mkdir(parents=True, exist_ok=True)
             for sh, rows in shard_rows.items():
-                write_jsonl(d / f"t12.shard{sh}of2.jsonl", rows)
-                (d / f"t12.shard{sh}of2.meta.json").write_text(json.dumps(meta_of(task, sh)))
+                write_jsonl(d / f"t12.shard{sh}of{nshards}.jsonl", rows)
+                (d / f"t12.shard{sh}of{nshards}.meta.json").write_text(json.dumps(meta_of(task, sh, nshards, n_docs)))
         if with_manifests:
             paths["manifests"].mkdir(exist_ok=True)
-            man = {str(i): 1 for i in range(N_DOCS)} | {str(JUNK_DOC + i): 0 for i in range(10)}
+            man = {str(i): 1 for i in range(n_docs)} | {str(JUNK_DOC + i): 0 for i in range(10)}
             (paths["manifests"] / f"split_manifest_{task}.json").write_text(json.dumps(man))
         if with_grids:
             paths["grids"].mkdir(exist_ok=True)
@@ -473,7 +474,9 @@ def test_table_is_a_bare_booktabs_tabular_one_row_per_decoder_tasks_side_by_side
     assert tex.count("\\begingroup") == tex.count("\\endgroup") == 1
     assert "GSM8K" in tex and "MBPP" in tex
     for name in ("Top-$k$", "Threshold", "Margin", "Entropy", "KLASS", "PC-Sampler", "C3a"):
-        assert sum(l.startswith(name + " &") for l in tex.splitlines()) == 1, name   # one row, both tasks
+        # one row, both tasks (KLASS carries the off-operating-point dagger)
+        assert sum(l.startswith(name + (r"$^\dagger$" if name == "KLASS" else "") + " &")
+                   for l in tex.splitlines()) == 1, name
     # entropy is unmatched at speed 2: both of its task groups are dashes
     row = next(l for l in tex.splitlines() if l.startswith("Entropy"))
     assert row.count("---") == 6                                   # (tok/step, acc, diff) x 2 tasks
@@ -767,7 +770,7 @@ def test_a_config_cut_short_inside_the_last_problem_is_refused(tmp_path):
     assert "29/30" in str(e.value)
 
 
-def test_allow_partial_reports_x_of_y_everywhere(tmp_path):
+def test_allow_partial_with_a_missing_shard_reports_n_of_the_complete_problems(tmp_path):
     paths = make_fixture(tmp_path)
     d = paths["records"] / "sweep-gsm8k"
     (d / "t12.shard1of2.jsonl").unlink()
@@ -775,21 +778,26 @@ def test_allow_partial_reports_x_of_y_everywhere(tmp_path):
     assert run_main(paths, "--allow-partial") == 0
     s = summary_of(paths)
     g = s["tasks"]["gsm8k"]
-    assert (g["n"], g["n_expected"], g["partial"]) == (15, 30, True)
-    assert g["decoders"]["TopK"]["speeds"]["2"]["n_expected"] == 30
+    assert (g["n"], g["n_complete"], g["n_planned"], g["partial"]) == (15, 15, 30, True)
+    assert (g["n_dropped_problems"], g["n_dropped_records"]) == (0, 0)     # the shard is absent, not cut
+    assert g["decoders"]["TopK"]["speeds"]["2"]["n_planned"] == 30
     assert s["tasks"]["mbpp"]["partial"] is False
     tex = (paths["out"] / "t12" / "t12_matched_speed.tex").read_text()
-    assert "$N=15/30$ (partial)" in tex and "$N=30$" in tex
+    assert "$N=15$" in tex and "$N=30$" in tex and "partial" not in tex
     mtex = (paths["out"] / "c3" / "macros_c3.tex").read_text()
-    assert "% PARTIAL: gsm8k N=15/30" in mtex
-    assert "N=15/30 (partial)" in (paths["out"] / "t12" / "zip" / "t12_sanity_cost.md").read_text()
+    assert "% PARTIAL: gsm8k N=15 of 30 planned" in mtex
+    assert "\\newcommand{\\CThreeTTwelveGsmN}{15}" in mtex
+    assert "gsm8k N=15" in (paths["out"] / "t12" / "zip" / "t12_sanity_cost.md").read_text()
 
 
 def test_complete_run_has_no_partial_marker(built):
     assert "partial" not in (built["out"] / "t12" / "t12_matched_speed.tex").read_text()
     assert "PARTIAL" not in (built["out"] / "c3" / "macros_c3.tex").read_text()
     g = built["summary"]["tasks"]["gsm8k"]
-    assert (g["n"], g["n_expected"], g["partial"]) == (30, 30, False)
+    assert (g["n"], g["n_complete"], g["n_planned"], g["partial"]) == (30, 30, 30, False)
+    assert (g["n_dropped_problems"], g["n_dropped_records"]) == (0, 0)
+    assert g["prefix_check"] == {"ok": True, "violations": []}
+    assert "kept problems" in g["rule"] and built["summary"]["completeness_rule"] == g["rule"]
 
 
 def test_two_runs_for_one_task_are_refused(tmp_path):
@@ -1138,3 +1146,277 @@ def test_a_fit_half_shard_under_records_is_refused(tmp_path):
     with pytest.raises(SystemExit) as e:
         run_main(paths)
     assert "fit" in str(e.value)
+
+
+# ------------------------------------------------------------------ the completeness rule (deviation 17)
+# 3 shards of 4 problems (shard s holds docs s, s+3, s+6, s+9); the last problem of each shard (9, 10,
+# 11) is incomplete: doc 9 lacks C3a, doc 10 has top-k only, doc 11 lacks one configuration.
+R_DOCS, R_SHARDS = 12, 3
+PARTIAL_DOCS = (9, 10, 11)
+KEPT_N = 9
+
+
+def _keep(doc, r):
+    if doc == 9:
+        return not r["config"].startswith("c3a")
+    if doc == 10:
+        return r["config"].startswith("topk_conf")
+    return r["config"] != config_key(cfg_of("Klass", 3, r["task"]))
+
+
+def partial_fixture(root):
+    paths = make_fixture(root, nshards=R_SHARDS, n_docs=R_DOCS)
+    for task in TASKS:
+        for f in (paths["records"] / f"sweep-{task}").glob("t12.shard*.jsonl"):
+            edit_rows(f, lambda rows: [r for r in rows if r["doc_id"] not in PARTIAL_DOCS or _keep(r["doc_id"], r)])
+    return paths
+
+
+def n_records_cut():
+    return sum(1 for doc in PARTIAL_DOCS for dec in DEC_POLICY for s in (1, 2, 3)
+               if _keep(doc, {"config": config_key(cfg_of(dec, s, "gsm8k")), "task": "gsm8k"}))
+
+
+def test_partial_problems_are_refused_without_the_flag_and_nothing_is_written(tmp_path):
+    paths = partial_fixture(tmp_path)
+    with pytest.raises(SystemExit) as e:
+        run_main(paths)
+    assert "--allow-partial" in str(e.value) and "fewer than the 12" in str(e.value)
+    assert not (paths["out"] / "c3" / "macros_c3.tex").exists()
+
+
+def test_n_is_the_number_of_complete_problems_everywhere(tmp_path):
+    paths = partial_fixture(tmp_path)
+    assert run_main(paths, "--allow-partial") == 0
+    s = summary_of(paths)
+    for task in TASKS:
+        t = s["tasks"][task]
+        assert (t["n"], t["n_complete"], t["n_planned"]) == (KEPT_N, KEPT_N, R_DOCS)
+        assert t["n_dropped_problems"] == 3
+        assert t["n_dropped_records"] == n_records_cut() == 18 + 3 + 20
+        assert "kept problems" in t["rule"] and "every configuration" in t["rule"]
+        assert t["prefix_check"] == {"ok": True, "violations": []}
+        assert {sp["n"] for d in t["decoders"].values() for sp in d["speeds"].values()} == {KEPT_N}
+        assert {sp["n_scored"] for d in t["decoders"].values() for sp in d["speeds"].values()
+                if "n_scored" in sp} == {KEPT_N}
+        assert {e["n_paired"] for per in t["matched"].values() for e in per.values() if e["matched"]} == {KEPT_N}
+    mac = parse_macros((paths["out"] / "c3" / "macros_c3.tex").read_text())
+    assert mac["CThreeTTwelveGsmN"] == mac["CThreeTTwelveMbppN"] == str(KEPT_N)
+    tex = (paths["out"] / "t12" / "t12_matched_speed.tex").read_text()
+    assert tex.count(f"$N={KEPT_N}$") == 2 and "/12" not in tex and "partial" not in tex
+    assert f"$N={KEPT_N}$" in (paths["out"] / "t12" / "t12_sanity_cost.tex").read_text()
+    assert "% PARTIAL: gsm8k N=9 of 12 planned" in (paths["out"] / "c3" / "macros_c3.tex").read_text()
+    assert any("kept 9 of 12 planned problems" in w for w in s["warnings"])
+
+
+def _artifacts(paths):
+    out = paths["out"]
+    files = {"macros": out / "c3" / "macros_c3.tex", "table": out / "t12" / "t12_matched_speed.tex",
+             "cost": out / "t12" / "t12_sanity_cost.tex"}
+    files |= {f"zip:{f.name}": f for f in sorted((out / "t12" / "zip").glob("*.csv"))}
+    return {k: f.read_text() for k, f in files.items()}
+
+
+def test_dropped_records_change_no_number(tmp_path):
+    """The same run without the three incomplete problems at all gives identical accuracy, speed,
+    matching, bootstrap, macros, tables and CSVs."""
+    a = partial_fixture(tmp_path / "partial")
+    b = make_fixture(tmp_path / "clean", nshards=R_SHARDS, n_docs=KEPT_N)
+    assert run_main(a, "--allow-partial") == 0
+    assert run_main(b) == 0
+    sa, sb = summary_of(a), summary_of(b)
+    for task in TASKS:
+        ta, tb = sa["tasks"][task], sb["tasks"][task]
+        for t in (ta, tb):                                             # only the planned N differs (12 vs 9)
+            for d in t["decoders"].values():
+                for sp in d["speeds"].values():
+                    sp.pop("n_planned")
+        assert ta["decoders"] == tb["decoders"]                        # acc, ci, tps, nfe, seconds, counts
+        assert ta["matched"] == tb["matched"]                          # diff, lo, hi (the bootstrap), n_paired
+        assert ta["outside_share"] == tb["outside_share"]
+        assert ta["alpha"] == tb["alpha"]
+        assert tb["n_dropped_problems"] == 0 and ta["n_dropped_problems"] == 3
+        assert {m["n_paired"] for per in ta["matched"].values() for m in per.values() if m["matched"]} == {KEPT_N}
+        assert any(m["lo"] is not None for per in ta["matched"].values() for m in per.values() if m["matched"])
+    art_a, art_b = _artifacts(a), _artifacts(b)
+    macros_a = parse_macros(art_a.pop("macros"))
+    macros_b = parse_macros(art_b.pop("macros"))
+    assert macros_a == macros_b
+    assert art_a == art_b
+
+
+def test_an_error_record_counts_as_finished(tmp_path):
+    """A driver error is a finished record (scored wrong): its problem is kept, no flag needed."""
+    paths = make_fixture(tmp_path, nshards=R_SHARDS, n_docs=R_DOCS)
+    key = config_key(cfg_of("CThreeA", 2, "gsm8k"))
+
+    def to_error(rows):
+        for r in rows:
+            if r["doc_id"] == R_DOCS - 1 and r["config"] == key:
+                r.update({"completion": None, "error": "OutOfMemoryError: out of memory", "n_forward": None,
+                          "tokens_per_step": None, "seconds": None})
+                r.pop("c3a_steps", None)
+        return rows
+
+    for f in (paths["records"] / "sweep-gsm8k").glob("t12.shard*.jsonl"):
+        edit_rows(f, to_error)
+    assert run_main(paths) == 0                                        # complete: no --allow-partial
+    g = summary_of(paths)["tasks"]["gsm8k"]
+    assert (g["n"], g["n_complete"], g["n_dropped_problems"], g["n_dropped_records"]) == (R_DOCS, R_DOCS, 0, 0)
+    sp = g["decoders"]["CThreeA"]["speeds"]["2"]
+    assert (sp["n"], sp["failures"], sp["n_ok"]) == (R_DOCS, 1, R_DOCS - 1)
+
+
+def test_a_missing_record_is_not_an_error_record(tmp_path):
+    paths = make_fixture(tmp_path, nshards=R_SHARDS, n_docs=R_DOCS)
+    key = config_key(cfg_of("CThreeA", 2, "gsm8k"))
+    for f in (paths["records"] / "sweep-gsm8k").glob("t12.shard*.jsonl"):
+        edit_rows(f, lambda rows: [r for r in rows if not (r["doc_id"] == R_DOCS - 1 and r["config"] == key)])
+    assert run_main(paths, "--allow-partial") == 0
+    g = summary_of(paths)["tasks"]["gsm8k"]
+    assert (g["n"], g["n_dropped_problems"], g["n_dropped_records"]) == (R_DOCS - 1, 1, 20)
+    assert summary_of(paths)["tasks"]["mbpp"]["n"] == R_DOCS
+
+
+def test_a_gap_that_is_not_a_prefix_is_a_loud_warning_not_a_failure(tmp_path, capsys):
+    paths = make_fixture(tmp_path, nshards=R_SHARDS, n_docs=R_DOCS)
+    key = config_key(cfg_of("CThreeA", 2, "gsm8k"))
+    f = paths["records"] / "sweep-gsm8k" / "t12.shard0of3.jsonl"              # shard 0: docs 0, 3, 6, 9
+    edit_rows(f, lambda rows: [r for r in rows if not (r["doc_id"] == 3 and r["config"] == key)])
+    assert run_main(paths, "--allow-partial") == 0                     # warns, does not fail
+    s = summary_of(paths)
+    g = s["tasks"]["gsm8k"]
+    assert g["n"] == R_DOCS - 1 and g["n_dropped_problems"] == 1
+    pc = g["prefix_check"]
+    assert pc["ok"] is False and len(pc["violations"]) == 1
+    v = pc["violations"][0]
+    assert v["file"].endswith("t12.shard0of3.jsonl") and v["first_dropped"] == 3 and v["kept_after_gap"] == [6, 9]
+    assert any("NOT A PREFIX" in w for w in s["warnings"])
+    assert "NOT A PREFIX" in capsys.readouterr().err
+    assert "% WARNING: gsm8k: kept problems are NOT a prefix" in (paths["out"] / "c3" / "macros_c3.tex").read_text()
+    assert s["tasks"]["mbpp"]["prefix_check"]["ok"] is True
+
+
+def test_a_grid_configuration_with_no_records_is_refused_or_gives_n_zero(tmp_path):
+    paths = make_fixture(tmp_path, nshards=R_SHARDS, n_docs=R_DOCS)
+    key = config_key(cfg_of("Klass", 3, "gsm8k"))
+    for f in (paths["records"] / "sweep-gsm8k").glob("t12.shard*.jsonl"):
+        edit_rows(f, lambda rows: [r for r in rows if r["config"] != key])
+    with pytest.raises(SystemExit) as e:
+        run_main(paths)
+    assert "no records" in str(e.value)
+    assert run_main(paths, "--allow-partial") == 0
+    g = summary_of(paths)["tasks"]["gsm8k"]
+    assert (g["n"], g["n_complete"], g["n_planned"], g["n_dropped_problems"]) == (0, 0, R_DOCS, R_DOCS)
+    assert "$N=0$" in (paths["out"] / "t12" / "t12_matched_speed.tex").read_text()
+
+
+def test_score_rows_are_not_used_for_a_task_that_lost_problems(tmp_path):
+    """A score_t12 aggregate covers the dropped problems too, so with drops the accuracy is blank
+    (never an aggregate), even when its n happens to equal the kept number."""
+    paths = partial_fixture(tmp_path)
+    drop_verdicts(paths, C3A_KEY)
+    sc = tmp_path / "scores.json"
+    run = P.run_key(meta_of("gsm8k", 0))
+    sc.write_text(json.dumps({"rows": [{"task": "gsm8k", "config": C3A_KEY, "half": "report", "prompt_format": "chat",
+                                        "run": run, "n": KEPT_N, "n_correct": 7, "accuracy": 7 / KEPT_N,
+                                        "ci95": [0.4, 0.9]}]}))
+    assert run_main(paths, "--scores", str(sc), "--allow-partial") == 0
+    assert summary_of(paths)["tasks"]["gsm8k"]["decoders"]["CThreeA"]["speeds"]["2"].get("acc") is None
+
+
+
+# ----------------------------------------------------- off-operating-point marker (deviation 17 / PR #66)
+DAG = r"$^\dagger$"
+DAG_COMMENT = "% \\dagger: off the decoder's published operating point (caption explains)\n"
+
+
+def _matched_with(built, klass_slot, ref=2):
+    """The matched table of the fixture summary with KLASS matched at ``klass_slot`` in both tasks."""
+    S = json.loads(json.dumps(built["summary"]))
+    for task in P.TASKS:
+        S["tasks"][task]["matched"][str(ref)]["Klass"].update(
+            {"matched": True, "reason": None, "slot": klass_slot})
+    return S, P.matched_table(S)
+
+
+def test_the_off_operating_point_set_is_klass_slots_two_and_three():
+    assert P.OFF_OPERATING_POINT == {("Klass", 2), ("Klass", 3)}
+
+
+def test_matched_table_daggers_klass_at_slot_two_only_and_says_so_in_a_comment(built):
+    tex = (built["out"] / "t12" / "t12_matched_speed.tex").read_text()
+    assert built["summary"]["tasks"]["gsm8k"]["matched"]["2"]["Klass"]["slot"] == 2
+    labels = [l.split(" &")[0] for l in body_rows(tex)[2:]]
+    assert labels == [P.LABEL[d] + (DAG if d == "Klass" else "") for d in P.DECODERS]
+    assert tex.count(DAG) == 1                                     # no other decoder, no footnote row
+    assert tex.count(DAG_COMMENT) == 1
+    assert len(body_rows(tex)) == 2 + len(P.DECODERS)
+
+
+def test_matched_table_has_no_dagger_when_klass_is_shown_at_slot_one(built):
+    _, tex = _matched_with(built, 1)
+    assert "dagger" not in tex
+    assert any(l.startswith("KLASS &") for l in tex.splitlines())
+
+
+def test_the_dagger_follows_the_matched_slot_not_the_reference_slot(built):
+    # KLASS matched at slot 3 for the speed-2 reference: still off its operating point
+    assert DAG in _matched_with(built, 3)[1]
+    # another decoder matched at slot 3 gets no dagger
+    S = json.loads(json.dumps(built["summary"]))
+    for task in P.TASKS:
+        S["tasks"][task]["matched"]["2"]["TopK"]["slot"] = 3
+    tex = P.matched_table(S)
+    assert next(l for l in tex.splitlines() if l.startswith("Top-$k$")).split(" &")[0] == "Top-$k$"
+
+
+def test_summary_flags_klass_slots_two_and_three_only(built):
+    s = built["summary"]
+    assert s["off_operating_point_note"] == \
+        "KLASS slots 2-3: confidence threshold below its published range (deviation 17, PR #66)"
+    for task in P.TASKS:
+        for dec, d in s["tasks"][task]["decoders"].items():
+            for slot, st in d["speeds"].items():
+                assert st.get("off_operating_point", False) == (dec == "Klass" and slot in ("2", "3")), (dec, slot)
+        for per in s["tasks"][task]["matched"].values():
+            for dec, e in per.items():
+                if e["matched"]:
+                    assert e.get("off_operating_point", False) == (dec == "Klass" and e["slot"] in (2, 3))
+    for slot in ("2", "3"):
+        assert s["tasks"]["gsm8k"]["decoders"]["Klass"]["speeds"][slot]["off_operating_point"] is True
+    assert "off_operating_point" not in s["tasks"]["gsm8k"]["decoders"]["Klass"]["speeds"]["1"]
+
+
+def test_cost_table_and_zip_tables_mark_klass_slots_two_and_three(built):
+    tex = (built["out"] / "t12" / "t12_sanity_cost.tex").read_text()
+    klass = [l for l in tex.splitlines() if l.startswith("KLASS &")]
+    assert len(klass) == 2 and all(l.count(DAG) == 2 for l in klass)       # speeds 2 and 3, not 1
+    assert tex.count(DAG) == 5                                             # + one in the footnote
+    z = built["out"] / "t12" / "zip"
+    rows = list(csv.reader((z / "t12_sanity_cost.csv").read_text().splitlines()))
+    head, rows = rows[0], rows[1:]
+    for r in rows:
+        want = "true" if r[head.index("decoder")] == "Klass" and r[head.index("speed")] in ("2", "3") else "false"
+        assert r[head.index("off_operating_point")] == want, r
+    md = (z / "t12_sanity_cost.md").read_text(encoding="utf-8")
+    assert md.count("Klass †") == 4 and "| off_operating_point" not in md
+    rows = list(csv.reader((z / "t12_speed1_speed3.csv").read_text().splitlines()))
+    head, rows = rows[0], rows[1:]
+    assert [r[head.index("off_operating_point")] for r in rows if r[head.index("decoder")] == "Klass"] == \
+        ["false", "true", "false", "true"]
+    assert all(r[head.index("off_operating_point")] == "false" for r in rows if r[head.index("decoder")] != "Klass")
+    assert (z / "t12_speed1_speed3.md").read_text(encoding="utf-8").count("Klass †") == 2
+
+
+def test_the_marker_changes_nothing_else(built):
+    """Without the marker the matched table has the same rows, and no other summary entry gains a key."""
+    tex = (built["out"] / "t12" / "t12_matched_speed.tex").read_text()
+    plain = tex.replace(DAG, "").replace(DAG_COMMENT, "")
+    assert len(body_rows(plain)) == 2 + len(P.DECODERS)
+    assert [l.split(" &")[0] for l in body_rows(plain)[2:]] == [P.LABEL[d] for d in P.DECODERS]
+    s = built["summary"]
+    flagged = {(t, d, sl) for t in P.TASKS for d, v in s["tasks"][t]["decoders"].items()
+               for sl, st in v["speeds"].items() if "off_operating_point" in st}
+    assert flagged == {(t, "Klass", sl) for t in P.TASKS for sl in ("2", "3") if sl in
+                       s["tasks"][t]["decoders"]["Klass"]["speeds"]}
