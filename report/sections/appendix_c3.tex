@@ -20,8 +20,10 @@ Top-$k$ at $k=1$ scores \CresCI{CThreeTTwelveSanityTopKAcc} against a published 
 threshold rule at $\tau=0.9$ \CresCI{CThreeTTwelveSanityThresholdAcc} against 0.792
 \citep{wu2025fastdllm} (95\% Wilson intervals): both published values lie inside, so the
 harness reproduces the two decoders it can be checked on, though our points are higher.
-Figure~\ref{fig:c3-speed} plots accuracy against tokens per step at all three speeds; the cost
-per decoder and the speed-1 and speed-3 rows are in the code archive.
+Figure~\ref{fig:c3-speed} plots accuracy against tokens per step at all three speeds. At
+speed 3 (about 8 tokens per step) C3a trails the threshold rule on GSM8K (C3a $-$ threshold
+\CresCI{CThreeTTwelveGsmMatchedDiffThresholdSpeedThree}); the cost per decoder and the speed-1
+and speed-3 rows are in the code archive.
 % Fast-dLLM's numbers are on the full test set, ours on 200 fit-half problems, so compare the
 % interval, not the point.
 % TODO(results): if both published values lie inside our Wilson intervals: "Both published
