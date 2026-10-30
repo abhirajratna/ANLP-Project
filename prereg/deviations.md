@@ -176,6 +176,19 @@ Items 7-14 are reserved for the T13 ablation entries (branch `t13-ablations`).
       separate 1x H200 instances (GSM8K and MBPP, each task wholly on one instance, 3
       shards). The 1-worker GSM8K start (213 records) is set aside unreported, like the RTX
       PRO attempt.
+    - MBPP reduced N (recorded 28 Oct 2026, before any MBPP report-half record is scored or
+      read): the MBPP instance (552094, renamed 552265 by Jarvis on resume; same disk) was
+      paused at 19:30Z when the team's Jarvis wallet could fund only one task to the end, and
+      GSM8K was given priority. The stop was set by the wallet and a clock time, not by any
+      outcome. Problems are the outer loop of each shard, so the problems with all 21
+      configurations form a prefix of each shard's fixed order (41, 39 and 41 problems).
+      MBPP is reported on N = 121 of 250 problems; records of the incomplete problems are
+      dropped. Accuracy, tokens per step, matching and the paired bootstrap all use that
+      subset, and §6 states N per task (GSM8K 659, MBPP 121). The few seconds of MBPP records
+      the GSM8K instance (552084) wrote after its task ended are excluded (one machine per
+      task). Records: HF `ANLP-project/c3-traces-8b`, `t12/report-a9abd7b/mbpp/` (commit
+      6c6113c); GSM8K, complete, at `t12/report-a9abd7b/gsm8k/` (commit 87aa056). If MBPP
+      is later resumed on the same instance to 250, this bullet is withdrawn.
     - KLASS implementation differences (found 29 Oct, AFTER the GSM8K report half was
       scored; no code, knob or reported number changes): a review against the reference
       implementation (shkim0116/KLASS, `llada_klass.py`) found (A) our KL stability history

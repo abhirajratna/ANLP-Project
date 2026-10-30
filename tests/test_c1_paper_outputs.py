@@ -19,7 +19,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import c1_paper_outputs as P  # noqa: E402
 
 NEWCOMMAND = re.compile(r"^\\newcommand\{\\([^}]*)\}\{(.*)\}$")
-TABLES = ("c1_main", "c1_main_col", "c1_beta", "c1_gamma", "c1_shared", "c1_sensitivity", "c1_e3",
+TABLES = ("c1_main", "c1_timesplit", "c1_main_col", "c1_beta", "c1_gamma", "c1_shared", "c1_sensitivity", "c1_e3",
           "c1_t8",
           "c1_t8_precision")
 
@@ -87,7 +87,7 @@ def test_main_table_has_one_row_pair_per_arm_and_the_summary_decisions(results, 
     out = run(results, tmp_path, "--no-figures")
     tex = table(out, "c1_main")
     rs = rows(tex)
-    arms = list(P.MAIN_ARMS) + ["LladaBaseTimeSplit"]
+    arms = list(P.MAIN_ARMS)                             # the time-split arm has its own table
     assert len(rs) == 2 * len(arms)
     assert [r[0] for r in rs[::2]] == [P.display(a) for a in arms]
     assert [r[1] for r in rs[:2]] == ["uniform", "dec. $k{=}4$"]
@@ -102,8 +102,10 @@ def test_main_table_has_one_row_pair_per_arm_and_the_summary_decisions(results, 
             c = res["by_mask_kind"][mask]["contrast"]
             assert f"{abs(c['value']):.3f}" in r[2]
             assert ("\\dagger" in r[2]) == bool(c["declared"])
-    # the time-split arm is not in the Holm summary: no decision
-    assert rs[-1][3] == rs[-1][5] == P.DASH
+    # the time-split arm is not in the Holm summary: no decision, and it is in c1_timesplit only
+    ts = rows(table(out, "c1_timesplit"))
+    assert [r[0] for r in ts[::2]] == [P.display("LladaBaseTimeSplit")]
+    assert ts[0][3] == ts[0][5] == P.DASH
     # markers share one superscript
     assert "$^{*}$$^{" not in tex and "$^{\\dagger}$$^{" not in tex
 
@@ -231,6 +233,8 @@ def test_number_formatting():
     assert P.est_ci({"value": 0.0015, "ci": [0.00003, 0.003]}) == "$0.00150$ {\\scriptsize[$0.00003$, $0.00300$]}"
     assert P.est_ci({"value": 0.0010, "ci": [0.00098, 0.00106]}) == "$0.0010$ {\\scriptsize[$0.0010$, $0.0011$]}"
     assert P.est_ci({"value": 0.05, "ci": [-0.0002, 0.1]}) == "$0.050$ {\\scriptsize[$0.000$, $0.100$]}"
+    # [-0.0003, 0.0002] rounds to -0.000 and 0.000: the same printed number, so more decimals
+    assert P.est_ci({"value": 0.0, "ci": [-0.0003, 0.0002]}) == "$0.0000$ {\\scriptsize[$-0.0003$, $0.0002$]}"
     assert P.sup("*", "", "\\dagger") == "$^{*,\\dagger}$" and P.sup("") == ""
     assert P.pval(0.0004) == "$<0.001$" and P.pval(0.0321) == "$0.032$"
 
@@ -294,6 +298,16 @@ def test_native_macros_per_level_with_doc_counts():
 
 
 
+def test_precision_table_keeps_the_two_primary_kinds_of_state_uniform_first():
+    e = {"value": 0.001, "ci": [-0.002, 0.004]}
+    rows = [{"control": "precision", "arm": a, "effect": "E1_contrast", "without": e, "with": e,
+             "difference": e} for a in ("decoder:topk_conf:k2", "decoder:topk_conf:k4", "uniform",
+                                        "uniform_matched:topk_conf:k4")]
+    R = type("R", (), {"precision": {"rows": rows}})()
+    body = [l for l in P.precision_table(R).splitlines() if l.endswith("\\\\") and "E1" in l]
+    assert len(body) == 2 and body[0].startswith("uniform") and "k{=}4" in body[1]
+
+
 # ---------------------------------------------------------------- claimed, family footnote
 def _summary(results):
     return json.loads((results / "c1" / "summary" / "c1_summary.json").read_text())
@@ -322,7 +336,8 @@ def test_stars_mark_claimed_not_just_holm_rejected(results, tmp_path):
                 assert ("*" in col[2 * arms.index(label) + i][ccell]) == want, (label, mask, key)
     assert n_star == 4
     # the time-split arm is outside the families: never starred
-    assert "*" not in main[-1][2] + main[-2][2]
+    ts = rows(table(out, "c1_timesplit"))
+    assert "*" not in ts[-1][2] + ts[-2][2]
 
 
 def test_claimed_is_rebuilt_from_an_older_summary_without_the_field(results, tmp_path):

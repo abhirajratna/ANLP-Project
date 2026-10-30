@@ -46,26 +46,30 @@
 \maketitle
 
 \begin{abstract}
-% DRAFT (ojas fallback, 26 Oct): ayush to review
-% owner: ayush.  ~185 words.  Same sources and rules as sections/01_intro.tex; no numbers.
-Masked diffusion language models decode by committing, at each step, the positions
-whose top token is most probable. Confidence thus picks the tokens it then describes, so on
-committed tokens it is a selected quantity, yet calibration is audited over random masks. We
-study it in three parts. C1 audits calibration conditional on selection: on teacher-forced
-traces from LLaDA-8B, Dream-7B and a 110M model of our own, it measures how far committed tokens' confidence exceeds their accuracy as
-a function of how many candidates they beat, and splits this gap into ordinary
-miscalibration, a field term (the part that is a winner's curse) and a shared-error residual, on held-out documents
-with Holm-corrected tests.
-In the states a confidence decoder visits, the gap grows with field size for every model, and
-its field term does too for the instruct models.
-C2 computes the two errors of committing several tokens at once, dependency and estimation,
-exactly on a synthetic JSON probe: dependency overtakes estimation only for strongly coupled
-tokens committed several at a time, confidence ranking raises dependency error, not estimation
-error, and for coupled tokens the two trade off as tokens per step grow. On real text a dependency proxy is near zero. C3 is a commitment policy
-that commits as many positions as have recalibrated confidence at least $1-\alpha$, with no extra
-forward pass.
-% TODO(results): C3 outcome, same wording as the C3 TODO in 01_intro.tex; if T12 is not done
-%   at the freeze, drop the C3 sentence and say "in two parts".
+% owner: ayush.  ojas, 28 Oct: rewritten per ayush (20261028T141631Z-ayush-0ba0: lead with the
+% decoder-state findings, numbers in the abstract) and cut (i).  Numbers hand-typed from the
+% v1.1 regen: E1 claimed in all 7 k=4 decoder-state cells (COneConfirmedEOne counts both kinds of
+% state); native/ECE 1.85..4.35 (appendix_c1, sec:c1-app-native).  Re-check at the final regen.
+Masked diffusion language models commit, at each step, the positions whose top token is most
+probable, so confidence picks the tokens it then describes; yet calibration is audited over
+random masks. On teacher-forced traces from LLaDA-8B, Dream-7B and a 110M model of our own, we
+audit calibration conditional on this selection (C1). In the states a confidence decoder
+visits, the gap between a committed token's confidence and its accuracy grows with the number
+of candidates it beat in all seven model and task arms (Holm-corrected, held-out documents),
+and on the tokens it commits while 32--63 positions are still masked, confidence exceeds
+accuracy by 1.8 to 4.4 times the random-mask calibration error (descriptive). An
+exact split of the gap isolates a field term, the part that is a winner's curse: in those
+states it grows for both instruct models on both tasks, and for the base models it is near the
+estimator's bias. C2 computes the dependency and estimation errors of committing several
+tokens at once exactly on a JSON probe with known joint distribution: dependency dominates
+only for strongly coupled tokens committed several at a time, and on real text a proxy for it
+is near zero. C3 commits every position whose recalibrated confidence is at least $1-\alpha$,
+with no extra forward pass. In an exploratory matched-speed comparison on GSM8K it beats
+decoders that commit a fixed number of tokens per step by 5 to 8 percentage points, but not a
+raw confidence threshold: recalibration gives the cutoff a meaning, not extra accuracy.
+% Hand-typed from artifacts/c3/macros_c3.tex: CThreeTTwelveGsmMatchedDiff{Margin,TopK,PcSampler}SpeedTwo
+%   (0.053, 0.059, 0.082: 5 to 8 percentage points, intervals above 0) and ...ThresholdSpeedTwo
+%   (interval holds 0).  Fixed-count decoders: top-k, margin, PC-Sampler.
 \end{abstract}
 
 \input{sections/01_intro}
@@ -80,6 +84,7 @@ forward pass.
 
 \bibliography{refs}
 
+\clearpage   % the appendix fills exactly two pages (p. 11-12)
 \appendix
 \input{sections/appendix}
 

@@ -7,8 +7,9 @@
 
 % =====================================================================================
 % Appendix to Sec. 5 (C2).  Owner: ojas.  Same macro files as 05_c2.tex.
-% Labels: sec:c2-app, fig:c2-alt.  (c2_untuned_vs_tuned.pdf does not fit the third of a
-% page this appendix has; the untuned numbers are in Sec. 5 as macros.)
+% Labels: sec:c2-app.  The other fine-tune's crossover figure (c2_crossover_ft110m-v3.pdf) was cut
+% for the 2-page limit; it is in the viva backup.  (c2_untuned_vs_tuned.pdf does not fit either; the
+% untuned numbers are in Sec. 5 as macros.)
 % =====================================================================================
 
 \subsection{C2: the main model and real-text details}
@@ -21,8 +22,8 @@ model never did, as at evaluation (\CTwoFtTokensM{}M). Neither moved the copied 
 probability by our bar of \CTwoMarkerBar{} when the marker is switched from $\rho=1$ to $0$
 with only the leader observed (main \CTwoMarkerEffect, other \CTwoAltMarkerEffect), so we took the
 lower validation NELBO (main \CTwoValNelbo, other \CTwoAltValNelbo{} nats per token; the main
-model also trained on more tokens). The other
-(Figure~\ref{fig:c2-alt}) crosses over at $k=\CTwoAltConfCrossKatRhoOne$ for every
+model also trained on more tokens). The other crosses over at
+$k=\CTwoAltConfCrossKatRhoOne$ for every
 $\rho\ge\CTwoAltConfCrossRhoMin$ under both rules.
 
 % 256 tokens: config.max_tokens in both T10 JSONs (the C1 length filter); ids: documents.last_doc_id.
@@ -30,14 +31,6 @@ $\rho\ge\CTwoAltConfCrossRhoMin$ under both rules.
 We skip documents under 256 tokens (fit-half ids up to
 \CTwoTTenLastDocId; \CTwoTTenLladaLastDocId{} for LLaDA) and keep at least \CTwoTTenMinMasked{}
 masked positions per state. Intervals resample documents (\CTwoTTenNBoot{} times).
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\columnwidth]{../artifacts/probe/figures/c2_crossover_ft110m-v3}
-  \caption{As Figure~\ref{fig:c2-crossover}, for the fine-tune that saw the marker masked.
-    Hatched: (A) $>$ (B) in mean only.}
-  \label{fig:c2-alt}
-\end{figure}
 
 \input{sections/appendix_c1}   % C1 tables (owner abhiraj; fallback by ojas)
 

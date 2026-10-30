@@ -1,0 +1,1963 @@
+{
+  "what": "T12 summary for the paper (scripts/c3_paper_outputs.py): LLaDA-8B-Instruct fp16, report halves of GSM8K and MBPP, zero-shot chat, 256 tokens, blocks of 32, greedy",
+  "primary_speed": 2,
+  "allow_partial": true,
+  "completeness_rule": "kept problems: the report-half problems with a record for every configuration of the task's committed grid (an error record counts as finished); the records of every other problem are dropped before accuracy, speed, matching and the paired bootstrap are computed, so all of them, and N, use only the kept problems (prereg/deviations.md entry 17)",
+  "pairing": {
+    "rule": "each baseline is taken at its setting whose aggregate tokens per step (256 N / sum NFE over the task's report-half problems) is nearest to C3a's at that slot, within +-10%, else '---' (KLASS: '---' where the grid says unmatched_at_target); difference = C3a minus baseline accuracy, paired on the shared doc_ids, 95% percentile CI from 2,000 bootstrap resamples of problems, seed 20261030 (reseeded per comparison); on a tie (two settings equally near) the lower speed slot is taken",
+    "seed": 20261030,
+    "n_boot": 2000,
+    "tolerance": 0.1,
+    "speed_metric": "256 N / sum(NFE) over the task's report-half problems",
+    "deviation": "prereg/deviations.md entry 17"
+  },
+  "tasks": {
+    "gsm8k": {
+      "n": 659,
+      "n_planned": 659,
+      "n_complete": 659,
+      "n_dropped_problems": 0,
+      "n_dropped_records": 0,
+      "rule": "kept problems: the report-half problems with a record for every configuration of the task's committed grid (an error record counts as finished); the records of every other problem are dropped before accuracy, speed, matching and the paired bootstrap are computed, so all of them, and N, use only the kept problems (prereg/deviations.md entry 17)",
+      "prefix_check": {
+        "ok": true,
+        "violations": []
+      },
+      "partial": false,
+      "shards_missing": [],
+      "run": "5b2e4abc0190",
+      "decoders": {
+        "TopK": {
+          "speeds": {
+            "1": {
+              "n": 659,
+              "n_ok": 659,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 2.0,
+              "mean_of_ratios": 2.0,
+              "nfe": 128.0,
+              "seconds": 7.103473286568053,
+              "config": "topk_conf[k=2]",
+              "n_planned": 659,
+              "n_correct": 513,
+              "n_scored": 659,
+              "acc": 0.7784522003034902,
+              "ci95": [
+                0.7451823041013227,
+                0.8084945896454877
+              ]
+            },
+            "2": {
+              "n": 659,
+              "n_ok": 659,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 4.0,
+              "mean_of_ratios": 4.0,
+              "nfe": 64.0,
+              "seconds": 3.5479446791934928,
+              "config": "topk_conf[k=4]",
+              "n_planned": 659,
+              "n_correct": 481,
+              "n_scored": 659,
+              "acc": 0.7298937784522003,
+              "ci95": [
+                0.6947333514581754,
+                0.7623895335698451
+              ]
+            },
+            "3": {
+              "n": 659,
+              "n_ok": 659,
+              "failures": 0,
+              "n_unstopped": 2,
+              "n_timeout": 0,
+              "n_failed_any": 2,
+              "tps": 8.0,
+              "mean_of_ratios": 8.0,
+              "nfe": 32.0,
+              "seconds": 1.773494468813399,
+              "config": "topk_conf[k=8]",
+              "n_planned": 659,
+              "n_correct": 333,
+              "n_scored": 659,
+              "acc": 0.5053110773899848,
+              "ci95": [
+                0.4672185338525466,
+                0.543342060851071
+              ]
+            }
+          }
+        },
+        "Margin": {
+          "speeds": {
+            "1": {
+              "n": 659,
+              "n_ok": 659,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 2.0,
+              "mean_of_ratios": 2.0,
+              "nfe": 128.0,
+              "seconds": 7.103964845081954,
+              "config": "margin[k=2]",
+              "n_planned": 659,
+              "n_correct": 505,
+              "n_scored": 659,
+              "acc": 0.7663125948406677,
+              "ci95": [
+                0.7325168184866286,
+                0.7970215730804842
+              ]
+            },
+            "2": {
+              "n": 659,
+              "n_ok": 659,
+              "failures": 0,
+              "n_unstopped": 1,
+              "n_timeout": 0,
+              "n_failed_any": 1,
+              "tps": 4.0,
+              "mean_of_ratios": 4.0,
+              "nfe": 64.0,
+              "seconds": 3.549232149029953,
+              "config": "margin[k=4]",
+              "n_planned": 659,
+              "n_correct": 485,
+              "n_scored": 659,
+              "acc": 0.7359635811836115,
+              "ci95": [
+                0.7010096546398206,
+                0.7681824814780485
+              ]
+            },
+            "3": {
+              "n": 659,
+              "n_ok": 659,
+              "failures": 0,
+              "n_unstopped": 5,
+              "n_timeout": 0,
+              "n_failed_any": 5,
+              "tps": 8.0,
+              "mean_of_ratios": 8.0,
+              "nfe": 32.0,
+              "seconds": 1.7742927056871147,
+              "config": "margin[k=8]",
+              "n_planned": 659,
+              "n_correct": 368,
+              "n_scored": 659,
+              "acc": 0.5584218512898331,
+              "ci95": [
+                0.520278581872559,
+                0.5958879598672351
+              ]
+            }
+          }
+        },
+        "PcSampler": {
+          "speeds": {
+            "1": {
+              "n": 659,
+              "n_ok": 659,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 2.0,
+              "mean_of_ratios": 2.0,
+              "nfe": 128.0,
+              "seconds": 7.09366491073315,
+              "config": "pc_sampler[alpha=10.0,k=2,lam=0.25]",
+              "n_planned": 659,
+              "n_correct": 512,
+              "n_scored": 659,
+              "acc": 0.7769347496206374,
+              "ci95": [
+                0.743597042316382,
+                0.8070625386579662
+              ]
+            },
+            "2": {
+              "n": 659,
+              "n_ok": 659,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 4.0,
+              "mean_of_ratios": 4.0,
+              "nfe": 64.0,
+              "seconds": 3.5521407441837765,
+              "config": "pc_sampler[alpha=10.0,k=4,lam=0.25]",
+              "n_planned": 659,
+              "n_correct": 466,
+              "n_scored": 659,
+              "acc": 0.7071320182094082,
+              "ci95": [
+                0.6712666914922246,
+                0.7405965019488631
+              ]
+            },
+            "3": {
+              "n": 659,
+              "n_ok": 659,
+              "failures": 0,
+              "n_unstopped": 3,
+              "n_timeout": 0,
+              "n_failed_any": 3,
+              "tps": 8.0,
+              "mean_of_ratios": 8.0,
+              "nfe": 32.0,
+              "seconds": 1.7713885480058924,
+              "config": "pc_sampler[alpha=10.0,k=8,lam=0.25]",
+              "n_planned": 659,
+              "n_correct": 257,
+              "n_scored": 659,
+              "acc": 0.3899848254931715,
+              "ci95": [
+                0.35348587077049665,
+                0.42775895322599533
+              ]
+            }
+          }
+        },
+        "Threshold": {
+          "speeds": {
+            "1": {
+              "n": 659,
+              "n_ok": 659,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 2.262357516427518,
+              "mean_of_ratios": 2.388452546001235,
+              "nfe": 113.15629742033384,
+              "seconds": 6.2732642821645035,
+              "config": "threshold[tau=0.99]",
+              "n_planned": 659,
+              "n_correct": 528,
+              "n_scored": 659,
+              "acc": 0.8012139605462822,
+              "ci95": [
+                0.7690365955565016,
+                0.8298999897772413
+              ]
+            },
+            "2": {
+              "n": 659,
+              "n_ok": 659,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 4.0334720030602975,
+              "mean_of_ratios": 4.348775668136499,
+              "nfe": 63.468892261001514,
+              "seconds": 3.5220076747841733,
+              "config": "threshold[tau=0.859]",
+              "n_planned": 659,
+              "n_correct": 521,
+              "n_scored": 659,
+              "acc": 0.7905918057663126,
+              "ci95": [
+                0.7578865977260899,
+                0.8199287982004179
+              ]
+            },
+            "3": {
+              "n": 659,
+              "n_ok": 659,
+              "failures": 0,
+              "n_unstopped": 1,
+              "n_timeout": 0,
+              "n_failed_any": 1,
+              "tps": 8.272236932431108,
+              "mean_of_ratios": 8.988371897008001,
+              "nfe": 30.94688922610015,
+              "seconds": 1.7162675883420297,
+              "config": "threshold[tau=0.494]",
+              "n_planned": 659,
+              "n_correct": 444,
+              "n_scored": 659,
+              "acc": 0.6737481031866465,
+              "ci95": [
+                0.6370351457245076,
+                0.7084471667224121
+              ]
+            }
+          }
+        },
+        "Entropy": {
+          "speeds": {
+            "1": {
+              "n": 659,
+              "n_ok": 659,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 2.1252976227969613,
+              "mean_of_ratios": 2.22506803154954,
+              "nfe": 120.45371775417298,
+              "seconds": 6.69404217088542,
+              "config": "entropy_bounded[gamma=0.017]",
+              "n_planned": 659,
+              "n_correct": 516,
+              "n_scored": 659,
+              "acc": 0.7830045523520486,
+              "ci95": [
+                0.7499417431580092,
+                0.8127870889061876
+              ]
+            },
+            "2": {
+              "n": 659,
+              "n_ok": 659,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 4.27607533013966,
+              "mean_of_ratios": 4.538679278284953,
+              "nfe": 59.867981790591806,
+              "seconds": 3.325555139466801,
+              "config": "entropy_bounded[gamma=0.5]",
+              "n_planned": 659,
+              "n_correct": 523,
+              "n_scored": 659,
+              "acc": 0.7936267071320182,
+              "ci95": [
+                0.7610690124587458,
+                0.8227810090126864
+              ]
+            },
+            "3": {
+              "n": 659,
+              "n_ok": 659,
+              "failures": 0,
+              "n_unstopped": 1,
+              "n_timeout": 0,
+              "n_failed_any": 1,
+              "tps": 8.024734814251058,
+              "mean_of_ratios": 8.513006903963884,
+              "nfe": 31.901365705614566,
+              "seconds": 1.7727713001570813,
+              "config": "entropy_bounded[gamma=6.1]",
+              "n_planned": 659,
+              "n_correct": 427,
+              "n_scored": 659,
+              "acc": 0.6479514415781487,
+              "ci95": [
+                0.61072456661473,
+                0.6834634287003326
+              ]
+            }
+          }
+        },
+        "Klass": {
+          "speeds": {
+            "1": {
+              "n": 659,
+              "n_ok": 659,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 2.0246504650465047,
+              "mean_of_ratios": 2.110353508662307,
+              "nfe": 126.44157814871016,
+              "seconds": 10.758265991536414,
+              "config": "klass[eps_kl=0.0096,fallback=1,history=2,tau=0.803]",
+              "n_planned": 659,
+              "n_correct": 521,
+              "n_scored": 659,
+              "acc": 0.7905918057663126,
+              "ci95": [
+                0.7578865977260899,
+                0.8199287982004179
+              ]
+            },
+            "2": {
+              "n": 659,
+              "n_ok": 659,
+              "failures": 0,
+              "n_unstopped": 2,
+              "n_timeout": 0,
+              "n_failed_any": 2,
+              "tps": 3.9739941581079807,
+              "mean_of_ratios": 4.1819701635038875,
+              "nfe": 64.41881638846738,
+              "seconds": 5.4844393743354365,
+              "config": "klass[eps_kl=0.17,fallback=1,history=2,tau=0.29]",
+              "n_planned": 659,
+              "n_correct": 333,
+              "n_scored": 659,
+              "acc": 0.5053110773899848,
+              "ci95": [
+                0.4672185338525466,
+                0.543342060851071
+              ],
+              "off_operating_point": true
+            },
+            "3": {
+              "n": 659,
+              "n_ok": 659,
+              "failures": 0,
+              "n_unstopped": 7,
+              "n_timeout": 0,
+              "n_failed_any": 7,
+              "tps": 4.900197513651679,
+              "mean_of_ratios": 5.1401832171856086,
+              "nfe": 52.24279210925645,
+              "seconds": 4.422544541379737,
+              "config": "klass[eps_kl=0.3,fallback=1,history=2,tau=0.2]",
+              "n_planned": 659,
+              "n_correct": 192,
+              "n_scored": 659,
+              "acc": 0.291350531107739,
+              "ci95": [
+                0.25794731646966335,
+                0.3271721773167869
+              ],
+              "off_operating_point": true
+            }
+          }
+        },
+        "CThreeA": {
+          "speeds": {
+            "1": {
+              "n": 659,
+              "n_ok": 659,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 2.075054427374817,
+              "mean_of_ratios": 2.165728457802187,
+              "nfe": 123.37025796661608,
+              "seconds": 9.119745466014447,
+              "config": "c3a[alpha=0.022]",
+              "n_planned": 659,
+              "n_correct": 527,
+              "n_scored": 659,
+              "acc": 0.7996965098634294,
+              "ci95": [
+                0.7674417374762574,
+                0.8284775350850233
+              ]
+            },
+            "2": {
+              "n": 659,
+              "n_ok": 659,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 4.043332374652478,
+              "mean_of_ratios": 4.332856787214254,
+              "nfe": 63.31411229135053,
+              "seconds": 4.6891932076455145,
+              "config": "c3a[alpha=0.271]",
+              "n_planned": 659,
+              "n_correct": 520,
+              "n_scored": 659,
+              "acc": 0.7890743550834598,
+              "ci95": [
+                0.7562963588577333,
+                0.8185017242963123
+              ]
+            },
+            "3": {
+              "n": 659,
+              "n_ok": 659,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 8.560612980159334,
+              "mean_of_ratios": 9.263117716795758,
+              "nfe": 29.904400606980275,
+              "seconds": 2.2068264857936177,
+              "config": "c3a[alpha=0.638]",
+              "n_planned": 659,
+              "n_correct": 402,
+              "n_scored": 659,
+              "acc": 0.6100151745068285,
+              "ci95": [
+                0.5722410467740047,
+                0.6465141292295034
+              ]
+            }
+          }
+        }
+      },
+      "matched": {
+        "1": {
+          "TopK": {
+            "matched": true,
+            "reason": null,
+            "slot": 1,
+            "tps": 2.0,
+            "rel_diff": 0.03616985963581184,
+            "diff": 0.021244309559939303,
+            "lo": -0.006069802731411229,
+            "hi": 0.05007587253414264,
+            "n_paired": 659
+          },
+          "Threshold": {
+            "matched": true,
+            "reason": null,
+            "slot": 1,
+            "tps": 2.262357516427518,
+            "rel_diff": 0.09026418130615531,
+            "diff": -0.0015174506828528073,
+            "lo": -0.004552352048558422,
+            "hi": 0.0,
+            "n_paired": 659
+          },
+          "Margin": {
+            "matched": true,
+            "reason": null,
+            "slot": 1,
+            "tps": 2.0,
+            "rel_diff": 0.03616985963581184,
+            "diff": 0.03338391502276176,
+            "lo": 0.004552352048558422,
+            "hi": 0.0622154779969651,
+            "n_paired": 659
+          },
+          "Entropy": {
+            "matched": true,
+            "reason": null,
+            "slot": 1,
+            "tps": 2.1252976227969613,
+            "rel_diff": 0.024212953048035328,
+            "diff": 0.01669195751138088,
+            "lo": -0.010622154779969651,
+            "hi": 0.04552352048558422,
+            "n_paired": 659
+          },
+          "Klass": {
+            "matched": true,
+            "reason": null,
+            "slot": 1,
+            "tps": 2.0246504650465047,
+            "rel_diff": 0.02429042904290427,
+            "diff": 0.009104704097116844,
+            "lo": -0.0015174506828528073,
+            "hi": 0.021244309559939303,
+            "n_paired": 659
+          },
+          "PcSampler": {
+            "matched": true,
+            "reason": null,
+            "slot": 1,
+            "tps": 2.0,
+            "rel_diff": 0.03616985963581184,
+            "diff": 0.02276176024279211,
+            "lo": -0.004552352048558422,
+            "hi": 0.051593323216995446,
+            "n_paired": 659
+          }
+        },
+        "2": {
+          "TopK": {
+            "matched": true,
+            "reason": null,
+            "slot": 2,
+            "tps": 4.0,
+            "rel_diff": 0.010716995447647978,
+            "diff": 0.05918057663125948,
+            "lo": 0.025796661608497723,
+            "hi": 0.09260242792109236,
+            "n_paired": 659
+          },
+          "Threshold": {
+            "matched": true,
+            "reason": null,
+            "slot": 2,
+            "tps": 4.0334720030602975,
+            "rel_diff": 0.002438674508678816,
+            "diff": -0.0015174506828528073,
+            "lo": -0.013657056145675266,
+            "hi": 0.012139605462822459,
+            "n_paired": 659
+          },
+          "Margin": {
+            "matched": true,
+            "reason": null,
+            "slot": 2,
+            "tps": 4.0,
+            "rel_diff": 0.010716995447647978,
+            "diff": 0.05311077389984825,
+            "lo": 0.019726858877086494,
+            "hi": 0.08801213960546282,
+            "n_paired": 659
+          },
+          "Entropy": {
+            "matched": true,
+            "reason": null,
+            "slot": 2,
+            "tps": 4.27607533013966,
+            "rel_diff": 0.05756216257318839,
+            "diff": -0.004552352048558422,
+            "lo": -0.03490136570561457,
+            "hi": 0.025796661608497723,
+            "n_paired": 659
+          },
+          "Klass": {
+            "matched": true,
+            "reason": null,
+            "slot": 2,
+            "tps": 3.9739941581079807,
+            "rel_diff": 0.01714877979836054,
+            "diff": 0.283763277693475,
+            "lo": 0.24279210925644917,
+            "hi": 0.32473444613050073,
+            "n_paired": 659,
+            "off_operating_point": true
+          },
+          "PcSampler": {
+            "matched": true,
+            "reason": null,
+            "slot": 2,
+            "tps": 4.0,
+            "rel_diff": 0.010716995447647978,
+            "diff": 0.0819423368740516,
+            "lo": 0.05007587253414264,
+            "hi": 0.11232928679817886,
+            "n_paired": 659
+          }
+        },
+        "3": {
+          "TopK": {
+            "matched": true,
+            "reason": null,
+            "slot": 3,
+            "tps": 8.0,
+            "rel_diff": 0.06548748103186644,
+            "diff": 0.1047040971168437,
+            "lo": 0.05918057663125948,
+            "hi": 0.14871016691957512,
+            "n_paired": 659
+          },
+          "Threshold": {
+            "matched": true,
+            "reason": null,
+            "slot": 3,
+            "tps": 8.272236932431108,
+            "rel_diff": 0.033686378346572426,
+            "diff": -0.0637329286798179,
+            "lo": -0.1062215477996965,
+            "hi": -0.027314112291350532,
+            "n_paired": 659
+          },
+          "Margin": {
+            "matched": true,
+            "reason": null,
+            "slot": 3,
+            "tps": 8.0,
+            "rel_diff": 0.06548748103186644,
+            "diff": 0.051593323216995446,
+            "lo": 0.007587253414264037,
+            "hi": 0.09559939301972686,
+            "n_paired": 659
+          },
+          "Entropy": {
+            "matched": true,
+            "reason": null,
+            "slot": 3,
+            "tps": 8.024734814251058,
+            "rel_diff": 0.06259810683537079,
+            "diff": -0.03793626707132018,
+            "lo": -0.0834597875569044,
+            "hi": 0.004552352048558422,
+            "n_paired": 659
+          },
+          "Klass": {
+            "matched": false,
+            "reason": "unmatched_at_target"
+          },
+          "PcSampler": {
+            "matched": true,
+            "reason": null,
+            "slot": 3,
+            "tps": 8.0,
+            "rel_diff": 0.06548748103186644,
+            "diff": 0.22003034901365706,
+            "lo": 0.17450682852807284,
+            "hi": 0.26707132018209406,
+            "n_paired": 659
+          }
+        }
+      },
+      "alpha": {
+        "1": 0.022,
+        "2": 0.271,
+        "3": 0.638
+      },
+      "outside_share": {
+        "n_steps": 142732,
+        "n_outside": 2362,
+        "share": 0.016548496482919037,
+        "per_slot": {
+          "2": {
+            "n_steps": 41724,
+            "n_outside": 669,
+            "share": 0.016033937302272074
+          },
+          "1": {
+            "n_steps": 81301,
+            "n_outside": 1304,
+            "share": 0.016039163109924846
+          },
+          "3": {
+            "n_steps": 19707,
+            "n_outside": 389,
+            "share": 0.019739178971938904
+          }
+        }
+      }
+    },
+    "mbpp": {
+      "n": 121,
+      "n_planned": 250,
+      "n_complete": 121,
+      "n_dropped_problems": 3,
+      "n_dropped_records": 10,
+      "rule": "kept problems: the report-half problems with a record for every configuration of the task's committed grid (an error record counts as finished); the records of every other problem are dropped before accuracy, speed, matching and the paired bootstrap are computed, so all of them, and N, use only the kept problems (prereg/deviations.md entry 17)",
+      "prefix_check": {
+        "ok": true,
+        "violations": []
+      },
+      "partial": true,
+      "shards_missing": [],
+      "run": "c60139007389",
+      "decoders": {
+        "TopK": {
+          "speeds": {
+            "1": {
+              "n": 121,
+              "n_ok": 121,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 1,
+              "n_failed_any": 1,
+              "tps": 2.0,
+              "mean_of_ratios": 2.0,
+              "nfe": 128.0,
+              "seconds": 18.422000835734334,
+              "config": "topk_conf[k=2]",
+              "n_planned": 250,
+              "n_correct": 34,
+              "n_scored": 121,
+              "acc": 0.2809917355371901,
+              "ci95": [
+                0.2085968080641148,
+                0.3668647375239224
+              ]
+            },
+            "2": {
+              "n": 121,
+              "n_ok": 121,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 4.0,
+              "mean_of_ratios": 4.0,
+              "nfe": 64.0,
+              "seconds": 9.202818861772876,
+              "config": "topk_conf[k=4]",
+              "n_planned": 250,
+              "n_correct": 25,
+              "n_scored": 121,
+              "acc": 0.2066115702479339,
+              "ci95": [
+                0.14404651049324518,
+                0.2872321637850689
+              ]
+            },
+            "3": {
+              "n": 121,
+              "n_ok": 121,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 8.0,
+              "mean_of_ratios": 8.0,
+              "nfe": 32.0,
+              "seconds": 4.62195174759427,
+              "config": "topk_conf[k=8]",
+              "n_planned": 250,
+              "n_correct": 4,
+              "n_scored": 121,
+              "acc": 0.03305785123966942,
+              "ci95": [
+                0.0129291813043333,
+                0.08192279325129337
+              ]
+            }
+          }
+        },
+        "Margin": {
+          "speeds": {
+            "1": {
+              "n": 121,
+              "n_ok": 121,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 1,
+              "n_failed_any": 1,
+              "tps": 2.0,
+              "mean_of_ratios": 2.0,
+              "nfe": 128.0,
+              "seconds": 18.456236570691573,
+              "config": "margin[k=2]",
+              "n_planned": 250,
+              "n_correct": 37,
+              "n_scored": 121,
+              "acc": 0.30578512396694213,
+              "ci95": [
+                0.2307196825989275,
+                0.3928028200923507
+              ]
+            },
+            "2": {
+              "n": 121,
+              "n_ok": 121,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 4.0,
+              "mean_of_ratios": 4.0,
+              "nfe": 64.0,
+              "seconds": 9.19298757916251,
+              "config": "margin[k=4]",
+              "n_planned": 250,
+              "n_correct": 21,
+              "n_scored": 121,
+              "acc": 0.17355371900826447,
+              "ci95": [
+                0.11640919211393844,
+                0.2507882060267209
+              ]
+            },
+            "3": {
+              "n": 121,
+              "n_ok": 121,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 8.0,
+              "mean_of_ratios": 8.0,
+              "nfe": 32.0,
+              "seconds": 4.5933560757909335,
+              "config": "margin[k=8]",
+              "n_planned": 250,
+              "n_correct": 9,
+              "n_scored": 121,
+              "acc": 0.0743801652892562,
+              "ci95": [
+                0.039622683783924584,
+                0.13533088594377052
+              ]
+            }
+          }
+        },
+        "PcSampler": {
+          "speeds": {
+            "1": {
+              "n": 121,
+              "n_ok": 121,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 2.0,
+              "mean_of_ratios": 2.0,
+              "nfe": 128.0,
+              "seconds": 18.330386912252962,
+              "config": "pc_sampler[alpha=10.0,k=2,lam=0.25]",
+              "n_planned": 250,
+              "n_correct": 35,
+              "n_scored": 121,
+              "acc": 0.2892561983471074,
+              "ci95": [
+                0.21594050066594866,
+                0.3755413639565022
+              ]
+            },
+            "2": {
+              "n": 121,
+              "n_ok": 121,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 4.0,
+              "mean_of_ratios": 4.0,
+              "nfe": 64.0,
+              "seconds": 9.190558524626262,
+              "config": "pc_sampler[alpha=10.0,k=4,lam=0.25]",
+              "n_planned": 250,
+              "n_correct": 19,
+              "n_scored": 121,
+              "acc": 0.15702479338842976,
+              "ci95": [
+                0.10289117701472889,
+                0.2322655830571031
+              ]
+            },
+            "3": {
+              "n": 121,
+              "n_ok": 121,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 1,
+              "n_failed_any": 1,
+              "tps": 8.0,
+              "mean_of_ratios": 8.0,
+              "nfe": 32.0,
+              "seconds": 4.611552459918047,
+              "config": "pc_sampler[alpha=10.0,k=8,lam=0.25]",
+              "n_planned": 250,
+              "n_correct": 4,
+              "n_scored": 121,
+              "acc": 0.03305785123966942,
+              "ci95": [
+                0.0129291813043333,
+                0.08192279325129337
+              ]
+            }
+          }
+        },
+        "Threshold": {
+          "speeds": {
+            "1": {
+              "n": 121,
+              "n_ok": 121,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 1.9426779554719347,
+              "mean_of_ratios": 2.0349532832176993,
+              "nfe": 131.77685950413223,
+              "seconds": 19.191018806127754,
+              "config": "threshold[tau=0.986]",
+              "n_planned": 250,
+              "n_correct": 44,
+              "n_scored": 121,
+              "acc": 0.36363636363636365,
+              "ci95": [
+                0.283345098817242,
+                0.45231963711493206
+              ]
+            },
+            "2": {
+              "n": 121,
+              "n_ok": 121,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 3.728454501685123,
+              "mean_of_ratios": 4.028075651123084,
+              "nfe": 68.66115702479338,
+              "seconds": 10.041236876878571,
+              "config": "threshold[tau=0.746]",
+              "n_planned": 250,
+              "n_correct": 43,
+              "n_scored": 121,
+              "acc": 0.35537190082644626,
+              "ci95": [
+                0.2757458127705623,
+                0.44389860412719806
+              ]
+            },
+            "3": {
+              "n": 121,
+              "n_ok": 121,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 6.788516326977866,
+              "mean_of_ratios": 7.6143304594126375,
+              "nfe": 37.710743801652896,
+              "seconds": 5.496581076650133,
+              "config": "threshold[tau=0.339]",
+              "n_planned": 250,
+              "n_correct": 11,
+              "n_scored": 121,
+              "acc": 0.09090909090909091,
+              "ci95": [
+                0.051521234515242376,
+                0.1554729732812801
+              ]
+            }
+          }
+        },
+        "Entropy": {
+          "speeds": {
+            "1": {
+              "n": 121,
+              "n_ok": 121,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 2,
+              "n_failed_any": 2,
+              "tps": 1.9408521303258146,
+              "mean_of_ratios": 2.0212348707102183,
+              "nfe": 131.900826446281,
+              "seconds": 19.214185039581125,
+              "config": "entropy_bounded[gamma=0.028]",
+              "n_planned": 250,
+              "n_correct": 43,
+              "n_scored": 121,
+              "acc": 0.35537190082644626,
+              "ci95": [
+                0.2757458127705623,
+                0.44389860412719806
+              ]
+            },
+            "2": {
+              "n": 121,
+              "n_ok": 121,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 2,
+              "n_failed_any": 2,
+              "tps": 3.830344998145171,
+              "mean_of_ratios": 4.0526955978393016,
+              "nfe": 66.83471074380165,
+              "seconds": 9.711462997568749,
+              "config": "entropy_bounded[gamma=0.8]",
+              "n_planned": 250,
+              "n_correct": 43,
+              "n_scored": 121,
+              "acc": 0.35537190082644626,
+              "ci95": [
+                0.2757458127705623,
+                0.44389860412719806
+              ]
+            },
+            "3": {
+              "n": 121,
+              "n_ok": 121,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 7.736263736263736,
+              "mean_of_ratios": 8.113041232387035,
+              "nfe": 33.09090909090909,
+              "seconds": 4.761455311356228,
+              "config": "entropy_bounded[gamma=11.0]",
+              "n_planned": 250,
+              "n_correct": 8,
+              "n_scored": 121,
+              "acc": 0.06611570247933884,
+              "ci95": [
+                0.03387971981040342,
+                0.125053530882878
+              ]
+            }
+          }
+        },
+        "Klass": {
+          "speeds": {
+            "1": {
+              "n": 121,
+              "n_ok": 121,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 1.886135298057602,
+              "mean_of_ratios": 1.9649020221679372,
+              "nfe": 135.72727272727272,
+              "seconds": 26.544216518877228,
+              "config": "klass[eps_kl=0.018,fallback=1,history=2,tau=0.701]",
+              "n_planned": 250,
+              "n_correct": 40,
+              "n_scored": 121,
+              "acc": 0.3305785123966942,
+              "ci95": [
+                0.2531078670396513,
+                0.41847559275486806
+              ]
+            },
+            "2": {
+              "n": 121,
+              "n_ok": 121,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 3.868131868131868,
+              "mean_of_ratios": 4.160068303676282,
+              "nfe": 66.18181818181819,
+              "seconds": 12.809848172898011,
+              "config": "klass[eps_kl=0.25,fallback=1,history=2,tau=0.229]",
+              "n_planned": 250,
+              "n_correct": 8,
+              "n_scored": 121,
+              "acc": 0.06611570247933884,
+              "ci95": [
+                0.03387971981040342,
+                0.125053530882878
+              ],
+              "off_operating_point": true
+            },
+            "3": {
+              "n": 121,
+              "n_ok": 121,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 4.316610925306578,
+              "mean_of_ratios": 4.625130332841759,
+              "nfe": 59.30578512396694,
+              "seconds": 11.420888266804212,
+              "config": "klass[eps_kl=0.3,fallback=1,history=2,tau=0.2]",
+              "n_planned": 250,
+              "n_correct": 4,
+              "n_scored": 121,
+              "acc": 0.03305785123966942,
+              "ci95": [
+                0.0129291813043333,
+                0.08192279325129337
+              ],
+              "off_operating_point": true
+            }
+          }
+        },
+        "CThreeA": {
+          "speeds": {
+            "1": {
+              "n": 121,
+              "n_ok": 121,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 1.9480535815357525,
+              "mean_of_ratios": 2.0293416087326777,
+              "nfe": 131.41322314049586,
+              "seconds": 22.6811555862573,
+              "config": "c3a[alpha=0.039]",
+              "n_planned": 250,
+              "n_correct": 44,
+              "n_scored": 121,
+              "acc": 0.36363636363636365,
+              "ci95": [
+                0.283345098817242,
+                0.45231963711493206
+              ]
+            },
+            "2": {
+              "n": 121,
+              "n_ok": 121,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 3.6056338028169015,
+              "mean_of_ratios": 3.8508460290401754,
+              "nfe": 71.0,
+              "seconds": 12.517653648478888,
+              "config": "c3a[alpha=0.322]",
+              "n_planned": 250,
+              "n_correct": 43,
+              "n_scored": 121,
+              "acc": 0.35537190082644626,
+              "ci95": [
+                0.2757458127705623,
+                0.44389860412719806
+              ]
+            },
+            "3": {
+              "n": 121,
+              "n_ok": 121,
+              "failures": 0,
+              "n_unstopped": 0,
+              "n_timeout": 0,
+              "n_failed_any": 0,
+              "tps": 7.529411764705882,
+              "mean_of_ratios": 8.476149941402282,
+              "nfe": 34.0,
+              "seconds": 5.963845363729595,
+              "config": "c3a[alpha=0.735]",
+              "n_planned": 250,
+              "n_correct": 11,
+              "n_scored": 121,
+              "acc": 0.09090909090909091,
+              "ci95": [
+                0.051521234515242376,
+                0.1554729732812801
+              ]
+            }
+          }
+        }
+      },
+      "matched": {
+        "1": {
+          "TopK": {
+            "matched": true,
+            "reason": null,
+            "slot": 1,
+            "tps": 2.0,
+            "rel_diff": 0.026665805785123963,
+            "diff": 0.08264462809917356,
+            "lo": 0.01652892561983471,
+            "hi": 0.1487603305785124,
+            "n_paired": 121
+          },
+          "Threshold": {
+            "matched": true,
+            "reason": null,
+            "slot": 1,
+            "tps": 1.9426779554719347,
+            "rel_diff": 0.0027594857322045113,
+            "diff": 0.0,
+            "lo": 0.0,
+            "hi": 0.0,
+            "n_paired": 121
+          },
+          "Margin": {
+            "matched": true,
+            "reason": null,
+            "slot": 1,
+            "tps": 2.0,
+            "rel_diff": 0.026665805785123963,
+            "diff": 0.05785123966942149,
+            "lo": -0.008264462809917356,
+            "hi": 0.12396694214876033,
+            "n_paired": 121
+          },
+          "Entropy": {
+            "matched": true,
+            "reason": null,
+            "slot": 1,
+            "tps": 1.9408521303258146,
+            "rel_diff": 0.00369674185463656,
+            "diff": 0.008264462809917356,
+            "lo": -0.049586776859504134,
+            "hi": 0.06611570247933884,
+            "n_paired": 121
+          },
+          "Klass": {
+            "matched": true,
+            "reason": null,
+            "slot": 1,
+            "tps": 1.886135298057602,
+            "rel_diff": 0.03178469219996352,
+            "diff": 0.03305785123966942,
+            "lo": 0.008264462809917356,
+            "hi": 0.06611570247933884,
+            "n_paired": 121
+          },
+          "PcSampler": {
+            "matched": true,
+            "reason": null,
+            "slot": 1,
+            "tps": 2.0,
+            "rel_diff": 0.026665805785123963,
+            "diff": 0.0743801652892562,
+            "lo": 0.008264462809917356,
+            "hi": 0.1487603305785124,
+            "n_paired": 121
+          }
+        },
+        "2": {
+          "TopK": {
+            "matched": false,
+            "reason": "outside_tolerance"
+          },
+          "Threshold": {
+            "matched": true,
+            "reason": null,
+            "slot": 2,
+            "tps": 3.728454501685123,
+            "rel_diff": 0.03406355320173329,
+            "diff": 0.0,
+            "lo": -0.03305785123966942,
+            "hi": 0.03305785123966942,
+            "n_paired": 121
+          },
+          "Margin": {
+            "matched": false,
+            "reason": "outside_tolerance"
+          },
+          "Entropy": {
+            "matched": true,
+            "reason": null,
+            "slot": 2,
+            "tps": 3.830344998145171,
+            "rel_diff": 0.06232224557932479,
+            "diff": 0.0,
+            "lo": -0.05785123966942149,
+            "hi": 0.05785123966942149,
+            "n_paired": 121
+          },
+          "Klass": {
+            "matched": true,
+            "reason": null,
+            "slot": 2,
+            "tps": 3.868131868131868,
+            "rel_diff": 0.07280219780219778,
+            "diff": 0.2892561983471074,
+            "lo": 0.19834710743801653,
+            "hi": 0.38016528925619836,
+            "n_paired": 121,
+            "off_operating_point": true
+          },
+          "PcSampler": {
+            "matched": false,
+            "reason": "outside_tolerance"
+          }
+        },
+        "3": {
+          "TopK": {
+            "matched": true,
+            "reason": null,
+            "slot": 3,
+            "tps": 8.0,
+            "rel_diff": 0.06250000000000001,
+            "diff": 0.05785123966942149,
+            "lo": 0.0,
+            "hi": 0.11570247933884298,
+            "n_paired": 121
+          },
+          "Threshold": {
+            "matched": true,
+            "reason": null,
+            "slot": 3,
+            "tps": 6.788516326977866,
+            "rel_diff": 0.09840017532325221,
+            "diff": 0.0,
+            "lo": -0.05785123966942149,
+            "hi": 0.06611570247933884,
+            "n_paired": 121
+          },
+          "Margin": {
+            "matched": true,
+            "reason": null,
+            "slot": 3,
+            "tps": 8.0,
+            "rel_diff": 0.06250000000000001,
+            "diff": 0.01652892561983471,
+            "lo": -0.049586776859504134,
+            "hi": 0.08264462809917356,
+            "n_paired": 121
+          },
+          "Entropy": {
+            "matched": true,
+            "reason": null,
+            "slot": 3,
+            "tps": 7.736263736263736,
+            "rel_diff": 0.027472527472527493,
+            "diff": 0.024793388429752067,
+            "lo": -0.04132231404958678,
+            "hi": 0.09090909090909091,
+            "n_paired": 121
+          },
+          "Klass": {
+            "matched": false,
+            "reason": "unmatched_at_target"
+          },
+          "PcSampler": {
+            "matched": true,
+            "reason": null,
+            "slot": 3,
+            "tps": 8.0,
+            "rel_diff": 0.06250000000000001,
+            "diff": 0.05785123966942149,
+            "lo": 0.008264462809917356,
+            "hi": 0.11570247933884298,
+            "n_paired": 121
+          }
+        }
+      },
+      "alpha": {
+        "1": 0.039,
+        "2": 0.322,
+        "3": 0.735
+      },
+      "outside_share": {
+        "n_steps": 28606,
+        "n_outside": 965,
+        "share": 0.03373418164021534,
+        "per_slot": {
+          "2": {
+            "n_steps": 8591,
+            "n_outside": 315,
+            "share": 0.03666627866371784
+          },
+          "1": {
+            "n_steps": 15901,
+            "n_outside": 492,
+            "share": 0.0309414502232564
+          },
+          "3": {
+            "n_steps": 4114,
+            "n_outside": 158,
+            "share": 0.038405444822557123
+          }
+        }
+      }
+    }
+  },
+  "off_operating_point_note": "KLASS slots 2-3: confidence threshold below its published range (deviation 17, PR #66)",
+  "calibrators": {
+    "gsm8k": {
+      "fit_docs": 660,
+      "monotone_share": 1.0,
+      "dev_ece_raw": 0.06074037559739758,
+      "dev_ece_cal": 0.005898273108220382
+    },
+    "mbpp": {
+      "fit_docs": 249,
+      "monotone_share": 1.0,
+      "dev_ece_raw": 0.038666507110524446,
+      "dev_ece_cal": 0.007110921707899554
+    }
+  },
+  "sanity": {
+    "file": "C:/Users/parth/AppData/Local/Temp/claude/c--Users-parth-OneDrive-Documents-College-Stuff-Sem5-ANLP-ANLP-Project/417786f1-bf21-4f09-a4b9-16f6aaa15914/scratchpad/dryrun-both/in/artifacts/t12/llada-8b-instruct_fp16_gsm8k-sanity.json",
+    "provenance": {
+      "git_commit": "0b5c8b865b89502c893fd63f20887587bb30d016",
+      "git_dirty": false,
+      "python": "3.14.7",
+      "platform": "Linux-5.14.0-687.57.1.el9_8.x86_64-x86_64-with-glibc2.34",
+      "host": "ada-gw1.iiit.ac.in",
+      "slurm_job_id": null,
+      "packages": {}
+    },
+    "rows": {
+      "threshold[tau=0.9]": {
+        "n": 200,
+        "n_correct": 169,
+        "acc": 0.845,
+        "ci95": [
+          0.7883930935816389,
+          0.8886036310167765
+        ],
+        "published": 0.792
+      },
+      "topk_conf[k=1]": {
+        "n": 200,
+        "n_correct": 167,
+        "acc": 0.835,
+        "ci95": [
+          0.777342184108311,
+          0.8800314470234838
+        ],
+        "published": 0.793
+      }
+    },
+    "n": 200,
+    "published": {
+      "topk_conf[k=1]": 0.793,
+      "threshold[tau=0.9]": 0.792
+    }
+  },
+  "inputs": {
+    "records:C:\\Users\\parth\\OneDrive\\Documents\\College Stuff\\Sem5\\ANLP\\ANLP-Project\\runs\\t12\\report-a9abd7b\\gsm8k\\t12.shard0of3.jsonl": {
+      "path": "C:\\Users\\parth\\OneDrive\\Documents\\College Stuff\\Sem5\\ANLP\\ANLP-Project\\runs\\t12\\report-a9abd7b\\gsm8k\\t12.shard0of3.jsonl",
+      "sha256": "2b9a48eb22acd94c510af60f89987d8d828083233e03e37270f12fec3aa36c95"
+    },
+    "records:C:\\Users\\parth\\OneDrive\\Documents\\College Stuff\\Sem5\\ANLP\\ANLP-Project\\runs\\t12\\report-a9abd7b\\gsm8k\\t12.shard1of3.jsonl": {
+      "path": "C:\\Users\\parth\\OneDrive\\Documents\\College Stuff\\Sem5\\ANLP\\ANLP-Project\\runs\\t12\\report-a9abd7b\\gsm8k\\t12.shard1of3.jsonl",
+      "sha256": "64abf3979b330a1f0d1cbb559dd8ddaa222a5df964efbd66bd1f73cfc677641e"
+    },
+    "records:C:\\Users\\parth\\OneDrive\\Documents\\College Stuff\\Sem5\\ANLP\\ANLP-Project\\runs\\t12\\report-a9abd7b\\gsm8k\\t12.shard2of3.jsonl": {
+      "path": "C:\\Users\\parth\\OneDrive\\Documents\\College Stuff\\Sem5\\ANLP\\ANLP-Project\\runs\\t12\\report-a9abd7b\\gsm8k\\t12.shard2of3.jsonl",
+      "sha256": "9784cac17e41a2b19ea4679a62cd98c105e2d39b79d54bf7e1977012e99b1405"
+    },
+    "records:C:\\Users\\parth\\OneDrive\\Documents\\College Stuff\\Sem5\\ANLP\\ANLP-Project\\runs\\t12\\report-a9abd7b\\mbpp\\t12.shard0of3.jsonl": {
+      "path": "C:\\Users\\parth\\OneDrive\\Documents\\College Stuff\\Sem5\\ANLP\\ANLP-Project\\runs\\t12\\report-a9abd7b\\mbpp\\t12.shard0of3.jsonl",
+      "sha256": "e710d0dc66b2c7614e5c737125fdacc24cc14e65084577db09df2fdb933bf70e"
+    },
+    "records:C:\\Users\\parth\\OneDrive\\Documents\\College Stuff\\Sem5\\ANLP\\ANLP-Project\\runs\\t12\\report-a9abd7b\\mbpp\\t12.shard1of3.jsonl": {
+      "path": "C:\\Users\\parth\\OneDrive\\Documents\\College Stuff\\Sem5\\ANLP\\ANLP-Project\\runs\\t12\\report-a9abd7b\\mbpp\\t12.shard1of3.jsonl",
+      "sha256": "e174e4538d5875f3073280628cf52d022003fe04c3c2127d6b31af3665b1b6df"
+    },
+    "records:C:\\Users\\parth\\OneDrive\\Documents\\College Stuff\\Sem5\\ANLP\\ANLP-Project\\runs\\t12\\report-a9abd7b\\mbpp\\t12.shard2of3.jsonl": {
+      "path": "C:\\Users\\parth\\OneDrive\\Documents\\College Stuff\\Sem5\\ANLP\\ANLP-Project\\runs\\t12\\report-a9abd7b\\mbpp\\t12.shard2of3.jsonl",
+      "sha256": "01d57e33f778093e52c8ad646481c468e588caa4876eca7e8bab7e646efdf441"
+    },
+    "manifest:gsm8k": {
+      "path": "C:\\Users\\parth\\AppData\\Local\\Temp\\claude\\c--Users-parth-OneDrive-Documents-College-Stuff-Sem5-ANLP-ANLP-Project\\417786f1-bf21-4f09-a4b9-16f6aaa15914\\scratchpad\\dryrun-both\\in\\artifacts\\split_manifest_gsm8k.json",
+      "sha256": "b6d65073f57ebb3df0675469b2120b68eba14281ca811e59efdf40ac004603f6"
+    },
+    "manifest:mbpp": {
+      "path": "C:\\Users\\parth\\AppData\\Local\\Temp\\claude\\c--Users-parth-OneDrive-Documents-College-Stuff-Sem5-ANLP-ANLP-Project\\417786f1-bf21-4f09-a4b9-16f6aaa15914\\scratchpad\\dryrun-both\\in\\artifacts\\split_manifest_mbpp.json",
+      "sha256": "74e68dd64d5f24d509d93e90e13fd83969ae31a6be233115d48387211ae0001d"
+    },
+    "grid:gsm8k": {
+      "path": "C:\\Users\\parth\\AppData\\Local\\Temp\\claude\\c--Users-parth-OneDrive-Documents-College-Stuff-Sem5-ANLP-ANLP-Project\\417786f1-bf21-4f09-a4b9-16f6aaa15914\\scratchpad\\dryrun-both\\in\\prereg\\t12_grid_gsm8k.json",
+      "sha256": "c30115009c33c13e02cea612ebb70be20de7e8b6c71b39de2a2195a3bc9fb09e"
+    },
+    "grid:mbpp": {
+      "path": "C:\\Users\\parth\\AppData\\Local\\Temp\\claude\\c--Users-parth-OneDrive-Documents-College-Stuff-Sem5-ANLP-ANLP-Project\\417786f1-bf21-4f09-a4b9-16f6aaa15914\\scratchpad\\dryrun-both\\in\\prereg\\t12_grid_mbpp.json",
+      "sha256": "fe631dee91c0e305181228b545915f9339833995f55523e951eb3fc72436d0d5"
+    },
+    "verdicts:C:\\Users\\parth\\OneDrive\\Documents\\College Stuff\\Sem5\\ANLP\\ANLP-Project\\runs\\t12\\report-a9abd7b\\gsm8k-scored\\llada-8b-instruct_fp16_gsm8k-report.verdicts.jsonl": {
+      "path": "C:\\Users\\parth\\OneDrive\\Documents\\College Stuff\\Sem5\\ANLP\\ANLP-Project\\runs\\t12\\report-a9abd7b\\gsm8k-scored\\llada-8b-instruct_fp16_gsm8k-report.verdicts.jsonl",
+      "sha256": "21707757c26888b94c6e3418c3200c227002148cc414fdeff0729fec8a85d3dd"
+    },
+    "verdicts:C:\\Users\\parth\\OneDrive\\Documents\\College Stuff\\Sem5\\ANLP\\ANLP-Project\\runs\\t12\\report-a9abd7b\\mbpp-scored\\llada-8b-instruct_fp16_mbpp-report.verdicts.jsonl": {
+      "path": "C:\\Users\\parth\\OneDrive\\Documents\\College Stuff\\Sem5\\ANLP\\ANLP-Project\\runs\\t12\\report-a9abd7b\\mbpp-scored\\llada-8b-instruct_fp16_mbpp-report.verdicts.jsonl",
+      "sha256": "742eadf255be7b657927c153efb2125d7eadcb28ebed03c89c244a2d4e194e9b"
+    },
+    "scores:C:\\Users\\parth\\OneDrive\\Documents\\College Stuff\\Sem5\\ANLP\\ANLP-Project\\runs\\t12\\report-a9abd7b\\gsm8k-scored\\llada-8b-instruct_fp16_gsm8k-report.json": {
+      "path": "C:\\Users\\parth\\OneDrive\\Documents\\College Stuff\\Sem5\\ANLP\\ANLP-Project\\runs\\t12\\report-a9abd7b\\gsm8k-scored\\llada-8b-instruct_fp16_gsm8k-report.json",
+      "sha256": "797c670722bbbac3241cb9188135bc0f48161cc6f507c391cbb499bb868acb09"
+    },
+    "scores:C:\\Users\\parth\\OneDrive\\Documents\\College Stuff\\Sem5\\ANLP\\ANLP-Project\\runs\\t12\\report-a9abd7b\\mbpp-scored\\llada-8b-instruct_fp16_mbpp-report.json": {
+      "path": "C:\\Users\\parth\\OneDrive\\Documents\\College Stuff\\Sem5\\ANLP\\ANLP-Project\\runs\\t12\\report-a9abd7b\\mbpp-scored\\llada-8b-instruct_fp16_mbpp-report.json",
+      "sha256": "8564f57d556fb3d4d0c0e848f776ca514b280ad5ff8827331701fe20fa9c4d5d"
+    },
+    "calibrator:gsm8k": {
+      "path": "C:\\Users\\parth\\AppData\\Local\\Temp\\claude\\c--Users-parth-OneDrive-Documents-College-Stuff-Sem5-ANLP-ANLP-Project\\417786f1-bf21-4f09-a4b9-16f6aaa15914\\scratchpad\\dryrun-both\\in\\artifacts\\c3\\llada-8b-instruct_fp16_c3a-gsm8k.json",
+      "sha256": "a90c71d4498b1e5be3889bf447682bc41e63d076b72e288769c918f1eca44367"
+    },
+    "calibrator:mbpp": {
+      "path": "C:\\Users\\parth\\AppData\\Local\\Temp\\claude\\c--Users-parth-OneDrive-Documents-College-Stuff-Sem5-ANLP-ANLP-Project\\417786f1-bf21-4f09-a4b9-16f6aaa15914\\scratchpad\\dryrun-both\\in\\artifacts\\c3\\llada-8b-instruct_fp16_c3a-mbpp.json",
+      "sha256": "44edf20471ef1b9b68cca61c414da7eede281b1b5e16fbf7e16e46b56356c9b8"
+    },
+    "sanity": {
+      "path": "C:/Users/parth/AppData/Local/Temp/claude/c--Users-parth-OneDrive-Documents-College-Stuff-Sem5-ANLP-ANLP-Project/417786f1-bf21-4f09-a4b9-16f6aaa15914/scratchpad/dryrun-both/in/artifacts/t12/llada-8b-instruct_fp16_gsm8k-sanity.json",
+      "sha256": "de16c27f1316cddc7531029a5905985869d641486f6cc434fdce85b84e7ec5fc"
+    }
+  },
+  "missing_inputs": [],
+  "warnings": [
+    "mbpp: completeness rule: kept 121 of 250 planned problems; dropped 3 incomplete problem(s) = 10 record(s)",
+    "PARTIAL (--allow-partial): mbpp: 21 configuration(s) have fewer than the 250 expected report problems; fewest 121/250 (pc_sampler[alpha=10.0,k=4,lam=0.25])"
+  ],
+  "provenance": {
+    "git_commit": "3644fce95c9ead4e5d9361214a4d55913d50f803",
+    "git_dirty": false,
+    "python": "3.13.12",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "host": "HP-Victus-16",
+    "slurm_job_id": null,
+    "packages": {
+      "numpy": "2.4.2",
+      "torch": "2.11.0",
+      "matplotlib": "3.11.1"
+    }
+  },
+  "outputs": [
+    "C:\\Users\\parth\\AppData\\Local\\Temp\\claude\\c--Users-parth-OneDrive-Documents-College-Stuff-Sem5-ANLP-ANLP-Project\\417786f1-bf21-4f09-a4b9-16f6aaa15914\\scratchpad\\wt-reducedn\\artifacts\\c3\\macros_c3.tex",
+    "C:\\Users\\parth\\AppData\\Local\\Temp\\claude\\c--Users-parth-OneDrive-Documents-College-Stuff-Sem5-ANLP-ANLP-Project\\417786f1-bf21-4f09-a4b9-16f6aaa15914\\scratchpad\\wt-reducedn\\artifacts\\t12\\figures\\t12_matched_speed.pdf",
+    "C:\\Users\\parth\\AppData\\Local\\Temp\\claude\\c--Users-parth-OneDrive-Documents-College-Stuff-Sem5-ANLP-ANLP-Project\\417786f1-bf21-4f09-a4b9-16f6aaa15914\\scratchpad\\wt-reducedn\\artifacts\\t12\\figures\\t12_matched_speed.png",
+    "C:\\Users\\parth\\AppData\\Local\\Temp\\claude\\c--Users-parth-OneDrive-Documents-College-Stuff-Sem5-ANLP-ANLP-Project\\417786f1-bf21-4f09-a4b9-16f6aaa15914\\scratchpad\\wt-reducedn\\artifacts\\t12\\t12_matched_speed.tex",
+    "C:\\Users\\parth\\AppData\\Local\\Temp\\claude\\c--Users-parth-OneDrive-Documents-College-Stuff-Sem5-ANLP-ANLP-Project\\417786f1-bf21-4f09-a4b9-16f6aaa15914\\scratchpad\\wt-reducedn\\artifacts\\t12\\t12_sanity_cost.tex"
+  ],
+  "macro_names": [
+    "CThreeTElevenGsmDevECECal",
+    "CThreeTElevenGsmDevECERaw",
+    "CThreeTElevenGsmFitDocs",
+    "CThreeTElevenGsmMonotoneShare",
+    "CThreeTElevenMbppDevECECal",
+    "CThreeTElevenMbppDevECERaw",
+    "CThreeTElevenMbppFitDocs",
+    "CThreeTElevenMbppMonotoneShare",
+    "CThreeTTwelveGsmAlphaPrimary",
+    "CThreeTTwelveGsmCThreeASpeedOneAcc",
+    "CThreeTTwelveGsmCThreeASpeedOneAccHi",
+    "CThreeTTwelveGsmCThreeASpeedOneAccLo",
+    "CThreeTTwelveGsmCThreeASpeedOneAlpha",
+    "CThreeTTwelveGsmCThreeASpeedOneNFE",
+    "CThreeTTwelveGsmCThreeASpeedOneSec",
+    "CThreeTTwelveGsmCThreeASpeedOneTPS",
+    "CThreeTTwelveGsmCThreeASpeedThreeAcc",
+    "CThreeTTwelveGsmCThreeASpeedThreeAccHi",
+    "CThreeTTwelveGsmCThreeASpeedThreeAccLo",
+    "CThreeTTwelveGsmCThreeASpeedThreeAlpha",
+    "CThreeTTwelveGsmCThreeASpeedThreeNFE",
+    "CThreeTTwelveGsmCThreeASpeedThreeSec",
+    "CThreeTTwelveGsmCThreeASpeedThreeTPS",
+    "CThreeTTwelveGsmCThreeASpeedTwoAcc",
+    "CThreeTTwelveGsmCThreeASpeedTwoAccHi",
+    "CThreeTTwelveGsmCThreeASpeedTwoAccLo",
+    "CThreeTTwelveGsmCThreeASpeedTwoAlpha",
+    "CThreeTTwelveGsmCThreeASpeedTwoNFE",
+    "CThreeTTwelveGsmCThreeASpeedTwoSec",
+    "CThreeTTwelveGsmCThreeASpeedTwoTPS",
+    "CThreeTTwelveGsmEntropySpeedOneAcc",
+    "CThreeTTwelveGsmEntropySpeedOneAccHi",
+    "CThreeTTwelveGsmEntropySpeedOneAccLo",
+    "CThreeTTwelveGsmEntropySpeedOneNFE",
+    "CThreeTTwelveGsmEntropySpeedOneSec",
+    "CThreeTTwelveGsmEntropySpeedOneTPS",
+    "CThreeTTwelveGsmEntropySpeedThreeAcc",
+    "CThreeTTwelveGsmEntropySpeedThreeAccHi",
+    "CThreeTTwelveGsmEntropySpeedThreeAccLo",
+    "CThreeTTwelveGsmEntropySpeedThreeNFE",
+    "CThreeTTwelveGsmEntropySpeedThreeSec",
+    "CThreeTTwelveGsmEntropySpeedThreeTPS",
+    "CThreeTTwelveGsmEntropySpeedTwoAcc",
+    "CThreeTTwelveGsmEntropySpeedTwoAccHi",
+    "CThreeTTwelveGsmEntropySpeedTwoAccLo",
+    "CThreeTTwelveGsmEntropySpeedTwoNFE",
+    "CThreeTTwelveGsmEntropySpeedTwoSec",
+    "CThreeTTwelveGsmEntropySpeedTwoTPS",
+    "CThreeTTwelveGsmKlassSpeedOneAcc",
+    "CThreeTTwelveGsmKlassSpeedOneAccHi",
+    "CThreeTTwelveGsmKlassSpeedOneAccLo",
+    "CThreeTTwelveGsmKlassSpeedOneNFE",
+    "CThreeTTwelveGsmKlassSpeedOneSec",
+    "CThreeTTwelveGsmKlassSpeedOneTPS",
+    "CThreeTTwelveGsmKlassSpeedThreeAcc",
+    "CThreeTTwelveGsmKlassSpeedThreeAccHi",
+    "CThreeTTwelveGsmKlassSpeedThreeAccLo",
+    "CThreeTTwelveGsmKlassSpeedThreeNFE",
+    "CThreeTTwelveGsmKlassSpeedThreeSec",
+    "CThreeTTwelveGsmKlassSpeedThreeTPS",
+    "CThreeTTwelveGsmKlassSpeedTwoAcc",
+    "CThreeTTwelveGsmKlassSpeedTwoAccHi",
+    "CThreeTTwelveGsmKlassSpeedTwoAccLo",
+    "CThreeTTwelveGsmKlassSpeedTwoNFE",
+    "CThreeTTwelveGsmKlassSpeedTwoSec",
+    "CThreeTTwelveGsmKlassSpeedTwoTPS",
+    "CThreeTTwelveGsmMarginSpeedOneAcc",
+    "CThreeTTwelveGsmMarginSpeedOneAccHi",
+    "CThreeTTwelveGsmMarginSpeedOneAccLo",
+    "CThreeTTwelveGsmMarginSpeedOneNFE",
+    "CThreeTTwelveGsmMarginSpeedOneSec",
+    "CThreeTTwelveGsmMarginSpeedOneTPS",
+    "CThreeTTwelveGsmMarginSpeedThreeAcc",
+    "CThreeTTwelveGsmMarginSpeedThreeAccHi",
+    "CThreeTTwelveGsmMarginSpeedThreeAccLo",
+    "CThreeTTwelveGsmMarginSpeedThreeNFE",
+    "CThreeTTwelveGsmMarginSpeedThreeSec",
+    "CThreeTTwelveGsmMarginSpeedThreeTPS",
+    "CThreeTTwelveGsmMarginSpeedTwoAcc",
+    "CThreeTTwelveGsmMarginSpeedTwoAccHi",
+    "CThreeTTwelveGsmMarginSpeedTwoAccLo",
+    "CThreeTTwelveGsmMarginSpeedTwoNFE",
+    "CThreeTTwelveGsmMarginSpeedTwoSec",
+    "CThreeTTwelveGsmMarginSpeedTwoTPS",
+    "CThreeTTwelveGsmMatchedDiffEntropySpeedOne",
+    "CThreeTTwelveGsmMatchedDiffEntropySpeedOneHi",
+    "CThreeTTwelveGsmMatchedDiffEntropySpeedOneLo",
+    "CThreeTTwelveGsmMatchedDiffEntropySpeedThree",
+    "CThreeTTwelveGsmMatchedDiffEntropySpeedThreeHi",
+    "CThreeTTwelveGsmMatchedDiffEntropySpeedThreeLo",
+    "CThreeTTwelveGsmMatchedDiffEntropySpeedTwo",
+    "CThreeTTwelveGsmMatchedDiffEntropySpeedTwoHi",
+    "CThreeTTwelveGsmMatchedDiffEntropySpeedTwoLo",
+    "CThreeTTwelveGsmMatchedDiffKlassSpeedOne",
+    "CThreeTTwelveGsmMatchedDiffKlassSpeedOneHi",
+    "CThreeTTwelveGsmMatchedDiffKlassSpeedOneLo",
+    "CThreeTTwelveGsmMatchedDiffKlassSpeedThree",
+    "CThreeTTwelveGsmMatchedDiffKlassSpeedThreeHi",
+    "CThreeTTwelveGsmMatchedDiffKlassSpeedThreeLo",
+    "CThreeTTwelveGsmMatchedDiffKlassSpeedTwo",
+    "CThreeTTwelveGsmMatchedDiffKlassSpeedTwoHi",
+    "CThreeTTwelveGsmMatchedDiffKlassSpeedTwoLo",
+    "CThreeTTwelveGsmMatchedDiffMarginSpeedOne",
+    "CThreeTTwelveGsmMatchedDiffMarginSpeedOneHi",
+    "CThreeTTwelveGsmMatchedDiffMarginSpeedOneLo",
+    "CThreeTTwelveGsmMatchedDiffMarginSpeedThree",
+    "CThreeTTwelveGsmMatchedDiffMarginSpeedThreeHi",
+    "CThreeTTwelveGsmMatchedDiffMarginSpeedThreeLo",
+    "CThreeTTwelveGsmMatchedDiffMarginSpeedTwo",
+    "CThreeTTwelveGsmMatchedDiffMarginSpeedTwoHi",
+    "CThreeTTwelveGsmMatchedDiffMarginSpeedTwoLo",
+    "CThreeTTwelveGsmMatchedDiffPcSamplerSpeedOne",
+    "CThreeTTwelveGsmMatchedDiffPcSamplerSpeedOneHi",
+    "CThreeTTwelveGsmMatchedDiffPcSamplerSpeedOneLo",
+    "CThreeTTwelveGsmMatchedDiffPcSamplerSpeedThree",
+    "CThreeTTwelveGsmMatchedDiffPcSamplerSpeedThreeHi",
+    "CThreeTTwelveGsmMatchedDiffPcSamplerSpeedThreeLo",
+    "CThreeTTwelveGsmMatchedDiffPcSamplerSpeedTwo",
+    "CThreeTTwelveGsmMatchedDiffPcSamplerSpeedTwoHi",
+    "CThreeTTwelveGsmMatchedDiffPcSamplerSpeedTwoLo",
+    "CThreeTTwelveGsmMatchedDiffThresholdSpeedOne",
+    "CThreeTTwelveGsmMatchedDiffThresholdSpeedOneHi",
+    "CThreeTTwelveGsmMatchedDiffThresholdSpeedOneLo",
+    "CThreeTTwelveGsmMatchedDiffThresholdSpeedThree",
+    "CThreeTTwelveGsmMatchedDiffThresholdSpeedThreeHi",
+    "CThreeTTwelveGsmMatchedDiffThresholdSpeedThreeLo",
+    "CThreeTTwelveGsmMatchedDiffThresholdSpeedTwo",
+    "CThreeTTwelveGsmMatchedDiffThresholdSpeedTwoHi",
+    "CThreeTTwelveGsmMatchedDiffThresholdSpeedTwoLo",
+    "CThreeTTwelveGsmMatchedDiffTopKSpeedOne",
+    "CThreeTTwelveGsmMatchedDiffTopKSpeedOneHi",
+    "CThreeTTwelveGsmMatchedDiffTopKSpeedOneLo",
+    "CThreeTTwelveGsmMatchedDiffTopKSpeedThree",
+    "CThreeTTwelveGsmMatchedDiffTopKSpeedThreeHi",
+    "CThreeTTwelveGsmMatchedDiffTopKSpeedThreeLo",
+    "CThreeTTwelveGsmMatchedDiffTopKSpeedTwo",
+    "CThreeTTwelveGsmMatchedDiffTopKSpeedTwoHi",
+    "CThreeTTwelveGsmMatchedDiffTopKSpeedTwoLo",
+    "CThreeTTwelveGsmN",
+    "CThreeTTwelveGsmOutsideShare",
+    "CThreeTTwelveGsmPcSamplerSpeedOneAcc",
+    "CThreeTTwelveGsmPcSamplerSpeedOneAccHi",
+    "CThreeTTwelveGsmPcSamplerSpeedOneAccLo",
+    "CThreeTTwelveGsmPcSamplerSpeedOneNFE",
+    "CThreeTTwelveGsmPcSamplerSpeedOneSec",
+    "CThreeTTwelveGsmPcSamplerSpeedOneTPS",
+    "CThreeTTwelveGsmPcSamplerSpeedThreeAcc",
+    "CThreeTTwelveGsmPcSamplerSpeedThreeAccHi",
+    "CThreeTTwelveGsmPcSamplerSpeedThreeAccLo",
+    "CThreeTTwelveGsmPcSamplerSpeedThreeNFE",
+    "CThreeTTwelveGsmPcSamplerSpeedThreeSec",
+    "CThreeTTwelveGsmPcSamplerSpeedThreeTPS",
+    "CThreeTTwelveGsmPcSamplerSpeedTwoAcc",
+    "CThreeTTwelveGsmPcSamplerSpeedTwoAccHi",
+    "CThreeTTwelveGsmPcSamplerSpeedTwoAccLo",
+    "CThreeTTwelveGsmPcSamplerSpeedTwoNFE",
+    "CThreeTTwelveGsmPcSamplerSpeedTwoSec",
+    "CThreeTTwelveGsmPcSamplerSpeedTwoTPS",
+    "CThreeTTwelveGsmThresholdSpeedOneAcc",
+    "CThreeTTwelveGsmThresholdSpeedOneAccHi",
+    "CThreeTTwelveGsmThresholdSpeedOneAccLo",
+    "CThreeTTwelveGsmThresholdSpeedOneNFE",
+    "CThreeTTwelveGsmThresholdSpeedOneSec",
+    "CThreeTTwelveGsmThresholdSpeedOneTPS",
+    "CThreeTTwelveGsmThresholdSpeedThreeAcc",
+    "CThreeTTwelveGsmThresholdSpeedThreeAccHi",
+    "CThreeTTwelveGsmThresholdSpeedThreeAccLo",
+    "CThreeTTwelveGsmThresholdSpeedThreeNFE",
+    "CThreeTTwelveGsmThresholdSpeedThreeSec",
+    "CThreeTTwelveGsmThresholdSpeedThreeTPS",
+    "CThreeTTwelveGsmThresholdSpeedTwoAcc",
+    "CThreeTTwelveGsmThresholdSpeedTwoAccHi",
+    "CThreeTTwelveGsmThresholdSpeedTwoAccLo",
+    "CThreeTTwelveGsmThresholdSpeedTwoNFE",
+    "CThreeTTwelveGsmThresholdSpeedTwoSec",
+    "CThreeTTwelveGsmThresholdSpeedTwoTPS",
+    "CThreeTTwelveGsmTopKSpeedOneAcc",
+    "CThreeTTwelveGsmTopKSpeedOneAccHi",
+    "CThreeTTwelveGsmTopKSpeedOneAccLo",
+    "CThreeTTwelveGsmTopKSpeedOneNFE",
+    "CThreeTTwelveGsmTopKSpeedOneSec",
+    "CThreeTTwelveGsmTopKSpeedOneTPS",
+    "CThreeTTwelveGsmTopKSpeedThreeAcc",
+    "CThreeTTwelveGsmTopKSpeedThreeAccHi",
+    "CThreeTTwelveGsmTopKSpeedThreeAccLo",
+    "CThreeTTwelveGsmTopKSpeedThreeNFE",
+    "CThreeTTwelveGsmTopKSpeedThreeSec",
+    "CThreeTTwelveGsmTopKSpeedThreeTPS",
+    "CThreeTTwelveGsmTopKSpeedTwoAcc",
+    "CThreeTTwelveGsmTopKSpeedTwoAccHi",
+    "CThreeTTwelveGsmTopKSpeedTwoAccLo",
+    "CThreeTTwelveGsmTopKSpeedTwoNFE",
+    "CThreeTTwelveGsmTopKSpeedTwoSec",
+    "CThreeTTwelveGsmTopKSpeedTwoTPS",
+    "CThreeTTwelveMbppAlphaPrimary",
+    "CThreeTTwelveMbppCThreeASpeedOneAcc",
+    "CThreeTTwelveMbppCThreeASpeedOneAccHi",
+    "CThreeTTwelveMbppCThreeASpeedOneAccLo",
+    "CThreeTTwelveMbppCThreeASpeedOneAlpha",
+    "CThreeTTwelveMbppCThreeASpeedOneNFE",
+    "CThreeTTwelveMbppCThreeASpeedOneSec",
+    "CThreeTTwelveMbppCThreeASpeedOneTPS",
+    "CThreeTTwelveMbppCThreeASpeedThreeAcc",
+    "CThreeTTwelveMbppCThreeASpeedThreeAccHi",
+    "CThreeTTwelveMbppCThreeASpeedThreeAccLo",
+    "CThreeTTwelveMbppCThreeASpeedThreeAlpha",
+    "CThreeTTwelveMbppCThreeASpeedThreeNFE",
+    "CThreeTTwelveMbppCThreeASpeedThreeSec",
+    "CThreeTTwelveMbppCThreeASpeedThreeTPS",
+    "CThreeTTwelveMbppCThreeASpeedTwoAcc",
+    "CThreeTTwelveMbppCThreeASpeedTwoAccHi",
+    "CThreeTTwelveMbppCThreeASpeedTwoAccLo",
+    "CThreeTTwelveMbppCThreeASpeedTwoAlpha",
+    "CThreeTTwelveMbppCThreeASpeedTwoNFE",
+    "CThreeTTwelveMbppCThreeASpeedTwoSec",
+    "CThreeTTwelveMbppCThreeASpeedTwoTPS",
+    "CThreeTTwelveMbppEntropySpeedOneAcc",
+    "CThreeTTwelveMbppEntropySpeedOneAccHi",
+    "CThreeTTwelveMbppEntropySpeedOneAccLo",
+    "CThreeTTwelveMbppEntropySpeedOneNFE",
+    "CThreeTTwelveMbppEntropySpeedOneSec",
+    "CThreeTTwelveMbppEntropySpeedOneTPS",
+    "CThreeTTwelveMbppEntropySpeedThreeAcc",
+    "CThreeTTwelveMbppEntropySpeedThreeAccHi",
+    "CThreeTTwelveMbppEntropySpeedThreeAccLo",
+    "CThreeTTwelveMbppEntropySpeedThreeNFE",
+    "CThreeTTwelveMbppEntropySpeedThreeSec",
+    "CThreeTTwelveMbppEntropySpeedThreeTPS",
+    "CThreeTTwelveMbppEntropySpeedTwoAcc",
+    "CThreeTTwelveMbppEntropySpeedTwoAccHi",
+    "CThreeTTwelveMbppEntropySpeedTwoAccLo",
+    "CThreeTTwelveMbppEntropySpeedTwoNFE",
+    "CThreeTTwelveMbppEntropySpeedTwoSec",
+    "CThreeTTwelveMbppEntropySpeedTwoTPS",
+    "CThreeTTwelveMbppKlassSpeedOneAcc",
+    "CThreeTTwelveMbppKlassSpeedOneAccHi",
+    "CThreeTTwelveMbppKlassSpeedOneAccLo",
+    "CThreeTTwelveMbppKlassSpeedOneNFE",
+    "CThreeTTwelveMbppKlassSpeedOneSec",
+    "CThreeTTwelveMbppKlassSpeedOneTPS",
+    "CThreeTTwelveMbppKlassSpeedThreeAcc",
+    "CThreeTTwelveMbppKlassSpeedThreeAccHi",
+    "CThreeTTwelveMbppKlassSpeedThreeAccLo",
+    "CThreeTTwelveMbppKlassSpeedThreeNFE",
+    "CThreeTTwelveMbppKlassSpeedThreeSec",
+    "CThreeTTwelveMbppKlassSpeedThreeTPS",
+    "CThreeTTwelveMbppKlassSpeedTwoAcc",
+    "CThreeTTwelveMbppKlassSpeedTwoAccHi",
+    "CThreeTTwelveMbppKlassSpeedTwoAccLo",
+    "CThreeTTwelveMbppKlassSpeedTwoNFE",
+    "CThreeTTwelveMbppKlassSpeedTwoSec",
+    "CThreeTTwelveMbppKlassSpeedTwoTPS",
+    "CThreeTTwelveMbppMarginSpeedOneAcc",
+    "CThreeTTwelveMbppMarginSpeedOneAccHi",
+    "CThreeTTwelveMbppMarginSpeedOneAccLo",
+    "CThreeTTwelveMbppMarginSpeedOneNFE",
+    "CThreeTTwelveMbppMarginSpeedOneSec",
+    "CThreeTTwelveMbppMarginSpeedOneTPS",
+    "CThreeTTwelveMbppMarginSpeedThreeAcc",
+    "CThreeTTwelveMbppMarginSpeedThreeAccHi",
+    "CThreeTTwelveMbppMarginSpeedThreeAccLo",
+    "CThreeTTwelveMbppMarginSpeedThreeNFE",
+    "CThreeTTwelveMbppMarginSpeedThreeSec",
+    "CThreeTTwelveMbppMarginSpeedThreeTPS",
+    "CThreeTTwelveMbppMarginSpeedTwoAcc",
+    "CThreeTTwelveMbppMarginSpeedTwoAccHi",
+    "CThreeTTwelveMbppMarginSpeedTwoAccLo",
+    "CThreeTTwelveMbppMarginSpeedTwoNFE",
+    "CThreeTTwelveMbppMarginSpeedTwoSec",
+    "CThreeTTwelveMbppMarginSpeedTwoTPS",
+    "CThreeTTwelveMbppMatchedDiffEntropySpeedOne",
+    "CThreeTTwelveMbppMatchedDiffEntropySpeedOneHi",
+    "CThreeTTwelveMbppMatchedDiffEntropySpeedOneLo",
+    "CThreeTTwelveMbppMatchedDiffEntropySpeedThree",
+    "CThreeTTwelveMbppMatchedDiffEntropySpeedThreeHi",
+    "CThreeTTwelveMbppMatchedDiffEntropySpeedThreeLo",
+    "CThreeTTwelveMbppMatchedDiffEntropySpeedTwo",
+    "CThreeTTwelveMbppMatchedDiffEntropySpeedTwoHi",
+    "CThreeTTwelveMbppMatchedDiffEntropySpeedTwoLo",
+    "CThreeTTwelveMbppMatchedDiffKlassSpeedOne",
+    "CThreeTTwelveMbppMatchedDiffKlassSpeedOneHi",
+    "CThreeTTwelveMbppMatchedDiffKlassSpeedOneLo",
+    "CThreeTTwelveMbppMatchedDiffKlassSpeedThree",
+    "CThreeTTwelveMbppMatchedDiffKlassSpeedThreeHi",
+    "CThreeTTwelveMbppMatchedDiffKlassSpeedThreeLo",
+    "CThreeTTwelveMbppMatchedDiffKlassSpeedTwo",
+    "CThreeTTwelveMbppMatchedDiffKlassSpeedTwoHi",
+    "CThreeTTwelveMbppMatchedDiffKlassSpeedTwoLo",
+    "CThreeTTwelveMbppMatchedDiffMarginSpeedOne",
+    "CThreeTTwelveMbppMatchedDiffMarginSpeedOneHi",
+    "CThreeTTwelveMbppMatchedDiffMarginSpeedOneLo",
+    "CThreeTTwelveMbppMatchedDiffMarginSpeedThree",
+    "CThreeTTwelveMbppMatchedDiffMarginSpeedThreeHi",
+    "CThreeTTwelveMbppMatchedDiffMarginSpeedThreeLo",
+    "CThreeTTwelveMbppMatchedDiffMarginSpeedTwo",
+    "CThreeTTwelveMbppMatchedDiffMarginSpeedTwoHi",
+    "CThreeTTwelveMbppMatchedDiffMarginSpeedTwoLo",
+    "CThreeTTwelveMbppMatchedDiffPcSamplerSpeedOne",
+    "CThreeTTwelveMbppMatchedDiffPcSamplerSpeedOneHi",
+    "CThreeTTwelveMbppMatchedDiffPcSamplerSpeedOneLo",
+    "CThreeTTwelveMbppMatchedDiffPcSamplerSpeedThree",
+    "CThreeTTwelveMbppMatchedDiffPcSamplerSpeedThreeHi",
+    "CThreeTTwelveMbppMatchedDiffPcSamplerSpeedThreeLo",
+    "CThreeTTwelveMbppMatchedDiffPcSamplerSpeedTwo",
+    "CThreeTTwelveMbppMatchedDiffPcSamplerSpeedTwoHi",
+    "CThreeTTwelveMbppMatchedDiffPcSamplerSpeedTwoLo",
+    "CThreeTTwelveMbppMatchedDiffThresholdSpeedOne",
+    "CThreeTTwelveMbppMatchedDiffThresholdSpeedOneHi",
+    "CThreeTTwelveMbppMatchedDiffThresholdSpeedOneLo",
+    "CThreeTTwelveMbppMatchedDiffThresholdSpeedThree",
+    "CThreeTTwelveMbppMatchedDiffThresholdSpeedThreeHi",
+    "CThreeTTwelveMbppMatchedDiffThresholdSpeedThreeLo",
+    "CThreeTTwelveMbppMatchedDiffThresholdSpeedTwo",
+    "CThreeTTwelveMbppMatchedDiffThresholdSpeedTwoHi",
+    "CThreeTTwelveMbppMatchedDiffThresholdSpeedTwoLo",
+    "CThreeTTwelveMbppMatchedDiffTopKSpeedOne",
+    "CThreeTTwelveMbppMatchedDiffTopKSpeedOneHi",
+    "CThreeTTwelveMbppMatchedDiffTopKSpeedOneLo",
+    "CThreeTTwelveMbppMatchedDiffTopKSpeedThree",
+    "CThreeTTwelveMbppMatchedDiffTopKSpeedThreeHi",
+    "CThreeTTwelveMbppMatchedDiffTopKSpeedThreeLo",
+    "CThreeTTwelveMbppMatchedDiffTopKSpeedTwo",
+    "CThreeTTwelveMbppMatchedDiffTopKSpeedTwoHi",
+    "CThreeTTwelveMbppMatchedDiffTopKSpeedTwoLo",
+    "CThreeTTwelveMbppN",
+    "CThreeTTwelveMbppOutsideShare",
+    "CThreeTTwelveMbppPcSamplerSpeedOneAcc",
+    "CThreeTTwelveMbppPcSamplerSpeedOneAccHi",
+    "CThreeTTwelveMbppPcSamplerSpeedOneAccLo",
+    "CThreeTTwelveMbppPcSamplerSpeedOneNFE",
+    "CThreeTTwelveMbppPcSamplerSpeedOneSec",
+    "CThreeTTwelveMbppPcSamplerSpeedOneTPS",
+    "CThreeTTwelveMbppPcSamplerSpeedThreeAcc",
+    "CThreeTTwelveMbppPcSamplerSpeedThreeAccHi",
+    "CThreeTTwelveMbppPcSamplerSpeedThreeAccLo",
+    "CThreeTTwelveMbppPcSamplerSpeedThreeNFE",
+    "CThreeTTwelveMbppPcSamplerSpeedThreeSec",
+    "CThreeTTwelveMbppPcSamplerSpeedThreeTPS",
+    "CThreeTTwelveMbppPcSamplerSpeedTwoAcc",
+    "CThreeTTwelveMbppPcSamplerSpeedTwoAccHi",
+    "CThreeTTwelveMbppPcSamplerSpeedTwoAccLo",
+    "CThreeTTwelveMbppPcSamplerSpeedTwoNFE",
+    "CThreeTTwelveMbppPcSamplerSpeedTwoSec",
+    "CThreeTTwelveMbppPcSamplerSpeedTwoTPS",
+    "CThreeTTwelveMbppThresholdSpeedOneAcc",
+    "CThreeTTwelveMbppThresholdSpeedOneAccHi",
+    "CThreeTTwelveMbppThresholdSpeedOneAccLo",
+    "CThreeTTwelveMbppThresholdSpeedOneNFE",
+    "CThreeTTwelveMbppThresholdSpeedOneSec",
+    "CThreeTTwelveMbppThresholdSpeedOneTPS",
+    "CThreeTTwelveMbppThresholdSpeedThreeAcc",
+    "CThreeTTwelveMbppThresholdSpeedThreeAccHi",
+    "CThreeTTwelveMbppThresholdSpeedThreeAccLo",
+    "CThreeTTwelveMbppThresholdSpeedThreeNFE",
+    "CThreeTTwelveMbppThresholdSpeedThreeSec",
+    "CThreeTTwelveMbppThresholdSpeedThreeTPS",
+    "CThreeTTwelveMbppThresholdSpeedTwoAcc",
+    "CThreeTTwelveMbppThresholdSpeedTwoAccHi",
+    "CThreeTTwelveMbppThresholdSpeedTwoAccLo",
+    "CThreeTTwelveMbppThresholdSpeedTwoNFE",
+    "CThreeTTwelveMbppThresholdSpeedTwoSec",
+    "CThreeTTwelveMbppThresholdSpeedTwoTPS",
+    "CThreeTTwelveMbppTopKSpeedOneAcc",
+    "CThreeTTwelveMbppTopKSpeedOneAccHi",
+    "CThreeTTwelveMbppTopKSpeedOneAccLo",
+    "CThreeTTwelveMbppTopKSpeedOneNFE",
+    "CThreeTTwelveMbppTopKSpeedOneSec",
+    "CThreeTTwelveMbppTopKSpeedOneTPS",
+    "CThreeTTwelveMbppTopKSpeedThreeAcc",
+    "CThreeTTwelveMbppTopKSpeedThreeAccHi",
+    "CThreeTTwelveMbppTopKSpeedThreeAccLo",
+    "CThreeTTwelveMbppTopKSpeedThreeNFE",
+    "CThreeTTwelveMbppTopKSpeedThreeSec",
+    "CThreeTTwelveMbppTopKSpeedThreeTPS",
+    "CThreeTTwelveMbppTopKSpeedTwoAcc",
+    "CThreeTTwelveMbppTopKSpeedTwoAccHi",
+    "CThreeTTwelveMbppTopKSpeedTwoAccLo",
+    "CThreeTTwelveMbppTopKSpeedTwoNFE",
+    "CThreeTTwelveMbppTopKSpeedTwoSec",
+    "CThreeTTwelveMbppTopKSpeedTwoTPS",
+    "CThreeTTwelveSanityN",
+    "CThreeTTwelveSanityThresholdAcc",
+    "CThreeTTwelveSanityThresholdAccHi",
+    "CThreeTTwelveSanityThresholdAccLo",
+    "CThreeTTwelveSanityTopKAcc",
+    "CThreeTTwelveSanityTopKAccHi",
+    "CThreeTTwelveSanityTopKAccLo"
+  ]
+}

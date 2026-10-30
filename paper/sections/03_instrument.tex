@@ -62,15 +62,11 @@ before the length filter). Calibrators, the spline $f$ of Eqs.~\ref{eq:eqtwo}--\
     Dream-7B-Instruct & GSM8K       & \VivaDreamInstructGsmPrecision  & \VivaDreamInstructGsmDocs \\
     Dream-7B-Instruct & MBPP        & \VivaDreamInstructMbppPrecision & \VivaDreamInstructMbppDocs \\
     \hline
-    LLaDA-8B-Base     & time-split  & \VivaLladaBaseTimeSplitPrecision & \VivaLladaBaseTimeSplitDocs \\
-    Dream-7B-Base     & time-split  & \VivaDreamBaseTimeSplitPrecision & \VivaDreamBaseTimeSplitDocs \\
-    Our 110M MDLM     & time-split  & \VivaMdlmTimeSplitPrecision      & \VivaMdlmTimeSplitDocs \\
-    LLaDA-8B-Base     & FineWeb-Edu & 4-bit & \VivaLladaBaseFourBitDocs \\
-    \hline
   \end{tabular}
-  \caption{C1 trace runs: the seven primary arms (top), the time-split set and the
-    4-bit control (bottom). In all, \VivaCOneRowsB{} billion position rows, \VivaCOneGpuH{}
-    GPU-hours.}
+  \caption{C1 trace runs: the seven primary arms. Also run: the time-split set
+    (\VivaLladaBaseTimeSplitDocs{} documents for each base model and the 110M model, same
+    precision) and LLaDA-8B-Base in 4-bit on \VivaLladaBaseFourBitDocs{} FineWeb-Edu documents.
+    In all, \VivaCOneRowsB{}B position rows, \VivaCOneGpuH{} GPU-hours.}
   \label{tab:runs}
 \end{table}
 
@@ -99,8 +95,7 @@ Both are fitted on the fit half. $\hat\pi(\ell)$ is isotonic in $\ell$. $\hat\pi
 logistic in a restricted cubic spline of $\ell$ plus the state's field features (median $\ell$
 of its masked positions, mask rate, $\log|M|$, decoding step) and their products with $\ell$, so
 the slope varies too; an additive form, without these products, is a sensitivity check.
-Averages are taken within a document, every state weighing the same, then across documents;
-positions are weighted by $1/(|M_s|\times\text{states in their document})$ to match. The
+Documents weigh equally (Appendix~\ref{sec:c1-app}). The
 calibrators are fitted on every state but the averages use only states with at
 least \VivaPoolMax{} masked positions, so the estimated field term need not be zero at $m=1$:
 E2 is a contrast.
@@ -129,21 +124,10 @@ which absorb the field term because it lives between states: $\beta_z<0$ without
 ${\approx}0$ with them points to a field effect, $\beta_z\neq0$ with them to shared errors;
 the reading is approximate (\S\ref{sec:validation}), so $\beta_z$ is a diagnostic.
 
-\paragraph{E3, trajectory shift.}
-On the positions of decoder states at each $k$ and of matched uniform states (secondary: the
-uniform grid, reweighted to the decoder's rate mix), mask rate in $[0.05,0.95)$, we fit
-$\Pr(a{=}1)=\sigma(\alpha_b+f(\ell)+\textit{dec}\cdot(g_0+h(\ell)))$, $\alpha_b$ per mask-rate bin (centred on $0.1,\dots,0.9$).
-The endpoint $\E_{\mathrm{dec}}[\pi_{\mathrm{ref}}(\ell,b)-\pi_{\mathrm{dec}}(\ell,b)]$ is positive if
-decoder-state tokens are right less often at equal confidence and mask rate; a sup-$t$ test checks $(g_0,h)$ jointly.
-
-\paragraph{Controls.}
-Each gives E1 and E2 (temperature: E1 only) without and with it, and the paired difference.
-\emph{Position} (absolute position, distance to the nearest unmasked token,
-PC-Sampler's position weight; \citealp{huang2025pcsampler}) and \emph{token type} (of the true
-token: punctuation, stop-word or content) are covariates $x$: $\E_m[\pi(\ell)-\pi(\ell,x)]$
-is removed from $\Delta(m)$ and $x$ enters both field-term calibrators. \emph{Temperature}
-fits $c=\sigma(\ell/T)$ per mask-rate bin on the fit half (a softmax temperature is a sensitivity row). \emph{Precision} compares 4-bit NF4 with fp16 on the 4-bit run's
-\VivaLladaBaseFourBitDocs{} LLaDA-8B-Base documents.
+\paragraph{E3 and controls.}
+E3, a shift in accuracy between decoder and uniform states at equal confidence and mask
+rate, and controls for position, token type, temperature and precision are defined in
+Appendix~\ref{sec:c1-app}.
 
 \subsection{Inference}
 \label{sec:inference}
