@@ -64,9 +64,12 @@ estimator's bias. C2 computes the dependency and estimation errors of committing
 tokens at once exactly on a JSON probe with known joint distribution: dependency dominates
 only for strongly coupled tokens committed several at a time, and on real text a proxy for it
 is near zero. C3 commits every position whose recalibrated confidence is at least $1-\alpha$,
-with no extra forward pass.
-% TODO(results): C3 outcome, same wording as the C3 TODO in 01_intro.tex (ayush: if no gain at
-%   matched speed, 'calibration-preserving, honest null on speed').
+with no extra forward pass. In an exploratory matched-speed comparison on GSM8K it beats
+decoders that commit a fixed number of tokens per step by 5 to 8 percentage points, but not a
+raw confidence threshold: recalibration gives the cutoff a meaning, not extra accuracy.
+% Hand-typed from artifacts/c3/macros_c3.tex: CThreeTTwelveGsmMatchedDiff{Margin,TopK,PcSampler}SpeedTwo
+%   (0.053, 0.059, 0.082: 5 to 8 percentage points, intervals above 0) and ...ThresholdSpeedTwo
+%   (interval holds 0).  Fixed-count decoders: top-k, margin, PC-Sampler.
 \end{abstract}
 
 \input{sections/01_intro}

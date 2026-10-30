@@ -1,0 +1,156 @@
+{
+  "created": "2026-10-25T18:55:24+00:00",
+  "inputs": [
+    {
+      "path": "/home2/parth.sharma/c3-runs/t12/sanity/t12.shard0of4.jsonl",
+      "sha256": "70cc38d501c102c82a2a337b68e36688acbe4e186663345acc378f0bf61ece23",
+      "meta": "/home2/parth.sharma/c3-runs/t12/sanity/t12.shard0of4.meta.json",
+      "run_id": "466cbdc0cb09",
+      "prompt": {
+        "format": "lmeval",
+        "fewshot": 5,
+        "seed": 1234,
+        "until": [
+          "Question:",
+          "</s>",
+          "<|im_end|>"
+        ],
+        "pool_sha256": "hub"
+      },
+      "half": "fit",
+      "model": "llada-8b-instruct",
+      "git_commit": "0b5c8b865b89502c893fd63f20887587bb30d016"
+    },
+    {
+      "path": "/home2/parth.sharma/c3-runs/t12/sanity/t12.shard1of4.jsonl",
+      "sha256": "49f9f583f1f2212bde9b9a179144abe514340945e3f05b8e4698a0d939332899",
+      "meta": "/home2/parth.sharma/c3-runs/t12/sanity/t12.shard1of4.meta.json",
+      "run_id": "5b7648e48bec",
+      "prompt": {
+        "format": "lmeval",
+        "fewshot": 5,
+        "seed": 1234,
+        "until": [
+          "Question:",
+          "</s>",
+          "<|im_end|>"
+        ],
+        "pool_sha256": "hub"
+      },
+      "half": "fit",
+      "model": "llada-8b-instruct",
+      "git_commit": "0b5c8b865b89502c893fd63f20887587bb30d016"
+    },
+    {
+      "path": "/home2/parth.sharma/c3-runs/t12/sanity/t12.shard2of4.jsonl",
+      "sha256": "e491c7117233069a57a333f9e3eaef3a00fca1141831f338c3e0fd41db056ecb",
+      "meta": "/home2/parth.sharma/c3-runs/t12/sanity/t12.shard2of4.meta.json",
+      "run_id": "f2f5ae2370fb",
+      "prompt": {
+        "format": "lmeval",
+        "fewshot": 5,
+        "seed": 1234,
+        "until": [
+          "Question:",
+          "</s>",
+          "<|im_end|>"
+        ],
+        "pool_sha256": "hub"
+      },
+      "half": "fit",
+      "model": "llada-8b-instruct",
+      "git_commit": "0b5c8b865b89502c893fd63f20887587bb30d016"
+    },
+    {
+      "path": "/home2/parth.sharma/c3-runs/t12/sanity/t12.shard3of4.jsonl",
+      "sha256": "520f303b93edfc7e0307b7c0532a51dd90fc4df660aa20720e22306f919acc2b",
+      "meta": "/home2/parth.sharma/c3-runs/t12/sanity/t12.shard3of4.meta.json",
+      "run_id": "916c1e25076e",
+      "prompt": {
+        "format": "lmeval",
+        "fewshot": 5,
+        "seed": 1234,
+        "until": [
+          "Question:",
+          "</s>",
+          "<|im_end|>"
+        ],
+        "pool_sha256": "hub"
+      },
+      "half": "fit",
+      "model": "llada-8b-instruct",
+      "git_commit": "0b5c8b865b89502c893fd63f20887587bb30d016"
+    }
+  ],
+  "task_jsonl": {
+    "gsm8k": {
+      "path": "/home2/parth.sharma/c3-runs/corpus/tasks/gsm8k_test.jsonl",
+      "sha256": "b183e93afd8839f1a591c3dc68c063f99d7c2cc816ae5416b5cc6c47efaa807e"
+    }
+  },
+  "timeout_s": 10.0,
+  "rows": [
+    {
+      "run": "13998ad135b0",
+      "model": "llada-8b-instruct",
+      "precision": "fp16",
+      "half": "fit",
+      "prompt_format": "lmeval",
+      "label": "ada-sanity",
+      "task": "gsm8k",
+      "config": "threshold[tau=0.9]",
+      "n": 200,
+      "n_correct": 169,
+      "accuracy": 0.845,
+      "ci95": [
+        0.7883930935816389,
+        0.8886036310167765
+      ],
+      "n_unstopped": 0,
+      "n_driver_error": 0,
+      "n_timeout": 0,
+      "n_syntax_error": 0,
+      "n_no_answer": 0,
+      "n_correct_lmeval_strict": 87,
+      "accuracy_lmeval_strict": 0.435,
+      "n_correct_lmeval_flexible": 167,
+      "accuracy_lmeval_flexible": 0.835
+    },
+    {
+      "run": "13998ad135b0",
+      "model": "llada-8b-instruct",
+      "precision": "fp16",
+      "half": "fit",
+      "prompt_format": "lmeval",
+      "label": "ada-sanity",
+      "task": "gsm8k",
+      "config": "topk_conf[k=1]",
+      "n": 200,
+      "n_correct": 167,
+      "accuracy": 0.835,
+      "ci95": [
+        0.777342184108311,
+        0.8800314470234838
+      ],
+      "n_unstopped": 0,
+      "n_driver_error": 0,
+      "n_timeout": 0,
+      "n_syntax_error": 0,
+      "n_no_answer": 0,
+      "n_correct_lmeval_strict": 80,
+      "accuracy_lmeval_strict": 0.4,
+      "n_correct_lmeval_flexible": 164,
+      "accuracy_lmeval_flexible": 0.82
+    }
+  ],
+  "warnings": [],
+  "provenance": {
+    "git_commit": "0b5c8b865b89502c893fd63f20887587bb30d016",
+    "git_dirty": false,
+    "python": "3.14.7",
+    "platform": "Linux-5.14.0-687.57.1.el9_8.x86_64-x86_64-with-glibc2.34",
+    "host": "ada-gw1.iiit.ac.in",
+    "slurm_job_id": null,
+    "packages": {}
+  }
+}
