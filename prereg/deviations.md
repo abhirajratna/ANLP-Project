@@ -189,6 +189,17 @@ Items 7-14 are reserved for the T13 ablation entries (branch `t13-ablations`).
       task). Records: HF `ANLP-project/c3-traces-8b`, `t12/report-a9abd7b/mbpp/` (commit
       6c6113c); GSM8K, complete, at `t12/report-a9abd7b/gsm8k/` (commit 87aa056). If MBPP
       is later resumed on the same instance to 250, this bullet is withdrawn.
+    - MBPP completion run (recorded 30 Oct 2026, after N = 121 was scored and before any
+      record of the remaining 129 problems is scored): after a wallet top-up, the remaining
+      MBPP problems are run on a second 1x H200 instance (same GPU type, commit a9abd7b, grid
+      and 3 shards, 3 workers; a Jarvis VM, 555317, because no H200 container was free),
+      resuming from the saved records (HF 6c6113c). Because this mixes two machines within a
+      task, the §6 MBPP result stays N = 121 (the MBPP reduced-N bullet stands). The completed
+      N = 250 run, if it finishes, is reported only as a sensitivity check (code archive):
+      same metrics, same matching rule, and the same paired bootstrap, whatever it shows. It
+      does not replace or change any number in the paper. Its outputs come from a separately
+      tagged run of `c3_paper_outputs` (mixed-machine guard overridden only there) and never
+      feed `artifacts/c3/macros_c3.tex`.
     - KLASS implementation differences (found 29 Oct, AFTER the GSM8K report half was
       scored; no code, knob or reported number changes): a review against the reference
       implementation (shkim0116/KLASS, `llada_klass.py`) found (A) our KL stability history
