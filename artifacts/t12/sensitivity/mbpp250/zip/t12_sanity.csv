@@ -1,0 +1,3 @@
+task,decoder,config,n,acc,acc_lo,acc_hi,published,acc_minus_published
+gsm8k,TopK,topk_conf[k=1],200,0.835,0.777,0.880,0.793,0.042
+gsm8k,Threshold,threshold[tau=0.9],200,0.845,0.788,0.889,0.792,0.053

@@ -1420,3 +1420,252 @@ def test_the_marker_changes_nothing_else(built):
                for sl, st in v["speeds"].items() if "off_operating_point" in st}
     assert flagged == {(t, "Klass", sl) for t in P.TASKS for sl in ("2", "3") if sl in
                        s["tasks"][t]["decoders"]["Klass"]["speeds"]}
+
+
+# ------------------------------------------------------------------ sensitivity mode (deviation 17, PR #74)
+SENS = ("--allow-mixed-machines", "--tag", "mbpp-250")
+
+
+def sens_dir(paths, tag="mbpp-250"):
+    return paths["out"] / "t12" / "sensitivity" / tag
+
+
+def sens_summary(paths, tag="mbpp-250"):
+    return json.loads((sens_dir(paths, tag) / "llada-8b-instruct_fp16_t12-summary.json").read_text())
+
+
+def split_machines(paths, task="gsm8k", new_revision=None):
+    """Shard 1 of ``task`` as if a second machine ran it: its own directory, host, gpu and label (and
+    optionally a different run hash, whose verdicts are rewritten to carry it)."""
+    src = paths["records"] / f"sweep-{task}"
+    dst = paths["records"] / f"h200-b-{task}"
+    dst.mkdir()
+    for f in list(src.glob("t12.shard1of2*")):
+        f.rename(dst / f.name)
+    mp = dst / "t12.shard1of2.meta.json"
+    m = json.loads(mp.read_text())
+    m["provenance"] = {**m["provenance"], "host": "jarvis-2", "gpu": "H200"}
+    m["label"] = "jl-report-b"
+    if new_revision:
+        m["model_revision"] = new_revision
+        key = P.run_key(m)
+        vs = [json.loads(l) for l in paths["verdicts"].read_text().splitlines()]
+        write_jsonl(paths["verdicts"], [dict(v, run=key) if v["task"] == task and v["doc_id"] % 2 == 1 else v
+                                        for v in vs])
+    mp.write_text(json.dumps(m))
+
+
+def test_the_sensitivity_flag_needs_a_tag(tmp_path):
+    paths = make_fixture(tmp_path)
+    with pytest.raises(SystemExit) as e:
+        run_main(paths, "--allow-mixed-machines")
+    assert e.value.code != 0
+    assert not (paths["out"] / "t12").exists() and not (paths["out"] / "c3").exists()     # nothing written
+
+
+@pytest.mark.parametrize("tag", ["Bad_Tag", "a/b", "..", "has space", ""])
+def test_a_malformed_tag_is_refused(tmp_path, tag):
+    paths = make_fixture(tmp_path)
+    with pytest.raises(SystemExit) as e:
+        run_main(paths, "--allow-mixed-machines", "--tag", tag)
+    assert e.value.code != 0
+    assert not paths["out"].exists()
+
+
+def test_a_tag_without_the_flag_is_refused(tmp_path):
+    paths = make_fixture(tmp_path)
+    with pytest.raises(SystemExit) as e:
+        run_main(paths, "--tag", "x")
+    assert e.value.code != 0
+    assert not paths["out"].exists()
+
+
+@pytest.mark.parametrize("new_revision", [None, "rev-b"])
+def test_mixed_machines_are_refused_without_the_flag_and_pass_with_it(tmp_path, new_revision):
+    paths = make_fixture(tmp_path)
+    split_machines(paths, "gsm8k", new_revision)
+    with pytest.raises(SystemExit) as e:
+        run_main(paths)
+    msg = str(e.value)
+    assert "gsm8k" in msg and "host" in msg and "deviations.md 17" in msg
+    assert not paths["out"].exists()                                  # the refusal wrote nothing
+    assert run_main(paths, *SENS) == 0
+    s = sens_summary(paths)
+    mixed = {d["field"]: d["values"] for d in s["mixed_machines"]["gsm8k"]}
+    assert mixed["host"] == ["jarvis-1", "jarvis-2"] and mixed["gpu"] == ["H200", "RTX PRO 6000"]
+    assert mixed["label"] == ["jl-report", "jl-report-b"] and "output directory" in mixed
+    assert ("run hash" in mixed) == bool(new_revision)
+    assert "mbpp" not in s["mixed_machines"]                          # only the task that is mixed
+    assert any("MIXED MACHINES" in w and "gsm8k" in w for w in s["warnings"])
+
+
+def rounded(o, nd=9):
+    """Floats to ``nd`` places: a sum over shards in another order differs in the last digit."""
+    if isinstance(o, float):
+        return round(o, nd)
+    if isinstance(o, dict):
+        return {k: rounded(v, nd) for k, v in o.items()}
+    if isinstance(o, list):
+        return [rounded(v, nd) for v in o]
+    return o
+
+
+@pytest.mark.parametrize("new_revision", [None, "rev-b"])
+def test_merged_records_give_the_same_numbers_as_one_machine(tmp_path, built, new_revision):
+    paths = make_fixture(tmp_path)
+    split_machines(paths, "gsm8k", new_revision)
+    assert run_main(paths, *SENS) == 0
+    got = sens_summary(paths)["tasks"]["gsm8k"]
+    want = built["summary"]["tasks"]["gsm8k"]
+    assert got["n"] == want["n"] == N_DOCS
+    assert rounded(got["decoders"]) == rounded(want["decoders"]) and rounded(got["matched"]) == rounded(want["matched"])
+
+
+def test_every_sensitivity_output_is_under_the_sensitivity_dir(tmp_path):
+    paths = make_fixture(tmp_path)
+    split_machines(paths)
+    assert run_main(paths, *SENS) == 0
+    sd = sens_dir(paths)
+    written = {p.relative_to(paths["out"]).as_posix() for p in paths["out"].rglob("*") if p.is_file()}
+    assert written and all(w.startswith("t12/sensitivity/mbpp-250/") for w in written), sorted(written)
+    inside = {p.relative_to(sd).as_posix() for p in sd.rglob("*") if p.is_file()}
+    assert {"macros_c3_sensitivity.tex", "t12_matched_speed.tex", "t12_sanity_cost.tex",
+            "llada-8b-instruct_fp16_t12-summary.json", "figures/t12_matched_speed.pdf",
+            "figures/t12_matched_speed.png", "zip/t12_sanity.csv", "zip/t12_sanity_cost.csv",
+            "zip/t12_sanity_cost.md", "zip/t12_speed1_speed3.csv", "zip/t12_speed1_speed3.md"} <= inside
+    for name in ("macros_c3.tex",):
+        assert not (paths["out"] / "c3" / name).exists()
+    assert not (paths["out"] / "t12" / "t12_matched_speed.tex").exists()
+    s = sens_summary(paths)
+    assert all(Path(o).resolve().is_relative_to(sd.resolve()) for o in s["outputs"])
+    assert len(s["outputs"]) == 5
+
+
+def test_sensitivity_macros_use_the_sens_prefix_and_say_not_for_the_paper(tmp_path, built):
+    paths = make_fixture(tmp_path)
+    split_machines(paths)
+    assert run_main(paths, *SENS) == 0
+    text = (sens_dir(paths) / "macros_c3_sensitivity.tex").read_text(encoding="utf-8")
+    head = [l for l in text.splitlines() if l.startswith("%")][:3]
+    assert "SENSITIVITY" in head[0] and "deviation 17" in head[0] and "PR #74" in head[0] \
+        and "NOT FOR THE PAPER" in head[0]
+    macros = parse_macros(text)
+    assert macros and all(n.startswith(("CThreeTTwelveSens", "CThreeTElevenSens")) for n in macros), \
+        [n for n in macros if not n.startswith(("CThreeTTwelveSens", "CThreeTElevenSens"))]
+    assert not [n for n in macros if n.startswith("CThreeTTwelve") and not n.startswith("CThreeTTwelveSens")]
+    assert not set(macros) & set(built["macros"])                      # an \input could never redefine the paper's
+    # one-to-one with the paper's macros, renamed
+    renamed = {n.replace("CThreeTTwelve", "CThreeTTwelveSens", 1).replace("CThreeTEleven", "CThreeTElevenSens", 1): v
+               for n, v in built["macros"].items()}
+    assert macros == renamed
+    assert text.count("\\newcommand") == len(macros)
+    for tex in ("t12_matched_speed.tex", "t12_sanity_cost.tex"):
+        assert "NOT FOR THE PAPER" in (sens_dir(paths) / tex).read_text(encoding="utf-8").splitlines()[0]
+
+
+def test_an_out_dir_that_would_hit_the_normal_outputs_is_refused(tmp_path):
+    paths = make_fixture(tmp_path)
+    split_machines(paths)
+    # the sensitivity dir is a link to the normal t12 directory: its outputs would overwrite the paper's
+    normal_t12 = paths["out"] / "t12"
+    normal_t12.mkdir(parents=True)
+    (paths["out"] / "t12" / "sensitivity").mkdir()
+    try:
+        (normal_t12 / "sensitivity" / "mbpp-250").symlink_to(normal_t12, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlinks not available")
+    with pytest.raises(SystemExit) as e:
+        run_main(paths, *SENS)
+    assert "refusing a sensitivity run" in str(e.value) and "paper outputs" in str(e.value)
+    assert not list(normal_t12.glob("t12_matched_speed.tex")) and not (paths["out"] / "c3").exists()
+
+
+def test_the_output_path_guard(tmp_path):
+    sd = tmp_path / "out" / "t12" / "sensitivity" / "x"
+    ok = P.planned_outputs(sd, sd, "macros_c3_sensitivity.tex")
+    normal = P.planned_outputs(tmp_path / "out" / "c3", tmp_path / "out" / "t12")
+    P.check_sensitivity_outputs(ok, sd, normal)                          # all inside: fine
+    for bad in (tmp_path / "out" / "c3" / "macros_c3.tex",               # the paper's macros
+                tmp_path / "out" / "t12" / "t12_matched_speed.tex",     # the paper's table
+                sd.parent / "elsewhere.tex",                             # a sibling of the sensitivity dir
+                sd / ".." / ".." / "t12_sanity_cost.tex"):               # ..-escape
+        with pytest.raises(SystemExit) as e:
+            P.check_sensitivity_outputs(ok + [bad], sd, normal)
+        assert "refusing a sensitivity run" in str(e.value)
+    # the paper's files in the repo, whatever the out-dir
+    with pytest.raises(SystemExit):
+        P.check_sensitivity_outputs([ROOT / "artifacts" / "c3" / "macros_c3.tex"], sd,
+                                    P.planned_outputs(ROOT / "artifacts" / "c3", ROOT / "artifacts" / "t12"))
+
+
+def test_the_summary_carries_the_sensitivity_flags_and_the_normal_one_does_not(tmp_path, built):
+    paths = make_fixture(tmp_path)
+    split_machines(paths)
+    assert run_main(paths, *SENS) == 0
+    s = sens_summary(paths)
+    assert s["sensitivity"] is True and s["sensitivity_tag"] == "mbpp-250" and s["allow_mixed_machines"] is True
+    assert isinstance(s["mixed_machines"], dict) and s["mixed_machines"]["gsm8k"]
+    assert "NOT FOR THE PAPER" in s["sensitivity_note"]
+    for k in ("sensitivity", "sensitivity_tag", "mixed_machines", "allow_mixed_machines"):
+        assert k not in built["summary"]
+    assert all(n.startswith(("CThreeTTwelveSens", "CThreeTElevenSens")) for n in s["macro_names"])
+
+
+def test_a_sensitivity_run_of_one_machine_has_no_mixed_machines(tmp_path):
+    paths = make_fixture(tmp_path)
+    assert run_main(paths, *SENS) == 0
+    s = sens_summary(paths)
+    assert s["sensitivity"] is True and s["mixed_machines"] == {}
+
+
+def test_the_other_guards_stay_on_in_sensitivity_mode(tmp_path):
+    # fit-half doc ids
+    paths = make_fixture(tmp_path / "fit")
+    edit_rows(paths["records"] / "sweep-gsm8k" / "t12.shard0of2.jsonl", lambda rows: rows + [dict(rows[0], doc_id=JUNK_DOC)])
+    with pytest.raises(SystemExit) as e:
+        run_main(paths, *SENS)
+    assert "fit" in str(e.value)
+    # precision
+    paths = make_fixture(tmp_path / "prec")
+    split_machines(paths)
+    mp = paths["records"] / "h200-b-gsm8k" / "t12.shard1of2.meta.json"
+    mp.write_text(json.dumps(json.loads(mp.read_text()) | {"precision": "bf16"}))
+    with pytest.raises(SystemExit) as e:
+        run_main(paths, *SENS)
+    assert "fp16" in str(e.value)
+    # chat prompt
+    paths = make_fixture(tmp_path / "chat")
+    split_machines(paths)
+    mp = paths["records"] / "h200-b-gsm8k" / "t12.shard1of2.meta.json"
+    mp.write_text(json.dumps(json.loads(mp.read_text()) | {"prompt": {"format": "lmeval", "fewshot": 5}}))
+    with pytest.raises(SystemExit) as e:
+        run_main(paths, *SENS)
+    assert "chat" in str(e.value)
+    # the same (config, doc) in two shard files, one per machine: never merged
+    paths = make_fixture(tmp_path / "dup")
+    src = paths["records"] / "sweep-gsm8k"
+    dst = paths["records"] / "h200-b-gsm8k"
+    dst.mkdir()
+    for f in src.glob("t12.shard0of2*"):
+        (dst / f.name).write_text(f.read_text())
+    mp = dst / "t12.shard0of2.meta.json"
+    m = json.loads(mp.read_text())
+    m["provenance"] = {**m["provenance"], "host": "jarvis-2"}
+    mp.write_text(json.dumps(m))
+    with pytest.raises(SystemExit) as e:
+        run_main(paths, *SENS)
+    assert "two shard files" in str(e.value)
+
+
+def test_the_completeness_filter_stays_on_in_sensitivity_mode(tmp_path):
+    paths = make_fixture(tmp_path)
+    split_machines(paths)
+    for f in paths["records"].rglob("t12.shard*.jsonl"):               # both machines' shards of gsm8k stop at doc 19
+        if f.parent.name.endswith("gsm8k"):
+            edit_rows(f, lambda rows: [r for r in rows if r["doc_id"] < 20])
+    with pytest.raises(SystemExit) as e:                                  # a short run is still refused ...
+        run_main(paths, *SENS)
+    assert "partial" in str(e.value)
+    assert run_main(paths, *SENS, "--allow-partial") == 0                 # ... and filtered to complete problems
+    t = sens_summary(paths)["tasks"]["gsm8k"]
+    assert t["n"] == t["n_complete"] == 20 and t["n_planned"] == N_DOCS and t["partial"] is True
