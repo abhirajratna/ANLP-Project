@@ -1,6 +1,6 @@
 ---
 member: parth
-updated: 2026-10-28T11:29:49Z
+updated: 2026-10-30T09:01:00Z
 branch: parth/t12-driver
 ---
-Ada: LladaBase v1.1 41132 on T8 (last step), precision 41133 next; PR #62 c3_paper_outputs (review pls); PR #61 realised-risk (stacked); T12 report running on Jarvis (ayush)
+C3/T12 done on main 861cd16 (outputs, §6, deviations 17 notes). Open: RTX PRO 551207 rescue (parth's call), public HF repo (parth).
