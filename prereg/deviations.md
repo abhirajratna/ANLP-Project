@@ -189,6 +189,20 @@ Items 7-14 are reserved for the T13 ablation entries (branch `t13-ablations`).
       task). Records: HF `ANLP-project/c3-traces-8b`, `t12/report-a9abd7b/mbpp/` (commit
       6c6113c); GSM8K, complete, at `t12/report-a9abd7b/gsm8k/` (commit 87aa056). If MBPP
       is later resumed on the same instance to 250, this bullet is withdrawn.
+    - KLASS implementation differences (found 29 Oct, AFTER the GSM8K report half was
+      scored; no code, knob or reported number changes): a review against the reference
+      implementation (shkim0116/KLASS, `llada_klass.py`) found (A) our KL stability history
+      covers only the active 32-token block (`c3/decode/loop.py`), so each block starts with
+      two forced one-token steps, where the reference keeps history over all positions and
+      forces about one; this lowers KLASS's speed at a given threshold, so the fixed knob
+      path needed a lower confidence threshold (0.29 and 0.2 on GSM8K, 0.23 and 0.2 on MBPP, at
+      the two faster settings; the published range is about 0.6) to reach them; (B) the KL is computed as KL(previous ||
+      current), the reverse of the reference; (C) blocks are 32 tokens, not the paper's 64
+      (a setting shared by every decoder). At its published thresholds our KLASS runs at
+      about 2.6 tokens per step, as in the paper. KLASS's two faster rows are reported as
+      computed and marked as off its published operating point; no comparison in the text
+      rests on them. Any corrected-KLASS run would be exploratory and never replace these
+      rows.
 
 18. **Step order: E1/E2 banked before Eq. 2/3 (scheduling only).** The Eq. 2/3 FE bootstrap
     did not fit the 96 h Ada job cap on the 120M-row arms (measured: LladaBase job 39851,
