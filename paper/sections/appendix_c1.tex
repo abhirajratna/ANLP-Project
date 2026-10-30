@@ -43,8 +43,8 @@ robust.
 On the report half of the \VivaLladaBaseFourBitDocs{} documents of the 4-bit run (calibrators
 from their fit half), 4-bit NF4 in place of fp16 changes LLaDA-8B-Base's E1 by
 \CresCI{TEightLladaBasePrecisionPrecisionEOneUniDifference} in uniform states and by
-\CresCI{TEightLladaBasePrecisionPrecisionEOneDecTopkConfKFourDifference} in decoder states
-(Table~\ref{tab:c1-t8}, bottom): both intervals hold 0, but in decoder states the difference is as large as that cell's E1
+\CresCI{TEightLladaBasePrecisionPrecisionEOneDecTopkConfKFourDifference} in decoder states:
+both intervals hold 0, but in decoder states the difference is as large as that cell's E1
 in Table~\ref{tab:c1-main}, and fp16 E1 on these documents is itself
 \Cres{TEightLladaBasePrecisionPrecisionEOneDecTopkConfKFourWithout}, so a precision effect
 there is not ruled out. Decoder-state E2 changes by
@@ -67,17 +67,12 @@ with lost context, so this describes and does not test E1.
 
 \begin{table*}[t]
   \centering
-  \IfFileExists{tables/c1/c1_t8.tex}{\Cfit{\input{tables/c1/c1_t8.tex}}}{\Cpending{C1 controls table}}
-  \par\medskip
-  \IfFileExists{tables/c1/c1_t8_precision.tex}%
-    {\Cfit{\input{tables/c1/c1_t8_precision.tex}}}{\Cpending{C1 precision table}}
-  \caption{Controls. Top: E1 and E2 without a control and with position, token type, or
-    a temperature per mask-rate bin (log-odds; it rescales confidence only, so its E2
-    column is empty). In both parts E2 uses logistic calibrators for both
-    $\hat\pi(\ell)$ and $\hat\pi(\ell,s)$, so that with and without differ only by the control;
-    its ``without'' value differs from the isotonic E2 of Table~\ref{tab:c1-main}.
-    $^\ddagger$the paired with-minus-without difference has a 95\% interval
-    excluding 0. Bottom: LLaDA-8B-Base on the documents of the 4-bit run, fp16 against
-    4-bit NF4, with the difference and its interval. Exploratory.}
+  \IfFileExists{tables/c1/c1_t8.tex}{\Cfit{\renewcommand{\addlinespace}[1][]{}\input{tables/c1/c1_t8.tex}}}{\Cpending{C1 controls table}}
+  \caption{Controls: E1 and E2 without a control and with position, token type, or a
+    temperature per mask-rate bin (log-odds; it rescales confidence only, so has no E2). E2 here
+    uses logistic calibrators for both $\hat\pi(\ell)$ and $\hat\pi(\ell,s)$, so with and without
+    differ only by the control; its ``without'' value differs from the isotonic E2 of
+    Table~\ref{tab:c1-main}. $^\ddagger$the paired with-minus-without difference has a 95\%
+    interval excluding 0. Exploratory.}
   \label{tab:c1-t8}
 \end{table*}
