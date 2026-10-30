@@ -1,6 +1,6 @@
 ---
 member: ojas
-updated: 2026-10-30T09:55:25Z
+updated: 2026-10-30T10:57:02Z
 branch: main
 ---
-ojas: paper final on main (12 pp); viva deck with C3 live merged (#72, main ca2aee4). Nothing open from ojas.
+ojas: final main b91db7b (paper 12 pp + deck + T11/T12 code). Nothing open from ojas.
