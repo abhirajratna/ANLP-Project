@@ -430,7 +430,9 @@ def test_the_bootstrap_refuses_a_job_nothing_would_pause(tmp_path):
     # one that does: started with `job <bootstrap pid> <phase>`, then the bootstrap goes on (and
     # fails here, there is no payload)
     stub(tmp_path, "wd.sh", 'echo "$@" > "$T12_WD_LOG.args"; echo "armed: nonce $T12_WD_NONCE; x" >> "$T12_WD_LOG"; sleep 20')
-    r = run_bash(f'bash "{posix(boot)}"', {**w.env(), **env}, cwd=tmp_path, stubs=w.stubs, timeout=60)
+    # (it arms at once: a generous wait only matters on a starved CI runner)
+    r = run_bash(f'bash "{posix(boot)}"', {**w.env(), **env, "T12_ARM_WAIT": "25"}, cwd=tmp_path, stubs=w.stubs,
+                 timeout=90)
     assert "watchdog armed for pid" in r.stdout
     args = (tmp_path / "wd.log.args").read_text().split()
     assert args[0] == "job" and args[1].isdigit() and args[2] == "smoke"
@@ -557,8 +559,11 @@ def test_a_launch_that_dies_with_the_api_down_prints_the_banner(tmp_path):
 
 
 def test_a_fetch_keeps_the_watchdogs_hold_fresh_while_it_downloads(tmp_path):
-    w = _running_world(tmp_path, download_sleep=3, phase="smoke")
-    r = w.sh("fetch smoke", T12_HOLD_EVERY_S=1, T12_HOLD_CHECK_S=1)
+    # event, not a fixed sleep: the fake's download does not end before 3 hold touches were
+    # logged (it gives up after 120 s), so a hold loop that touches only once makes the fetch
+    # fail here, and a slow runner only makes the test take longer
+    w = _running_world(tmp_path, download_wait_touches=3, phase="smoke")
+    r = w.sh("fetch smoke", timeout=240, T12_HOLD_EVERY_S=1, T12_HOLD_CHECK_S=1)
     assert r.returncode == 0, (r.stdout, r.stderr)
     touches = [c for c in w.calls() if c.startswith("exec 901") and "t12-hold" in c]
     assert len(touches) >= 3
@@ -582,21 +587,32 @@ def test_the_gpu_count_is_checked_before_anything_is_created(tmp_path):
 # the hold loop, a resume or a pause that fails, unknown statuses
 # --------------------------------------------------------------------------- #
 
+def _hold_touches(w):
+    return [c for c in w.calls() if "t12-hold" in c]
+
+
 def test_the_hold_loop_stops_when_its_parent_dies_and_at_its_lifetime_cap(tmp_path):
     w = World(tmp_path)
     env = w.env(T12_HOLD_EVERY_S=1, T12_HOLD_CHECK_S=1)
     t0 = __import__("time").time()
-    r = run_bash('source scripts/jl_t12.sh\nsleep 3 & P=$!\nhold_loop 901 $P\necho STOPPED', env, cwd=tmp_path,
-                 stubs=w.stubs, timeout=60)
-    assert "STOPPED" in r.stdout and __import__("time").time() - t0 < 25          # the parent lived 3 s
-    touches = [c for c in w.calls() if "t12-hold" in c]
-    assert 2 <= len(touches) <= 6
+    # the parent dies once the loop has touched twice (an event, with a 60 s safety net), not after
+    # a fixed 3 s: then the loop must notice and stop by itself
+    log = posix(w.state / "calls.log")
+    parent = (f'( for _ in $(seq 1 600); do [ "$(grep -c t12-hold "{log}" 2>/dev/null)" -ge 2 ] && break; '
+              'sleep 0.1; done ) & P=$!')
+    r = run_bash(f'source scripts/jl_t12.sh\n{parent}\nhold_loop 901 $P\necho STOPPED', env, cwd=tmp_path,
+                 stubs=w.stubs, timeout=90)
+    assert "STOPPED" in r.stdout and __import__("time").time() - t0 < 85
+    touches = _hold_touches(w)
+    # 2 seen, plus at most one in the poll window and one already in flight when the parent died;
+    # none after it (more would mean the loop ran on without its parent)
+    assert 2 <= len(touches) <= 4
     n = len(touches)
     # the parent outlives the cap: the loop stops by itself after T12_HOLD_MAX_S
     r = run_bash('source scripts/jl_t12.sh\nsleep 60 & P=$!\nhold_loop 901 $P\necho CAPPED\nkill $P',
-                 {**env, "T12_HOLD_MAX_S": "3"}, cwd=tmp_path, stubs=w.stubs, timeout=60)
+                 {**env, "T12_HOLD_MAX_S": "3"}, cwd=tmp_path, stubs=w.stubs, timeout=90)
     assert "CAPPED" in r.stdout
-    assert len([c for c in w.calls() if "t12-hold" in c]) - n <= 5
+    assert len(_hold_touches(w)) - n <= 5
 
 
 def test_a_resume_that_worked_but_timed_out_is_found_running_and_guarded_first(tmp_path):
