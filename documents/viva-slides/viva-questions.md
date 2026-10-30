@@ -1,6 +1,6 @@
 # Viva question bank: C3 (Committed Confidence Calibration)
 
-Answers use only the paper (main after #58-#71: v1.1 results, all seven arms, regen of 28 Oct) plus the exploratory C3 check (parth, 28 Oct). "?" marks a number not yet in the paper; do not quote it. C3 numbers: T11 from the frozen calibrators; T12 GSM8K from parth's scoring of all 659 report-half problems x 21 settings (29 Oct); MBPP ran on 121 of 250 problems before the GPU credit ran out. Section numbers: §4.1 main contrasts, §4.2 beta_z, §4.3 decoder states (E3, native gap), §4.4 controls and robustness, Appendix A.2 the C1 details and Table 4. Sign: Delta = confidence minus accuracy, positive = overconfident.
+Answers use only the paper (main at 861cd16, all PRs through #71 merged: v1.1 results, all seven arms, regen of 28 Oct; C3 in §6 and Appendix C3, exploratory). "?" marks a number not yet in the paper; do not quote it. C3 numbers: T11 from the frozen calibrators; T12 GSM8K from parth's scoring of all 659 report-half problems x 21 settings (29 Oct); MBPP ran on 121 of 250 problems before the GPU credit ran out. Section numbers: §4.1 main contrasts, §4.2 beta_z, §4.3 decoder states (E3, native gap), §4.4 controls and robustness, Appendix A.2 the C1 details and Table 4. Sign: Delta = confidence minus accuracy, positive = overconfident.
 
 ## A. Motivation and framing
 
@@ -110,7 +110,7 @@ Yes, as an annotated git tag rather than an OSF upload. prereg-v1 (6b4c25e) froz
 - 15: Eq. 2/3 intervals (beta_z, gamma) use 1,000 resamples, and the two knot runs 200, so the knot panels are descriptive only. Every E1/E2 interval stays at 10,000.
 - 16: an exploratory notebook computed report-half 110M statistics before the tag. Only one person saw them; they were not shared, and the read is disclosed. Four choices were settled afterwards, none depending on data: the two resample counts; the claim rule (with every floor 0 it is the Holm rejection alone, so it cannot change a result); and the family size of 14, where a missing member counts as p = 1, which can only make the test more conservative.
 - 18: E1/E2 were run first with --skip-regression, which gives identical E1/E2 numbers.
-- 17 (T12, not a pre-registered endpoint): protocol fixed 26 Oct before any report-half decoding; amended 28 Oct to run each task on 1x H200 (same code, grids, fp16) with 3 workers per GPU; MBPP stopped at 121 of 250 problems for budget, recorded before scoring (#65); KLASS implementation differences found after GSM8K scoring (#66). Drop the clause of any PR not merged by the viva.
+- 17 (T12, not a pre-registered endpoint): protocol fixed 26 Oct before any report-half decoding; amended 28 Oct to run each task on 1x H200 (same code, grids, fp16) with 3 workers per GPU; MBPP stopped at 121 of 250 problems for budget, recorded before scoring (#65); KLASS implementation differences found after GSM8K scoring (#66). Both are merged.
 (The paper says none of this, by choice; answer only if asked. Source: abhiraj's check, 28 Oct.)
 
 ## H. Why care
