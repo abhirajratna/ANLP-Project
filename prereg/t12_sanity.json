@@ -1,0 +1,2 @@
+{"what": "T12 sanity check (plan to the final, Parth 4): Fast-dLLM's LLaDA-8B-Instruct GSM8K settings (NVlabs/Fast-dLLM v1/llada/eval.md: lm-eval gsm8k num_fewshot=5, gen_length 256, block_length 32). Baseline: steps=256, i.e. one token per step, low-confidence order = top-k k=1; published 79.3. Parallel: threshold 0.9; published 79.2 (Fast-dLLM Table 1, '+Parallel').",
+ "configs": [{"policy": "topk_conf", "k": 1}, {"policy": "threshold", "tau": 0.9}]}

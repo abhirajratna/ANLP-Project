@@ -1,0 +1,522 @@
+{
+ "what": "T12 report-half sweep grid for gsm8k (plan v2 T12; plan to the final, Parth 5): LLaDA-8B-Instruct fp16, zero-shot chat prompt, gen_length 256, block_length 32, greedy. 7 decoders x 3 speeds, target tokens/step 2 / 4 / 8 (speed 1 / 2 / 3). Knobs interpolated from FIT-half calibration runs of this task only (scripts/pick_knobs.py).",
+ "status": "calibrated",
+ "task": "gsm8k",
+ "half_used_for_calibration": "fit",
+ "speed_metric": "tokens/step of a configuration = gen_length * N / sum(n_forward) over its N problems (aggregate, not the mean of per-problem ratios)",
+ "targets": {
+  "speed1": 2.0,
+  "speed2": 4.0,
+  "speed3": 8.0
+ },
+ "matching": "for each C3a setting and task, each baseline at its setting whose tokens/step (speed_metric, same task) is nearest, used only if within +-10% of C3a's, else '---'; difference = paired accuracy difference (C3a - baseline) on the shared doc_ids, 95% percentile CI from 2,000 bootstrap resamples of problems.",
+ "calibration": {
+  "n_problems": 32,
+  "run_id": "657750b370c7",
+  "configs_sha256": "7d58d9a0e6330e1f767aee706377583d6763087cfe1f731684cd167e20083337",
+  "precision": "fp16",
+  "settings": {
+   "c3a[alpha=0.02]": {
+    "n": 32,
+    "tokens_per_step": 1.9560649474689589,
+    "mean_of_ratios": 2.010109169513381,
+    "ms_per_forward": 28.59322973833897
+   },
+   "c3a[alpha=0.05]": {
+    "n": 32,
+    "tokens_per_step": 2.345933562428408,
+    "mean_of_ratios": 2.4196590660872843,
+    "ms_per_forward": 28.645255948541706
+   },
+   "c3a[alpha=0.12]": {
+    "n": 32,
+    "tokens_per_step": 2.895722870272181,
+    "mean_of_ratios": 3.0118622073170136,
+    "ms_per_forward": 28.687082539181187
+   },
+   "c3a[alpha=0.25]": {
+    "n": 32,
+    "tokens_per_step": 3.8031569173630455,
+    "mean_of_ratios": 3.9905248914677163,
+    "ms_per_forward": 28.73460006335458
+   },
+   "c3a[alpha=0.4]": {
+    "n": 32,
+    "tokens_per_step": 5.204574332909784,
+    "mean_of_ratios": 5.475830094782399,
+    "ms_per_forward": 28.821019329168518
+   },
+   "c3a[alpha=0.6]": {
+    "n": 32,
+    "tokens_per_step": 7.557195571955719,
+    "mean_of_ratios": 8.413055375360344,
+    "ms_per_forward": 28.851793580636986
+   },
+   "c3a[alpha=0.75]": {
+    "n": 32,
+    "tokens_per_step": 9.62632197414806,
+    "mean_of_ratios": 10.566102396554623,
+    "ms_per_forward": 28.70092816983561
+   },
+   "c3a[alpha=0.9]": {
+    "n": 32,
+    "tokens_per_step": 23.07605633802817,
+    "mean_of_ratios": 23.67645687645688,
+    "ms_per_forward": 28.587121904735834
+   },
+   "entropy_bounded[gamma=0.005]": {
+    "n": 32,
+    "tokens_per_step": 1.654281098546042,
+    "mean_of_ratios": 1.7106453884280104,
+    "ms_per_forward": 26.82098557364635
+   },
+   "entropy_bounded[gamma=0.02]": {
+    "n": 32,
+    "tokens_per_step": 2.058808745916059,
+    "mean_of_ratios": 2.1628193344612687,
+    "ms_per_forward": 26.89693996237582
+   },
+   "entropy_bounded[gamma=0.1]": {
+    "n": 32,
+    "tokens_per_step": 2.6876640419947506,
+    "mean_of_ratios": 2.8703830084622055,
+    "ms_per_forward": 26.93738928125814
+   },
+   "entropy_bounded[gamma=0.3]": {
+    "n": 32,
+    "tokens_per_step": 3.506849315068493,
+    "mean_of_ratios": 3.7508065244559603,
+    "ms_per_forward": 26.95379206154827
+   },
+   "entropy_bounded[gamma=1.0]": {
+    "n": 32,
+    "tokens_per_step": 4.785046728971962,
+    "mean_of_ratios": 5.137612540023005,
+    "ms_per_forward": 26.88074180699676
+   },
+   "entropy_bounded[gamma=10.0]": {
+    "n": 32,
+    "tokens_per_step": 9.298524404086265,
+    "mean_of_ratios": 9.947421132262074,
+    "ms_per_forward": 26.976424264092586
+   },
+   "entropy_bounded[gamma=100.0]": {
+    "n": 32,
+    "tokens_per_step": 27.21594684385382,
+    "mean_of_ratios": 27.371717171717172,
+    "ms_per_forward": 26.765103999562438
+   },
+   "entropy_bounded[gamma=3.0]": {
+    "n": 32,
+    "tokens_per_step": 6.445318646734854,
+    "mean_of_ratios": 6.954768445051138,
+    "ms_per_forward": 26.867398688823197
+   },
+   "entropy_bounded[gamma=30.0]": {
+    "n": 32,
+    "tokens_per_step": 14.099827882960414,
+    "mean_of_ratios": 14.464722400137664,
+    "ms_per_forward": 26.79213807756232
+   },
+   "klass[eps_kl=0.001,fallback=1,history=2,tau=0.95]": {
+    "n": 32,
+    "tokens_per_step": 1.531787584143605,
+    "mean_of_ratios": 1.5628915936171326,
+    "ms_per_forward": 27.973778768760905
+   },
+   "klass[eps_kl=0.001,fallback=1,history=2,tau=0.9]": {
+    "n": 32,
+    "tokens_per_step": 1.5705521472392638,
+    "mean_of_ratios": 1.60217124160019,
+    "ms_per_forward": 27.982998109405482
+   },
+   "klass[eps_kl=0.01,fallback=1,history=2,tau=0.8]": {
+    "n": 32,
+    "tokens_per_step": 2.0098135426889105,
+    "mean_of_ratios": 2.063595950148369,
+    "ms_per_forward": 28.00843955481003
+   },
+   "klass[eps_kl=0.03,fallback=1,history=2,tau=0.6]": {
+    "n": 32,
+    "tokens_per_step": 2.575290789060044,
+    "mean_of_ratios": 2.6805009141499054,
+    "ms_per_forward": 28.004827814604717
+   },
+   "klass[eps_kl=0.1,fallback=1,history=2,tau=0.4]": {
+    "n": 32,
+    "tokens_per_step": 3.351882160392799,
+    "mean_of_ratios": 3.493605635498678,
+    "ms_per_forward": 27.9213905589024
+   },
+   "klass[eps_kl=0.3,fallback=1,history=2,tau=0.2]": {
+    "n": 32,
+    "tokens_per_step": 4.771112405358183,
+    "mean_of_ratios": 5.031965382104346,
+    "ms_per_forward": 27.85595839688024
+   },
+   "threshold[tau=0.1]": {
+    "n": 32,
+    "tokens_per_step": 26.77124183006536,
+    "mean_of_ratios": 27.026262626262625,
+    "ms_per_forward": 26.74499130351286
+   },
+   "threshold[tau=0.2]": {
+    "n": 32,
+    "tokens_per_step": 13.212903225806452,
+    "mean_of_ratios": 14.511829689780962,
+    "ms_per_forward": 26.791040241838463
+   },
+   "threshold[tau=0.4]": {
+    "n": 32,
+    "tokens_per_step": 9.246049661399548,
+    "mean_of_ratios": 10.016492195609908,
+    "ms_per_forward": 26.902609654023202
+   },
+   "threshold[tau=0.6]": {
+    "n": 32,
+    "tokens_per_step": 6.792703150912106,
+    "mean_of_ratios": 7.458247249191318,
+    "ms_per_forward": 27.01682738409954
+   },
+   "threshold[tau=0.8]": {
+    "n": 32,
+    "tokens_per_step": 4.579094466182225,
+    "mean_of_ratios": 4.877289746770868,
+    "ms_per_forward": 26.952658609688584
+   },
+   "threshold[tau=0.95]": {
+    "n": 32,
+    "tokens_per_step": 2.964893231994209,
+    "mean_of_ratios": 3.1195135098653264,
+    "ms_per_forward": 26.9059958674588
+   },
+   "threshold[tau=0.99]": {
+    "n": 32,
+    "tokens_per_step": 2.1769864469837894,
+    "mean_of_ratios": 2.258974783942311,
+    "ms_per_forward": 26.890775062581373
+   },
+   "threshold[tau=0.9]": {
+    "n": 32,
+    "tokens_per_step": 3.5295131408875484,
+    "mean_of_ratios": 3.7322281753523088,
+    "ms_per_forward": 26.920476228557288
+   },
+   "topk_conf[k=4]": {
+    "n": 32,
+    "tokens_per_step": 4.0,
+    "mean_of_ratios": 4.0,
+    "ms_per_forward": 26.87750224777119
+   }
+  }
+ },
+ "picks": [
+  {
+   "policy": "threshold",
+   "speed": 1,
+   "target_tokens_per_step": 2.0,
+   "config_key": "threshold[tau=0.99]",
+   "knobs": {
+    "tau": 0.99
+   },
+   "unmatched_at_target": false,
+   "achieved_tokens_per_step": 2.1769864469837894,
+   "bracket": null
+  },
+  {
+   "policy": "threshold",
+   "speed": 2,
+   "target_tokens_per_step": 4.0,
+   "config_key": "threshold[tau=0.859]",
+   "knobs": {
+    "tau": 0.859
+   },
+   "unmatched_at_target": false,
+   "achieved_tokens_per_step": null,
+   "bracket": [
+    3.5295131408875484,
+    4.579094466182225
+   ]
+  },
+  {
+   "policy": "threshold",
+   "speed": 3,
+   "target_tokens_per_step": 8.0,
+   "config_key": "threshold[tau=0.494]",
+   "knobs": {
+    "tau": 0.494
+   },
+   "unmatched_at_target": false,
+   "achieved_tokens_per_step": null,
+   "bracket": [
+    6.792703150912106,
+    9.246049661399548
+   ]
+  },
+  {
+   "policy": "entropy_bounded",
+   "speed": 1,
+   "target_tokens_per_step": 2.0,
+   "config_key": "entropy_bounded[gamma=0.017]",
+   "knobs": {
+    "gamma": 0.017
+   },
+   "unmatched_at_target": false,
+   "achieved_tokens_per_step": null,
+   "bracket": [
+    1.654281098546042,
+    2.058808745916059
+   ]
+  },
+  {
+   "policy": "entropy_bounded",
+   "speed": 2,
+   "target_tokens_per_step": 4.0,
+   "config_key": "entropy_bounded[gamma=0.5]",
+   "knobs": {
+    "gamma": 0.5
+   },
+   "unmatched_at_target": false,
+   "achieved_tokens_per_step": null,
+   "bracket": [
+    3.506849315068493,
+    4.785046728971962
+   ]
+  },
+  {
+   "policy": "entropy_bounded",
+   "speed": 3,
+   "target_tokens_per_step": 8.0,
+   "config_key": "entropy_bounded[gamma=6.1]",
+   "knobs": {
+    "gamma": 6.1
+   },
+   "unmatched_at_target": false,
+   "achieved_tokens_per_step": null,
+   "bracket": [
+    6.445318646734854,
+    9.298524404086265
+   ]
+  },
+  {
+   "policy": "klass",
+   "speed": 1,
+   "target_tokens_per_step": 2.0,
+   "config_key": "klass[eps_kl=0.0096,fallback=1,history=2,tau=0.803]",
+   "knobs": {
+    "tau": 0.803,
+    "eps_kl": 0.0096,
+    "history": 2,
+    "fallback": 1
+   },
+   "unmatched_at_target": false,
+   "achieved_tokens_per_step": null,
+   "bracket": [
+    1.5705521472392638,
+    2.0098135426889105
+   ]
+  },
+  {
+   "policy": "klass",
+   "speed": 2,
+   "target_tokens_per_step": 4.0,
+   "config_key": "klass[eps_kl=0.17,fallback=1,history=2,tau=0.29]",
+   "knobs": {
+    "tau": 0.29,
+    "eps_kl": 0.17,
+    "history": 2,
+    "fallback": 1
+   },
+   "unmatched_at_target": false,
+   "achieved_tokens_per_step": null,
+   "bracket": [
+    3.351882160392799,
+    4.771112405358183
+   ]
+  },
+  {
+   "policy": "klass",
+   "speed": 3,
+   "target_tokens_per_step": 8.0,
+   "config_key": "klass[eps_kl=0.3,fallback=1,history=2,tau=0.2]",
+   "knobs": {
+    "tau": 0.2,
+    "eps_kl": 0.3,
+    "history": 2,
+    "fallback": 1
+   },
+   "unmatched_at_target": true,
+   "achieved_tokens_per_step": 4.771112405358183,
+   "bracket": null
+  },
+  {
+   "policy": "c3a",
+   "speed": 1,
+   "target_tokens_per_step": 2.0,
+   "config_key": "c3a[alpha=0.022]",
+   "knobs": {
+    "alpha": 0.022
+   },
+   "unmatched_at_target": false,
+   "achieved_tokens_per_step": null,
+   "bracket": [
+    1.9560649474689589,
+    2.345933562428408
+   ]
+  },
+  {
+   "policy": "c3a",
+   "speed": 2,
+   "target_tokens_per_step": 4.0,
+   "config_key": "c3a[alpha=0.271]",
+   "knobs": {
+    "alpha": 0.271
+   },
+   "unmatched_at_target": false,
+   "achieved_tokens_per_step": null,
+   "bracket": [
+    3.8031569173630455,
+    5.204574332909784
+   ]
+  },
+  {
+   "policy": "c3a",
+   "speed": 3,
+   "target_tokens_per_step": 8.0,
+   "config_key": "c3a[alpha=0.638]",
+   "knobs": {
+    "alpha": 0.638
+   },
+   "unmatched_at_target": false,
+   "achieved_tokens_per_step": null,
+   "bracket": [
+    7.557195571955719,
+    9.62632197414806
+   ]
+  }
+ ],
+ "speed_of_config": {
+  "topk_conf[k=2]": 1,
+  "topk_conf[k=4]": 2,
+  "topk_conf[k=8]": 3,
+  "margin[k=2]": 1,
+  "margin[k=4]": 2,
+  "margin[k=8]": 3,
+  "pc_sampler[alpha=10.0,k=2,lam=0.25]": 1,
+  "pc_sampler[alpha=10.0,k=4,lam=0.25]": 2,
+  "pc_sampler[alpha=10.0,k=8,lam=0.25]": 3,
+  "threshold[tau=0.99]": 1,
+  "threshold[tau=0.859]": 2,
+  "threshold[tau=0.494]": 3,
+  "entropy_bounded[gamma=0.017]": 1,
+  "entropy_bounded[gamma=0.5]": 2,
+  "entropy_bounded[gamma=6.1]": 3,
+  "klass[eps_kl=0.0096,fallback=1,history=2,tau=0.803]": 1,
+  "klass[eps_kl=0.17,fallback=1,history=2,tau=0.29]": 2,
+  "klass[eps_kl=0.3,fallback=1,history=2,tau=0.2]": 3,
+  "c3a[alpha=0.022]": 1,
+  "c3a[alpha=0.271]": 2,
+  "c3a[alpha=0.638]": 3
+ },
+ "configs": [
+  {
+   "policy": "topk_conf",
+   "k": 2
+  },
+  {
+   "policy": "topk_conf",
+   "k": 4
+  },
+  {
+   "policy": "topk_conf",
+   "k": 8
+  },
+  {
+   "policy": "margin",
+   "k": 2
+  },
+  {
+   "policy": "margin",
+   "k": 4
+  },
+  {
+   "policy": "margin",
+   "k": 8
+  },
+  {
+   "policy": "pc_sampler",
+   "k": 2,
+   "lam": 0.25,
+   "alpha": 10.0
+  },
+  {
+   "policy": "pc_sampler",
+   "k": 4,
+   "lam": 0.25,
+   "alpha": 10.0
+  },
+  {
+   "policy": "pc_sampler",
+   "k": 8,
+   "lam": 0.25,
+   "alpha": 10.0
+  },
+  {
+   "policy": "threshold",
+   "tau": 0.99
+  },
+  {
+   "policy": "threshold",
+   "tau": 0.859
+  },
+  {
+   "policy": "threshold",
+   "tau": 0.494
+  },
+  {
+   "policy": "entropy_bounded",
+   "gamma": 0.017
+  },
+  {
+   "policy": "entropy_bounded",
+   "gamma": 0.5
+  },
+  {
+   "policy": "entropy_bounded",
+   "gamma": 6.1
+  },
+  {
+   "policy": "klass",
+   "tau": 0.803,
+   "eps_kl": 0.0096,
+   "history": 2,
+   "fallback": 1
+  },
+  {
+   "policy": "klass",
+   "tau": 0.29,
+   "eps_kl": 0.17,
+   "history": 2,
+   "fallback": 1
+  },
+  {
+   "policy": "klass",
+   "tau": 0.2,
+   "eps_kl": 0.3,
+   "history": 2,
+   "fallback": 1
+  },
+  {
+   "policy": "c3a",
+   "alpha": 0.022
+  },
+  {
+   "policy": "c3a",
+   "alpha": 0.271
+  },
+  {
+   "policy": "c3a",
+   "alpha": 0.638
+  }
+ ]
+}
