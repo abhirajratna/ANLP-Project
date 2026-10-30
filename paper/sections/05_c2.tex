@@ -38,9 +38,9 @@ is known exactly. We fine-tune our 110M MDLM (\S\ref{sec:instrument}) on 200k in
 evaluate \CTwoProbeNInstances{} (\CTwoProbeNInstancesPerRho{} per
 $\rho\in\{0,.25,.5,.75,1\}$); the main model is the fine-tune that never saw the marker masked
 (Appendix~\ref{sec:c2-app}). Decoding starts with every value masked; each step picks
-$k\in\{1,2,4,8\}$ slots, the most confident or at random, computes (A)
-and (B) for them ($p_{\theta,i}$ is the model's probability of each allowed value; mass
-off the list counts against (B)), and fills them with the true values. Terms are summed over
+$k\in\{1,2,4,8\}$ slots, the most confident or at random, scores (A)
+and (B) ($p_{\theta,i}$ is the model's probability of each allowed value; mass
+off the list counts against (B)), and fills them with true values. Terms are summed over
 steps and divided by the number of slots; bootstrap intervals use \CTwoProbeNBoot{} instance
 resamples.
 
@@ -120,6 +120,6 @@ positions. $\Delta$ cannot be told from zero at $k=1$ and is small but positive 
 \CTwoTTenDeltaKEight{} [\CTwoTTenDeltaKEightLo, \CTwoTTenDeltaKEightHi] and, for LLaDA,
 \CTwoTTenLladaDeltaKEight{} [\CTwoTTenLladaDeltaKEightLo, \CTwoTTenLladaDeltaKEightHi].
 
-So at 2--8 tokens per step the models act on almost no learned dependency between the
-positions they commit together. The proxy sees only dependence the model has learned, so this
-does not show that (A) is small; real text gives a direction, not a split in nats.
+So at 2--8 tokens per step the models act on almost no learned dependency between
+jointly committed positions. The proxy sees only learned dependence, so this does not show
+that (A) is small; real text gives a direction, not a split in nats.
