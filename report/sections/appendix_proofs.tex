@@ -1,0 +1,42 @@
+% =====================================================================================
+% Appendix: proofs of Propositions 1-2 (Sec. 2).  Owner: abhiraj.  FALLBACK draft by ojas
+% (ojas/paper-23), from the mid report's App. B and the viva deck's backup slide.
+% A \subsection, to sit under the skeleton's appendix \section (sections/appendix.tex).
+% Uses \E, \1 from 02_setup.tex.  Label defined: sec:app-proofs.
+% =====================================================================================
+
+\subsection{Proofs of Propositions~\ref{prop:select} and~\ref{prop:split}}
+\label{sec:app-proofs}
+
+Notation is as in \S\ref{sec:setup}, with $\ell_{-i}=(\ell_j)_{j\in M\setminus\{i\}}$,
+tie-break randomness $U$, and $W_i$ the event that $i\in P$ wins; $\pi(\ell_i,s)$ may depend on
+$i$ (suppressed).
+
+\paragraph{Proposition~\ref{prop:select}.}
+Let $Z=(\ell_i,s)$ and $Y=(\ell_{-i},P,U)$. Given $s$, $(P,U)$ is independent of
+$(\ell_j,a_j)_{j\in M}$ and $(\ell_i,a_i)$ of $\ell_{-i}$, so the law of
+$(\ell_i,a_i,\ell_{-i},P,U)$ given $s$ factorises as
+$p(P,U\mid s)\,p(\ell_i,a_i\mid s)\,p(\ell_{-i}\mid s)$, i.e.\ $(\ell_i,a_i)\perp Y\mid s$.
+By weak union $a_i\perp Y\mid Z$, so $\E[a_i\mid Y,Z]=\pi(\ell_i,s)$ a.s. As $W_i$ is a function
+of $(Y,Z)$, conditioning on $(Y,Z)$ gives, for every bounded measurable $h$,
+\begin{equation}
+  \E[a_i\,h(Z)\,\1_{W_i}] = \E[\pi(\ell_i,s)\,h(Z)\,\1_{W_i}],
+  \label{eq:app-display}
+\end{equation}
+which is the defining property of $\E[a_i\mid Z,W_i]=\pi(\ell_i,s)$ a.s.\ on $W_i$.\hfill$\square$
+
+\paragraph{Proposition~\ref{prop:split}.}
+Let $\E_m$ weight states by any function of $s$, let $(\ell,a)$ be the winner's pair, and take
+$\pi(\ell)$ as the calibration curve of the $m=1$ population under the same weights. Exactly one
+$W_i$ holds per pool, so $a=\sum_{i\in M}a_i\1_{W_i}$ and
+$\pi(\ell,s)=\sum_{i\in M}\pi(\ell_i,s)\1_{W_i}$. Summing \eqref{eq:app-display} with
+$h\equiv1$ over $i$ under the law of $\E_m$ (it holds given each $s$, so for any state
+weights) gives $\E_m[a]=\E_m[\pi(\ell,s)]$. Hence
+$\Delta(m)=\E_m[\sigma(\ell)-\pi(\ell,s)]$, and adding and subtracting $\pi(\ell)$ gives
+\eqref{eq:gapsplit}. At $m=1$, $\E_1[\pi(\ell)]=\E_1[a]$ by the tower property, $\pi$ being the
+calibration curve of this very population, and $\E_1[\pi(\ell,s)]=\E_1[a]$ as just shown, so
+the field term is zero. \hfill$\square$
+
+The estimator inherits this last step only if $\hat\pi$ is fitted on the population the averages
+use. Ours are fitted on all states of an arm with pool weights (\S\ref{sec:estimands}), while the
+averages keep states with at least 32 masked positions, so E2 is reported as a contrast.

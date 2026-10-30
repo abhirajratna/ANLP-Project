@@ -1,0 +1,94 @@
+% =====================================================================================
+% Sec. 2  Setup and theory.  Owner: abhiraj.  FALLBACK draft by ojas (branch ojas/paper-23):
+% if abhiraj's own draft arrives, his wins; this one is written to be dropped in or merged.
+%
+% Sources: plan v2 Sec. 1-2 (documents/C3_Detailed_Plan_v2.pdf), the mid report Sec. 3 and
+% App. B (documents/DuckDuckDuckGoose-Mid.pdf), c3/endpoints/e1.py and e2.py (what is computed).
+% No result numbers.  Needs amsmath and amssymb (\mathbb); defines \E, \1, \xobs and a plain
+% \newtheorem{proposition} if none exists (no amsthm, no booktabs needed).
+% Citation keys: paper/sec23.bib (new) plus nie2025llada, benhamu2025entropy (refs.bib).
+%
+% Labels defined here: sec:setup, eq:decomp (the KL split Sec. 5 relies on), eq:gap,
+% prop:select, prop:split, eq:gapsplit.  Used from elsewhere: sec:instrument (Sec. 3),
+% sec:app-proofs (appendix_proofs.tex), sec:c2 (Sec. 5).
+% =====================================================================================
+
+\providecommand{\E}{\mathbb{E}}
+\providecommand{\1}{\mathbf{1}}
+\providecommand{\xobs}{x_{\mathrm{obs}}}
+\ifdefined\proposition\else\newtheorem{proposition}{Proposition}\fi
+
+\section{Setup and theory}
+\label{sec:setup}
+
+\paragraph{Masked diffusion decoding.}
+A masked diffusion LM \citep{austin2021d3pm,sahoo2024mdlm,nie2025llada,ye2025dream} writes by
+unmasking: in a \emph{state} $s$ with masked set $M$, one forward pass gives at each $i\in M$ a
+distribution $p_{\theta,i}$ given the observed tokens $\xobs$, with top-1 token $v_i$,
+\emph{confidence} $c_i=p_{\theta,i}(v_i)$ and log-odds $\ell_i=\log\frac{c_i}{1-c_i}$. The
+decoder \emph{commits} positions for good: the $k$ most confident per step
+\citep{chang2022maskgit} or all above a cutoff \citep{wu2025fastdllm}. Committing $S\subseteq M$ in one step draws its tokens from the product
+of their marginals; with $p^*$ the true joint of $x_S$ given $\xobs$ and $p^*_i$ its marginals,
+\begin{equation}
+  \begin{split}
+  \mathrm{KL}\bigl(p^* \,\|\, {\textstyle\prod_{i\in S}} p_{\theta,i}\bigr)
+  = {} & \underbrace{\mathrm{TC}(x_S \mid \xobs)}_{\text{(A) dependency}} \\
+  & + \underbrace{\sum_{i\in S}\mathrm{KL}(p^*_i \,\|\, p_{\theta,i})}_{\text{(B) estimation}} ,
+  \end{split}
+  \label{eq:decomp}
+\end{equation}
+where $\mathrm{TC}(x_S\mid\xobs)=\sum_{i\in S}H(p^*_i)-H(p^*_S)$ is the total correlation, zero
+iff they are conditionally independent. (A) is what no product of marginals can
+represent, (B) the marginals' error \citep[cf.][]{benhamu2025entropy}.
+
+\paragraph{The committed-token gap.}
+Under teacher forcing (\S\ref{sec:instrument}) correctness $a_i=\1\{v_i=x_{0,i}\}$ against the
+true document $x_0$ is observed. A commit is a selection, so we model a field of $m$ candidates
+as a random pool $P\subseteq M$, won by $i=\arg\max_{j\in P}\ell_j$ (ties broken at random).
+With $\E_m$ the average over states, pools of size $m$ and winners, the
+\emph{committed-token gap} is
+\begin{equation}
+  \Delta(m) = \E_m\,[\,c - a\,],
+  \label{eq:gap}
+\end{equation}
+confidence minus accuracy, so positive means overconfident. $\Delta(1)$ is the ordinary signed calibration error of a masked
+position; larger $m$ stands for a larger field, as at early steps and in long outputs, and random pools
+vary $m$ with the state held fixed.
+
+\paragraph{The winner's curse.}
+If the winner's curse \citep{efron2011tweedie,andrews2024winners} acts on decoding, $\Delta(m)$ grows with $m$. Let $\pi(\ell)=\Pr(a=1\mid\ell)$ be the calibration curve over all masked positions (the
+$m=1$ population) and $\pi(\ell,s)=\Pr(a=1\mid\ell,s)$ its context-aware version.
+
+\begin{proposition}[Winning adds nothing]
+\label{prop:select}
+Fix $s$. Suppose that, given $s$, each pair $(\ell_i,a_i)$ is independent of the other
+positions' scores $(\ell_j)_{j\neq i}$, and that the pool and the tie-breaks are drawn
+independently of all $(\ell_j,a_j)_{j\in M}$. Then the winner $i$ of $P$ satisfies
+\[
+  \Pr\bigl(a_i{=}1 \bigm| \ell_i,\, s,\, i=\arg\max\nolimits_{j\in P}\ell_j\bigr)=\pi(\ell_i,s).
+\]
+\end{proposition}
+
+Winning depends only on the other scores, which say nothing about $a_i$, so selection does not
+bias a correct posterior \citep{dawid1994selection,efron2011tweedie}; it acts
+only through context:
+
+\begin{proposition}[Exact split of the gap]
+\label{prop:split}
+Under the conditions of Proposition~\ref{prop:select},
+\begin{equation}
+  \begin{split}
+  \Delta(m) = {} & \underbrace{\E_m[\sigma(\ell)-\pi(\ell)]}_{\text{own miscalibration}} \\
+            & + \underbrace{\E_m[\pi(\ell)-\pi(\ell,s)]}_{\text{field term}} ,
+  \end{split}
+  \label{eq:gapsplit}
+\end{equation}
+and the field term is exactly zero at $m=1$.
+\end{proposition}
+
+Proofs are in Appendix~\ref{sec:app-proofs}. Own miscalibration, reweighted towards where
+winners sit, can make $\Delta(m)$ grow with $m$ with no winner's curse; the \emph{field term},
+nonzero only if accuracy at fixed confidence depends on context (it requires a nonzero
+grouping loss; \citealp{kull2015decomp,perezlebel2023grouping}), is the winner's curse in a
+testable form. If positions of a state share errors, Proposition~\ref{prop:select} fails and
+\eqref{eq:gapsplit} gains a third term, $\E_m[\pi(\ell,s)-a]$ (\S\ref{sec:instrument}).
