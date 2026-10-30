@@ -61,7 +61,8 @@
   \caption{Decoders at matched speed: speed 2 (target 4 tokens per step), C3a at
     $\alpha=\Cres{CThreeTTwelveGsmAlphaPrimary}$ (GSM8K) and $\Cres{CThreeTTwelveMbppAlphaPrimary}$
     (MBPP). Wilson intervals for accuracy, paired bootstrap for C3a $-$ decoder (positive favours
-    C3a). $^\dagger$Off its published operating point (Appendix~\ref{sec:c3-app}).}
+    C3a). $^\dagger$Off its published operating point, so C3a $-$ KLASS is not quoted
+    (Appendix~\ref{sec:c3-app}).}
   \label{tab:c3-speed}
 \end{table*}
 
@@ -82,7 +83,7 @@ forward pass.
 \paragraph{The calibrator.}
 One calibrator per task is fitted on teacher-forced decoder states ($k\in\{2,4,8\}$) of the
 fit-half LLaDA-8B-Instruct traces (\Cres{CThreeTElevenGsmFitDocs} GSM8K and
-\Cres{CThreeTElevenMbppFitDocs} MBPP documents) and frozen. On held-out report-half decoder states (teacher-forced) its ECE falls to \Cres{CThreeTElevenGsmReportECECal} from
+\Cres{CThreeTElevenMbppFitDocs} MBPP documents) and frozen. On held-out report-half states its ECE falls to \Cres{CThreeTElevenGsmReportECECal} from
 raw $\sigma(\ell)$'s \Cres{CThreeTElevenGsmReportECERaw} on GSM8K and \Cres{CThreeTElevenMbppReportECECal} from
 \Cres{CThreeTElevenMbppReportECERaw} on MBPP. It is then applied to free generation, which starts
 from 256 masks; its fit states lie inside a reference answer. Of C3a's steps, \Cres{CThreeTTwelveGsmOutsideShare} (GSM8K) and
