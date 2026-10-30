@@ -9,7 +9,7 @@ MBPP N=121. Nothing here is `\input` by the paper: the macros carry the prefix `
 - Scores: Ada job 48981, `score_t12.py` at `a9abd7b`; `runs/t12/report-a9abd7b/mbpp-250-sensitivity-scored/` (report json sha256 `3d818a10...`, verdicts sha256 `61cc155c...`).
 - GSM8K, grids, calibrators, sanity file and manifests are the paper's; the GSM8K macros here equal `macros_c3.tex` (N=659).
 - Command: `python scripts/c3_paper_outputs.py --allow-mixed-machines --tag mbpp250 --records runs/t12/report-a9abd7b/gsm8k runs/t12/report-a9abd7b/mbpp-250-sensitivity --verdicts <gsm8k-scored>/*.verdicts.jsonl <mbpp-250-sensitivity-scored>/*.verdicts.jsonl --scores <both report.json> --grids prereg --calibrators artifacts/c3 --sanity artifacts/t12/llada-8b-instruct_fp16_gsm8k-sanity.json --out-dir artifacts`.
-- MBPP: N=250, 0 problems dropped, no shard missing. The summary's `mixed_machines` is `{}`: the three shard metas agree on host, gpu, label, num_shards and run hash, so the mixed-machine guard had nothing to waive.
+- MBPP: N=250, 0 problems dropped, no shard missing. The summary's `mixed_machines` is `{}` because a resumed shard keeps the meta written on its first host (H200 instance 552094); the second instance (H200 VM 555317, the last 129 problems) is recorded only in deviation 17 (#74) and the HF commit title, so the guard could not see it, rather than being satisfied by it.
 
 ## Checks that the two machines agree (ayush, bus 9608 and ef0b)
 - Byte prefix: each shard's first 868 / 821 / 862 records are byte-identical to the N=121 run (HF `6c6113c`).
