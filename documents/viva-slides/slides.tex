@@ -926,9 +926,12 @@
   +0.059, margin +0.053, PC-Sampler +0.082 (all three intervals above 0). So C3a is indistinguishable from the raw
   threshold rule and beats the fixed-count decoders, as the raw threshold does; calibration gives alpha
   a meaning, not extra accuracy. At 8 tokens per step the raw threshold is ahead (0.674 against 0.610). KLASS's two faster
-  rows are off its published operating point (tau lowered to 0.29 and 0.2, KL history kept per
-  32-token block), so no comparison rests on them. Settings: chat prompt, greedy, one seed, fp16,
-  one H200. MBPP: 121 of 250 problems ran before the GPU credit ran out (deviation 17 amendment, PR \#65).
+  rows are off its published operating point (tau lowered to 0.2-0.29, reaching 3.9-4.9 tokens per
+  step; KL history kept per 32-token block), so no comparison rests on them. Settings: chat prompt, greedy, one seed, fp16,
+  one H200. MBPP (121 of 250 problems; the credit ran out, deviation 17 amendment, PR \#65): C3a at 3.61
+  tokens per step, pass@1 0.355; minus threshold 0.000 [-0.033, 0.033], minus entropy-bounded 0.000
+  [-0.058, 0.058]. Top-k, margin and PC-Sampler ran at 4.00, 10.9 percent faster than C3a, outside the
+  +-10 percent matching rule, so they are not compared there.
   Sanity check and cost: backup.}
 \end{frame}
 
