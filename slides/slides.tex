@@ -86,14 +86,8 @@
 }
 \makeatother
 
-\setbeamertemplate{footline}{%
-  \hbox to \paperwidth{%
-    \hspace{8mm}{\color{muted}\fontsize{6.5}{8}\selectfont
-      C3 · Committed Confidence Calibration · Final viva}%
-    \hfill
-    {\color{muted}\fontsize{6.5}{8}\selectfont\insertframenumber\,/\,\inserttotalframenumber}%
-    \hspace{8mm}}%
-  \vspace{3.5mm}}
+% no footer text or page numbers; the empty box keeps a 3mm bottom margin
+\setbeamertemplate{footline}{\vbox to 3mm{}}
 
 \setbeamertemplate{itemize item}{\raisebox{0.18ex}{\color{accent}\rule{0.48em}{0.48em}}}
 \setbeamertemplate{itemize subitem}{\color{muted}–}
@@ -205,10 +199,10 @@
 % C3 outputs: scripts/c3_paper_outputs.py writes artifacts/c3/macros_c3.tex and, under
 % artifacts/t12/, the tables and figures/. The T12 sentences wait for its matched-speed macros.
 \newcommand{\CThreeAnswer}{\ifcsname CThreeTTwelveGsmMatchedDiffThresholdSpeedTwo\endcsname
-  no gain over the raw threshold rule
+  no more accurate than the raw threshold rule
   (\CresCI{CThreeTTwelveGsmMatchedDiffThresholdSpeedTwo}); ahead of top-$k$, margin and PC-Sampler
   by \Cres{CThreeTTwelveGsmMatchedDiffMarginSpeedTwo}--\Cres{CThreeTTwelveGsmMatchedDiffPcSamplerSpeedTwo},
-  a lead the raw threshold shares (GSM8K, about 4 tokens per step).
+  as is the raw threshold (GSM8K, about 4 tokens per step).
   \else{\color{ink2}\textit{pending (T12)}}\fi}
 % C3 macros (T11 diagnostics, T12 numbers): written by scripts/c3_paper_outputs.py
 \newif\ifCThreeMacros
@@ -246,7 +240,7 @@
 % ================================================================ 1 title
 \begin{frame}[c,plain]
   \hspace*{4mm}\begin{minipage}{0.9\linewidth}\raggedright
-    {\color{accent}\fontsize{9.5}{12}\selectfont\firasemibold FINAL VIVA · ANLP MONSOON 2026}\par
+    {\color{accent}\fontsize{9.5}{12}\selectfont\firasemibold Final viva · ANLP, Monsoon 2026}\par
     \vspace{4mm}
     {\fontsize{24}{28}\selectfont\firasemibold C3: Committed Confidence\\[1mm] Calibration}\par
     \vspace{3mm}
@@ -262,8 +256,8 @@
 \end{frame}
 
 % ================================================================ 2 motivation (mid-eval, unchanged)
-\begin{frame}{Diffusion LMs commit the tokens they are most confident about}
-  \framesubtitle{One forward pass scores every masked position; the decoder keeps the top-$k$}
+\begin{frame}{Diffusion LMs write by filling in blanks, surest first}
+  \framesubtitle{Each step the model guesses every blank at once and keeps the $k$ guesses it is surest of}
   \vspace{0.5mm}
   \begin{columns}[T,onlytextwidth]
     \begin{column}{0.56\textwidth}
@@ -292,29 +286,29 @@
           \node[font=\footnotesize\itshape, text=ink2] at (\x,-0.25) {\w};
         }
         \node[font=\scriptsize, text=muted, anchor=west] at (0.4,-0.68)
-          {candidate $v_i$ with confidence $c_i = \max_v p_\theta(v \mid x_{\mathrm{obs}})$; top $k = 2$ committed};
+          {bar: confidence $c_i$ of the best guess per blank; the top $k = 2$ are kept};
       \end{tikzpicture}
     \end{column}
     \begin{column}{0.41\textwidth}
       \begin{itemize}
-        \item LLaDA-8B and Dream-7B keep the most confident positions (MaskGIT-style);
-              Fast-dLLM puts one global threshold on the same number.
-        \item A committed token \alert{won}: its confidence was the largest of $m$ noisy
-              estimates. That is the setting of the \alert{winner's curse}
-              (Efron 2011; Andrews et al.\ 2024).
+        \item The model starts from all-blank text and fills it in over a few steps.
+        \item Top-$k$ (LLaDA-8B, Dream-7B) keeps the $k$ surest guesses; Fast-dLLM keeps
+              all guesses above a threshold.
+        \item A kept token \alert{won} a contest of noisy scores: the setting of the
+              \alert{winner's curse} (Efron 2011; Andrews et al.\ 2024).
       \end{itemize}
     \end{column}
   \end{columns}
   \vspace{2mm}
   \begin{takeaway}
-    \textbf{Question.} Once a token has won, is its confidence still an honest probability of
-    being right? And when several tokens win in one step, which error dominates?
+    \textbf{Question.} When the model is 90\% sure of a token it chose, is that token right 90\%
+    of the time? And when it fills several blanks in one step, which kind of error dominates?
   \end{takeaway}
 \end{frame}
 
 % ================================================================ 3 two error sources
-\begin{frame}{Two separate ways parallel decoding goes wrong}
-  \framesubtitle{For a set $S$ committed in one step, given the observed context $x_{\mathrm{obs}}$}
+\begin{frame}{Filling several blanks in one step can go wrong in two ways}
+  \framesubtitle{Total error of a set $S$ of tokens committed together, given the visible text}
   \vspace{-2.5mm}
   \[
     \mathrm{KL}\Big(p^{*} \,\Big\|\, \prod_{i\in S} p_{\theta,i}\Big)
@@ -325,11 +319,12 @@
   \begin{columns}[T,onlytextwidth]
     \begin{column}{0.4\textwidth}
       \begin{itemize}
-        \item \A Marginals, never the joint: tokens can each be plausible yet jointly
-              nonsensical.
-        \item \B The marginals themselves are wrong. The dependency literature treats \B as
-              fixed.
-        \item C2 measures both where $p^{*}$ is known; C1 audits calibration under selection.
+        \item \A Dependency: blanks are guessed separately, so the guesses can clash,
+              e.g.\ \emph{New} + \emph{Angeles}.
+        \item \B Estimation: each blank's own probabilities are wrong. Work on dependency
+              in parallel decoding treats \B as fixed.
+        \item C2 measures both where $p^{*}$ is known; C1 asks whether chosen tokens are
+              overconfident.
       \end{itemize}
     \end{column}
     \begin{column}{0.57\textwidth}
@@ -338,7 +333,7 @@
       \arrayrulecolor{base}
       \begin{tabularx}{\linewidth}{@{}p{2.9cm} >{\centering\arraybackslash}X >{\centering\arraybackslash}X@{}}
         \toprule
-        {\color{ink2}Work} & {\color{ink2}Calibrated under selection?} & {\color{ink2}Separates (A) and (B)?} \\
+        {\color{ink2}Work} & {\color{ink2}Checks confidence of chosen tokens?} & {\color{ink2}Separates (A) and (B)?} \\
         \midrule
         Fast-dLLM; OSDT             & no              & no \\
         KLASS; SWD; LESS            & no              & no \\
@@ -361,100 +356,97 @@
     \begin{column}{0.315\textwidth}
       \begin{panel}[height=40mm]
         {\color{accent}\fontsize{16}{18}\selectfont\firasemibold C1}\par\vspace{0.8mm}
-        \paneltitle{Selection-conditional calibration audit}
-        Is a token that \emph{won} its pool overconfident? On LLaDA-8B, Dream-7B (Base and
-        Instruct) and a 110M masked diffusion LM we trained with our evaluation documents held
-        out. Numbers from a held-out report half.
+        \paneltitle{Are chosen tokens overconfident?}
+        Is a token that \emph{won} against other blanks right less often than its confidence
+        says? Tested on LLaDA-8B, Dream-7B (Base and Instruct) and our own 110M model.
       \end{panel}
     \end{column}
     \begin{column}{0.315\textwidth}
       \begin{panel}[height=40mm]
         {\color{accent}\fontsize{16}{18}\selectfont\firasemibold C2}\par\vspace{0.8mm}
-        \paneltitle{Both terms of the KL split}
-        Exactly, in nats, on a synthetic JSON probe where $p^{*}$ is known. On real text,
-        where it is not, proxies whose behaviour we first check on the probe: a direction,
-        not a split in nats.
+        \paneltitle{How large are \A and \B?}
+        Measured exactly on a synthetic JSON task where the true answer distribution is
+        known. On real text, only rough indicators (proxies), checked on that task first.
       \end{panel}
     \end{column}
     \begin{column}{0.315\textwidth}
       \begin{panel}[height=40mm]
         {\color{accent}\fontsize{16}{18}\selectfont\firasemibold C3}\par\vspace{0.8mm}
-        \paneltitle{A recalibrated commit rule}
-        A threshold on recalibrated confidence, built only from what the decoder already
-        computes (no extra forward passes), against six decoders at matched tokens per
-        step on GSM8K and MBPP.
+        \paneltitle{A corrected commit rule}
+        Correct the model's confidence, then commit every token that clears a bar. No extra
+        model calls. Compared with six decoders at equal speed on GSM8K (math) and MBPP (code).
       \end{panel}
     \end{column}
   \end{columns}
   \vspace{3mm}
   \begin{takeaway}
-    \textbf{Order of the talk.} Theory and the instrument, then C1, C2 and C3 in turn,
-    then what we got wrong and what remains open.
+    \textbf{Order of the talk.} Theory first, then C1, C2 and C3, then what we got wrong and
+    the limits of these results.
   \end{takeaway}
 \end{frame}
 
 % ================================================================ 5 propositions (mid-eval)
-\begin{frame}{Theory: where a winner's curse can and cannot come from}
-  \framesubtitle{State $s$: a document with masked set $M$. Teacher forcing makes correctness $a_i = \mathbb{1}\{v_i = x_{0,i}\}$ observable}
+\begin{frame}{Theory: when can winning make a token overconfident?}
+  \framesubtitle{$s$: a text with blanks $M$; $\ell_i$: score of the guess at blank $i$; $a_i = 1$ if it is right}
   \vspace{1.5mm}
   \begin{columns}[T,onlytextwidth]
     \begin{column}{0.485\textwidth}
       \begin{panel}[height=40mm]
-        \paneltitle{Proposition 1 · Winning adds nothing given confidence and context}
-        If the pairs $(\ell_j, a_j)$ are independent across $j \in M$ given $s$, and the pool
-        $P$ is drawn independently of them, the winner $i$ of $P$ satisfies
+        \paneltitle{Proposition 1 · Winning alone adds no bias}
+        If each blank's score and correctness are independent of the other blanks' given $s$,
+        and the contest $P$ is drawn independently of them, the winner $i$ of $P$ satisfies
         \[
           \Pr\big(a_i = 1 \mid \ell_i,\, s,\, i = \arg\max_{j\in P} \ell_j\big) = \pi(\ell_i, s).
         \]
-        \fnote{However unequal the noise scales: heteroskedastic noise alone cannot bias
-        committed confidence. This corrected the proposal's argument.}
+        \fnote{A winner is right as often as any token with its score and context. So unequal
+        noise across blanks cannot by itself bias winners, contrary to the proposal.}
       \end{panel}
     \end{column}
     \begin{column}{0.485\textwidth}
       \begin{panel}[height=40mm]
-        \paneltitle{Proposition 2 · Exact split of the committed-token gap}
+        \paneltitle{Proposition 2 · Winners' overconfidence has two parts}
+        $\Delta(m)$: confidence minus accuracy of tokens that won among $m$ blanks.
         \[
           \Delta(m) =
           \underbrace{\mathbb{E}_m[\sigma(\ell) - \pi(\ell)]}_{\text{own miscalibration}}
           + \underbrace{\mathbb{E}_m[\pi(\ell) - \pi(\ell, s)]}_{\text{field term}}
         \]
-        \fnote{$\pi(\ell)$: ordinary calibration curve; $\pi(\ell,s)$: its context-aware
-        version. With a pool of one, winners are random, so the field term is exactly 0.}
+        \fnote{$\pi(\ell)$: usual calibration curve; $\pi(\ell,s)$: the same curve given the
+        context. The field term is nonzero only if accuracy at a given score depends on the
+        context; with $m = 1$ (no contest) it is exactly 0.}
       \end{panel}
     \end{column}
   \end{columns}
   \vspace{2.5mm}
   \begin{takeaway}
-    The field term is nonzero only when accuracy at fixed confidence depends on context: the
-    \textbf{winner's curse in a corrected, testable form}. Proofs in the backup.
+    So a \textbf{winner's curse} can come only from the field term, and C1 measures it. Proofs in the backup.
   \end{takeaway}
 \end{frame}
 
 % ================================================================ 6 estimands
-\begin{frame}{C1: what we measure, and when we declare an effect}
-  \framesubtitle{Sign: confidence $-$ accuracy, so positive means overconfident (the proposal used the opposite)}
+\begin{frame}{C1: what we measure, and when we claim an effect}
+  \framesubtitle{Gap $=$ confidence $-$ accuracy, so positive means overconfident (the proposal used the opposite sign)}
   \vspace{0.5mm}
   \begin{columns}[T,onlytextwidth]
     \begin{column}{0.315\textwidth}
       \begin{panel}[height=23mm]
-        \paneltitle{E1 · committed-token gap}
-        $\Delta(m) = \mathbb{E}_m[c_i - a_i]$ over tokens that win pools of size
-        $m \in \{\VivaPoolSizes\}$. Primary contrast $\Delta(\VivaPoolMax) - \Delta(1)$.
+        \paneltitle{E1 · gap of winners}
+        $\Delta(m)$: average gap of tokens that won among $m$ blanks
+        ($m \le \VivaPoolMax$). E1 $= \Delta(\VivaPoolMax) - \Delta(1)$.
       \end{panel}
     \end{column}
     \begin{column}{0.315\textwidth}
       \begin{panel}[height=23mm]
         \paneltitle{E2 · field term}
-        field$(m)=\mathbb{E}_m[\hat\pi(\ell)-\hat\pi(\ell,s)]$: how far a context-aware curve puts
-        accuracy below the token's own-confidence curve. Contrast
-        field$(\VivaPoolMax)-$field$(1)$.
+        The winner's-curse part of the gap (Proposition 2).
+        E2 $=$ field$(\VivaPoolMax)-$field$(1)$.
       \end{panel}
     \end{column}
     \begin{column}{0.315\textwidth}
       \begin{panel}[height=23mm]
-        \paneltitle{E3 · trajectory shift}
-        Decoders fill easy positions first: are decoder-state tokens right less often at
-        equal confidence and mask rate?
+        \paneltitle{E3 · what decoders leave}
+        Decoders fill easy blanks first. At equal confidence, are the blanks they leave
+        right less often than random ones?
       \end{panel}
     \end{column}
   \end{columns}
@@ -462,43 +454,42 @@
   \begin{columns}[T,onlytextwidth]
     \begin{column}{0.5\textwidth}
       \footnotesize\raggedright
-      \textbf{Hypotheses.} \lbl{H1} $\Delta(\VivaPoolMax) - \Delta(1) > 0$;
-      \lbl{H2} field$(\VivaPoolMax)-$field$(1) > 0$;
-      \lbl{H3} decoder states are more overconfident than uniform ones.\par\vspace{1.5mm}
-      \textbf{Declare rule.} The 95\% interval excludes zero \emph{and} the estimate exceeds
-      twice the non-determinism floor. The floor is \VivaLladaFloor{} for all three model
-      families, so $\delta_{\min} = \VivaDeltaMin$, fixed in advance, sets power. Holm within each family
-      of 14 (7 arms $\times$ uniform / decoder $k{=}4$), one for E1, one for E2.
+      \textbf{Hypotheses.} \lbl{H1} E1 $> 0$; \lbl{H2} E2 $> 0$;
+      \lbl{H3} blanks a decoder leaves are more overconfident than random ones.\par\vspace{1.5mm}
+      \textbf{When we claim an effect.} Its 95\% interval excludes zero, and it survives the Holm
+      correction for testing 14 cells at once (7 model/task pairs $\times$ random or decoder
+      blanks), run separately for E1 and E2. Repeat runs give identical numbers, so
+      run-to-run noise adds nothing.
     \end{column}
     \begin{column}{0.47\textwidth}
       \footnotesize\raggedright
-      \textbf{Diagnostics} fitted on winning tokens:
-      \[
-        \Pr(a_i{=}1) = \sigma\big(\alpha\,[+\alpha_s] + f(\ell_i) + \beta_z z_{r,m}\big),
-      \]
-      or rank dummies $\gamma_k$ in place of $z_{r,m}$; $f$ a \VivaKnots-knot spline fixed in
-      advance. State effects $\alpha_s$ absorb the field term: $\beta_z < 0$ without them and
-      $\approx 0$ with them signals a field effect.
+      \textbf{A cross-check by regression} (backup): on winning tokens, predict correctness
+      from the score $\ell_i$ and the rank in the contest, with and without one offset
+      $\alpha_s$ per text. A winner's curse shows as a negative rank effect $\beta_z$ without
+      the offsets that disappears with them.
     \end{column}
   \end{columns}
+  \note{Declared also needs the estimate above twice the non-determinism floor; the floor is 0
+  (repeats are bitwise identical), and delta_min = 0.02, fixed in advance, sets power. Regression:
+  Pr(a=1) = sigma(alpha [+alpha_s] + f(l) + beta_z z_{r,m}), f a 9-knot spline fixed in advance;
+  Eq. 3 uses rank dummies gamma_k in place of z.}
 \end{frame}
 
 % ================================================================ 8 T0 validation
-\begin{frame}{The instrument recovers known truth (T0)}
-  \framesubtitle{Four simulated worlds · fit half $\rightarrow$ report half · document bootstrap}
-  \centering\includegraphics[width=0.88\linewidth]{t0_scenarios}\par
+\begin{frame}{Test on simulated data: the method finds what we planted (T0)}
+  \framesubtitle{Four simulated worlds with known answers; fit on one half of the data, report on the other}
+  \centering\includegraphics[width=0.85\linewidth]{t0_scenarios}\par
   \vspace{1.5mm}\raggedright
   \begin{takeaway}
-    \textbf{Why ECE is not enough.} When miscalibration depends on context, ECE is
-    \pct{\TZeroECEContext}\pp but $\Delta(32) - \Delta(1) = \pct{\TZeroContrastContext}$\pp.
-    Known weakness: the field-term estimator reads high (\pct{\TZeroFieldContext}\pp against a
-    true \pct{\TZeroFieldTrueContext}\pp).
+    \textbf{Why ECE is not enough.} When overconfidence depends on context, ECE (the usual
+    calibration score) is \pct{\TZeroECEContext}\pp but E1 is \pct{\TZeroContrastContext}\pp. Weakness: our field-term
+    estimate reads high (\pct{\TZeroFieldContext}\pp vs a true \pct{\TZeroFieldTrueContext}\pp).
   \end{takeaway}
 \end{frame}
 
 % ================================================================ 9 C1 results: E1/E2 claim table
 \begin{frame}{C1 results: does winning make a token overconfident? (E1, E2)}
-  \framesubtitle{Every arm, in uniform states and in the states of the teacher-forced top-$k$ decoder ($k{=}4$)}
+  \framesubtitle{Seven model/task pairs; blanks chosen at random (uniform) or left by a top-$k$ decoder ($k{=}4$)}
   \vspace{0.5mm}
   \begin{columns}[T,onlytextwidth]
     \begin{column}{0.575\textwidth}
@@ -509,7 +500,7 @@
           \toprule
           & \multicolumn{2}{c}{E1 $=\Delta(\VivaPoolMax)-\Delta(1)$} & \multicolumn{2}{c}{E2 $=$ field contrast} \\
           \cmidrule(lr){2-3}\cmidrule(lr){4-5}
-          {\color{ink2}Arm} & {\color{ink2}uniform} & {\color{ink2}decoder} & {\color{ink2}uniform} & {\color{ink2}decoder} \\
+          {\color{ink2}Model} & {\color{ink2}uniform} & {\color{ink2}decoder} & {\color{ink2}uniform} & {\color{ink2}decoder} \\
           \midrule
           \CClaimRow{LLaDA Base}{LladaBase}
           \CClaimRow{Dream Base}{DreamBase}
@@ -529,18 +520,18 @@
     \end{column}
     \begin{column}{0.395\textwidth}
       \footnotesize\raggedright
-      \lbl{E1} $=\Delta(\VivaPoolMax)-\Delta(1)$. Positive: a token that won a field of
-      \VivaPoolMax{} is more overconfident than a random masked position.\par\vspace{1mm}
-      \lbl{E2} $=$ field$(\VivaPoolMax)-$field$(1)$. Positive: part of that growth is the
-      winner's curse proper (Proposition 2).\par\vspace{1mm}
-      \lbl{Markers.} $^{*}$ Holm-rejected in its family; $^{\dagger}$ declared (95\% interval
-      excludes 0, effect above twice the floor). \textbf{A claim needs both.}\par\vspace{1.5mm}
+      \lbl{E1} positive: a token that won among \VivaPoolMax{} blanks is more overconfident
+      than a random blank.\par\vspace{1mm}
+      \lbl{E2} positive: part of that growth is the winner's curse itself
+      (Proposition 2).\par\vspace{1mm}
+      \lbl{Markers.} $^{*}$ survives the Holm correction; $^{\dagger}$ 95\% interval
+      excludes 0. \textbf{A claim needs both.}\par\vspace{1.5mm}
       \begin{takeaway}[fontupper=\footnotesize]
         \ifCOneMacros
           \textbf{Claims.} E1: \Cres{COneConfirmedEOne} of \Cres{COneHolmEOneFamily} cells.
-          E2: \Cres{COneConfirmedETwo} of \Cres{COneHolmETwoFamily}. E1 is positive in every
-          decoder-state cell; E2 clearly exceeds the estimator's T0 bias only for the instruct
-          models.
+          E2: \Cres{COneConfirmedETwo} of \Cres{COneHolmETwoFamily}. With a decoder choosing,
+          E1 is positive for every model; E2 is clearly above the estimator's known bias (T0)
+          only for the instruction-tuned models.
         \else
           \textbf{Claims.} {\color{ink2}Pending: how many cells meet both markers.}
         \fi
@@ -558,18 +549,18 @@
 \end{frame}
 
 % ================================================================ 10 C1 results: every arm, and what the decoder commits
-\begin{frame}{C1 results: the gap grows with the field wherever a decoder chooses}
-  \framesubtitle{$\Delta(m)$ per arm, uniform vs decoder $k{=}4$ states; right: the tokens the decoder commits}
+\begin{frame}{C1 results: with a decoder choosing, overconfidence grows with the contest}
+  \framesubtitle{Gap $\Delta(m)$ against group size $m$ for each model; right: the tokens a decoder commits}
   \centering
-  \COneFigure{c1_overview}{46mm}{THU 29 OCT}{\texttt{results/c1/<Label>/results.json}}{%
+  \COneFigure{c1_overview}{45mm}{THU 29 OCT}{\texttt{results/c1/<Label>/results.json}}{%
     Seven panels, one per arm: $\Delta(m)$ against field size $m$, uniform and decoder $k{=}4$
     states, the arm's ECE over random masks dotted. Eighth panel: that ECE beside the gap of the
     tokens the decoder commits with 32--63 and 128--255 positions masked.}
   \par\vspace{1mm}
   \begin{takeaway}[fontupper=\footnotesize]
-    E1 is positive and claimed in all seven decoder-state cells. On tokens committed while 32--63
-    positions are still masked, confidence exceeds accuracy by 1.8--4.4$\times$ the random-mask ECE,
-    in every arm (descriptive).
+    With a decoder choosing, E1 is positive and claimed for all seven models. For tokens committed
+    while 32--63 blanks remain, overconfidence is 1.8--4.4$\times$ the ECE measured on random
+    blanks, in every model (descriptive).
   \end{takeaway}
   \note{Blue: uniform states; orange: the states the top-k decoder visits. Dotted line: the arm's ECE
   over random masks, the usual calibration number. In decoder states Delta rises with m in every arm, so a
@@ -582,8 +573,8 @@
 \end{frame}
 
 % ================================================================ 12 C1 results: E3
-\begin{frame}{C1 results: are decoder-state tokens right less often? (E3)}
-  \framesubtitle{Decoder-state tokens against uniform states with as many masks, at equal confidence}
+\begin{frame}{C1 results: blanks a decoder leaves are right less often (E3)}
+  \framesubtitle{Blanks a decoder leaves against random blanks with as many masks, at equal confidence}
   \vspace{0.5mm}
   \centering
   \COneFigure{c1_e3_\VivaCOneMainArm}{30mm}{TUE 27 OCT}{\texttt{results/e3/\VivaCOneMainArm/results.json}
@@ -594,16 +585,15 @@
   \begin{columns}[T,onlytextwidth]
     \begin{column}{0.58\textwidth}
       \footnotesize\raggedright
-      \lbl{Right panel.} Type effect $>0$: at equal confidence decoder-state tokens are right
-      less often. \VivaCOneMainArmName{}, $k{=}4$: $0.0011$\;\ci{$0.0003,\,0.0020$}, sup-$t$
-      $p<0.001$. Teacher-forced: this is which positions remain masked, not the decoder's own
-      mistakes. Exploratory.
+      \lbl{Right panel.} Accuracy drop at equal confidence. \VivaCOneMainArmName{}, $k{=}4$:
+      $0.0011$\;\ci{$0.0003,\,0.0020$}, $p<0.001$. The decoder is fed the true tokens, so this
+      is about which blanks remain, not the decoder's own mistakes. Exploratory.
     \end{column}
     \begin{column}{0.38\textwidth}
       \begin{takeaway}[fontupper=\footnotesize]
-        Positive, interval excluding 0, in every arm and $k$ (sup-$t$ $p\le0.002$):
-        $0.001$--$0.006$ base, 110M; $0.03$--$0.06$ instruct. A random-mask curve
-        overstates decoder-state accuracy by this much.
+        Positive in every model and $k$ ($p\le0.002$): $0.001$--$0.006$ for base and 110M,
+        $0.03$--$0.06$ for instruct. A calibration curve fitted on random blanks
+        overstates accuracy during decoding by this much.
       \end{takeaway}
     \end{column}
   \end{columns}
@@ -617,8 +607,8 @@
 \end{frame}
 
 % ================================================================ 13 C1 results: T8 controls
-\begin{frame}{C1 controls: do position, token type or temperature explain E1, E2? (T8)}
-  \framesubtitle{Each control removes one alternative explanation of the growth with $m$}
+\begin{frame}{C1 checks: do simpler explanations account for E1 and E2? (T8)}
+  \framesubtitle{Each column adds one control; temperature means one confidence rescaling per mask rate}
   \vspace{0.5mm}
   \centering
   \ifCOneMacros
@@ -650,7 +640,7 @@
       \bottomrule
     \end{tabular}}\par\vspace{2mm}
     \raggedright\footnotesize
-    \lbl{4-bit against fp16} (report half of the \VivaLladaBaseFourBitDocs{} documents of the 4-bit run): E1 changes by
+    \lbl{4-bit against 16-bit weights} (test half of the \VivaLladaBaseFourBitDocs{} documents of the 4-bit run): E1 changes by
     \CresCI{TEightLladaBasePrecisionPrecisionEOneUniDifference} in uniform and
     \CresCI{TEightLladaBasePrecisionPrecisionEOneDecTopkConfKFourDifference} in decoder states.\par
   \else
@@ -662,10 +652,10 @@
   \fi
   \vspace{1.2mm}
   \begin{takeaway}[fontupper=\footnotesize]
-    \textbf{Result.} Decoder-state E1 keeps its sign under every control in every arm (largest
-    move: LLaDA-I MBPP, temperature, $0.156\to0.125$); LLaDA Base's small uniform E1 does not (token type).
-    4-bit: a precision effect is not ruled out. $^{\ddagger}$: the paired with-minus-without
-    95\% interval excludes 0; paired differences are precise, so most do, but they are small.
+    \textbf{Result.} With a decoder choosing, E1 stays positive under every control in every model
+    (largest change: LLaDA-I MBPP with temperature, $0.156\to0.125$). LLaDA Base's small E1 on random
+    blanks vanishes once token type is controlled. We cannot rule out an effect of 4-bit weights.
+    $^{\ddagger}$: adding the control changes the value (95\% interval excludes 0); most do, by small amounts.
   \end{takeaway}
   \note{A column close to plain: the control did not matter. Decoder-state E1 keeps its sign under position,
   token type and a temperature per mask-rate bin in all seven arms; the largest move is LLaDA-I MBPP with a
@@ -680,31 +670,30 @@
 \end{frame}
 
 % ================================================================ 11 C2 probe
-\begin{frame}{C2: a JSON probe where the true joint $p^{*}$ is known}
-  \framesubtitle{Our 110M model, fine-tuned on the probe; both terms computed exactly at every decoding step}
+\begin{frame}{C2: a synthetic task where we know the true answer distribution}
+  \framesubtitle{Our 110M model, fine-tuned on it, so (A) and (B) can be computed exactly at every step}
   \vspace{1mm}
   \begin{columns}[T,onlytextwidth]
     \begin{column}{0.5\textwidth}
       \begin{itemize}\footnotesize
-        \item \textbf{Instances}: the simple fields (\emph{slots}) of \VivaProbeSchemas{} SchemaStore schemas,
-              \VivaProbeFieldsMin–\VivaProbeFieldsMax{} per schema, single-token values with
-              seeded Dirichlet marginals.
-        \item \textbf{Dependency knob $\rho$}: slots are paired. With probability $\rho$,
-              stated in a marker at the start, the follower is a fixed function of its leader;
-              otherwise an independent draw. So $p^{*}$ is exact.
-        \item \textbf{Model}: our 110M fine-tuned on \VivaProbeTrainK k instances; evaluated
+        \item \textbf{Task}: fill in the values of JSON records built from \VivaProbeSchemas{} real
+              schemas (SchemaStore), \VivaProbeFieldsMin–\VivaProbeFieldsMax{} fields each, one token per value.
+        \item \textbf{Link strength $\rho$}: fields come in pairs. With probability $\rho$, written
+              at the start of the record, the second field (follower) is fixed by the first
+              (leader); otherwise it is drawn independently. So we know $p^{*}$ exactly.
+        \item \textbf{Model}: our 110M, fine-tuned on \VivaProbeTrainK k records; tested
               on \CTwoProbeNInstances{} (\CTwoProbeNInstancesPerRho{} per $\rho$).
-        \item \textbf{Decoding}: all values masked; each step a rule picks $k$ slots, the most
+        \item \textbf{Decoding}: all values start blank; each step a rule picks $k$ fields, the most
               confident or at random, and we fill them with the true values.
-        \item \textbf{Check}: \A + \B equals the directly computed KL; largest error
-              \CTwoIdentityMaxErrAll{} nats (bar \CTwoIdentityTol).
+        \item \textbf{Check}: \A + \B equals the directly computed total error, to within
+              \CTwoIdentityMaxErrAll{} nats.
       \end{itemize}
     \end{column}
     \begin{column}{0.46\textwidth}
       \vspace{1mm}
       % instance text: artifacts/probe/eval_instances.jsonl, schema "tsd", rho = 1; values masked
       \begin{panel}[colback=plane, colframe=plane]
-        {\color{ink2}\scriptsize one evaluation instance ($\rho = 1$), values masked}\par\vspace{1mm}
+        {\color{ink2}\scriptsize one test record ($\rho = 1$), values blank}\par\vspace{1mm}
         \ttfamily\scriptsize
         \{{\color{accentdark}"\_rho":"1.00"},\\
         \hspace*{2mm}"bundle":{\color{muted}[M]}, "path":{\color{muted}[M]},\\
@@ -716,9 +705,9 @@
         \paneltitle{Per step, for the committed set $S$}
         \A $= \sum_{i\in S} H(p^{*}_i) - H(p^{*}_S)$: zero unless a leader and its follower
         are committed together.\par\vspace{0.6mm}
-        \B $= \sum_{i\in S}\mathrm{KL}(p^{*}_i \,\|\, p_{\theta,i})$: mass off the allowed values
-        counts against \B.\par\vspace{0.6mm}
-        Summed over steps, per slot, bootstrapped over instances.
+        \B $= \sum_{i\in S}\mathrm{KL}(p^{*}_i \,\|\, p_{\theta,i})$: each field's own error,
+        including probability put on impossible values.\par\vspace{0.6mm}
+        Summed over steps, per field, with bootstrap intervals over records.
       \end{panel}
     \end{column}
   \end{columns}
@@ -726,7 +715,7 @@
 \end{frame}
 
 % ================================================================ 12 C2 crossover
-\begin{frame}{C2: dependency overtakes estimation only at high $\rho$ and $k$}
+\begin{frame}{C2: dependency errors \A dominate only with strong links and large steps}
   \vspace{0.5mm}
   \begin{columns}[T,onlytextwidth]
     \begin{column}{0.53\textwidth}
@@ -735,22 +724,22 @@
     \begin{column}{0.45\textwidth}
       \vspace{1mm}
       \begin{itemize}\footnotesize
-        \item \A is zero at $k = 1$ and at $\rho = 0$, and grows with both.
+        \item \A is zero at $k = 1$ or $\rho = 0$, and grows with both.
         \item For $\rho \ge \CTwoConfCrossRhoMin$, \A overtakes \B at
-              $k = \CTwoRandCrossKatRhoOne$; at $\rho = 1$ under confidence top-$k$ already at
-              $k = \CTwoConfCrossKatRhoOne$. Each crossover is also where the 95\% interval of
-              \A$-$\B clears zero.
-        \item For $\rho \le 0.25$, \B dominates up to $k = 8$.
+              $k = \CTwoRandCrossKatRhoOne$; at $\rho = 1$, picking by confidence, already at
+              $k = \CTwoConfCrossKatRhoOne$. At each crossover the 95\% interval of
+              \A$-$\B also clears zero.
+        \item For $\rho \le 0.25$, \B is larger up to $k = 8$.
       \end{itemize}
       \vspace{1.5mm}
       \begin{panel}[colback=wash, colframe=wash]
         \paneltitle{$\rho = 1$, $k = 8$, confidence top-$k$}
         \A \CTwoConfAatRhoOneKEight{} \ci{\CTwoConfAatRhoOneKEightLo, \CTwoConfAatRhoOneKEightHi}
         and \B \CTwoConfBatRhoOneKEight{} \ci{\CTwoConfBatRhoOneKEightLo, \CTwoConfBatRhoOneKEightHi}
-        nats per slot: \A is \CTwoConfShareAatRhoOneKEight\% of the total.
+        nats per field: \A is \CTwoConfShareAatRhoOneKEight\% of the total.
       \end{panel}
-      \src{Main model: the fine-tune that never saw the $\rho$ marker masked (choice in the
-      backup). \CTwoProbeNBoot{} bootstrap resamples over instances.}
+      \src{Main model: the fine-tune that never saw the $\rho$ marker masked (backup).
+      \CTwoProbeNBoot{} bootstrap resamples.}
     \end{column}
   \end{columns}
 \end{frame}
@@ -761,24 +750,24 @@
   \begin{columns}[T,onlytextwidth]
     \begin{column}{0.5\textwidth}
       \begin{panel}[fontupper=\scriptsize, before skip=0pt, after skip=1.2mm]
-        \paneltitle{1 · Confidence selection raises \A, not \B}
-        {\color{muted}Planned: ranking on noisy confidences inflates \B.}\par
-        Where \B is higher than at random, the intervals overlap. \A rises instead
+        \paneltitle{1 · Picking by confidence raises \A, not \B}
+        {\color{muted}Expected: picking the surest fields would raise \B.}\par
+        Where \B is higher than with random picks, the intervals overlap. \A rises instead
         ($\rho = 1$, $k = 2$): \CTwoConfAatRhoOneKTwo{} \ci{\CTwoConfAatRhoOneKTwoLo,
         \CTwoConfAatRhoOneKTwoHi} against \CTwoRandAatRhoOneKTwo{} \ci{\CTwoRandAatRhoOneKTwoLo,
         \CTwoRandAatRhoOneKTwoHi} at random.
       \end{panel}
       \begin{panel}[fontupper=\scriptsize, before skip=0pt, after skip=1.2mm]
-        \paneltitle{2 · \B depends on $\rho$}
-        {\color{muted}Planned: $\rho$ moves only \A.}\par
+        \paneltitle{2 · \B also depends on $\rho$}
+        {\color{muted}Expected: $\rho$ changes only \A.}\par
         At $k = 1$, \B rises from \CTwoConfBatRhoZeroKOne{} at $\rho = 0$ to
-        \CTwoConfBatRhoOneKOne{} at $\rho = 1$: the model reads the marker only in part.
+        \CTwoConfBatRhoOneKOne{} at $\rho = 1$: the model only partly uses the $\rho$ marker.
       \end{panel}
       \begin{panel}[fontupper=\scriptsize, before skip=0pt, after skip=1.2mm]
-        \paneltitle{3 · \A and \B trade off along $k$}
+        \paneltitle{3 · \A and \B trade off as $k$ grows}
         At $\rho = 1$, from $k = 1$ to $8$, \B falls from \CTwoConfBatRhoOneKOne{} to
         \CTwoConfBatRhoOneKEight{} while \A rises from 0 to \CTwoConfAatRhoOneKEight: a
-        follower decoded with its leader shows its error as \A, not \B.
+        follower filled in the same step as its leader has its error counted as \A, not \B.
       \end{panel}
     \end{column}
     \begin{column}{0.47\textwidth}
@@ -787,31 +776,31 @@
       \begin{itemize}\footnotesize
         \item Without fine-tuning, \B dominates everywhere: \A is at most
               \CTwoUntunedConfShareAMax\% of the total.
-        \item The ranking commits leaders together with their followers more often than
-              chance, which brings the crossover forward.
+        \item Picking by confidence fills a leader and its follower in the same step more
+              often than chance, so \A overtakes \B at smaller $k$.
       \end{itemize}
     \end{column}
   \end{columns}
 \end{frame}
 
 % ================================================================ 14 C2 real text
-\begin{frame}{C2 on real text: the dependency proxy is near zero}
-  \framesubtitle{\CTwoTTenNDocs{} fit-half FineWeb-Edu documents, one state per mask rate; the proxy is first checked on the probe}
+\begin{frame}{C2 on real text: little sign of dependency errors}
+  \framesubtitle{\CTwoTTenNDocs{} web-text documents (FineWeb-Edu); the proxy is checked on the synthetic task first}
   \vspace{0.5mm}
   \begin{columns}[T,onlytextwidth]
     \begin{column}{0.42\textwidth}
-      \paneltitle{Proxies}
+      \paneltitle{Rough indicators (proxies)}
       {\scriptsize\raggedright
-      For \A: \textbf{parallel--sequential disagreement}, the fraction of the $k$ most
-      confident positions whose token changes when committed one at a time rather than in one
-      pass. For \B: the gap $\Delta = c - a$ and the cross-entropy (CE) of the true token.\par}
+      For \A: \textbf{disagreement}. Fill the $k$ surest blanks all at once, then one at a
+      time, and count how often a token changes. For \B: the gap $\Delta = c - a$ and the
+      cross-entropy (CE) of the true token.\par}
       \vspace{1.5mm}
-      \paneltitle{On the probe, it tracks \A weakly}
+      \paneltitle{On the synthetic task: a weak match}
       {\scriptsize\raggedright
-      Spearman with the exact \A over the \CTwoTTenProbeNCells{} confidence cells with
+      Rank correlation with the exact \A over the \CTwoTTenProbeNCells{} confidence cells with
       $k \ge 2$: \CTwoTTenProbeSpearman{} \ci{\CTwoTTenProbeSpearmanLo,
-      \CTwoTTenProbeSpearmanHi}; \CTwoTTenAltProbeSpearman{} for the other fine-tune. It rises
-      with $k$, barely with $\rho$: at $k = 8$, \CTwoTTenProbeDisatRhoZeroKEight{} at
+      \CTwoTTenProbeSpearmanHi}; \CTwoTTenAltProbeSpearman{} for the other fine-tuned model. It
+      grows with $k$ but hardly with $\rho$: at $k = 8$, \CTwoTTenProbeDisatRhoZeroKEight{} at
       $\rho = 0$, where \A is zero, and \CTwoTTenProbeDisatRhoOneKEight{} at $\rho = 1$.\par}
     \end{column}
     \begin{column}{0.55\textwidth}
@@ -835,49 +824,49 @@
         \bottomrule
       \end{tabular}
       \par\vspace{0.8mm}
-      \fnote{CE includes the text's own entropy, and lower ranks are harder positions.}
+      \fnote{CE also counts the text's own randomness, and blanks lower in the ranking are harder.}
       \vspace{1.5mm}
       \begin{takeaway}[fontupper=\scriptsize]
-        At 2–8 tokens per step, real text looks like the probe's \textbf{low-$\rho$ regime,
-        where \B dominates}. But the proxy sees only dependence the model has learned:
-        near-zero disagreement does not show that \A is small.
+        At 2–8 tokens per step, real text looks like the synthetic task with \textbf{weak links,
+        where \B dominates}. But the proxy only picks up dependence the model has learned:
+        near-zero disagreement does not prove that \A is small.
       \end{takeaway}
     \end{column}
   \end{columns}
 \end{frame}
 
 % ================================================================ 15 C3: the rule and its calibrator
-\begin{frame}{C3a: let recalibrated confidence set how many tokens to commit}
-  \framesubtitle{Built only from what the decoder already computes: no extra forward pass}
+\begin{frame}{C3a: let corrected confidence decide how many tokens to commit}
+  \framesubtitle{Uses only numbers the decoder already computes, so no extra model calls}
   \vspace{0.5mm}
   \begin{columns}[T,onlytextwidth]
     \begin{column}{0.5\textwidth}
       \begin{itemize}\footnotesize
-        \item \textbf{Order}: the model's own confidence $\ell$ ranks the masked positions of
-              the active block, as in top-$k$.
-        \item \textbf{Count}: commit the top $n$, $n=\#\{\hat c \ge 1-\alpha\}$ and at least one,
-              with $\hat c$ the recalibrated confidence.
-        \item \textbf{Calibrator}: context-aware logistic on decode-time field features (median
-              $\ell$, mask rate, $\log|M|$).
-        \item \textbf{Fit once, then frozen}: fit-half LLaDA-8B-Instruct GSM8K and MBPP traces,
-              decoder states $k\in\{2,4,8\}$ pooled; report halves never read.
-        \item \textbf{Known shift}: free-running starts from 256 masks, fit states sit inside a
-              reference answer; we count steps outside the fit range.
+        \item \textbf{Order}: rank the blanks of the current block by the model's own score
+              $\ell$, as top-$k$ does.
+        \item \textbf{Count}: commit the top $n$, where $n$ is the number of blanks whose
+              corrected confidence $\hat c \ge 1-\alpha$ (at least one).
+        \item \textbf{Corrector}: a small logistic model that also sees the median score, the
+              share still masked and the number of blanks.
+        \item \textbf{Fit once, then frozen}: on the fit halves of LLaDA-8B-Instruct runs on
+              GSM8K and MBPP ($k = 2, 4, 8$ pooled); test halves never used.
+        \item \textbf{Known shift}: real decoding starts from 256 blanks, while fit states sat
+              inside a reference answer; we count steps outside the fit range.
       \end{itemize}
     \end{column}
     \begin{column}{0.47\textwidth}
       \ifCThreeMacros
-        {\begin{panel}\paneltitle{Calibrator, fit half only (T11)}
+        {\begin{panel}\paneltitle{Corrector, fit half only (T11)}
           {\footnotesize\setlength{\tabcolsep}{4pt}\arrayrulecolor{base}
           \begin{tabular}{@{}l r r@{}}
             & {\color{ink2}GSM8K} & {\color{ink2}MBPP} \\ \midrule
             fit documents & \Cres{CThreeTElevenGsmFitDocs} & \Cres{CThreeTElevenMbppFitDocs} \\
             ECE, raw $\sigma(\ell)$ & \Cres{CThreeTElevenGsmDevECERaw} & \Cres{CThreeTElevenMbppDevECERaw} \\
-            ECE, recalibrated $\hat c$ & \Cres{CThreeTElevenGsmDevECECal} & \Cres{CThreeTElevenMbppDevECECal} \\
-            states with $\hat c$ monotone in $\ell$ & \Cres{CThreeTElevenGsmMonotoneShare} & \Cres{CThreeTElevenMbppMonotoneShare} \\
+            ECE, corrected $\hat c$ & \Cres{CThreeTElevenGsmDevECECal} & \Cres{CThreeTElevenMbppDevECECal} \\
+            states where $\hat c$ rises with $\ell$ & \Cres{CThreeTElevenGsmMonotoneShare} & \Cres{CThreeTElevenMbppMonotoneShare} \\
             decode steps outside fit range & \Cres{CThreeTTwelveGsmOutsideShare} & \Cres{CThreeTTwelveMbppOutsideShare} \\
           \end{tabular}}\par\vspace{1mm}
-          {\scriptsize\color{ink2}ECE on held-out fit-half documents: a development check, not a result.}
+          {\scriptsize\color{ink2}ECE on held-out fit-half documents, used only as a development check.}
         \end{panel}}% braces, not a group: an \else straight after \end{panel} upsets TeX
       \else
         \Pend{40mm}{THU 29 OCT}{Waits for the frozen calibrators in \texttt{artifacts/c3/}
@@ -894,13 +883,13 @@
   \note{The calibrators are frozen in artifacts/c3/ (fit half only; report halves never read). On held-out
   fit-half documents it cuts the ECE of the commit confidence from 0.061 to 0.006 (GSM8K) and 0.039 to 0.007
   (MBPP), and c-hat never decreases with l in any fit state, so C3a's commits keep the calibrated-error
-  guarantee there. That is a development check, not a result. The last row needs the T12 run: how often
+  guarantee there. We use it only as a development check. The last row needs the T12 run: how often
   free-running states fall outside what the calibrator saw.}
 \end{frame}
 
 % ================================================================ 16 C3: matched-speed comparison
-\begin{frame}{C3: accuracy at matched tokens per step, against six decoders}
-  \framesubtitle{LLaDA-8B-Instruct, free-running, 256 tokens in blocks of 32, greedy, report halves of GSM8K and MBPP}
+\begin{frame}{C3: is the corrected rule more accurate at the same speed?}
+  \framesubtitle{LLaDA-8B-Instruct answers GSM8K and MBPP test problems itself, 256 tokens in blocks of 32}
   \vspace{0.5mm}
   \begin{columns}[T,onlytextwidth]
     \begin{column}{0.58\textwidth}
@@ -912,9 +901,9 @@
       \footnotesize\raggedright
       \lbl{Decoders.} Top-$k$, Fast-dLLM threshold, entropy-bounded, margin, KLASS, PC-Sampler,
       and C3a, each at three speeds.\par\vspace{1mm}
-      \lbl{Reading.} Up and to the right is better. Speed is matched by tokens per step, so
-      compare accuracy at the same $x$.\par\vspace{1mm}
-      \lbl{Claim.} A gain needs higher accuracy at the same tokens per step, beyond the
+      \lbl{Reading.} Up and to the right is better. Speed is tokens per step, so compare
+      accuracy at the same $x$.\par\vspace{1mm}
+      \lbl{Claim.} A gain needs higher accuracy at the same speed, beyond the
       intervals.\par\vspace{1.5mm}
       \begin{takeaway}[fontupper=\footnotesize]
         \textbf{Answer:} \CThreeAnswer
@@ -924,8 +913,8 @@
   \note{GSM8K, all 659 report-half problems, 21 settings. At about 4 tokens per step, C3a minus decoder,
   paired over problems: threshold -0.002 [-0.014, 0.012], entropy-bounded -0.005 [-0.035, 0.026], top-k
   +0.059, margin +0.053, PC-Sampler +0.082 (all three intervals above 0). So C3a is indistinguishable from the raw
-  threshold rule and beats the fixed-count decoders, as the raw threshold does; calibration gives alpha
-  a meaning, not extra accuracy. At 8 tokens per step the raw threshold is ahead (0.674 against 0.610). KLASS's two faster
+  threshold rule and beats the fixed-count decoders, as the raw threshold does; calibration makes alpha
+  a per-token error target but adds no accuracy. At 8 tokens per step the raw threshold is ahead (0.674 against 0.610). KLASS's two faster
   rows are off its published operating point (tau lowered to 0.2-0.29, reaching 3.9-4.9 tokens per
   step; KL history kept per 32-token block), so no comparison rests on them. Settings: chat prompt, greedy, one seed, fp16,
   one H200. MBPP (121 of 250 problems; the credit ran out, deviation 17 amendment, PR \#65): C3a at 3.61
@@ -940,20 +929,20 @@
   \vspace{2mm}
   \begin{columns}[T,onlytextwidth]
     \begin{column}{0.485\textwidth}
-      \begin{panel}[height=25mm]
+      \begin{panel}[height=26mm]
         \paneltitle{1 · Theory}
-        Selection alone cannot bias a calibrated posterior (Proposition 1). Any bias lives in
-        the field term (Proposition 2), which the instrument measures and which T0 shows it
-        can see where ECE cannot.
+        Choosing a token cannot by itself make a calibrated model overconfident
+        (Proposition 1). Any winner's curse is in the field term (Proposition 2), which we
+        measure; in T0 our method detects bias that ECE misses.
       \end{panel}
       \vspace{1.5mm}
-      \begin{panel}[height=25mm, colback=wash, colframe=accent!40]
-        \paneltitle{2 · C1 audit}
+      \begin{panel}[height=26mm, colback=wash, colframe=accent!40]
+        \paneltitle{2 · C1: are chosen tokens overconfident?}
         \ifCOneMacros
           Claims: E1 \Cres{COneConfirmedEOne} of \Cres{COneHolmEOneFamily} cells, E2
-          \Cres{COneConfirmedETwo} of \Cres{COneHolmETwoFamily}. In decoder states the gap grows
-          with the field for every model; the field term grows clearly only for the instruct
-          models. Committed tokens (32--63 masked): 1.8--4.4$\times$ the random-mask ECE (descriptive).
+          \Cres{COneConfirmedETwo} of \Cres{COneHolmETwoFamily}. With a decoder choosing, overconfidence
+          grows with the contest in every model; the winner's-curse part is clear only in instruct
+          models. Committed tokens: 1.8--4.4$\times$ the usual ECE (descriptive).
         \else
           {\color{ink2}Pending: the answers to H1–H3 on three model families, from the
           report half (Tue 27).}
@@ -961,19 +950,19 @@
       \end{panel}
     \end{column}
     \begin{column}{0.485\textwidth}
-      \begin{panel}[height=25mm]
-        \paneltitle{3 · C2: (A) and (B) separated}
-        On the probe, \A overtakes \B only for $\rho \ge \CTwoConfCrossRhoMin$ and larger $k$;
-        confidence selection raises \A, not \B. On real text at 2–8 tokens per step, the
-        \A proxy is near zero: the \B-dominated regime.
+      \begin{panel}[height=26mm]
+        \paneltitle{3 · C2: how large are (A) and (B)?}
+        On the synthetic task, \A overtakes \B only with strong links ($\rho \ge \CTwoConfCrossRhoMin$)
+        and many fields per step; picking by confidence raises \A, not \B. On real text at 2–8
+        tokens per step, the \A proxy is near zero, as when links are weak.
       \end{panel}
       \vspace{1.5mm}
-      \begin{panel}[height=25mm, colback=wash, colframe=accent!40]
-        \paneltitle{4 · C3 decoding}
+      \begin{panel}[height=26mm, colback=wash, colframe=accent!40]
+        \paneltitle{4 · C3: a corrected commit rule}
         \ifcsname CThreeTTwelveGsmMatchedDiffThresholdSpeedTwo\endcsname
-          At matched speed on GSM8K, the calibrated rule C3a is no more accurate than Fast-dLLM's
-          raw threshold (\CresCI{CThreeTTwelveGsmMatchedDiffThresholdSpeedTwo}); like it, it beats
-          top-$k$, margin and PC-Sampler. Calibration gives $\alpha$ a meaning, not extra accuracy.
+          At equal speed on GSM8K, the corrected rule C3a is no more accurate than Fast-dLLM's
+          raw threshold (\CresCI{CThreeTTwelveGsmMatchedDiffThresholdSpeedTwo}); both beat
+          top-$k$, margin and PC-Sampler. Calibration makes $\alpha$ a per-token error target but adds no accuracy.
         \else
           {\color{ink2}Pending: C3a against six decoders at matched tokens per step
           (Thu 29).}
@@ -988,33 +977,35 @@
   \vspace{2mm}
   \begin{columns}[T,onlytextwidth]
     \begin{column}{0.485\textwidth}
-      \begin{panel}[height=56mm]
+      \begin{panel}[height=60mm]
         \paneltitle{Claims we withdrew}
         \begin{itemize}\scriptsize
-          \item Heteroskedastic noise alone makes winners overconfident (proposal):
+          \item Unequal noise across blanks alone makes winners overconfident (proposal):
                 false, Proposition 1.
-          \item Selection on confidence inflates \B (proposal, mid report): on the probe it
-                raises \A instead.
-          \item $\rho$ moves only \A (plan v2): \B rises with $\rho$ too.
-          \item C2 on an 8B model (plan v2): not run. The probe results are for our 110M only.
-          \item Real-text C2 as identified contrasts (mid deck): they are proxies, with a
+          \item Picking by confidence inflates \B (proposal, mid report): on the synthetic
+                task it raises \A instead.
+          \item $\rho$ changes only \A (plan v2): \B rises with $\rho$ too.
+          \item C2 on an 8B model (plan v2): not run. The synthetic-task results are for our
+                110M only.
+          \item Real-text C2 as exact measurements (mid deck): they are proxies that give a
                 direction but no split in nats.
         \end{itemize}
       \end{panel}
     \end{column}
     \begin{column}{0.485\textwidth}
-      \begin{panel}[height=56mm]
+      \begin{panel}[height=60mm]
         \paneltitle{Limits}
         \begin{itemize}\scriptsize
-          \item C2's exact values hold for one synthetic distribution and one 110M model.
-          \item Neither fine-tune met the marker bar, so the main probe model is the one with
-                lower validation NELBO. The other model's crossovers are in the backup.
-          \item The disagreement proxy tracks \A weakly, and mostly through $k$.
-          \item 8B models in fp16, not bfloat16 (no bfloat16 on our GPUs); E3 for top-$k$
+          \item C2's exact values hold for one synthetic task and one 110M model.
+          \item Neither fine-tuned model passed our check that it reads the $\rho$ marker; we use
+                the one with lower validation loss (the other: backup).
+          \item The disagreement proxy follows \A weakly, and mostly through $k$.
+          \item 8B models in fp16, not bfloat16 (our GPUs lack it); E3 for top-$k$
                 decoders only.
-          \item C1 is teacher-forced, and E2 intervals condition on the fitted calibrators.
-          \item C3: one model, greedy, one seed, exploratory; KLASS's two faster settings are off
-                its published operating point.
+          \item C1 is teacher-forced (the decoder sees the true tokens); E2 intervals treat
+                the fitted calibration curves as fixed.
+          \item C3: one model, greedy decoding, one seed, exploratory; KLASS's two faster
+                settings are off its published operating point.
         \end{itemize}
       \end{panel}
     \end{column}
@@ -1049,7 +1040,7 @@
     \begin{column}{0.485\textwidth}\raggedright
       \paneltitle{Proposition 1}
       Suppose, given $s$, each pair $(\ell_i, a_i)$ is independent of
-      $\ell_{-i} = (\ell_j)_{j \in M\setminus\{i\}}$. Let $Z = (\ell_i, s)$ and
+      $\ell_{-i} = (\ell_j)_{j \in M,\, j \neq i}$. Let $Z = (\ell_i, s)$ and
       $Y = (\ell_{-i}, P, U)$.\par\vspace{1mm}
       Given $s$, $(\ell_i, a_i) \perp \ell_{-i}$ and $(P, U) \perp (\ell_j, a_j)_{j\in M}$, so
       $(\ell_i, a_i) \perp Y \mid s$, and by weak union $a_i \perp Y \mid Z$, i.e.\
