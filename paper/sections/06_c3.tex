@@ -58,11 +58,10 @@
   \IfFileExists{../artifacts/t12/t12_matched_speed.tex}%
     {\Cfit{\input{../artifacts/t12/t12_matched_speed.tex}}}%
     {\CthreePending{T12 matched-speed table}}
-  \caption{Decoders at matched speed: speed 2 (target 4 tokens per step) per task, with C3a at
-    $\alpha=\Cres{CThreeTTwelveGsmAlphaPrimary}$ on GSM8K and
-    $\Cres{CThreeTTwelveMbppAlphaPrimary}$ on MBPP; Wilson intervals for accuracy, paired
-    bootstrap intervals for C3a $-$ decoder (positive favours C3a). $^\dagger$KLASS is off its
-    published operating point here (Appendix~\ref{sec:c3-app}).}
+  \caption{Decoders at matched speed: speed 2 (target 4 tokens per step), C3a at
+    $\alpha=\Cres{CThreeTTwelveGsmAlphaPrimary}$ (GSM8K) and $\Cres{CThreeTTwelveMbppAlphaPrimary}$
+    (MBPP). Wilson intervals for accuracy, paired bootstrap for C3a $-$ decoder (positive favours
+    C3a). $^\dagger$Off its published operating point (Appendix~\ref{sec:c3-app}).}
   \label{tab:c3-speed}
 \end{table*}
 
@@ -87,9 +86,8 @@ fit-half LLaDA-8B-Instruct traces (\Cres{CThreeTElevenGsmFitDocs} GSM8K and
 a result) puts its ECE against the raw $\sigma(\ell)$ at \Cres{CThreeTElevenGsmDevECECal} from
 \Cres{CThreeTElevenGsmDevECERaw} on GSM8K and \Cres{CThreeTElevenMbppDevECECal} from
 \Cres{CThreeTElevenMbppDevECERaw} on MBPP. It is then applied to free generation, which starts
-from 256 masks; its fit states lie inside a reference answer. A fraction
-\Cres{CThreeTTwelveGsmOutsideShare} of C3a's GSM8K steps and
-\Cres{CThreeTTwelveMbppOutsideShare} of its MBPP steps have features outside the fitted range.
+from 256 masks; its fit states lie inside a reference answer. Of C3a's steps, \Cres{CThreeTTwelveGsmOutsideShare} (GSM8K) and
+\Cres{CThreeTTwelveMbppOutsideShare} (MBPP) have features outside the fitted range.
 % TODO(results): if the dev ECE does not fall (Cal >= Raw), say "does not improve on" instead
 %   of "from", and say the gain, if any, is not from better calibration.
 

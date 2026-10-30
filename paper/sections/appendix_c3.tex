@@ -34,19 +34,18 @@ per decoder and the speed-1 and speed-3 rows are in the code archive.
 %   top-k 0.835 [0.777, 0.880] vs 0.793; threshold 0.845 [0.788, 0.889] vs 0.792: both inside.
 
 \paragraph{KLASS.}
-Ours differs from the reference \citep{kim2025klass} in three ways, found after scoring: the
-KL history is kept per 32-token block (two one-token steps at each block start), the KL is
-taken in the reverse direction, and blocks are 32 tokens, not 64 (as for all decoders). At its
-published thresholds it runs at about 2.6 tokens per step, as published; aiming at 4 and 8
-tokens per step, the knob path, fixed in advance, lowers $\tau$ to 0.29 and 0.2 (reaching 4.0
-and 4.9), far below the published range, partly to make up speed lost to the per-block history. Its speed-2 and speed-3 rows
-($^\dagger$) describe that path, not KLASS at its intended operating point, and no comparison
-rests on them.
+Ours differs from the reference \citep{kim2025klass} in three ways, found after scoring: a KL
+history per 32-token block (two one-token steps at each block start), the reverse KL direction,
+and 32-token blocks, not 64 (as for all decoders). At its published thresholds it runs at about
+2.6 tokens per step, as published; aiming at 4 and 8, the knob path, fixed in advance, lowers
+$\tau$ to 0.29 and 0.2 (reaching 4.0 and 4.9), far below the published range, partly to make
+up speed lost to the per-block history. Its speed-2 and speed-3 rows ($^\dagger$) describe that
+path, not KLASS as intended, and no comparison rests on them.
 
 \begin{figure}[t]
   \centering
   \IfFileExists{../artifacts/t12/figures/t12_matched_speed.pdf}%
-    {\includegraphics[width=\columnwidth]{../artifacts/t12/figures/t12_matched_speed}}%
+    {\includegraphics[width=0.8\columnwidth]{../artifacts/t12/figures/t12_matched_speed}}%
     {\CthreePending{Figure accuracy against tokens per step}}
   \caption{Accuracy against aggregate tokens per step, one panel per task (left GSM8K, right
     MBPP), one curve per decoder at its three speeds, with 95\% Wilson intervals. Up and to the
