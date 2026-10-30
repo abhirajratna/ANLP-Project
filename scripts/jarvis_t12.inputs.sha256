@@ -1,0 +1,13 @@
+# sha256 of the off-repo inputs of scripts/jarvis_t12.sh, copied from Ada 2026-10-26
+# (ada-gw1: /home2/parth.sharma/c3-t12/artifacts/c3/ and /home2/parth.sharma/c3-runs/corpus/).
+# Paths are relative to the repository root.  `check`, `calibrate` and `run` refuse on a missing
+# file or a mismatch.  The split manifests are the frozen prereg-v1 hashes of the LF blobs
+# (`git show HEAD:<path> | sha256sum`): a CRLF checkout (the Windows laptop) hashes differently,
+# so the code must reach the VM through git, never as a copied working tree.
+b6d65073f57ebb3df0675469b2120b68eba14281ca811e59efdf40ac004603f6  artifacts/split_manifest_gsm8k.json
+74e68dd64d5f24d509d93e90e13fd83969ae31a6be233115d48387211ae0001d  artifacts/split_manifest_mbpp.json
+a90c71d4498b1e5be3889bf447682bc41e63d076b72e288769c918f1eca44367  artifacts/c3/llada-8b-instruct_fp16_c3a-gsm8k.json
+44edf20471ef1b9b68cca61c414da7eede281b1b5e16fbf7e16e46b56356c9b8  artifacts/c3/llada-8b-instruct_fp16_c3a-mbpp.json
+1ae28fab52f09a06380c0049b286d1acb5173b3282fa96cb3fefd9a74ce39628  runs/corpus/reserve_docs.jsonl
+b183e93afd8839f1a591c3dc68c063f99d7c2cc816ae5416b5cc6c47efaa807e  runs/corpus/tasks/gsm8k_test.jsonl
+5ae0bb957231ad7887ed69b6cb6094220dc25214c63a84f0ec21ed18122037dc  runs/corpus/tasks/mbpp_test.jsonl
