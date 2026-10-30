@@ -25,9 +25,11 @@ setting (positive = C3a higher), paired bootstrap 95% CI; `---` = no setting wit
 | Threshold | 3.73 | 0.355 [0.276, 0.444] | 0.000 [-0.033, 0.033] | 3.78 | 0.344 [0.288, 0.405] | 0.028 [0.000, 0.056] | sign 0 -> +; CI includes 0 -> includes 0 (lower end 0.000: 0 is on the boundary) |
 | Margin | 4.00 | 0.174 [0.116, 0.251] | --- | 4.00 | 0.212 [0.166, 0.267] | --- |  |
 | Entropy | 3.83 | 0.355 [0.276, 0.444] | 0.000 [-0.058, 0.058] | 3.85 | 0.352 [0.295, 0.413] | 0.020 [-0.028, 0.068] | sign 0 -> +; CI includes 0 -> includes 0 |
-| KLASS (off its published operating point) | 3.87 | 0.066 [0.034, 0.125] | 0.289 [0.198, 0.380] | 3.80 | 0.056 [0.034, 0.092] | 0.316 [0.256, 0.376] | sign + -> +; CI excludes 0 -> excludes 0 |
+| KLASS (off its published operating point) | 3.87 | 0.066 [0.034, 0.125] | not quoted | 3.80 | 0.056 [0.034, 0.092] | not quoted | not quoted (off its published operating point; no comparison rests on it) |
 | PC-Sampler | 4.00 | 0.157 [0.103, 0.232] | --- | 4.00 | 0.172 [0.130, 0.224] | --- |  |
 | C3a | 3.61 | 0.355 [0.276, 0.444] | (reference) | 3.61 | 0.372 [0.314, 0.433] | (reference) |  |
+
+No row changes the paper's reading. The threshold difference at N=250 has its lower end at 0.000, which is not evidence that C3a beats a raw threshold: this is a sensitivity check, and its intervals are not adjusted for running it.
 
 Fixed-count decoders at N=250, slot 2, against C3a's 3.608 tok/step: Top-k 4.000 (+10.9%); Margin 4.000 (+10.9%); PC-Sampler 4.000 (+10.9%). None is within +-10%, so none is matched
 at slot 2 (as at N=121); their slot 1 / 2 / 3 tok/step are Top-k 2.00, 4.00, 8.00, Margin 2.00, 4.00, 8.00, PC-Sampler 2.00, 4.00, 8.00.
