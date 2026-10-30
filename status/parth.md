@@ -1,6 +1,6 @@
 ---
 member: parth
-updated: 2026-10-30T09:01:00Z
+updated: 2026-10-30T11:01:38Z
 branch: parth/t12-driver
 ---
-C3/T12 done on main 861cd16 (outputs, §6, deviations 17 notes). Open: RTX PRO 551207 rescue (parth's call), public HF repo (parth).
+C3/T12 complete on main b91db7b (results, paper, code incl. a9abd7b). Open: public HF repo contents, 551207 deletion, close stale PRs #6/#7 (parth).
