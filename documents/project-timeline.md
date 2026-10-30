@@ -9,8 +9,7 @@
 - [ ] **Final submission — due Sat 31 Oct 2026** (submit by Fri 30 Oct) ← 57 days
 
 > ⚠️ Guidelines: schedule is **strict, no extensions**. Every team member must make
-> every submission. AI is allowed for code, **not** for report writing (changed 30 Sep:
-> reports may be AI-written). ACL style
+> every submission. AI is allowed for code and, since 30 Sep, for report writing too. ACL style
 > (LaTeX template from the course) for all submissions.
 
 ---
