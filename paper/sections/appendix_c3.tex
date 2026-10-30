@@ -11,14 +11,15 @@
 % plan's bar is 0.01--0.02.  Sanity intervals are 95% Wilson.
 % =====================================================================================
 
-\subsection{C3: sanity check and speed curves (T12, exploratory)}
+\subsection{C3: sanity check, KLASS and speed curves (exploratory)}
 \label{sec:c3-app}
 
 Before the comparison, the harness decodes \Cres{CThreeTTwelveSanityN} fit-half GSM8K
 problems at Fast-dLLM's settings (5-shot, 256 tokens, blocks of 32; fp16 on an RTX 2080 Ti).
 Top-$k$ at $k=1$ scores \CresCI{CThreeTTwelveSanityTopKAcc} against a published 0.793, and the
 threshold rule at $\tau=0.9$ \CresCI{CThreeTTwelveSanityThresholdAcc} against 0.792
-\citep{wu2025fastdllm}; intervals are 95\% Wilson.
+\citep{wu2025fastdllm} (95\% Wilson intervals): both published values lie inside, so the
+harness reproduces the two decoders it can be checked on, though our points are higher.
 Figure~\ref{fig:c3-speed} plots accuracy against tokens per step at all three speeds; the cost
 per decoder and the speed-1 and speed-3 rows are in the code archive.
 % Fast-dLLM's numbers are on the full test set, ours on 200 fit-half problems, so compare the
@@ -29,11 +30,22 @@ per decoder and the speed-1 and speed-3 rows are in the code archive.
 %   above/below the published value, which lies outside our interval: <likely cause, e.g.
 %   prompt or stop-string difference, to be checked>; Sec. 6 is read with that in mind."
 %   Replace the last clause of the paragraph with this sentence if space allows.
+% Filled 29 Oct from macros_c3.tex (c3_paper_outputs dry run on artifacts/t12/*sanity.json):
+%   top-k 0.835 [0.777, 0.880] vs 0.793; threshold 0.845 [0.788, 0.889] vs 0.792: both inside.
+
+\paragraph{KLASS.}
+Ours differs from the reference \citep{kim2025klass} in three ways, found after scoring: a KL
+history per 32-token block (two one-token steps at each block start), the reverse KL direction,
+and 32-token blocks, not 64 (as for all decoders). At its published thresholds it runs at about
+2.6 tokens per step, as published; aiming at 4 and 8, the knob path, fixed in advance, lowers
+$\tau$ to 0.2--0.29 (reaching 3.9--4.9), far below the published range, partly to make up speed
+lost to the per-block history. Its speed-2 and speed-3 rows ($^\dagger$) describe that
+path, not KLASS as intended, and no comparison rests on them.
 
 \begin{figure}[t]
   \centering
   \IfFileExists{../artifacts/t12/figures/t12_matched_speed.pdf}%
-    {\includegraphics[width=\columnwidth]{../artifacts/t12/figures/t12_matched_speed}}%
+    {\includegraphics[width=0.8\columnwidth]{../artifacts/t12/figures/t12_matched_speed}}%
     {\CthreePending{Figure accuracy against tokens per step}}
   \caption{Accuracy against aggregate tokens per step, one panel per task (left GSM8K, right
     MBPP), one curve per decoder at its three speeds, with 95\% Wilson intervals. Up and to the

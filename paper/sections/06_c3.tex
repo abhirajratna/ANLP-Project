@@ -58,11 +58,10 @@
   \IfFileExists{../artifacts/t12/t12_matched_speed.tex}%
     {\Cfit{\input{../artifacts/t12/t12_matched_speed.tex}}}%
     {\CthreePending{T12 matched-speed table}}
-  \caption{T12 at matched speed: speed 2 (target 4 tokens per step) per task, with C3a at
-    $\alpha=\Cres{CThreeTTwelveGsmAlphaPrimary}$ on GSM8K and
-    $\Cres{CThreeTTwelveMbppAlphaPrimary}$ on MBPP. Accuracy with its 95\% Wilson interval;
-    paired difference C3a $-$ decoder on the same problems, with a 95\% percentile bootstrap
-    interval (2,000 resamples of problems); positive favours C3a.}
+  \caption{Decoders at matched speed: speed 2 (target 4 tokens per step), C3a at
+    $\alpha=\Cres{CThreeTTwelveGsmAlphaPrimary}$ (GSM8K) and $\Cres{CThreeTTwelveMbppAlphaPrimary}$
+    (MBPP). Wilson intervals for accuracy, paired bootstrap for C3a $-$ decoder (positive favours
+    C3a). $^\dagger$Off its published operating point (Appendix~\ref{sec:c3-app}).}
   \label{tab:c3-speed}
 \end{table*}
 
@@ -80,41 +79,35 @@ GSM8K and \Cres{CThreeTElevenMbppMonotoneShare} of MBPP fit states. $\alpha$ is 
 knob. C3a changes \emph{how many} tokens are committed, not \emph{which}, and needs no extra
 forward pass.
 
-\paragraph{T11: the calibrator.}
+\paragraph{The calibrator.}
 One calibrator per task is fitted on teacher-forced decoder states ($k\in\{2,4,8\}$) of the
 fit-half LLaDA-8B-Instruct traces (\Cres{CThreeTElevenGsmFitDocs} GSM8K and
 \Cres{CThreeTElevenMbppFitDocs} MBPP documents) and frozen. A check inside the fit half (not
 a result) puts its ECE against the raw $\sigma(\ell)$ at \Cres{CThreeTElevenGsmDevECECal} from
 \Cres{CThreeTElevenGsmDevECERaw} on GSM8K and \Cres{CThreeTElevenMbppDevECECal} from
 \Cres{CThreeTElevenMbppDevECERaw} on MBPP. It is then applied to free generation, which starts
-from 256 masks; its fit states lie inside a reference answer. A fraction
-\Cres{CThreeTTwelveGsmOutsideShare} of C3a's GSM8K steps and
-\Cres{CThreeTTwelveMbppOutsideShare} of its MBPP steps have features outside the fitted range.
+from 256 masks; its fit states lie inside a reference answer. Of C3a's steps, \Cres{CThreeTTwelveGsmOutsideShare} (GSM8K) and
+\Cres{CThreeTTwelveMbppOutsideShare} (MBPP) have features outside the fitted range.
 % TODO(results): if the dev ECE does not fall (Cal >= Raw), say "does not improve on" instead
 %   of "from", and say the gain, if any, is not from better calibration.
 
-\paragraph{T12: matched speed.}
+\paragraph{Matched speed.}
 LLaDA-8B-Instruct generates freely on the report halves of GSM8K
 (\Cres{CThreeTTwelveGsmN} problems) and MBPP (\Cres{CThreeTTwelveMbppN}): zero-shot chat prompt,
-256 tokens in blocks of 32, greedy, one seed, fp16, on two RTX PRO 6000 GPUs.
+256 tokens in blocks of 32, greedy, one seed, fp16, on one H200 GPU per task.
 C3a is compared with confidence top-$k$, Fast-dLLM's threshold \citep{wu2025fastdllm},
 margin \citep{kim2025worst}, entropy-bounded \citep{benhamu2025entropy},
-KLASS \citep{kim2025klass} and PC-Sampler \citep{huang2025pcsampler} (full variant, with
-background token frequencies from held-out FineWeb-Edu text rather than C4).
+KLASS \citep{kim2025klass} and PC-Sampler \citep{huang2025pcsampler} (full variant, background
+frequencies from FineWeb-Edu).
 Each decoder has one speed knob ($k$, $\tau$, $\gamma$, $\alpha$, \dots), calibrated per task on
-fit-half problems only to 2, 4 and 8 tokens per step (speeds 1 to 3). Top-$k$, margin and
-PC-Sampler are exact at $k=2,4,8$; the threshold, entropy-bounded, KLASS and C3a settings are
-interpolated in $\log$ speed. Every knob is chosen by speed alone, never by accuracy. Speed is
-aggregate tokens per step, $256N/\sum\mathrm{NFE}$ over a configuration's $N$ problems. If
-KLASS cannot reach 8 tokens per step within $\pm10\%$, its fastest setting fills the speed-3
-slot and that comparison reads ---. Table~\ref{tab:c3-speed} shows speed 2 (about 4 tokens
-per step); speeds 1 and 3 and the cost per decoder are in the code archive, and
-Appendix~\ref{sec:c3-app} has the sanity check and the speed curves. Each decoder is taken at
-its setting nearest to C3a's tokens per step, within $\pm10\%$ (else ---); the accuracy
+fit-half problems only to 2, 4 and 8 tokens per step (speeds 1 to 3). Every knob is chosen by
+speed alone, never by accuracy. Speed is aggregate tokens per step, $256N/\sum\mathrm{NFE}$ over
+a configuration's $N$ problems. Table~\ref{tab:c3-speed} shows speed 2 (about 4 tokens per
+step); Appendix~\ref{sec:c3-app} has the sanity check and the speed curves. Each decoder is
+taken at its setting nearest to C3a's tokens per step, within $\pm10\%$ (else ---); the accuracy
 difference is paired on the shared problems, with a 95\% percentile bootstrap interval from
-2,000 resamples of problems. T12 is exploratory and outside the C1 analysis of
-\S\ref{sec:inference}: no multiple-testing correction is applied, and differences are reported
-as estimates with intervals.
+2,000 resamples of problems. The comparison is exploratory and outside the C1 analysis; no
+multiple-testing correction is applied.
 
 \paragraph{Result.}
 % TODO(results): first, the sanity check (appendix_c3.tex): if top-k or the threshold scores
