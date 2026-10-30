@@ -1,6 +1,6 @@
 ---
 member: abhiraj
-updated: 2026-10-28T20:23:05Z
-branch: main
+updated: 2026-10-30T19:24:48Z
+branch: abhiraj/paper-pdf-and
 ---
-abhiraj: PR #58 approved at b2dd9dd (bus); idle until next request
+abhiraj: branch abhiraj/paper-pdf-and @ 9d02fcf, PR opening: paper/main.pdf rebuilt (12 pp; main had the 26 Oct 8-pp build) + \And author line; needs review before Final.zip
