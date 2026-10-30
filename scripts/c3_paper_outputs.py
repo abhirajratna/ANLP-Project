@@ -57,6 +57,15 @@ Writes, under ``--out-dir`` (default ``artifacts``)
   t12/t12_sanity_cost.tex                         the sanity row and the cost per decoder (slides, README)
   t12/figures/t12_matched_speed.{pdf,png}         appendix figure, one panel per task, x axes not shared
   t12/zip/t12_sanity_cost.{md,csv}, t12_sanity.csv, t12_speed1_speed3.{md,csv}   code archive tables
+
+Sensitivity mode (``--allow-mixed-machines --tag TAG``; never for the paper)
+  Deviation 17 (PR #74): a task whose records come from more than one run / machine / output directory is
+  refused, because the paper's numbers are one run on one machine.  A sensitivity check (MBPP's completion run to
+  250 problems, split over two H200 instances) may merge them.  Each such condition then becomes a warning and is
+  recorded in the summary as ``mixed_machines`` (with ``sensitivity: true`` and ``sensitivity_tag``); every other
+  guard stays on.  EVERY output goes under ``<out-dir>/t12/sensitivity/<TAG>/`` (macros as
+  ``macros_c3_sensitivity.tex`` with the prefix ``CThreeTTwelveSens``, so an ``\\input`` cannot redefine the
+  paper's macros); the run refuses if an output path would be outside that directory.
 """
 from __future__ import annotations
 
@@ -311,7 +320,7 @@ def load_manifest(manifest_dir, task: str, warnings: list, inputs: dict):
     return ({int(k) for k, v in d.items() if int(v) == 1}, {int(k) for k, v in d.items() if int(v) == 0})
 
 
-def load_records(specs, warnings: list, inputs: dict, manifest_dir=None) -> dict:
+def load_records(specs, warnings: list, inputs: dict, manifest_dir=None, allow_mixed: bool = False) -> dict:
     """The report-half records, ``{task: {config_key: {doc_id: record}}}``, and how complete they are.
 
     Refuses (``SystemExit``): a shard without a meta file, a report-half shard whose meta is not
@@ -321,8 +330,14 @@ def load_records(specs, warnings: list, inputs: dict, manifest_dir=None) -> dict
     fewer than the expected problems) go in ``out["_shortfalls"]`` for ``main`` to refuse or allow.
     ``out["_meta"][task]``: ``run``, ``n_expected``, ``shards_missing``.  ``out["_order"][task]``:
     shard file -> its doc_ids in order of first appearance.  The records are not yet reduced to the
-    complete problems: ``reduce_to_complete`` does that."""
-    by_run = {}                                           # task -> run -> {config: {doc: record}}
+    complete problems: ``reduce_to_complete`` does that.
+
+    ``allow_mixed`` (sensitivity mode only): the two refusals about more than one run / host / gpu /
+    num_shards / label / output directory per task become warnings, and the runs of a task are merged
+    under the first run hash (``out["_meta"][task]["runs"]`` lists them all); what differed, per task, is
+    ``out["_mixed"][task]`` (a list of ``{"field", "values"}``).  Every other refusal stays."""
+    by_run = {}
+    mixed = {}                                            # task -> field -> set of values seen (allow_mixed)                                           # task -> run -> {config: {doc: record}}
     info = {}                                             # task -> run -> shard bookkeeping
     gen_length, dup_diff, dup_same = {}, {}, {}
     first, origin = {}, {}                                # task -> identity of its first shard; (task, config, doc) -> file
@@ -353,7 +368,10 @@ def load_records(specs, warnings: list, inputs: dict, manifest_dir=None) -> dict
             first[task] = (str(f), ident)
         else:
             diff = [k for k in ident if ident[k] != first[task][1][k]]
-            if diff:
+            if diff and allow_mixed:
+                for k in diff:
+                    mixed.setdefault(task, {}).setdefault(k, {first[task][1][k]}).add(ident[k])
+            elif diff:
                 raise SystemExit(
                     f"{task}: records of more than one run under --records: {first[task][0]} and {f} differ in "
                     + ", ".join(f"{k} ({first[task][1][k]!r} vs {ident[k]!r})" for k in diff)
@@ -397,8 +415,26 @@ def load_records(specs, warnings: list, inputs: dict, manifest_dir=None) -> dict
     out = {"_gen_length": {t: g or GEN_LENGTH for t, g in gen_length.items()}, "_meta": {}, "_shortfalls": [],
            "_order": {t: {f: sorted(ds, key=ds.get) for f, ds in files.items()} for t, files in order.items()},
            "_reduced": {}}
+    if allow_mixed:
+        out["_mixed"] = {t: [{"field": k, "values": sorted(str(v) for v in vals)} for k, vals in fields.items()]
+                         for t, fields in mixed.items()}
     for task, runs in by_run.items():
-        if len(runs) > 1:
+        if len(runs) > 1 and allow_mixed:                 # merge under the first run hash; no (config, doc) is in two
+            rks = sorted(runs)                            # files (refused above), so the union is a plain update
+            rk0 = rks[0]
+            for rk in rks[1:]:
+                for cfg, docs in runs.pop(rk).items():
+                    runs[rk0].setdefault(cfg, {}).update(docs)
+                a, b = info[task][rk0], info[task].pop(rk)
+                a["shards"] |= b["shards"]
+                a["num_shards"] |= b["num_shards"]
+                a["doc_ids"] |= b["doc_ids"]
+                a["limit"] |= b["limit"]
+                a["files"] += b["files"]
+            info[task][rk0]["runs"] = rks
+            warnings.append(f"{task}: MIXED RUNS merged (--allow-mixed-machines, sensitivity only): "
+                            f"{len(rks)} run hashes {rks}")
+        elif len(runs) > 1:
             where = "; ".join(f"{rk}: {info[task][rk]['files'][0]} (+{len(info[task][rk]['files']) - 1})"
                               for rk in sorted(runs))
             raise SystemExit(f"{task}: records of more than one run under --records ({where}); one machine "
@@ -433,6 +469,8 @@ def load_records(specs, warnings: list, inputs: dict, manifest_dir=None) -> dict
             missing = sorted(set(range(shard_n.pop())) - {s for s in ri["shards"] if s is not None})
         out["_meta"][task] = {"run": rk, "n_expected": len(expected) or None, "shards_missing": missing,
                               "files": ri["files"]}
+        if ri.get("runs"):
+            out["_meta"][task]["runs"] = ri["runs"]
         if missing:
             out["_shortfalls"].append(f"{task}: shard(s) {missing} missing")
         short = {k: len(docs) for k, docs in cfgs.items() if len(docs) < len(expected)}
@@ -440,6 +478,9 @@ def load_records(specs, warnings: list, inputs: dict, manifest_dir=None) -> dict
             k, n = min(short.items(), key=lambda kv: kv[1])
             out["_shortfalls"].append(f"{task}: {len(short)} configuration(s) have fewer than the "
                                       f"{len(expected)} expected report problems; fewest {n}/{len(expected)} ({k})")
+    for task, fields in sorted(mixed.items()):
+        warnings.append(f"{task}: MIXED MACHINES (--allow-mixed-machines, sensitivity only): "
+                        + "; ".join(f"{k}: {sorted(str(v) for v in vals)}" for k, vals in fields.items()))
     return out
 
 
@@ -513,11 +554,12 @@ class Verdicts(dict):
         self.timeouts = {}
 
 
-def load_verdicts(specs, warnings: list, inputs: dict, runs=None) -> Verdicts:
+def load_verdicts(specs, warnings: list, inputs: dict, runs=None, canon=None) -> Verdicts:
     """Verdicts of ``score_t12.py --per-record``.  Lines that are not verdicts (no ``correct``: a record
     file) and lmeval verdicts (the sanity run's) are skipped.  Once the records are loaded (``runs``, their
     run hashes) a verdict must carry a ``run`` that is one of them: a run-less line (an older file) or
-    another run's is ignored and counted in a warning."""
+    another run's is ignored and counted in a warning.  ``canon`` (sensitivity mode, merged runs): run hash ->
+    the run hash the merged records carry, so the verdicts of every merged run are found under it."""
     out = Verdicts()
     other = runless = 0
     for f in _expand(specs, "*.jsonl"):
@@ -538,7 +580,7 @@ def load_verdicts(specs, warnings: list, inputs: dict, runs=None) -> Verdicts:
                 if v["run"] not in runs:
                     other += 1
                     continue
-            key = (v.get("run"), v.get("task"), v["config"])
+            key = ((canon or {}).get(v.get("run"), v.get("run")), v.get("task"), v["config"])
             out.setdefault(key, {}).setdefault(int(v["doc_id"]), int(bool(v.get("correct"))))
             if v.get("error") == "timeout":
                 out.timeouts.setdefault(key, set()).add(int(v["doc_id"]))
@@ -765,8 +807,16 @@ def est_macros(m: Macros, name: str, value, lo=None, hi=None) -> None:
         m.add(name + "Hi", fnum(hi, nd))
 
 
-def build_macros(S: dict) -> Macros:
+SENS_HEADER = ("SENSITIVITY OUTPUT (deviation 17, PR #74): records merged from more than one machine.  "
+               "NOT FOR THE PAPER: do not \\input this file or copy a number from it into a table or the text.")
+
+
+def build_macros(S: dict, prefix: str = "CThreeTTwelve", t11_prefix: str = "CThreeTEleven") -> Macros:
     m = Macros()
+    if S.get("sensitivity"):
+        m.comment(SENS_HEADER)
+        m.comment(f"Tag {S['sensitivity_tag']}; macro prefixes {prefix} / {t11_prefix} "
+                  "(the paper's are CThreeTTwelve / CThreeTEleven).")
     m.comment("Generated by scripts/c3_paper_outputs.py -- do not edit by hand.")
     m.comment("Names: paper/sections/06_c3.tex.  Fractions on the 0-1 scale, 3 decimals; TPS and Sec 2,")
     m.comment("NFE 1; N and FitDocs integers.  --- = a comparison with no match (no setting within 10%,")
@@ -786,21 +836,21 @@ def build_macros(S: dict) -> Macros:
         c = S["calibrators"].get(task)
         if c:
             if isinstance(c["fit_docs"], int):
-                m.add(f"CThreeTEleven{w}FitDocs", str(c["fit_docs"]))
+                m.add(f"{t11_prefix}{w}FitDocs", str(c["fit_docs"]))
             for name, key in (("MonotoneShare", "monotone_share"), ("DevECERaw", "dev_ece_raw"),
                               ("DevECECal", "dev_ece_cal")):
                 if _finite(c[key]):
-                    m.add(f"CThreeTEleven{w}{name}", fnum(c[key], 3))
+                    m.add(f"{t11_prefix}{w}{name}", fnum(c[key], 3))
     for task in TASKS:
         w, t = TASK_WORD[task], S["tasks"][task]
         if t["n"] is not None:
-            m.add(f"CThreeTTwelve{w}N", str(t["n"]))
+            m.add(f"{prefix}{w}N", str(t["n"]))
         for dec in DECODERS:
             for s in SLOTS:
                 st = t["decoders"].get(dec, {}).get("speeds", {}).get(str(s))
                 if not st:
                     continue
-                base = f"CThreeTTwelve{w}{dec}{SPEED_WORD[s]}"
+                base = f"{prefix}{w}{dec}{SPEED_WORD[s]}"
                 if _finite(st.get("acc")):
                     est_macros(m, base + "Acc", st["acc"], *st["ci95"])
                 if _finite(st["tps"]):
@@ -811,25 +861,25 @@ def build_macros(S: dict) -> Macros:
                     m.add(base + "Sec", fnum(st["seconds"], 2))
         for s in SLOTS:
             for dec, e in (t["matched"].get(str(s)) or {}).items():
-                base = f"CThreeTTwelve{w}MatchedDiff{dec}{SPEED_WORD[s]}"
+                base = f"{prefix}{w}MatchedDiff{dec}{SPEED_WORD[s]}"
                 if e["matched"] and e["diff"] is not None:
                     est_macros(m, base, e["diff"], e["lo"], e["hi"])
                 elif not e["matched"] and e["reason"] in ("unmatched_at_target", "outside_tolerance"):
                     for suffix in ("", "Lo", "Hi"):
                         m.add(base + suffix, DASH_MACRO)
         if t["outside_share"]:
-            m.add(f"CThreeTTwelve{w}OutsideShare", fnum(t["outside_share"]["share"], 3))
+            m.add(f"{prefix}{w}OutsideShare", fnum(t["outside_share"]["share"], 3))
         for s, a in t["alpha"].items():
-            m.add(f"CThreeTTwelve{w}CThreeA{SPEED_WORD[int(s)]}Alpha", fnum(a, 3))
+            m.add(f"{prefix}{w}CThreeA{SPEED_WORD[int(s)]}Alpha", fnum(a, 3))
         if str(PRIMARY_SPEED) in t["alpha"]:
-            m.add(f"CThreeTTwelve{w}AlphaPrimary", fnum(t["alpha"][str(PRIMARY_SPEED)], 3))
+            m.add(f"{prefix}{w}AlphaPrimary", fnum(t["alpha"][str(PRIMARY_SPEED)], 3))
     san = S["sanity"]
     if san:
-        m.add("CThreeTTwelveSanityN", str(san["n"]))
+        m.add(f"{prefix}SanityN", str(san["n"]))
         for key, dec in SANITY_DEC.items():
             r = san["rows"].get(key)
             if r:
-                est_macros(m, f"CThreeTTwelveSanity{dec}Acc", r["acc"], *r["ci95"])
+                est_macros(m, f"{prefix}Sanity{dec}Acc", r["acc"], *r["ci95"])
     return m
 
 
@@ -1168,6 +1218,38 @@ def jsonable(o):
     return o
 
 
+TAG_RE = re.compile(r"[a-z0-9-]+")
+SENS_NOTE = ("% SENSITIVITY OUTPUT (deviation 17, PR #74): records merged from more than one machine; "
+             "NOT FOR THE PAPER.\n")
+
+
+def sensitivity_dir(out: Path, tag: str) -> Path:
+    return out / "t12" / "sensitivity" / tag
+
+
+def planned_outputs(c3_dir: Path, t12_dir: Path, macros_name: str = "macros_c3.tex") -> list[Path]:
+    """Every file ``main`` writes (the figure's two formats included) for these two directories."""
+    return ([c3_dir / macros_name, t12_dir / "t12_matched_speed.tex", t12_dir / "t12_sanity_cost.tex",
+             t12_dir / f"{MODEL_TAG}_t12-summary.json"]
+            + [t12_dir / "figures" / f"t12_matched_speed.{e}" for e in ("pdf", "png")]
+            + [t12_dir / "zip" / n for n in ("t12_sanity.csv", "t12_sanity_cost.csv", "t12_sanity_cost.md",
+                                             "t12_speed1_speed3.csv", "t12_speed1_speed3.md")])
+
+
+def check_sensitivity_outputs(outputs, sens: Path, normal) -> None:
+    """Refuse (``SystemExit``, before anything is written) if any sensitivity output resolves outside
+    ``sens`` or onto one of the paper's normal output files (``normal``)."""
+    root = sens.resolve()
+    bad_normal = {Path(n).resolve() for n in normal}
+    for o in outputs:
+        r = Path(o).resolve()
+        if r in bad_normal or root not in r.parents:
+            raise SystemExit(f"refusing a sensitivity run: output {o} resolves to {r}, "
+                             f"{'one of the paper outputs' if r in bad_normal else 'outside ' + str(root)}; "
+                             "a sensitivity run writes only under <out-dir>/t12/sensitivity/<TAG>/ "
+                             "(prereg/deviations.md 17)")
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--records", nargs="*", default=[], help="run_t12.py shard files, directories or globs")
@@ -1186,10 +1268,30 @@ def main(argv=None) -> int:
                          "(N = their number; the other problems' records are dropped before anything is "
                          "computed; prereg/deviations.md 17) instead of refusing the run")
     ap.add_argument("--no-figures", action="store_true")
+    ap.add_argument("--allow-mixed-machines", action="store_true",
+                    help="SENSITIVITY ONLY (never for the paper): accept records of a task from more than one "
+                         "run / machine / output directory (deviation 17, PR #74), recording what differed in the "
+                         "summary; needs --tag; every output goes under <out-dir>/t12/sensitivity/<TAG>/ and the "
+                         "macros are CThreeTTwelveSens...")
+    ap.add_argument("--tag", default=None, help="name of the sensitivity run, [a-z0-9-]+ (with --allow-mixed-machines)")
     a = ap.parse_args(argv)
+    sens = bool(a.allow_mixed_machines)
+    if sens and not a.tag:
+        ap.error("--allow-mixed-machines requires --tag TAG ([a-z0-9-]+): its outputs go under "
+                 "<out-dir>/t12/sensitivity/<TAG>/")
+    if a.tag is not None and not sens:
+        ap.error("--tag is only for --allow-mixed-machines (a sensitivity run)")
+    if sens and not TAG_RE.fullmatch(a.tag):
+        ap.error(f"--tag {a.tag!r} must match [a-z0-9-]+")
+    if sens:
+        sdir = sensitivity_dir(Path(a.out_dir), a.tag)
+        check_sensitivity_outputs(
+            planned_outputs(sdir, sdir, "macros_c3_sensitivity.tex"), sdir,
+            planned_outputs(Path(a.out_dir) / "c3", Path(a.out_dir) / "t12")
+            + planned_outputs(ROOT / "artifacts" / "c3", ROOT / "artifacts" / "t12"))
 
     warnings, inputs = [], {}
-    recs = load_records(a.records, warnings, inputs, a.manifest_dir) if a.records else {}
+    recs = load_records(a.records, warnings, inputs, a.manifest_dir, allow_mixed=sens) if a.records else {}
     grid = load_grids(a.grids, warnings, inputs)
     if a.records:
         reduce_to_complete(recs, grid, warnings)          # drops the incomplete problems' records, in place
@@ -1201,7 +1303,9 @@ def main(argv=None) -> int:
     for w in short:
         warnings.append(f"PARTIAL (--allow-partial): {w}")
     runs = {m["run"] for m in (recs.get("_meta") or {}).values()}
-    verdicts = load_verdicts(a.verdicts, warnings, inputs, runs) if a.verdicts else {}
+    canon = {r: m["run"] for m in (recs.get("_meta") or {}).values() for r in m.get("runs", ())}
+    runs |= set(canon)                                    # merged runs (sensitivity mode only)
+    verdicts = load_verdicts(a.verdicts, warnings, inputs, runs, canon) if a.verdicts else {}
     scores = load_scores(a.scores, warnings, inputs, runs) if a.scores else {}
     cal = load_calibrators(a.calibrators, warnings, inputs)
     sanity = load_sanity(a.sanity, warnings, inputs)
@@ -1227,23 +1331,36 @@ def main(argv=None) -> int:
          "calibrators": cal, "sanity": sanity,
          "inputs": inputs, "missing_inputs": missing, "warnings": warnings}
     S["provenance"] = provenance()
+    if sens:
+        S.update({"sensitivity": True, "sensitivity_tag": a.tag, "allow_mixed_machines": True,
+                  "mixed_machines": (recs.get("_mixed") or {}),
+                  "sensitivity_note": "NOT FOR THE PAPER: records merged from more than one machine "
+                                      "(prereg/deviations.md 17, PR #74)"})
 
     out = Path(a.out_dir)
-    t12 = out / "t12"
+    if sens:
+        t12 = c3 = sensitivity_dir(out, a.tag)            # every output under one directory
+        macros_path = c3 / "macros_c3_sensitivity.tex"
+        macros = build_macros(S, "CThreeTTwelveSens", "CThreeTElevenSens")
+        note = SENS_NOTE
+    else:
+        t12, c3 = out / "t12", out / "c3"
+        macros_path = c3 / "macros_c3.tex"
+        macros = build_macros(S)
+        note = ""
     t12.mkdir(parents=True, exist_ok=True)
-    macros = build_macros(S)
-    write_macros(macros, out / "c3" / "macros_c3.tex")
-    (t12 / "t12_matched_speed.tex").write_text(matched_table(S), encoding="utf-8")
-    (t12 / "t12_sanity_cost.tex").write_text(sanity_cost_table(S), encoding="utf-8")
+    write_macros(macros, macros_path)
+    (t12 / "t12_matched_speed.tex").write_text(note + matched_table(S), encoding="utf-8")
+    (t12 / "t12_sanity_cost.tex").write_text(note + sanity_cost_table(S), encoding="utf-8")
     write_zip_tables(S, t12 / "zip")
     figs = [] if a.no_figures else make_figure(S, t12 / "figures")
-    S["outputs"] = sorted([str(out / "c3" / "macros_c3.tex"), str(t12 / "t12_matched_speed.tex"),
+    S["outputs"] = sorted([str(macros_path), str(t12 / "t12_matched_speed.tex"),
                            str(t12 / "t12_sanity_cost.tex")] + [str(p) for p in figs])
     S["macro_names"] = sorted(macros.names)
     (t12 / f"{MODEL_TAG}_t12-summary.json").write_text(json.dumps(jsonable(S), indent=2, default=str),
                                                          encoding="utf-8")
     n = {t: S["tasks"][t]["n"] for t in TASKS}
-    print(f"[c3-paper] {len(macros.names)} macros, {len(figs)} figure files -> {out} "
+    print(f"[c3-paper] {len(macros.names)} macros, {len(figs)} figure files -> {t12 if sens else out} "
           f"(report problems: {n['gsm8k'] or DASH} GSM8K, {n['mbpp'] or DASH} MBPP)")
     if missing:
         print(f"[c3-paper] no input for: {', '.join(missing)} (their cells are {DASH}, their macros undefined)",
