@@ -49,7 +49,7 @@ resamples.
   \includegraphics[width=\columnwidth]{../artifacts/probe/figures/c2_crossover_ft110m-v3-visible}
   \caption{(A) and (B) per slot on the probe (main model), with 95\% intervals, against
     tokens per step $k$. Columns: $\rho$; rows: selection rule. Shaded: the $k$ where (A)
-    exceeds (B) (hatched where the interval of (A)$-$(B) still holds 0).}
+    exceeds (B).}
   \label{fig:c2-crossover}
 \end{figure}
 
@@ -111,7 +111,7 @@ and \CTwoTTenProbeDisatRhoOneKEight{} at $\rho=1$.
 % "At most DisKFour at k <= 4": DisKTwo, DisKFour, LladaDisKTwo, LladaDisKFour are all <= DisKFour.
 % "Delta cannot be told from zero at k = 1": [DeltaKOneLo, DeltaKOneHi] and the Llada one hold 0.
 % "LLaDA does not disagree there": LladaDisKTwo/KFour/KEightRateOne are 0.
-Over mask rates 0.1--0.9,\footnote{At rate 1 (all-\texttt{[MASK]} input) the 110M model's disagreement over all ten rates is \CTwoTTenDisAllRatesKEight{} at $k=8$; LLaDA's is none.}
+Over mask rates 0.1--0.9,\footnote{At rate 1 (all-\texttt{[MASK]} input) the 110M model's disagreement at $k=8$ is \CTwoTTenDisKEightRateOne{} (\CTwoTTenDisAllRatesKEight{} over all ten rates); LLaDA's is \CTwoTTenLladaDisKEightRateOne{}.}
 disagreement at $k=8$ is \CTwoTTenDisKEight{} for the 110M model and \CTwoTTenLladaDisKEight{}
 for LLaDA, and at most \CTwoTTenDisKFour{} at $k\le4$. CE grows from \CTwoTTenCEKOne{} nats at
 $k=1$ to \CTwoTTenCEKEight{} at $k=8$ (LLaDA: \CTwoTTenLladaCEKOne{} to

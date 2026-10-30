@@ -20,8 +20,8 @@
 \label{sec:intro}
 
 A masked diffusion language model writes by unmasking. Each step is one forward pass; the decoder
-then commits some positions for good. LLaDA and Dream commit the $k$ positions they are most
-confident about, and threshold rules such as Fast-dLLM commit every position above a
+then commits some positions for good. LLaDA commits the $k$ positions it is most confident
+about (an option in Dream, whose default order is random), and threshold rules such as Fast-dLLM commit every position above a
 confidence cutoff \citep{nie2025llada,ye2025dream,chang2022maskgit,wu2025fastdllm}.
 Confidence thus chooses which tokens are committed and is read as the chance they are
 right, so on committed tokens it is a selected quantity. The largest of many noisy estimates
@@ -29,7 +29,8 @@ tends to be one whose error pushed it up, the winner's curse \citep{andrews2024w
 a commit out of many masked positions is such a maximum.
 
 Calibration of diffusion LMs, where measured, is over whole answers
-\citep{yadav2026bidirectional,jiang2026bayeser}, not per committed token. Nor is the bias automatic: selection does not bias a correct posterior
+\citep{yadav2026bidirectional,jiang2026bayeser} or per committed token without conditioning on
+the selection \citep{asaria2026diffusiongemma}. Nor is the bias automatic: selection does not bias a correct posterior
 \citep{dawid1994selection,efron2011tweedie}. We show that the gap between confidence and accuracy on committed
 tokens splits exactly, when positions' errors are independent given the state, into ordinary
 miscalibration and a \emph{field term}, nonzero only if
@@ -59,6 +60,6 @@ Three contributions follow.
   positions as have recalibrated confidence at least $1-\alpha$, in
   the model's own order, with no extra forward pass. At matched speed
   (LLaDA-8B-Instruct, GSM8K) it beats top-$k$, margin and PC-Sampler but not the Fast-dLLM
-  threshold it recalibrates (exploratory).
+  threshold it recalibrates, which it trails at 8 tokens per step (exploratory).
   % MBPP clause (N = \Cres{CThreeTTwelveMbppN} of 250, prereg deviation 17) once parth scores it.
 \end{itemize}
