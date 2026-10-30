@@ -1,6 +1,6 @@
 ---
 member: ojas
-updated: 2026-10-29T20:54:24Z
+updated: 2026-10-30T05:57:45Z
 branch: main
 ---
-ojas: #58 + #59 (viva deck) merged; #68 abstract/intro C3 waits for #62 macros + ayush GitHub Approve; #67 waits on parth
+ojas: #69/#70 approved; page limit fixed (tectonic: 12 pp, appendix pp.11-12) via #71 + commits on #67/#68; waiting merges (parth) + approvals (abhiraj #71, ayush #68)
