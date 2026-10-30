@@ -82,10 +82,9 @@ forward pass.
 \paragraph{The calibrator.}
 One calibrator per task is fitted on teacher-forced decoder states ($k\in\{2,4,8\}$) of the
 fit-half LLaDA-8B-Instruct traces (\Cres{CThreeTElevenGsmFitDocs} GSM8K and
-\Cres{CThreeTElevenMbppFitDocs} MBPP documents) and frozen. A check inside the fit half (not
-a result) puts its ECE against the raw $\sigma(\ell)$ at \Cres{CThreeTElevenGsmDevECECal} from
-\Cres{CThreeTElevenGsmDevECERaw} on GSM8K and \Cres{CThreeTElevenMbppDevECECal} from
-\Cres{CThreeTElevenMbppDevECERaw} on MBPP. It is then applied to free generation, which starts
+\Cres{CThreeTElevenMbppFitDocs} MBPP documents) and frozen. On held-out report-half decoder states (teacher-forced) its ECE falls to \Cres{CThreeTElevenGsmReportECECal} from
+raw $\sigma(\ell)$'s \Cres{CThreeTElevenGsmReportECERaw} on GSM8K and \Cres{CThreeTElevenMbppReportECECal} from
+\Cres{CThreeTElevenMbppReportECERaw} on MBPP. It is then applied to free generation, which starts
 from 256 masks; its fit states lie inside a reference answer. Of C3a's steps, \Cres{CThreeTTwelveGsmOutsideShare} (GSM8K) and
 \Cres{CThreeTTwelveMbppOutsideShare} (MBPP) have features outside the fitted range.
 % TODO(results): if the dev ECE does not fall (Cal >= Raw), say "does not improve on" instead

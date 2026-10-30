@@ -25,6 +25,9 @@ Inputs
                 .unmatched_at_target``.
   --calibrators ``artifacts/c3/llada-8b-instruct_fp16_c3a-{gsm8k,mbpp}.json`` (T11).
   --sanity      the Ada sanity run, ``score_t12.py`` output.
+  --realised-risk  ``artifacts/c3/realised_risk_llada-8b-instruct_fp16_v2.json`` (``scripts/c3_realised_risk.py``):
+                the calibrator's ECE on held-out report-half teacher-forced decoder states, arm k4 (its primary
+                arm), raw sigma(ell) and calibrated, with 95% CIs -> ``\\CThreeTEleven<Task>ReportECE{Raw,Cal}[Lo|Hi]``.
 
 Completeness rule (prereg/deviations.md, entry 17), the only thing ``--allow-partial`` changes
   Per task the kept problems are the report-half doc_ids that have a record for EVERY configuration of
@@ -149,6 +152,7 @@ COMPLETE_RULE = ("kept problems: the report-half problems with a record for ever
                  "dropped before accuracy, speed, matching and the paired bootstrap are computed, so all of them, "
                  "and N, use only the kept problems (prereg/deviations.md entry 17)")
 MODEL_TAG = "llada-8b-instruct_fp16"
+RISK_ARM = "k4"                           # c3_realised_risk.PRIMARY_ARM: the arm its macros file reports
 
 
 # --------------------------------------------------------------------------- small helpers
@@ -624,6 +628,37 @@ def load_calibrators(specs, warnings: list, inputs: dict) -> dict:
     return out
 
 
+def load_realised_risk(path, warnings: list, inputs: dict) -> dict:
+    """Held-out (report-half) ECE of the calibrator, from ``c3_realised_risk.py``'s JSON:
+    ``tasks.<task>.ece.<arm>.{raw_sigma_ell,calibrated}.{ece,ci_low,ci_high}`` on the primary arm."""
+    if not path:
+        return {}
+    f = Path(path)
+    if not f.is_file():
+        warnings.append(f"realised-risk file {path} not found; the ReportECE macros are undefined")
+        return {}
+    d = _read_json(f, warnings)
+    if not isinstance(d, dict):
+        return {}
+    if d.get("half") != "report":
+        warnings.append(f"{path}: half is {d.get('half')!r}, not 'report'; the ReportECE macros are undefined")
+        return {}
+    inputs["realised_risk"] = {"path": str(f), "sha256": sha256_file(f)}
+    out = {}
+    for task in TASKS:
+        tk = (d.get("tasks") or {}).get(task) or {}
+        e = (tk.get("ece") or {}).get(RISK_ARM) or {}
+        row = {}
+        for name, key in (("raw", "raw_sigma_ell"), ("cal", "calibrated")):
+            r = e.get(key) or {}
+            row[name] = {"value": r.get("ece"), "lo": r.get("ci_low"), "hi": r.get("ci_high")}
+        if row["raw"]["value"] is None and row["cal"]["value"] is None:
+            warnings.append(f"{path}: no tasks.{task}.ece.{RISK_ARM}; its ReportECE macros are undefined")
+            continue
+        out[task] = {"arm": RISK_ARM, "n_docs": tk.get("n_docs"), **row}
+    return out
+
+
 def load_sanity(path, warnings: list, inputs: dict):
     if not path or not Path(path).is_file():
         return None
@@ -772,6 +807,7 @@ def build_task(task, recs, verdicts, scores, grid, warnings) -> dict:
                  "rel_diff": m["rel_diff"], "diff": None, "lo": None, "hi": None, "n_paired": 0}
             if off_op(dec, m["slot"]):
                 e["off_operating_point"] = True
+                e["diff_not_quoted"] = True               # kept here and in the macros; no table prints it
             a, b =correct.get(("CThreeA", s)), correct.get((dec, m["slot"]))
             if a and b:
                 r = paired_bootstrap(a, b)
@@ -841,6 +877,10 @@ def build_macros(S: dict, prefix: str = "CThreeTTwelve", t11_prefix: str = "CThr
                               ("DevECECal", "dev_ece_cal")):
                 if _finite(c[key]):
                     m.add(f"{t11_prefix}{w}{name}", fnum(c[key], 3))
+        rr = (S.get("realised_risk") or {}).get(task)
+        if rr:
+            for name, key in (("ReportECERaw", "raw"), ("ReportECECal", "cal")):
+                est_macros(m, f"{t11_prefix}{w}{name}", rr[key]["value"], rr[key]["lo"], rr[key]["hi"])
     for task in TASKS:
         w, t = TASK_WORD[task], S["tasks"][task]
         if t["n"] is not None:
@@ -949,7 +989,9 @@ def matched_table(S: dict) -> str:
                 shown = t["decoders"][dec]["speeds"][str(e["slot"])]
                 if off_op(dec, e["slot"]):                # the slot shown is the matched one, not nec. s
                     daggered.add(dec)
-                diff = DASH if e["diff"] is None else est_ci({"value": e["diff"], "ci": [e["lo"], e["hi"]]})
+                # a daggered (off-operating-point) row's difference is not quoted: '---'
+                diff = DASH if e["diff"] is None or off_op(dec, e["slot"]) else \
+                    est_ci({"value": e["diff"], "ci": [e["lo"], e["hi"]]})
                 cells[dec] += [num(e["tps"], 2), _est(shown.get("acc"), shown.get("ci95")), diff]
                 if e["n_paired"] and t["n"] is not None and e["n_paired"] != t["n"]:
                     paired.append(f"{TASK_LABEL[task]} {LABEL[dec]}: {int(e['n_paired'])}")
@@ -1137,13 +1179,21 @@ def write_zip_tables(S: dict, d: Path) -> None:
                               e["n_paired"] if e and e["matched"] else "",
                               _flag(off_op(dec, s)), _flag(e and e["matched"] and off_op(dec, e["slot"]))])
     _csv(d / "t12_speed1_speed3.csv", hhead, hrows)
-    hmhead, hmrows = _md_dagger(hhead, hrows, ["off_operating_point", "matched_off_operating_point"])
+    # the CSV keeps every number; the markdown view does not quote the difference of a row matched at an
+    # off-operating-point setting (diff_not_quoted in the summary): '---'
+    di = [hhead.index(c) for c in ("matched_diff", "diff_lo", "diff_hi")]
+    notq = [r[-1] == "true" for r in hrows]
+    hmhead, hmrows = _md_dagger(hhead, [[("" if q and i in di else c) for i, c in enumerate(r)]
+                                        for r, q in zip(hrows, notq)],
+                                ["off_operating_point", "matched_off_operating_point"])
+    notq_note = ("The difference is not quoted ('---') for a row matched at an off-operating-point setting; "
+                 "the CSV has it.\n\n" if any(notq) else "")
     (d / "t12_speed1_speed3.md").write_text(
         "# T12 at speeds 1 and 3\n\n" + nnote + "\nPer decoder: accuracy at its own speed-s setting (95% Wilson), and, "
         "when matched, the paired accuracy difference C3a minus the decoder at the setting nearest to "
         "C3a's slot s (within 10%; matched_slot / matched_tps), 95% percentile bootstrap CI (2,000 "
         "resamples of problems, seed 20261030). A blank is '---': no setting within 10%, or KLASS "
-        "unmatched at the target.\n\n" + OFF_OP_MD + _md(hmhead, hmrows), encoding="utf-8")
+        "unmatched at the target.\n\n" + OFF_OP_MD + notq_note + _md(hmhead, hmrows), encoding="utf-8")
 
 
 # --------------------------------------------------------------------------- figure
@@ -1259,6 +1309,9 @@ def main(argv=None) -> int:
     ap.add_argument("--calibrators", nargs="*", default=["artifacts/c3"],
                     help="llada-8b-instruct_fp16_c3a-<task>.json files or a directory")
     ap.add_argument("--sanity", default="artifacts/t12/llada-8b-instruct_fp16_gsm8k-sanity.json")
+    ap.add_argument("--realised-risk", default=None,
+                    help="artifacts/c3/realised_risk_<model>_v2.json (c3_realised_risk.py): the calibrator's "
+                         "held-out report-half ECE, for the ReportECE macros")
     ap.add_argument("--out-dir", default="artifacts", help="artifacts root: c3/ and t12/ below it")
     ap.add_argument("--manifest-dir", default="artifacts",
                     help="where split_manifest_<task>.json are: the report-half ids the records must cover")
@@ -1309,6 +1362,7 @@ def main(argv=None) -> int:
     scores = load_scores(a.scores, warnings, inputs, runs) if a.scores else {}
     cal = load_calibrators(a.calibrators, warnings, inputs)
     sanity = load_sanity(a.sanity, warnings, inputs)
+    realised = load_realised_risk(a.realised_risk, warnings, inputs)
 
     missing = []
     if not any(k.startswith("records:") for k in inputs):
@@ -1319,6 +1373,8 @@ def main(argv=None) -> int:
     missing += [f"calibrators ({t})" for t in TASKS if t not in cal]
     if sanity is None:
         missing.append("sanity")
+    if a.realised_risk and not realised:
+        missing.append("realised-risk")
 
     S = {"what": "T12 summary for the paper (scripts/c3_paper_outputs.py): LLaDA-8B-Instruct fp16, "
                  "report halves of GSM8K and MBPP, zero-shot chat, 256 tokens, blocks of 32, greedy",
@@ -1328,7 +1384,7 @@ def main(argv=None) -> int:
                      "deviation": "prereg/deviations.md entry 17"},
          "tasks": {t: build_task(t, recs, verdicts, scores, grid, warnings) for t in TASKS},
          "off_operating_point_note": OFF_OP_NOTE,
-         "calibrators": cal, "sanity": sanity,
+         "calibrators": cal, "realised_risk": realised, "sanity": sanity,
          "inputs": inputs, "missing_inputs": missing, "warnings": warnings}
     S["provenance"] = provenance()
     if sens:

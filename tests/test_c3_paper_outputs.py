@@ -124,7 +124,7 @@ def make_fixture(root: Path, with_records=True, with_verdicts=True, with_grids=T
     """Write every input under ``root``; returns the paths."""
     paths = {"records": root / "runs", "verdicts": root / "verdicts.jsonl", "grids": root / "grids",
              "cal": root / "cal", "sanity": root / "sanity.json", "out": root / "out",
-             "manifests": root / "manifests"}
+             "manifests": root / "manifests", "risk": root / "realised_risk.json"}
     verdicts = []
     for task in TASKS:
         shard_rows = {sh: [] for sh in range(nshards)}
@@ -173,6 +173,19 @@ def make_fixture(root: Path, with_records=True, with_verdicts=True, with_grids=T
                 "dev_check": {"ece": {"raw": {"value": 0.0607, "ci": [0.05, 0.07]},
                                       "calibrated": {"value": 0.0059, "ci": [0.003, 0.01]}}},
                 "provenance": {"git_commit": "0b5c8b8"}}))
+    # c3_realised_risk.py's JSON (report half, teacher-forced): only tasks.<task>.ece is read.  The pooled
+    # value differs from k4's so that reading the wrong arm shows.
+    def ece(v, lo, hi):
+        return {"ece": v, "ci_low": lo, "ci_high": hi, "bins": []}
+    arm = {"gsm8k": {"k4": (0.0603, 0.0557, 0.0651, 0.00379, 0.00272, 0.00756),
+                     "pooled": (0.0605, 0.0561, 0.0652, 0.00390, 0.00276, 0.00737)},
+           "mbpp": {"k4": (0.0402, 0.0340, 0.0474, 0.00543, 0.00461, 0.01109),
+                    "pooled": (0.0418, 0.0365, 0.0477, 0.00474, 0.00382, 0.00941)}}
+    paths["risk"].write_text(json.dumps({
+        "half": "report", "status": "exploratory",
+        "tasks": {t: {"n_docs": 659 if t == "gsm8k" else 250,
+                      "ece": {a: {"raw_sigma_ell": ece(*v[:3]), "calibrated": ece(*v[3:])} for a, v in arms.items()}}
+                  for t, arms in arm.items()}}))
     if with_verdicts:
         write_jsonl(paths["verdicts"], verdicts)
     # the Ada sanity run, score_t12.py output (n=200)
@@ -187,8 +200,11 @@ def make_fixture(root: Path, with_records=True, with_verdicts=True, with_grids=T
     return paths
 
 
-def run_main(paths, *extra, records=True, verdicts=True, grids=True, cal=True, sanity=True, manifests=True):
+def run_main(paths, *extra, records=True, verdicts=True, grids=True, cal=True, sanity=True, manifests=True,
+             risk=True):
     argv = ["--out-dir", str(paths["out"])]
+    if risk:
+        argv += ["--realised-risk", str(paths["risk"])]
     if records:
         argv += ["--records", str(paths["records"])]
     if verdicts:
@@ -396,6 +412,45 @@ def test_t11_macros(built):
     assert mac["CThreeTElevenGsmDevECECal"] == "0.006"
 
 
+def test_report_half_ece_macros_come_from_the_realised_risk_json_arm_k4(built):
+    mac = built["macros"]
+    assert mac["CThreeTElevenGsmReportECERaw"] == "0.060" and mac["CThreeTElevenGsmReportECECal"] == "0.004"
+    assert mac["CThreeTElevenMbppReportECERaw"] == "0.040" and mac["CThreeTElevenMbppReportECECal"] == "0.005"
+    assert (mac["CThreeTElevenGsmReportECERawLo"], mac["CThreeTElevenGsmReportECERawHi"]) == ("0.056", "0.065")
+    assert (mac["CThreeTElevenMbppReportECECalLo"], mac["CThreeTElevenMbppReportECECalHi"]) == ("0.005", "0.011")
+    s = built["summary"]["realised_risk"]
+    assert s["gsm8k"]["arm"] == "k4" and s["gsm8k"]["raw"]["value"] == pytest.approx(0.0603)
+    assert "realised_risk" in built["summary"]["inputs"]
+    # the held-out values are not the fit-half check's
+    assert mac["CThreeTElevenGsmReportECERaw"] != mac["CThreeTElevenGsmDevECERaw"]
+
+
+def test_no_realised_risk_input_leaves_the_report_ece_macros_undefined(tmp_path):
+    paths = make_fixture(tmp_path)
+    assert run_main(paths, risk=False) == 0
+    mac = parse_macros((paths["out"] / "c3" / "macros_c3.tex").read_text())
+    assert not [n for n in mac if "ReportECE" in n]
+    assert "CThreeTElevenGsmDevECERaw" in mac                       # the rest is unchanged
+    assert "realised-risk" not in summary_of(paths)["missing_inputs"]
+
+
+@pytest.mark.parametrize("break_it", ["missing", "fit_half", "bad_json"])
+def test_unusable_realised_risk_file_warns_and_is_not_a_crash(tmp_path, break_it):
+    paths = make_fixture(tmp_path)
+    if break_it == "missing":
+        paths["risk"].unlink()
+    elif break_it == "fit_half":
+        d = json.loads(paths["risk"].read_text())
+        d["half"] = "fit"
+        paths["risk"].write_text(json.dumps(d))
+    else:
+        paths["risk"].write_text("{not json")
+    assert run_main(paths) == 0
+    mac = parse_macros((paths["out"] / "c3" / "macros_c3.tex").read_text())
+    assert not [n for n in mac if "ReportECE" in n]
+    assert "realised-risk" in summary_of(paths)["missing_inputs"]
+
+
 def test_sanity_macros(built):
     mac = built["macros"]
     assert mac["CThreeTTwelveSanityN"] == "200"
@@ -415,7 +470,7 @@ def test_macros_are_wellformed_latex_with_three_decimals(built):
         assert name.startswith(("CThreeTEleven", "CThreeTTwelve"))
         assert body == DASH_MACRO or NUMBER.match(body), (name, body)
         assert body.count("{") == body.count("}")
-        three_dp = re.search(r"(Acc|AccLo|AccHi|MatchedDiff\w*|Share|Alpha|AlphaPrimary|DevECE\w+)$", name)
+        three_dp = re.search(r"(Acc|AccLo|AccHi|MatchedDiff\w*|Share|Alpha|AlphaPrimary|DevECE\w+|ReportECE\w+)$", name)
         if three_dp and body != DASH_MACRO:
             assert re.search(r"\.\d{3,5}$", body), (name, body)
         if name.endswith("N") or name.endswith("FitDocs"):
@@ -577,7 +632,7 @@ def test_records_are_read_from_a_glob(tmp_path):
     argv = ["--out-dir", str(paths["out"]), "--records", str(paths["records"] / "sweep-*" / "t12.shard*.jsonl"),
             "--verdicts", str(paths["verdicts"]), "--grids", str(paths["grids"]),
             "--calibrators", str(paths["cal"]), "--sanity", str(paths["sanity"]),
-            "--manifest-dir", str(paths["manifests"])]
+            "--manifest-dir", str(paths["manifests"]), "--realised-risk", str(paths["risk"])]
     assert P.main(argv) == 0
     mac = parse_macros((paths["out"] / "c3" / "macros_c3.tex").read_text())
     assert mac["CThreeTTwelveGsmN"] == "30"
@@ -707,6 +762,7 @@ def test_no_macro_is_defined_that_the_naming_scheme_does_not_allow(built):
     speed = "SpeedOne|SpeedTwo|SpeedThree"
     allowed = [
         rf"CThreeTEleven({task})(FitDocs|MonotoneShare|DevECERaw|DevECECal)",
+        rf"CThreeTEleven({task})ReportECE(Raw|Cal)(Lo|Hi)?",
         rf"CThreeTTwelve({task})N",
         rf"CThreeTTwelve({task})({dec})({speed})(Acc|AccLo|AccHi|TPS|NFE|Sec)",
         rf"CThreeTTwelve({task})MatchedDiff({dec})({speed})(Lo|Hi)?",
@@ -1420,6 +1476,81 @@ def test_the_marker_changes_nothing_else(built):
                for sl, st in v["speeds"].items() if "off_operating_point" in st}
     assert flagged == {(t, "Klass", sl) for t in P.TASKS for sl in ("2", "3") if sl in
                        s["tasks"][t]["decoders"]["Klass"]["speeds"]}
+
+
+# ----------------------------------------------------- KLASS's daggered difference cells are not quoted (team decision)
+def klass_row(tex):
+    return next(l for l in tex.splitlines() if l.startswith("KLASS"))
+
+
+def test_daggered_difference_cells_print_a_dash_but_keep_tok_step_accuracy_and_the_dagger(built):
+    tex = (built["out"] / "t12" / "t12_matched_speed.tex").read_text()
+    row = klass_row(tex)
+    cells = [c.strip() for c in row.rstrip(" \\").split(" & ")]
+    assert cells[0] == "KLASS" + DAG and len(cells) == 7
+    t = built["summary"]["tasks"]
+    for i, task in enumerate(P.TASKS):
+        tps, acc, diff = cells[1 + 3 * i: 4 + 3 * i]
+        e = t[task]["matched"]["2"]["Klass"]
+        assert e["slot"] == 2 and e["diff"] is not None            # there is a difference, it is just not printed
+        assert diff == P.DASH == "---"
+        assert tps == P.num(e["tps"], 2) and "scriptsize" in acc and acc != P.DASH
+    # nobody else's difference cell is a dash on account of this
+    for name in ("Top-$k$", "Margin", "PC-Sampler"):
+        r = next(l for l in tex.splitlines() if l.startswith(name))
+        assert "---" not in r, name
+
+
+def test_a_klass_row_at_slot_one_keeps_its_difference(built):
+    _, tex = _matched_with(built, 1)
+    cells = [c.strip() for c in klass_row(tex).rstrip(" \\").split(" & ")]
+    assert "---" not in cells and "scriptsize" in cells[3] and "scriptsize" in cells[6]
+
+
+@pytest.mark.parametrize("slot", [2, 3])
+def test_the_dash_follows_the_matched_slot(built, slot):
+    S, tex = _matched_with(built, slot)
+    cells = [c.strip() for c in klass_row(tex).rstrip(" \\").split(" & ")]
+    assert cells[3] == cells[6] == "---"
+
+
+def test_the_summary_and_macros_keep_the_daggered_difference_and_flag_it(built):
+    s, mac = built["summary"], built["macros"]
+    for task in P.TASKS:
+        for slot, per in s["tasks"][task]["matched"].items():
+            for dec, e in per.items():
+                flagged = bool(e["matched"] and dec == "Klass" and e["slot"] in (2, 3))
+                assert e.get("diff_not_quoted", False) == flagged, (task, slot, dec)
+                if flagged:
+                    assert e["diff"] is not None and e["lo"] is not None and e["hi"] is not None
+    # the number is still in the code archive's macros
+    w = "Gsm"
+    assert val(mac[f"CThreeTTwelve{w}MatchedDiffKlassSpeedTwo"]) == pytest.approx(
+        s["tasks"]["gsm8k"]["matched"]["2"]["Klass"]["diff"], abs=5e-4)
+    assert mac[f"CThreeTTwelve{w}MatchedDiffKlassSpeedTwo"] != DASH_MACRO
+
+
+def test_zip_markdown_does_not_quote_a_daggered_matched_difference_but_the_csv_keeps_it(built, tmp_path):
+    S = json.loads(json.dumps(built["summary"]))
+    for task in P.TASKS:                       # KLASS matched at slot 2 for the speed-1 reference
+        S["tasks"][task]["matched"]["1"]["Klass"].update(
+            {"matched": True, "reason": None, "slot": 2, "tps": 3.0, "diff": 0.123, "lo": 0.05, "hi": 0.2,
+             "n_paired": 30})
+    P.write_zip_tables(S, tmp_path)
+    md = (tmp_path / "t12_speed1_speed3.md").read_text(encoding="utf-8")
+    assert "not quoted" in md
+    row = next(l for l in md.splitlines() if l.startswith("| gsm8k | Klass") and "| 1 |" in l)
+    assert "0.123" not in row and "0.050" not in row and "0.200" not in row and "| 2 † |" in row   # slot 2 shown
+    rows = list(csv.reader((tmp_path / "t12_speed1_speed3.csv").read_text().splitlines()))
+    head = rows[0]
+    k = next(r for r in rows[1:] if r[head.index("task")] == "gsm8k" and r[head.index("decoder")] == "Klass"
+             and r[head.index("speed")] == "1")
+    assert k[head.index("matched_diff")] == "0.123" and k[head.index("matched_off_operating_point")] == "true"
+
+
+def test_the_committed_zip_markdown_is_unchanged_when_no_daggered_row_is_matched(built):
+    md = (built["out"] / "t12" / "zip" / "t12_speed1_speed3.md").read_text(encoding="utf-8")
+    assert "not quoted" not in md
 
 
 # ------------------------------------------------------------------ sensitivity mode (deviation 17, PR #74)
