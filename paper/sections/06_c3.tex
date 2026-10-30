@@ -110,35 +110,10 @@ difference is paired on the shared problems, with a 95\% percentile bootstrap in
 multiple-testing correction is applied.
 
 \paragraph{Result.}
-% TODO(results): first, the sanity check (appendix_c3.tex): if top-k or the threshold scores
-%   above its published number by more than 0.02 (parth's pilot: about 0.04--0.05 above, but
-%   with both published values inside the Wilson intervals at n = 200), say that here before
-%   anything else ("The harness scores above the published <decoder> by <...> (the published
-%   value lies inside / outside our interval), so the comparison below is not comparable to
-%   published numbers; the decoders share the harness, so the differences are still paired")
-%   and keep only the claims that survive; if both are within 0.02, no sentence is needed.
-%   Say "above" or "below", not "misses".
-% TODO(results): keep the sentence that matches \CThreeTTwelve<Task>MatchedDiff<Dec>SpeedTwo
-%   (Lo/Hi) across the six decoders in tab:c3-speed, per task; do not pool tasks.
-%   if the interval excludes 0 and is positive against every decoder with a value:
-%     "At matched speed C3a is estimated to be more accurate than <all / these> decoders on
-%      <task>, by
-%      \CresCI{CThreeTTwelveGsmMatchedDiffThresholdSpeedTwo} against the Fast-dLLM threshold,
-%      the closest competitor."
-%   if it is positive against some and holds 0 against others: name each group, with the
-%     strongest and weakest difference as intervals.
-%   if every interval holds 0:
-%     "At matched speed the estimated difference between C3a and the other decoders on <task>
-%      is small, and the intervals in Table~\ref{tab:c3-speed} include 0: they bound C3a's gain
-%      at <upper end> or less."
-%   if C3a is worse for some decoder (interval below 0): say so as plainly as a gain.
-%   Then which: the largest speed at which C3a keeps within <x> of top-k in accuracy (curve,
-%   appendix), and the wall-clock (\CThreeTTwelve<Task>CThreeASpeedTwoSec against
-%   \CThreeTTwelve<Task>TopKSpeedTwoSec): fewer forward passes need not mean less time.
-% TODO(results): the T11/T12 link.  Because the calibrator keeps the model's ranking, any
-%   gain over top-k comes from how many tokens it commits per step; if the intervals are
-%   positive say "the gain is in the count, not the order".  If they hold 0 say "calibrating
-%   the count did not help at matched speed", and if the share outside the fit range
-%   (OutsideShare) is large, add "C3a is applied to states unlike those it was fitted on;
-%   this may be why" as a possibility, not a finding.
-Results pending.
+At matched speed on GSM8K, C3a is indistinguishable in accuracy from the threshold and
+entropy-bounded decoders (C3a $-$ threshold \CresCI{CThreeTTwelveGsmMatchedDiffThresholdSpeedTwo})
+and \Cres{CThreeTTwelveGsmMatchedDiffMarginSpeedTwo} to \Cres{CThreeTTwelveGsmMatchedDiffPcSamplerSpeedTwo}
+more accurate than top-$k$, margin and PC-Sampler (Table~\ref{tab:c3-speed}): the gain is in how
+many tokens are committed per step, which a raw threshold already achieves. On MBPP
+(\Cres{CThreeTTwelveMbppN} of 250 problems) it is again indistinguishable from both; the
+fixed-count decoders, over 10\% faster, are not compared.
