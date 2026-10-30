@@ -623,7 +623,8 @@
             "lo": 0.24279210925644917,
             "hi": 0.32473444613050073,
             "n_paired": 659,
-            "off_operating_point": true
+            "off_operating_point": true,
+            "diff_not_quoted": true
           },
           "PcSampler": {
             "matched": true,
@@ -709,20 +710,20 @@
         "n_outside": 2362,
         "share": 0.016548496482919037,
         "per_slot": {
-          "2": {
-            "n_steps": 41724,
-            "n_outside": 669,
-            "share": 0.016033937302272074
+          "3": {
+            "n_steps": 19707,
+            "n_outside": 389,
+            "share": 0.019739178971938904
           },
           "1": {
             "n_steps": 81301,
             "n_outside": 1304,
             "share": 0.016039163109924846
           },
-          "3": {
-            "n_steps": 19707,
-            "n_outside": 389,
-            "share": 0.019739178971938904
+          "2": {
+            "n_steps": 41724,
+            "n_outside": 669,
+            "share": 0.016033937302272074
           }
         }
       }
@@ -1324,7 +1325,8 @@
             "lo": 0.19834710743801653,
             "hi": 0.38016528925619836,
             "n_paired": 121,
-            "off_operating_point": true
+            "off_operating_point": true,
+            "diff_not_quoted": true
           },
           "PcSampler": {
             "matched": false,
@@ -1437,6 +1439,36 @@
       "dev_ece_cal": 0.007110921707899554
     }
   },
+  "realised_risk": {
+    "gsm8k": {
+      "arm": "k4",
+      "n_docs": 659,
+      "raw": {
+        "value": 0.06029518691751585,
+        "lo": 0.05571123749816005,
+        "hi": 0.06514467124753161
+      },
+      "cal": {
+        "value": 0.0037874275837114432,
+        "lo": 0.0027171508652338015,
+        "hi": 0.007558834532393616
+      }
+    },
+    "mbpp": {
+      "arm": "k4",
+      "n_docs": 250,
+      "raw": {
+        "value": 0.04018092341056942,
+        "lo": 0.03395880688318598,
+        "hi": 0.04735351237221471
+      },
+      "cal": {
+        "value": 0.005427340344707751,
+        "lo": 0.004612126459989141,
+        "hi": 0.01108734058123522
+      }
+    }
+  },
   "sanity": {
     "file": "C:/Users/parth/AppData/Local/Temp/claude/c--Users-parth-OneDrive-Documents-College-Stuff-Sem5-ANLP-ANLP-Project/417786f1-bf21-4f09-a4b9-16f6aaa15914/scratchpad/dryrun-both/in/artifacts/t12/llada-8b-instruct_fp16_gsm8k-sanity.json",
     "provenance": {
@@ -1544,6 +1576,10 @@
     "sanity": {
       "path": "C:/Users/parth/AppData/Local/Temp/claude/c--Users-parth-OneDrive-Documents-College-Stuff-Sem5-ANLP-ANLP-Project/417786f1-bf21-4f09-a4b9-16f6aaa15914/scratchpad/dryrun-both/in/artifacts/t12/llada-8b-instruct_fp16_gsm8k-sanity.json",
       "sha256": "de16c27f1316cddc7531029a5905985869d641486f6cc434fdce85b84e7ec5fc"
+    },
+    "realised_risk": {
+      "path": "artifacts\\c3\\realised_risk_llada-8b-instruct_fp16_v2.json",
+      "sha256": "042cbe28a18b04909ce3cf6981cf72a402d8e12fe35bd79f74cf7e10cb490557"
     }
   },
   "missing_inputs": [],
@@ -1552,7 +1588,7 @@
     "PARTIAL (--allow-partial): mbpp: 21 configuration(s) have fewer than the 250 expected report problems; fewest 121/250 (pc_sampler[alpha=10.0,k=4,lam=0.25])"
   ],
   "provenance": {
-    "git_commit": "3644fce95c9ead4e5d9361214a4d55913d50f803",
+    "git_commit": "ebff7344cdfa6abee9e3364893604c9cbfebad04",
     "git_dirty": false,
     "python": "3.13.12",
     "platform": "Windows-11-10.0.26200-SP0",
@@ -1565,21 +1601,33 @@
     }
   },
   "outputs": [
-    "C:\\Users\\parth\\AppData\\Local\\Temp\\claude\\c--Users-parth-OneDrive-Documents-College-Stuff-Sem5-ANLP-ANLP-Project\\417786f1-bf21-4f09-a4b9-16f6aaa15914\\scratchpad\\wt-reducedn\\artifacts\\c3\\macros_c3.tex",
-    "C:\\Users\\parth\\AppData\\Local\\Temp\\claude\\c--Users-parth-OneDrive-Documents-College-Stuff-Sem5-ANLP-ANLP-Project\\417786f1-bf21-4f09-a4b9-16f6aaa15914\\scratchpad\\wt-reducedn\\artifacts\\t12\\figures\\t12_matched_speed.pdf",
-    "C:\\Users\\parth\\AppData\\Local\\Temp\\claude\\c--Users-parth-OneDrive-Documents-College-Stuff-Sem5-ANLP-ANLP-Project\\417786f1-bf21-4f09-a4b9-16f6aaa15914\\scratchpad\\wt-reducedn\\artifacts\\t12\\figures\\t12_matched_speed.png",
-    "C:\\Users\\parth\\AppData\\Local\\Temp\\claude\\c--Users-parth-OneDrive-Documents-College-Stuff-Sem5-ANLP-ANLP-Project\\417786f1-bf21-4f09-a4b9-16f6aaa15914\\scratchpad\\wt-reducedn\\artifacts\\t12\\t12_matched_speed.tex",
-    "C:\\Users\\parth\\AppData\\Local\\Temp\\claude\\c--Users-parth-OneDrive-Documents-College-Stuff-Sem5-ANLP-ANLP-Project\\417786f1-bf21-4f09-a4b9-16f6aaa15914\\scratchpad\\wt-reducedn\\artifacts\\t12\\t12_sanity_cost.tex"
+    "C:\\Users\\parth\\AppData\\Local\\Temp\\claude\\c--Users-parth-OneDrive-Documents-College-Stuff-Sem5-ANLP-ANLP-Project\\417786f1-bf21-4f09-a4b9-16f6aaa15914\\scratchpad\\wt-audit\\artifacts\\c3\\macros_c3.tex",
+    "C:\\Users\\parth\\AppData\\Local\\Temp\\claude\\c--Users-parth-OneDrive-Documents-College-Stuff-Sem5-ANLP-ANLP-Project\\417786f1-bf21-4f09-a4b9-16f6aaa15914\\scratchpad\\wt-audit\\artifacts\\t12\\figures\\t12_matched_speed.pdf",
+    "C:\\Users\\parth\\AppData\\Local\\Temp\\claude\\c--Users-parth-OneDrive-Documents-College-Stuff-Sem5-ANLP-ANLP-Project\\417786f1-bf21-4f09-a4b9-16f6aaa15914\\scratchpad\\wt-audit\\artifacts\\t12\\figures\\t12_matched_speed.png",
+    "C:\\Users\\parth\\AppData\\Local\\Temp\\claude\\c--Users-parth-OneDrive-Documents-College-Stuff-Sem5-ANLP-ANLP-Project\\417786f1-bf21-4f09-a4b9-16f6aaa15914\\scratchpad\\wt-audit\\artifacts\\t12\\t12_matched_speed.tex",
+    "C:\\Users\\parth\\AppData\\Local\\Temp\\claude\\c--Users-parth-OneDrive-Documents-College-Stuff-Sem5-ANLP-ANLP-Project\\417786f1-bf21-4f09-a4b9-16f6aaa15914\\scratchpad\\wt-audit\\artifacts\\t12\\t12_sanity_cost.tex"
   ],
   "macro_names": [
     "CThreeTElevenGsmDevECECal",
     "CThreeTElevenGsmDevECERaw",
     "CThreeTElevenGsmFitDocs",
     "CThreeTElevenGsmMonotoneShare",
+    "CThreeTElevenGsmReportECECal",
+    "CThreeTElevenGsmReportECECalHi",
+    "CThreeTElevenGsmReportECECalLo",
+    "CThreeTElevenGsmReportECERaw",
+    "CThreeTElevenGsmReportECERawHi",
+    "CThreeTElevenGsmReportECERawLo",
     "CThreeTElevenMbppDevECECal",
     "CThreeTElevenMbppDevECERaw",
     "CThreeTElevenMbppFitDocs",
     "CThreeTElevenMbppMonotoneShare",
+    "CThreeTElevenMbppReportECECal",
+    "CThreeTElevenMbppReportECECalHi",
+    "CThreeTElevenMbppReportECECalLo",
+    "CThreeTElevenMbppReportECERaw",
+    "CThreeTElevenMbppReportECERawHi",
+    "CThreeTElevenMbppReportECERawLo",
     "CThreeTTwelveGsmAlphaPrimary",
     "CThreeTTwelveGsmCThreeASpeedOneAcc",
     "CThreeTTwelveGsmCThreeASpeedOneAccHi",
