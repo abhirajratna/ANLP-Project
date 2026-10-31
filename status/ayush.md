@@ -1,6 +1,6 @@
 ---
 member: ayush
-updated: 2026-10-31T18:26:23Z
+updated: 2026-10-31T18:45:27Z
 branch: main
 ---
-Building DuckDuckDuckGoose-Final.zip from Murfy PDF (18:19 UTC compile); no more Murfy edits
+Final zip built from Murfy 18:25Z PDF (sha 627d2afa); waiting on repo-public + any last Murfy change
