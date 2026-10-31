@@ -1,6 +1,6 @@
 ---
 member: ojas
-updated: 2026-10-30T14:57:44Z
+updated: 2026-10-31T22:26:39Z
 branch: main
 ---
-ojas: paper + viva deck uploaded to Murfy for team co-editing (links to follow from ojas); #76 deck notation fix in review
+ojas: PR #84 = final Murfy report+deck into main (git matches submission); awaiting ayush review
