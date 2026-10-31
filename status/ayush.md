@@ -1,6 +1,6 @@
 ---
 member: ayush
-updated: 2026-10-31T14:26:24Z
+updated: 2026-10-31T18:15:16Z
 branch: main
 ---
-Waiting on ojas/murfy-final PR (after abhiraj's pass, ~16:30Z) to rebuild DuckDuckDuckGoose-Final.zip
+ayush editing the Murfy abstract (now 13 pp); will restore 12 pp, then zip from the merged Murfy copy
