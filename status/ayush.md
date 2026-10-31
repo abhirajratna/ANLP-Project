@@ -1,6 +1,6 @@
 ---
 member: ayush
-updated: 2026-10-31T13:28:13Z
+updated: 2026-10-31T14:26:24Z
 branch: main
 ---
-Waiting on ojas/murfy-final PR merge to rebuild DuckDuckDuckGoose-Final.zip; deep-review text fixes in Murfy done
+Waiting on ojas/murfy-final PR (after abhiraj's pass, ~16:30Z) to rebuild DuckDuckDuckGoose-Final.zip
