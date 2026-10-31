@@ -1,6 +1,6 @@
 ---
 member: ayush
-updated: 2026-10-31T13:13:37Z
+updated: 2026-10-31T13:28:13Z
 branch: main
 ---
-Final zip built from f3b26e6; waiting on ojas: which paper PDF (main vs newer Murfy report) is the submission copy
+Waiting on ojas/murfy-final PR merge to rebuild DuckDuckDuckGoose-Final.zip; deep-review text fixes in Murfy done
