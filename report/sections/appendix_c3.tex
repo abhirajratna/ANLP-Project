@@ -17,13 +17,12 @@
 Before the comparison, the harness decodes \Cres{CThreeTTwelveSanityN} fit-half GSM8K
 problems at Fast-dLLM's settings (5-shot, 256 tokens, blocks of 32; fp16 on an RTX 2080 Ti).
 Top-$k$ at $k=1$ scores \CresCI{CThreeTTwelveSanityTopKAcc} against a published 0.793, and the
-threshold rule at $\tau=0.9$ \CresCI{CThreeTTwelveSanityThresholdAcc} against 0.792
+threshold rule at $\tau=0.9$ scores \CresCI{CThreeTTwelveSanityThresholdAcc} against 0.792
 \citep{wu2025fastdllm} (95\% Wilson intervals): both published values lie inside, so the
 harness reproduces the two decoders it can be checked on, though our points are higher.
-Figure~\ref{fig:c3-speed} plots accuracy against tokens per step at all three speeds. At
-speed 3 (about 8 tokens per step) C3a trails the threshold rule on GSM8K (C3a $-$ threshold
-\CresCI{CThreeTTwelveGsmMatchedDiffThresholdSpeedThree}); the cost per decoder and the speed-1
-and speed-3 rows are in the code archive.
+At speed 3 (about 8 tokens per step; Figure~\ref{fig:c3-speed}) C3a trails the threshold rule on
+GSM8K (C3a $-$ threshold \CresCI{CThreeTTwelveGsmMatchedDiffThresholdSpeedThree}); costs and the
+speed-1 and speed-3 rows are in the code archive.
 % Fast-dLLM's numbers are on the full test set, ours on 200 fit-half problems, so compare the
 % interval, not the point.
 % TODO(results): if both published values lie inside our Wilson intervals: "Both published
@@ -38,10 +37,9 @@ and speed-3 rows are in the code archive.
 \paragraph{KLASS.}
 Ours differs from the reference \citep{kim2025klass} in three ways, found after scoring: a KL
 history per 32-token block (two one-token steps at each block start), the reverse KL direction,
-and 32-token blocks, not 64 (as for all decoders). At its published thresholds it runs at about
+and 32-token blocks, not 64. At its published thresholds it runs at about
 2.6 tokens per step, as published; aiming at 4 and 8, the knob path, fixed in advance, lowers
-$\tau$ to 0.2--0.29 (reaching 3.9--4.9), far below the published range, partly to make up speed
-lost to the per-block history. Its curve in Figure~\ref{fig:c3-speed} describes that path, not
+$\tau$ to 0.2--0.29, far below the published range. Its curve in Figure~\ref{fig:c3-speed} describes that path, not
 KLASS as intended; Table~\ref{tab:c3-speed} omits it.
 
 \begin{figure}[t]

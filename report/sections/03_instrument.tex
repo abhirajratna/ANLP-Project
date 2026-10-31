@@ -85,8 +85,8 @@ only the pattern differs: \VivaPassesPerDoc{} passes per 256-token document. In 
 least \VivaPoolMax{} masked positions we draw \VivaNPools{}
 random pools of each size $m\in\{\VivaPoolSizes\}$, rank them by $\ell$ with random tie-breaks
 and keep the top four ranks; $\Delta(1)$ is exact over all masked
-positions of those states. Answers under \VivaPoolMax{} tokens have none: 8/659 GSM8K and
-65/250 (LLaDA), 74/250 (Dream) MBPP report documents give no pools.
+positions of those states. Answers under \VivaPoolMax{} tokens give none: 8/659 GSM8K and
+65/250 (LLaDA), 74/250 (Dream) MBPP report documents.
 % abhiraj, 31 Oct (review): answer span = tokens + end-of-turn, capped at 256, docs <= 1,024 tokens
 %   (c3.data.tasks.format_documents, slurm/submit_c1.sh), report half of artifacts/split_manifest_{gsm8k,mbpp}.json.
 
@@ -158,14 +158,14 @@ states (14 tests each), and $\gamma_2,\gamma_3,\gamma_4$ within each arm and kin
 \label{sec:validation}
 
 \paragraph{Known truth.}
-We first ran the pipeline on simulated traces (code archive) in four worlds: calibrated everywhere;
+We ran the pipeline on simulated traces (code archive) in four worlds: calibrated everywhere;
 miscalibrated alike in every context; miscalibrated by context (the winner's curse of
 Proposition~\ref{prop:split}); and errors shared within a state (violating
 Proposition~\ref{prop:select}). The E1 contrast was zero only in the first, and $\beta_z$ without
 fixed effects strongly negative only in the third. Three findings shape \S\ref{sec:c1}:
 the field-term estimator reads high (at $m=\VivaPoolMax$, \TZeroFieldCalibrated{} and
-\TZeroFieldUniform{} where the truth is zero; above the truth otherwise); fixed effects do
-not fully clean $\beta_z$ in the third; and shared errors give a \emph{negative} field
+\TZeroFieldUniform{} where the truth is zero; above it otherwise); fixed effects do
+not fully clean $\beta_z$ there; and shared errors give a \emph{negative} field
 term with a \emph{positive} $\beta_z$ without fixed effects.
 % 31 Oct (space): cut "Too few knots let curvature load onto z_{r,m}; we use \VivaKnots{}."
 % artifacts/t0/ (scripts/t0_scenarios.py; 200 simulated documents, fit -> report half);

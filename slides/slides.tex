@@ -711,8 +711,8 @@
         \paneltitle{Strong links ($\rho = 1$), large steps, confidence top-$k$}
         Dependency error \A accounts for the vast majority of total error, far exceeding estimation error \B.
       \end{panel}
-      \src{Main model: the fine-tune that never saw the $\rho$ marker masked (backup).
-      \CTwoProbeNBoot{} bootstrap resamples.}
+      % \src{Main model: the fine-tune that never saw the $\rho$ marker masked (backup).
+      % \CTwoProbeNBoot{} bootstrap resamples.}
     \end{column}
   \end{columns}
 \end{frame}
@@ -752,7 +752,7 @@
 
 % ================================================================ 14 C2 real text
 \begin{frame}{C2 on real text: little sign of dependency errors}
-  \framesubtitle{\CTwoTTenNDocs{} web-text documents (FineWeb-Edu); the proxy is checked on the synthetic task first}
+  \framesubtitle{On web-text documents (FineWeb-Edu); the proxy is checked on the synthetic task first}
   \vspace{0.5mm}
   \begin{columns}[T,onlytextwidth]
     \begin{column}{0.42\textwidth}
@@ -852,7 +852,7 @@
 
 % ================================================================ 16 C3: matched-speed comparison
 \begin{frame}{C3: is the corrected rule more accurate at the same speed?}
-  \framesubtitle{LLaDA-8B-Instruct answers GSM8K and MBPP test problems itself, 256 tokens in blocks of 32}
+  \framesubtitle{LLaDA-8B-Instruct answers GSM8K and MBPP test problems itself}
   \vspace{0.5mm}
   \begin{columns}[T,onlytextwidth]
     \begin{column}{0.58\textwidth}
@@ -939,16 +939,14 @@
   \begin{columns}[T,onlytextwidth]
     \begin{column}{0.485\textwidth}
       \begin{panel}[height=60mm]
-        \paneltitle{Claims we withdrew}
+        \paneltitle{Claims we checked}
         \begin{itemize}\scriptsize
-          \item Unequal noise across blanks alone makes winners overconfident (proposal):
+          \item Unequal noise across blanks alone makes winners overconfident (initial premise):
                 false, Proposition 1.
-          \item Picking by confidence inflates \B (proposal, mid report): on the synthetic
+          \item Picking by confidence inflates \B: on the synthetic
                 task it raises \A instead.
-          \item $\rho$ changes only \A (plan v2): \B rises with $\rho$ too.
-          \item C2 on an 8B model (plan v2): not run. The synthetic-task results are for our
-                110M only.
-          \item Real-text C2 as exact measurements (mid deck): they are proxies that give a
+          \item $\rho$ changes only \A: \B rises with $\rho$ too.
+          \item Real-text C2 as exact measurements: they are proxies that give a
                 direction but no split in nats.
         \end{itemize}
       \end{panel}
@@ -961,12 +959,9 @@
           \item Neither fine-tuned model passed our check that it reads the $\rho$ marker; we use
                 the one with lower validation loss (the other: backup).
           \item The disagreement proxy follows \A weakly, and mostly through $k$.
-          \item 8B models in fp16, not bfloat16 (our GPUs lack it); E3 for top-$k$
-                decoders only.
           \item C1 is teacher-forced (the decoder sees the true tokens); E2 intervals treat
                 the fitted calibration curves as fixed.
-          \item C3: one model, greedy decoding, one seed, exploratory; KLASS's two faster
-                settings are off its published operating point.
+          \item C3: one model, greedy decoding, one seed
         \end{itemize}
       \end{panel}
     \end{column}

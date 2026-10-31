@@ -36,9 +36,12 @@ not levels; the levels we report (E3, the native gap) are descriptive.
 \paragraph{Exploratory analyses and C3.}
 Analyses outside the E1/E2 Holm families (decoder states at $k\in\{2,8\}$, matched uniform states,
 $\beta_z$, $\gamma_k$, E3, the native gap, the controls, and the robustness runs of \S\ref{sec:c1-robust}) carry no claims. C3a is fitted on
-teacher-forced states but applied to free-running generation, and compared on one model, with
+teacher-forced states but applied to free-running generation, and compared on one model, against static cutoffs only (not dynamic ones, \citealt{shen2025osdt}), with
 greedy decoding, one seed and two tasks. Its calibration and its monotonicity in $\ell$ are checked
 on held-out teacher-forced states, not in free generation, which has no reference token per position.
+There its features span the whole 256-token canvas, future blocks included, unlike the answer-only
+states it is fitted on; beyond the range check, the effect of this shift is unmeasured, and how often a
+step falls back to a forced single commit was not logged.
 % TODO(results): name the T12 precision (bf16 on an A100 or fp16 on Ada; PR #7 allows both),
 %   which differs from the fp16 traces C3a is fitted on if bf16.  Say whether C3b and HumanEval
 %   ran; if not, add "C3b, which can reorder positions, and HumanEval were not run."  If T12 is

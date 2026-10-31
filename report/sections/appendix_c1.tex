@@ -12,23 +12,29 @@
 \label{sec:c1-app}
 
 \paragraph{Weighting.}
+% abhiraj, 31 Oct (review): c3/endpoints/e1.py winner_gap (exact m=1, 1/n_in_state); c3/stats.py grouped_doc_mean
+%   (documents without rows drop out of point and draws); c3/calibrators.py pool_weights; c3/splines.py default_knots
+%   (quantiles 0.05..0.95); c3/logit.py ridge_fe 1e-3; POOL_SIZES includes 1 (c3/__init__.py).
 Averages are taken within a document, every state weighing the same, then across documents;
-positions are weighted by $1/(|M_s|\times\text{states in their document})$ to match.
+documents without pools drop out. A state's \VivaNPools{} winners at each
+$m$ weigh equally, and its positions $1/|M_s|$ at $m=1$. Calibrators weight positions by
+$1/(|M_s|\times\text{states of that kind in their document})$; decoder states are fitted per $k$.
+Knots sit at evenly spaced quantiles of fit-half $\ell$, 5\% to 95\%. In
+Eqs.~\ref{eq:eqtwo}--\ref{eq:eqthree}, $m=1$ rows are the drawn singletons and $\alpha_s$ has a
+ridge of $10^{-3}$ on the unweighted log-likelihood.
 
 \paragraph{E3, trajectory shift.}
-On the positions of decoder states at each $k$ and of matched uniform states (secondary: the
-uniform grid, reweighted to the decoder's rate mix), mask rate in $[0.05,0.95)$, we fit
-$\Pr(a{=}1)=\sigma(\alpha_b+f(\ell)+\textit{dec}\cdot(g_0+h(\ell)))$, $\alpha_b$ per mask-rate bin, $f$, $h$ joint splines on \VivaKnots{} shared knots.
+On the positions of decoder states at each $k$ and of matched uniform states, mask rate in $[0.05,0.95)$, we fit
+$\Pr(a{=}1)=\sigma(\alpha_b+f(\ell)+\textit{dec}\cdot(g_0+h(\ell)))$, $\alpha_b$ per mask-rate bin (0.1 wide, centred on $0.1,\dots,0.9$), $f$, $h$ joint splines on \VivaKnots{} shared knots.
 The endpoint $\E_{\mathrm{dec}}[\pi_{\mathrm{ref}}(\ell,b)-\pi_{\mathrm{dec}}(\ell,b)]$ is positive if
 decoder-state tokens are right less often at equal confidence and mask rate; a sup-$t$ test checks $(g_0,h)$ jointly.
 
 \paragraph{Controls.}
-A change of $\Delta$ with $m$ could come from what winners are rather than from winning.
 \emph{Position} (absolute position, distance to the nearest unmasked token,
 PC-Sampler's position weight; \citealp{huang2025pcsampler}) and \emph{token type} (of the true
-token: punctuation, stop-word or content) are covariates $x$: $\E_m[\pi(\ell)-\pi(\ell,x)]$
-is removed from $\Delta(m)$ and $x$ enters both field-term calibrators. \emph{Temperature}
-fits $c=\sigma(\ell/T)$ per mask-rate bin on the fit half (a softmax temperature is a sensitivity row).
+token: no letter or digit, an NLTK stop-word, or content) are covariates $x$: $\E_m[\hat\pi(\ell)-\hat\pi(\ell,x)]$
+is removed from $\Delta(m)$, and E2 becomes $\E_m[\hat\pi(\ell,x)-\hat\pi(\ell,s,x)]$. \emph{Temperature}
+fits $c=\sigma(\ell/T)$ per mask-rate bin on the fit half.
 Table~\ref{tab:c1-t8} gives each control. For LLaDA-8B-Base in uniform states the change in E1
 % position: 4.4e-5 [2.3e-5, 6.5e-5] in ablation.json; its macro rounds to 0.0000 [0.0000, 0.0001]
 is below $0.0001$ for position,
@@ -40,14 +46,13 @@ winners sit, what kind of token they are, or an over- or underconfidence by mask
 uniform states the small base and 110M contrasts move by up to 0.004, so their sign is not
 robust.
 % from tables/c1/c1_t8.tex (regen of 28 Oct; recheck)
-On the report half of the \VivaLladaBaseFourBitDocs{} documents of the 4-bit run (calibrators
-from their fit half), 4-bit NF4 in place of fp16 changes LLaDA-8B-Base's E1 by
-\CresCI{TEightLladaBasePrecisionPrecisionEOneUniDifference} in uniform states and by
-\CresCI{TEightLladaBasePrecisionPrecisionEOneDecTopkConfKFourDifference} in decoder states:
-both intervals hold 0, but in decoder states the difference is as large as that cell's E1
-in Table~\ref{tab:c1-main}, and fp16 E1 on these documents is itself
-\Cres{TEightLladaBasePrecisionPrecisionEOneDecTopkConfKFourWithout}, so a precision effect
-there is not ruled out. Decoder-state E2 changes by
+On the 4-bit run's report half (\VivaLladaBaseFourBitDocs{} documents, calibrators from its fit
+half), NF4 in place of fp16 changes LLaDA-8B-Base's E1 by
+\CresCI{TEightLladaBasePrecisionPrecisionEOneUniDifference} (uniform) and
+\CresCI{TEightLladaBasePrecisionPrecisionEOneDecTopkConfKFourDifference} (decoder states):
+both intervals hold 0, but the latter is as large as fp16 E1 on these documents
+(\Cres{TEightLladaBasePrecisionPrecisionEOneDecTopkConfKFourWithout}), so a precision effect
+is not ruled out. Decoder-state E2 changes by
 \CresCI{TEightLladaBasePrecisionPrecisionETwoDecTopkConfKFourDifference}, of the size of the
 base models' E2.
 
@@ -59,9 +64,7 @@ base models' E2.
 For tokens the $k{=}4$ decoder commits with 32--63 positions masked, $c-a$ is
 \CresCI{COneLladaInstructGsmNativeThirtyTwoDecTopkConfKFour} for LLaDA-8B-Instruct on GSM8K,
 against an ECE of \Cres{COneLladaInstructGsmECEUni} over random masks; it is 0.013 to 0.018 for
-the base and 110M models and 0.079 to 0.176 for the instruct models, which reach 0.15 to 0.27
-with 128--255 positions masked. Commit-time miscalibration has been reported for whole answers
-\citep{jiang2026bayeser}; here it holds per committed token. The mask count mixes field size
+the base and 110M models and 0.079 to 0.176 for the instruct models. The mask count mixes field size
 with lost context, so this describes and does not test E1.
 % Hand-typed, re-check at the regen: 0.013-0.018, 0.079-0.176, 0.15-0.27.
 
@@ -69,7 +72,7 @@ with lost context, so this describes and does not test E1.
   \centering
   \IfFileExists{tables/c1/c1_t8.tex}{\Cfit{\renewcommand{\addlinespace}[1][]{}\input{tables/c1/c1_t8.tex}}}{\Cpending{C1 controls table}}
   \caption{Controls: E1 and E2 without a control and with position, token type, or a
-    temperature per mask-rate bin (log-odds; it rescales confidence only, so has no E2). E2 here
+    temperature per mask-rate bin (it rescales confidence only: no E2). E2 here
     uses logistic calibrators for both $\hat\pi(\ell)$ and $\hat\pi(\ell,s)$, so with and without
     differ only by the control; its ``without'' value differs from the isotonic E2 of
     Table~\ref{tab:c1-main}. $^\ddagger$the paired with-minus-without difference has a 95\%

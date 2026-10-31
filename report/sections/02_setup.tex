@@ -38,15 +38,15 @@ of their marginals; with $p^*$ the true joint of $x_S$ given $\xobs$ and $p^*_i$
   \end{split}
   \label{eq:decomp}
 \end{equation}
-where $\mathrm{TC}(x_S\mid\xobs)=\sum_{i\in S}H(p^*_i)-H(p^*_S)$ is the total correlation, zero
+where $\mathrm{TC}(x_S\mid\xobs)=\sum_{i\in S}H(p^*_i)-H(p^*)$ is the total correlation, zero
 iff they are conditionally independent. (A) is what no product of marginals can
 represent, (B) the marginals' error \citep[cf.][]{benhamu2025entropy}.
 
 \paragraph{The committed-token gap.}
 Under teacher forcing (\S\ref{sec:instrument}) correctness $a_i=\1\{v_i=x_{0,i}\}$ against the
 true document $x_0$ is observed. A commit is a selection, so we model a field of $m$ candidates
-as a random pool $P\subseteq M$, won by $i=\arg\max_{j\in P}\ell_j$ (ties broken at random).
-With $\E_m$ the average over states, pools of size $m$ and winners, the
+as a random pool $P\subseteq M$, won by $i=\arg\max_{j\in P}\ell_j$ (ties at random).
+With $\E_m$ averaging over states, size-$m$ pools and winners, the
 \emph{committed-token gap} is
 \begin{equation}
   \Delta(m) = \E_m\,[\,c - a\,],
@@ -92,4 +92,5 @@ winners sit, can make $\Delta(m)$ grow with $m$ with no winner's curse; the \emp
 nonzero only if accuracy at fixed confidence depends on context (it requires a nonzero
 grouping loss; \citealp{kull2015decomp,perezlebel2023grouping}), is the winner's curse in a
 testable form. If positions of a state share errors, Proposition~\ref{prop:select} fails and
-\eqref{eq:gapsplit} gains a third term, $\E_m[\pi(\ell,s)-a]$ (\S\ref{sec:instrument}).
+\eqref{eq:gapsplit} gains a third term, $\E_m[\pi(\ell,s)-a]$ (\S\ref{sec:instrument}); it also gains one if
+$\pi(\ell,s)$ pools a state's positions, as our calibrators do, and they differ in accuracy at equal $\ell$ (Appendix~\ref{sec:app-proofs}).
