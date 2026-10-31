@@ -38,6 +38,7 @@
 \title{C$^3$: Committed Confidence Calibration\\
   Selection Bias in Confidence-Based Token Commitment in Diffusion Language Models}
 
+% Code and data links: unnumbered section after Limitations (ayush, 31 Oct), outside the 8-page body.
 \author{Abhiraj Ratna \And Ayush SM \And Ojas Kataria \And Parth Sharma \AND
   \mdseries Team DuckDuckDuckGoose}
 
@@ -49,25 +50,18 @@
 % decoder-state findings, numbers in the abstract) and cut (i).  Numbers hand-typed from the
 % v1.1 regen: E1 claimed in all 7 k=4 decoder-state cells (COneConfirmedEOne counts both kinds of
 % state); native/ECE 1.85..4.35 (appendix_c1, sec:c1-app-native).  Re-check at the final regen.
-Masked diffusion language models commit, at each step, the positions whose top token is most
-probable, so confidence picks the tokens it then describes; yet calibration is audited over
-random masks. On teacher-forced traces from LLaDA-8B, Dream-7B and a 110M model of our own, we
+Masked diffusion language models at each and every step commit the tokens at the positions where they are most confident; however, calibration remains audited over random masks. On teacher-forced traces from LLaDA-8B, Dream-7B and a 110M model of our own, we
 audit calibration conditional on this selection (C1). In the states a confidence decoder
 visits, the gap between a committed token's confidence and its accuracy grows with the number
 of candidates it beat in all seven model and task arms (Holm-corrected, held-out documents),
 and on the tokens it commits while 32--63 positions are still masked, confidence exceeds
-accuracy by 1.8 to 4.4 times the random-mask calibration error (descriptive). A
-split of the gap isolates a field term, the part that is a winner's curse: in those
-states it grows for both instruct models on both tasks (less with an additive calibrator; on
-MBPP a shared-error term grows more), and for the base models it is near the
-estimator's bias. C2 computes the dependency and estimation errors of committing several
-tokens at once exactly on a JSON probe with known joint distribution: dependency dominates
-only for strongly coupled tokens committed several at a time, and on real text a proxy for it
-is near zero. C3 commits every position whose recalibrated confidence is at least $1-\alpha$,
-with no extra forward pass. In an exploratory matched-speed comparison on GSM8K it beats
-decoders that commit a fixed number of tokens per step by 5 to 8 points but not a raw
-confidence threshold, which it trails at 8 tokens per step: recalibration gives the cutoff a
-meaning, not extra accuracy.
+accuracy by 1.8 to 4.4 times the random-mask calibration error (descriptive).
+On splitting this gap, we isolate a field term, the part that is a winner's curse: in those states it grows for both instruct models on both tasks, though less with an additive calibrator, and on MBPP a shared-error term grows more; for the base models it is near the estimator's bias.
+C2 computes the dependency and estimation errors of committing several tokens at once
+by using a JSON probe with a known joint distribution, showing that dependency dominates
+only for strongly coupled tokens committed several at a time, and on real text a weak proxy for it is near zero below the all-mask state.
+C3 commits every position whose confidence after recalibration is at least $1-\alpha$, with no extra forward pass.
+Finally, in an exploratory matched-speed comparison on GSM8K it beats decoders that commit a fixed number of tokens per step by 5 to 8 points, but not a raw confidence threshold: recalibration gives the cutoff a meaning, not extra accuracy.
 % abhiraj, 31 Oct (review): the C1 parenthetical is about k=4 decoder states: E2 add. 0.007..0.039,
 %   all above 0 (tables/c1/c1_sensitivity.tex); MBPP third term at m=32 0.087, 0.088 > E2 0.036,
 %   0.076 (tables/c1/c1_shared.tex).
@@ -85,6 +79,10 @@ meaning, not extra accuracy.
 \input{sections/07_related}
 
 \input{sections/limitations}
+
+\section*{Code and data}
+Code: \url{https://github.com/abhirajratna/ANLP-Project}\\
+Models and traces: \url{https://huggingface.co/ANLP-project}\\
 
 \bibliography{refs}
 

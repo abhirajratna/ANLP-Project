@@ -31,21 +31,22 @@ stream excludes the calibration and reserve documents and matches no time-split 
 % Run \texttt{train110m-v3}; artifacts/exclusion_v2.json; artifacts/shard_check_exclusion_timesplit.json (0 matches)
 
 \paragraph{Data.}
-% 200,000 qualifying documents of >= 1,200 characters: c3/data/fineweb.py (CorpusSpec).
-Base and 110M models read \VivaCorpusDocs{} FineWeb-Edu documents, reservoir-sampled
-from the first 200,000 of at least 1,200 characters, cut to 256 tokens per tokeniser; shorter ones are left out. Instruct
-models read the GSM8K \citep{cobbe2021gsm8k} and MBPP \citep{austin2021mbpp} test sets with the
-question visible and only the reference answer maskable;
-% MBPP test 482 (3,986 tokens), --max-doc-tokens 1024: prereg/deviations.md item 6.
-one MBPP document over 1,024 tokens is excluded. A time-split set of 500 English Wikipedia
-% artifacts/timesplit_manifest.json; artifacts/README.md (created 2025-04-04 .. 2026-08-29).
-articles written after LLaDA and Dream were released, unseen by every model, is a robustness check. A document is contaminated if a 7--8B Base model, given its first \VivaLladaContamPrefix{} tokens and 50 masks, filled one most-confident token per pass, reproduces a run of $\ge\VivaContamThreshold$ of
-the next 50 (\VivaLladaContamFlagged/\VivaLladaContamDocs{} LLaDA,
-\VivaDreamContamFlagged/\VivaDreamContamDocs{} Dream); LLaDA and Dream FineWeb endpoints are also reported without them.
+% % 200,000 qualifying documents of >= 1,200 characters: c3/data/fineweb.py (CorpusSpec).
+% Base and 110M models read \VivaCorpusDocs{} FineWeb-Edu documents, reservoir-sampled
+% from the first 200,000 of at least 1,200 characters, cut to 256 tokens per tokeniser; shorter ones are left out. Instruct
+% models read the GSM8K \citep{cobbe2021gsm8k} and MBPP \citep{austin2021mbpp} test sets with the
+% question visible and only the reference answer maskable;
+% % MBPP test 482 (3,986 tokens), --max-doc-tokens 1024: prereg/deviations.md item 6.
+% one MBPP document over 1,024 tokens is excluded. A time-split set of 500 English Wikipedia
+% % artifacts/timesplit_manifest.json; artifacts/README.md (created 2025-04-04 .. 2026-08-29).
+% articles written after LLaDA and Dream were released, unseen by every model, is a robustness check. A document is contaminated if a 7--8B Base model, given its first \VivaLladaContamPrefix{} tokens and 50 masks, filled one most-confident token per pass, reproduces a run of $\ge\VivaContamThreshold$ of
+% the next 50 (\VivaLladaContamFlagged/\VivaLladaContamDocs{} LLaDA,
+% \VivaDreamContamFlagged/\VivaDreamContamDocs{} Dream); LLaDA and Dream FineWeb endpoints are also reported without them.
 % Seed 20260917: artifacts/split_manifest.meta.json; tasks: scripts/make_task_split.py.
-Every set is split 50/50 by document with one fixed seed (FineWeb: \VivaNFit{}/\VivaNReport{}
-before the length filter). Calibrators, the spline $f$ of Eqs.~\ref{eq:eqtwo}--\ref{eq:eqthree}, knots and temperatures are fitted on the fit half; every C1 number comes from the report half.
-500 separate reserve documents served the pilot and the non-determinism floor.
+% Every set is split 50/50 by document with one fixed seed (FineWeb: \VivaNFit{}/\VivaNReport{}
+%before the length filter). Calibrators, the spline $f$ of Eqs.~\ref{eq:eqtwo}--\ref{eq:eqthree}, knots and temperatures are fitted on the fit half; every C1 number comes from the report half.
+%500 separate reserve documents served the pilot and the non-determinism floor.
+We evaluate models on sampled FineWeb-Edu documents, the GSM8K \citep{cobbe2021gsm8k} and MBPP \citep{austin2021mbpp} test sets, and a post-release Wikipedia set for robustness, with a 50/50 fit-and-report split; overly long documents are left out, and every C1 number comes from the report half. A document is contaminated if a 7--8B Base model, given its first \VivaLladaContamPrefix{} tokens, reproduces a run of $\ge\VivaContamThreshold$ of the next 50 (\VivaLladaContamFlagged/\VivaLladaContamDocs{} LLaDA, \VivaDreamContamFlagged/\VivaDreamContamDocs{} Dream); FineWeb endpoints are also reported without them.
 
 \begin{table}[t]
   \centering\footnotesize
@@ -141,18 +142,14 @@ resamples, one matrix per run shared across pool sizes, estimands and arms, so c
 come from differenced draws. Eqs.~\ref{eq:eqtwo}--\ref{eq:eqthree} are refit per resample and use 1,000 (knot runs: 200).
 Calibrators are not refitted: E2 intervals carry only the report half's spread in $(\ell,s)$, not
 the calibrators' estimation error, so they understate E2's uncertainty.
-% prereg/deviations.md item 7; prereg/analysis_commands.sh (--eq-boot 1000; 200 for knot runs);
-% 10,000 resamples of the Eq.~2/3 refits would take weeks per run.
 
 \paragraph{Declaring effects, multiple testing.}
 An effect is declared only if its interval excludes 0 \emph{and} its magnitude exceeds twice
 the non-determinism floor, the largest change in $\Delta(m)$ over five repeats of 20
 reserve documents per model family: \VivaLladaFloor{}, as repeats were bitwise identical.
-% PRIMARY_ARMS=(uniform decoder:topk_conf:k4) x 7 ARMS in prereg/analysis_commands.sh;
-% scripts/summarize_c1.py (Holm on two-sided bootstrap p-values).
 Holm's correction (two-sided bootstrap $p$-values) runs within families: the E1 contrasts and the
 E2 contrasts, each over the seven arms of Table~\ref{tab:runs} in uniform and $k{=}4$ decoder
-states (14 tests each), and $\gamma_2,\gamma_3,\gamma_4$ within each arm and kind of state. 
+states (14 tests each), and $\gamma_2,\gamma_3,\gamma_4$ within each arm and kind of state.
 
 \subsection{Validation}
 \label{sec:validation}
@@ -166,7 +163,29 @@ fixed effects strongly negative only in the third. Three findings shape \S\ref{s
 the field-term estimator reads high (at $m=\VivaPoolMax$, \TZeroFieldCalibrated{} and
 \TZeroFieldUniform{} where the truth is zero; above it otherwise); fixed effects do
 not fully clean $\beta_z$ there; and shared errors give a \emph{negative} field
-term with a \emph{positive} $\beta_z$ without fixed effects.
-% 31 Oct (space): cut "Too few knots let curvature load onto z_{r,m}; we use \VivaKnots{}."
-% artifacts/t0/ (scripts/t0_scenarios.py; 200 simulated documents, fit -> report half);
-% artifacts/estimator_validation.json (scripts/validate_estimator.py).
+term with a \emph{positive} $\beta_z$ without fixed effects. Too few knots let curvature load onto $z_{r,m}$; we use \VivaKnots{}.
+
+% \subsection{Inference}
+% \label{sec:inference}
+
+% \paragraph{Bootstrap.}
+% % The document is the unit. Intervals are 95\% percentile intervals over \VivaNBoot{} document
+% % resamples, one matrix per run shared across pool sizes, estimands and arms, so contrasts
+% % come from differenced draws. Eqs.~\ref{eq:eqtwo}--\ref{eq:eqthree} are refit per resample and use 1,000 (knot runs: 200).
+% % Calibrators are not refitted: E2 intervals carry only the report half's spread in $(\ell,s)$, not
+% % the calibrators' estimation error, so they understate E2's uncertainty.
+% 95\% percentile intervals over \VivaNBoot{} document,
+% one matrix per run shared, so contrasts
+% come from differenced draws.
+% % prereg/deviations.md item 7; prereg/analysis_commands.sh (--eq-boot 1000; 200 for knot runs);
+% % 10,000 resamples of the Eq.~2/3 refits would take weeks per run.
+
+% \paragraph{Declaring effects, multiple testing.}
+% An effect is declared only if its interval excludes 0 \emph{and} its magnitude exceeds twice
+% the non-determinism floor, the largest change in $\Delta(m)$ over five repeats of 20
+% reserve documents per model family: \VivaLladaFloor{}, as repeats were bitwise identical.
+% % PRIMARY_ARMS=(uniform decoder:topk_conf:k4) x 7 ARMS in prereg/analysis_commands.sh;
+% % scripts/summarize_c1.py (Holm on two-sided bootstrap p-values).
+% Holm's correction runs within families: the E1 contrasts and the
+% E2 contrasts, each over the seven arms of Table~\ref{tab:runs} in uniform and $k{=}4$ decoder
+% states (14 tests each), and $\gamma_2,\gamma_3,\gamma_4$ within each arm and kind of state. 

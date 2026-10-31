@@ -46,3 +46,14 @@ ParallelBench \citep{kang2026parallelbench} target term (A) of Eq.~\ref{eq:decom
 the marginals as accurate. The split is not ours: EB-Sampler uses the same two terms
 \citep{benhamu2025entropy}, and \citet{tang2026sampler} note that sampler and model error stay
 entangled; C2 computes both in nats where $p^*$ is known.
+
+\section{Conclusion}
+
+Confidence-based decoders use one number both to choose which tokens to commit and as the chance that they are right; checked at the decoder's own selection, the first use biases the second. Dependency error dominates parallel commits only for strongly coupled tokens, and recalibrating the commit threshold gives the cutoff an error rate, not extra accuracy.
+
+
+
+
+
+
+

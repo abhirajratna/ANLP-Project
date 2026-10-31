@@ -19,14 +19,15 @@
 \section{Introduction}
 \label{sec:intro}
 
-A masked diffusion language model writes by unmasking. Each step is one forward pass; the decoder
-then commits some positions for good. LLaDA commits the $k$ positions it is most confident
-about (an option in Dream, whose default order is random), and threshold rules such as Fast-dLLM commit every position above a
-confidence cutoff \citep{nie2025llada,ye2025dream,chang2022maskgit,wu2025fastdllm}.
-Confidence thus chooses which tokens are committed and is read as the chance they are
-right, so on committed tokens it is a selected quantity. The largest of many noisy estimates
-tends to be one whose error pushed it up, the winner's curse \citep{andrews2024winners}, and
-a commit out of many masked positions is such a maximum.
+A masked diffusion model writes by unmasking: at each forward pass the decoder
+commits tokens at the positions it is most confident about.
+LLaDA commits $k$ of them, which is also an option in Dream,
+and decoding rules such as Fast-dLLM commit every position above a confidence threshold \citep{nie2025llada,ye2025dream,chang2022maskgit,wu2025fastdllm}.
+Confidence is taken as how sure the model is about a particular option,
+so it is read as the chance the committed tokens are right.
+However, this confidence is also subject to noise, and the largest of many such estimates
+tends to be one whose error pushed it up.
+This is the winner's curse \citep{andrews2024winners}, and a commit out of many masked positions is such a maximum.
 
 Calibration of diffusion LMs, where measured, is over whole answers
 \citep{yadav2026bidirectional,jiang2026bayeser} or per committed token without conditioning on
@@ -40,16 +41,15 @@ decoder's selection can see it.
 
 Three contributions follow.
 \begin{itemize}
-\item \textbf{C1, a selection-conditional calibration audit} (\S\ref{sec:c1}). On teacher-forced
-  traces from LLaDA-8B, Dream-7B (Base and Instruct) and a 110M model we trained, we measure
-  the committed-token gap and its field term against how many candidates a token beat, with
-  Holm-corrected tests on held-out documents.
-  In the states a confidence decoder visits, the gap grows with field size for every model (in
-  random masked states its sign varies). In those states its field term grows too for both instruct models on
-  both tasks (less with an additive calibrator; on MBPP a shared-error term grows more); for the
-  base and 110M models it is near the estimator's bias.
-  At equal confidence, tokens are right less often in those states than in random masks of the
-  same size, in every model (exploratory).
+
+\item \textbf{C1, a selection-conditional calibration audit} (\S\ref{sec:c1}).
+  On teacher-forced traces from LLaDA-8B, Dream-7B and a 110M-parameter model that we trained,
+  we measure the committed-token gap and its winner's-curse field term against how many candidates a token beat,
+  with Holm-corrected tests on held-out documents.
+  In the states a confidence decoder visits, the gap grows with field size for every model, and the field term grows for both instruct models on both tasks.
+  For the base and 110M models the field term is near the bias of the estimator. At
+  equal confidence, tokens are right less often in those states than in random masks of the same size, in every model (exploratory).
+  
 \item \textbf{C2, an instrument for the two errors of parallel commitment}
   (\S\ref{sec:c2}). Committing several tokens in one step incurs a dependency error (A) and an
   estimation error (B) (Eq.~\ref{eq:decomp}), computed exactly on a JSON probe with known joint
@@ -60,8 +60,8 @@ Three contributions follow.
 \item \textbf{C3, a calibrated commitment policy} (\S\ref{sec:c3}). C3a commits as many
   positions as have recalibrated confidence at least $1-\alpha$, in
   confidence order, with no extra forward pass. At matched speed
-  (LLaDA-8B-Instruct, GSM8K) it beats top-$k$, margin and PC-Sampler but not the Fast-dLLM
-  threshold it recalibrates, trailing it at 8 tokens per step, or entropy-bounded decoding
+  (LLaDA-8B-Instruct, GSM8K) it beats top-$k$, margin and PC-Sampler but not entropy-bounded
+  decoding or the Fast-dLLM threshold it recalibrates, which it trails at 8 tokens per step
   (exploratory).
   % MBPP clause (N = \Cres{CThreeTTwelveMbppN} of 250, prereg deviation 17) once parth scores it.
 \end{itemize}

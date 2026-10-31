@@ -285,7 +285,7 @@
         \item Top-$k$ (LLaDA-8B, Dream-7B) keeps the $k$ surest guesses; Fast-dLLM keeps
               all guesses above a threshold.
         \item A kept token \alert{won} a contest of noisy scores: the setting of the
-              \alert{winner's curse} (Efron 2011; Andrews et al.\ 2024).
+              \alert{winner's curse}.
       \end{itemize}
     \end{column}
   \end{columns}
@@ -887,6 +887,41 @@
   Sanity check and cost: backup.}
 \end{frame}
 
+% ================================================================ 17 limitations
+\begin{frame}{What we got wrong, and the limits of these results}
+  \vspace{1mm}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.485\textwidth}
+      \begin{panel}[height=60mm]
+        \paneltitle{Claims we checked}
+        \begin{itemize}\scriptsize
+          \item Unequal noise across blanks alone makes winners overconfident (initial premise):
+                false, Proposition 1.
+          \item Picking by confidence inflates \B: on the synthetic
+                task it raises \A instead.
+          \item $\rho$ changes only \A: \B rises with $\rho$ too.
+          \item Real-text C2 as exact measurements: they are proxies that give a
+                direction but no split in nats.
+        \end{itemize}
+      \end{panel}
+    \end{column}
+    \begin{column}{0.485\textwidth}
+      \begin{panel}[height=60mm]
+        \paneltitle{Limits}
+        \begin{itemize}\scriptsize
+          \item C2's exact values hold for one synthetic task and one 110M model.
+          \item Neither fine-tuned model passed our check that it reads the $\rho$ marker; we use
+                the one with lower validation loss (the other: backup).
+          \item The disagreement proxy follows \A weakly, and mostly through $k$.
+          \item C1 is teacher-forced (the decoder sees the true tokens); E2 intervals treat
+                the fitted calibration curves as fixed.
+          \item C3: one model, greedy decoding, one seed
+        \end{itemize}
+      \end{panel}
+    \end{column}
+  \end{columns}
+\end{frame}
+
 % ================================================================ 16 summary
 \begin{frame}{Summary}
   \vspace{2mm}
@@ -931,58 +966,6 @@
       \end{panel}
     \end{column}
   \end{columns}
-\end{frame}
-
-% ================================================================ 17 limitations
-\begin{frame}{What we got wrong, and the limits of these results}
-  \vspace{1mm}
-  \begin{columns}[T,onlytextwidth]
-    \begin{column}{0.485\textwidth}
-      \begin{panel}[height=60mm]
-        \paneltitle{Claims we checked}
-        \begin{itemize}\scriptsize
-          \item Unequal noise across blanks alone makes winners overconfident (initial premise):
-                false, Proposition 1.
-          \item Picking by confidence inflates \B: on the synthetic
-                task it raises \A instead.
-          \item $\rho$ changes only \A: \B rises with $\rho$ too.
-          \item Real-text C2 as exact measurements: they are proxies that give a
-                direction but no split in nats.
-        \end{itemize}
-      \end{panel}
-    \end{column}
-    \begin{column}{0.485\textwidth}
-      \begin{panel}[height=60mm]
-        \paneltitle{Limits}
-        \begin{itemize}\scriptsize
-          \item C2's exact values hold for one synthetic task and one 110M model.
-          \item Neither fine-tuned model passed our check that it reads the $\rho$ marker; we use
-                the one with lower validation loss (the other: backup).
-          \item The disagreement proxy follows \A weakly, and mostly through $k$.
-          \item C1 is teacher-forced (the decoder sees the true tokens); E2 intervals treat
-                the fitted calibration curves as fixed.
-          \item C3: one model, greedy decoding, one seed
-        \end{itemize}
-      \end{panel}
-    \end{column}
-  \end{columns}
-\end{frame}
-
-% ================================================================ 18 thanks
-\begin{frame}[c,plain]
-  \hspace*{4mm}\begin{minipage}{0.86\linewidth}\raggedright
-    {\fontsize{24}{28}\selectfont\firasemibold Thank you. Questions?}\par
-    \vspace{3mm}
-    {\color{accent}\rule{14mm}{1.6pt}}\par
-    \vspace{4mm}
-    \small\color{ink2}
-    \begin{tabular}{@{}ll@{}}
-      Code              & github.com/abhirajratna/ANLP-Project \\
-      Weights \& Biases & wandb.ai/ANLP-project/c3-dllm-calibration \\
-      Hugging Face      & huggingface.co/ANLP-project \\
-      Paper             & DuckDuckDuckGoose-Final.zip \\
-    \end{tabular}
-  \end{minipage}
 \end{frame}
 
 % ================================================================ backup

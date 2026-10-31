@@ -56,9 +56,8 @@
 \section{Selection and confidence (C1)}
 \label{sec:c1}
 
-C1 asks whether a committed token's confidence overstates its accuracy more when it won a
-larger field, and how much is the field term of Proposition~\ref{prop:split}. Every
-number is from the report half.
+C1 asks whether a committed token's confidence overstates its accuracy more when it wins a larger pool,
+and how much of that is the field term of Proposition~\ref{prop:split}.
 
 \paragraph{Arms and claims.}
 % Claim rule: prereg/frozen_config.json settled.claim_rule (PR #19, deviations.md 16c,d);
@@ -111,34 +110,62 @@ from which positions stay masked.
 % 31 Oct (space): cut "for LLaDA-8B-Instruct on GSM8K they are already positive."
 % matched uniform: COneLladaBaseContrastUniMatchedTopkConfKFour, COneLladaInstructGsmContrastUniMatchedTopkConfKFour (CIs cut 31 Oct for space)
 
+% \paragraph{How much is the field term?}
+% % abhiraj, 31 Oct (review): field(1) = COne<Label>FieldOne{Uni,DecTopkConfKFour}: base and Mdlm
+% %   <= 0.001, uniform <= 0.005, instruct decoder 0.011..0.018.  Replaces the LLaDA-Base worked example.
+% E2 meets the claim rule in all \Cres{COneHolmETwoFamily} cells and is positive in 12, but only given the fitted calibrators: its intervals omit
+% their error (\S\ref{sec:inference}). The baseline field$(1)$,
+% near 0 for calibrators fitted on the averaged states alone (\S\ref{sec:estimands}), is at most
+% 0.005 except in the instruct models' decoder states (0.011 to 0.018), where E2 may also carry an
+% offset that varies with $\ell$. For the base and 110M
+% models every $|\mathrm{E2}|$ is below 0.005, of the order of what the estimator read on
+% simulated traces with no field term (\S\ref{sec:validation}), so we do not read these as a
+% winner's curse. In seven
+% of the eight instruct cells E2 is 0.013 to \Cres{COneFieldContrastDreamInstructMbppUni}
+% (Dream-7B-Instruct, MBPP, uniform states, where E1 is \Cres{COneDreamInstructMbppContrastUni}):
+% there the field term grows with $m$, as a winner's curse predicts: at equal confidence,
+% winners of large fields come from contexts where tokens are right less often. The eighth,
+% LLaDA-8B-Instruct on GSM8K in uniform states, is negative.
+% % Matched-form E2: the "without" E2 column of tables/c1/c1_t8.tex (c3/controls.py: logistic own and context).
+% A spline-logistic $\hat\pi(\ell)$, of $\hat\pi(\ell,s)$'s form (Table~\ref{tab:c1-t8}, without a
+% control), leaves E2's sign in every cell and its size within 0.003 except in uniform states of
+% Dream-7B-Instruct (GSM8K 0.014, MBPP 0.098), where the forms, not context, carry part of it.
+% Positions of a state share errors in every arm (within-state ICC of residuals above 0
+% throughout: at most 0.006 in the base and 110M models, 0.036 to 0.056 in the instruct models),
+% so the split has its third term (Table~\ref{tab:c1-main}, Third). It is near 0 in the base and 110M
+% models except LLaDA-8B-Base decoder states, and reaches 0.054 to 0.100 on MBPP and in
+% uniform states of Dream-7B-Instruct on GSM8K, larger than E2 in four of these five cells. There
+% winners are right less often than $\hat\pi(\ell,s)$ predicts, so selection acts more within states
+% (shared errors, or positions that differ at equal $\ell$) than through the field term;
+% E2 and $\beta_z$ are read with that in mind.
+% % 31 Oct (space): cut "Simulated shared errors gave a negative third term, unlike these cells, which does not rule them out."
+
 \paragraph{How much is the field term?}
 % abhiraj, 31 Oct (review): field(1) = COne<Label>FieldOne{Uni,DecTopkConfKFour}: base and Mdlm
 %   <= 0.001, uniform <= 0.005, instruct decoder 0.011..0.018.  Replaces the LLaDA-Base worked example.
-E2 meets the claim rule in all \Cres{COneHolmETwoFamily} cells and is positive in 12, but only given the fitted calibrators: its intervals omit
-their error (\S\ref{sec:inference}). The baseline field$(1)$,
-near 0 for calibrators fitted on the averaged states alone (\S\ref{sec:estimands}), is at most
-0.005 except in the instruct models' decoder states (0.011 to 0.018), where E2 may also carry an
-offset that varies with $\ell$. For the base and 110M
-models every $|\mathrm{E2}|$ is below 0.005, of the order of what the estimator read on
-simulated traces with no field term (\S\ref{sec:validation}), so we do not read these as a
-winner's curse. In seven
-of the eight instruct cells E2 is 0.013 to \Cres{COneFieldContrastDreamInstructMbppUni}
-(Dream-7B-Instruct, MBPP, uniform states, where E1 is \Cres{COneDreamInstructMbppContrastUni}):
-there the field term grows with $m$, as a winner's curse predicts: at equal confidence,
-winners of large fields come from contexts where tokens are right less often. The eighth,
-LLaDA-8B-Instruct on GSM8K in uniform states, is negative.
+E2 meets the claim rule in all \Cres{COneHolmETwoFamily} cells and is positive in 12. This holds
+only given the fitted calibrators, since its intervals leave out their error (\S\ref{sec:inference}).
+The baseline field$(1)$ is near 0 when calibrators are fitted on averaged states alone
+(\S\ref{sec:estimands}). It is at most 0.005, except in instruct decoder states (0.011 to 0.018),
+where E2 may also hold an offset that varies with $\ell$. In the base and 110M models every
+$|\mathrm{E2}|$ is below 0.005, as small as the estimator gave on simulated traces with no field
+term (\S\ref{sec:validation}), so we do not read a winner's curse there. In seven of the eight
+instruct cells E2 runs from 0.013 to \Cres{COneFieldContrastDreamInstructMbppUni}
+(Dream-7B-Instruct, MBPP, uniform states; E1 is \Cres{COneDreamInstructMbppContrastUni}). There the
+field term grows with $m$, as a winner's curse predicts: at equal confidence, winners of large
+fields come from contexts where tokens are right less often. The eighth (LLaDA-8B-Instruct, GSM8K,
+uniform) is negative.
 % Matched-form E2: the "without" E2 column of tables/c1/c1_t8.tex (c3/controls.py: logistic own and context).
-A spline-logistic $\hat\pi(\ell)$, of $\hat\pi(\ell,s)$'s form (Table~\ref{tab:c1-t8}, without a
-control), leaves E2's sign in every cell and its size within 0.003 except in uniform states of
-Dream-7B-Instruct (GSM8K 0.014, MBPP 0.098), where the forms, not context, carry part of it.
-Positions of a state share errors in every arm (within-state ICC of residuals above 0
-throughout: at most 0.006 in the base and 110M models, 0.036 to 0.056 in the instruct models),
-so the split has its third term (Table~\ref{tab:c1-main}, Third). It is near 0 in the base and 110M
-models except LLaDA-8B-Base decoder states, and reaches 0.054 to 0.100 on MBPP and in
-uniform states of Dream-7B-Instruct on GSM8K, larger than E2 in four of these five cells. There
-winners are right less often than $\hat\pi(\ell,s)$ predicts, so selection acts more within states
-(shared errors, or positions that differ at equal $\ell$) than through the field term;
-E2 and $\beta_z$ are read with that in mind.
+A spline-logistic $\hat\pi(\ell)$ of the same form as $\hat\pi(\ell,s)$ (Table~\ref{tab:c1-t8}, no
+control) keeps E2's sign in every cell and its size within 0.003. The exception is uniform states
+of Dream-7B-Instruct (GSM8K 0.014, MBPP 0.098), where the model form, not context, carries part of E2.
+Positions in a state share errors in every arm (residual ICC within states is above 0: at most 0.006
+in base and 110M models, 0.036 to 0.056 in instruct models), so the split has a third term
+(Table~\ref{tab:c1-main}, Third). It is near 0 in base and 110M models, except LLaDA-8B-Base decoder
+states. It reaches 0.054 to 0.100 on MBPP and in Dream-7B-Instruct uniform states on GSM8K, and is
+larger than E2 in four of these five cells. In those cells winners are right less often than
+$\hat\pi(\ell,s)$ predicts, so selection works more within states (shared errors, or positions that
+differ at equal $\ell$) than through the field term. E2 and $\beta_z$ should be read with this in mind.
 % 31 Oct (space): cut "Simulated shared errors gave a negative third term, unlike these cells, which does not rule them out."
 
 % ------------------------------------------------------------------- beta_z
