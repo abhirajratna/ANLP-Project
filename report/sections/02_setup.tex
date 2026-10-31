@@ -23,9 +23,10 @@
 
 \paragraph{Masked diffusion decoding.}
 A masked diffusion LM \citep{austin2021d3pm,sahoo2024mdlm,nie2025llada,ye2025dream} writes by
-unmasking: in a \emph{state} $s$ with masked set $M$, one forward pass gives at each $i\in M$ a
+unmasking: in a \emph{state} $s$ with masked set $M=M_s$, one forward pass gives at each $i\in M$ a
 distribution $p_{\theta,i}$ given the observed tokens $\xobs$, with top-1 token $v_i$,
-\emph{confidence} $c_i=p_{\theta,i}(v_i)$ and log-odds $\ell_i=\log\frac{c_i}{1-c_i}$. The
+\emph{confidence} $c_i=p_{\theta,i}(v_i)$ and log-odds $\ell_i=\log\frac{c_i}{1-c_i}$, so
+$c_i=\sigma(\ell_i)=(1+e^{-\ell_i})^{-1}$. The
 decoder \emph{commits} positions for good: the $k$ most confident per step
 \citep{chang2022maskgit} or all above a cutoff \citep{wu2025fastdllm}. Committing $S\subseteq M$ in one step draws its tokens from the product
 of their marginals; with $p^*$ the true joint of $x_S$ given $\xobs$ and $p^*_i$ its marginals,

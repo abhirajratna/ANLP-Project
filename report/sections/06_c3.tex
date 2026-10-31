@@ -61,8 +61,8 @@
   \caption{Decoders at matched speed: speed 2 (target 4 tokens per step), C3a at
     $\alpha=\Cres{CThreeTTwelveGsmAlphaPrimary}$ (GSM8K) and $\Cres{CThreeTTwelveMbppAlphaPrimary}$
     (MBPP). Wilson intervals for accuracy, paired bootstrap for C3a $-$ decoder (positive favours
-    C3a). $^\dagger$Off its published operating point, so C3a $-$ KLASS is not quoted
-    (Appendix~\ref{sec:c3-app}).}
+    C3a). KLASS, run with implementation errors, is not shown (Appendix~\ref{sec:c3-app}).
+    $^\ddagger$Over 10\% faster than C3a, so not paired.}
   \label{tab:c3-speed}
 \end{table*}
 
@@ -70,13 +70,14 @@
 A top-$k$ decoder fixes the number of tokens per step in advance; C3a lets calibrated
 confidence set it. At each step it computes $\hat c_i=\hat\pi(\ell_i,s)$ with the
 context-aware calibrator of \S\ref{sec:estimands} on three field
-features (median $\ell$, mask rate, $\log|M|$), and commits the $n$ masked positions of the
+features (median $\ell$, mask rate, $\log|M|$, over the whole generated region, not the active
+block), and commits the $n$ masked positions of the
 active block with the highest $\ell$, where $n$ is the number with $\hat c_i\ge 1-\alpha$, or
 one if none qualifies. If $\hat c$ is non-decreasing in $\ell$ across a step's positions, these
 are exactly the positions with $\hat c_i\ge 1-\alpha$, so every committed token except a forced
 single commit has calibrated error probability $1-\hat c_i\le\alpha$. The $\ell\times$feature
-terms do not guarantee this; it holds in a fraction \Cres{CThreeTElevenGsmMonotoneShare} of
-GSM8K and \Cres{CThreeTElevenMbppMonotoneShare} of MBPP fit states. $\alpha$ is the one speed
+terms do not guarantee this, but it holds in every fit state and every checked report-half state
+(free-generation steps were not checked). $\alpha$ is the one speed
 knob. C3a changes \emph{how many} tokens are committed, not \emph{which}, and needs no extra
 forward pass.
 
@@ -85,7 +86,14 @@ One calibrator per task is fitted on teacher-forced decoder states ($k\in\{2,4,8
 fit-half LLaDA-8B-Instruct traces (\Cres{CThreeTElevenGsmFitDocs} GSM8K and
 \Cres{CThreeTElevenMbppFitDocs} MBPP documents) and frozen. On held-out report-half states its ECE falls to \Cres{CThreeTElevenGsmReportECECal} from
 raw $\sigma(\ell)$'s \Cres{CThreeTElevenGsmReportECERaw} on GSM8K and \Cres{CThreeTElevenMbppReportECECal} from
-\Cres{CThreeTElevenMbppReportECERaw} on MBPP. It is then applied to free generation, which starts
+\Cres{CThreeTElevenMbppReportECERaw} on MBPP.
+% abhiraj, 31 Oct (review): artifacts/c3/realised_risk_llada-8b-instruct_fp16_v2.json (parth, exploratory),
+%   block32 eligible set: risk_unforced < alpha at every alpha 0.01..0.6, k = 2, 4, 8, both tasks; at alpha 0.25
+%   unforced 0.069..0.094, forced share 0.35..0.50, risk_forced 0.45..0.53.  monotone_share 1.0 (300 states per k).
+There, tokens C3a commits above the cutoff are wrong less often than $\alpha$ at every $\alpha$ in
+$[0.01,0.6]$ (0.07--0.09 at $\alpha=0.25$); forced single commits (35--50\% of states) are wrong
+about half the time.
+It is then applied to free generation, which starts
 from 256 masks; its fit states lie inside a reference answer. Of C3a's steps, \Cres{CThreeTTwelveGsmOutsideShare} (GSM8K) and
 \Cres{CThreeTTwelveMbppOutsideShare} (MBPP) have features outside the fitted range.
 % TODO(results): if the dev ECE does not fall (Cal >= Raw), say "does not improve on" instead
@@ -94,26 +102,28 @@ from 256 masks; its fit states lie inside a reference answer. Of C3a's steps, \C
 \paragraph{Matched speed.}
 LLaDA-8B-Instruct generates freely on the report halves of GSM8K
 (\Cres{CThreeTTwelveGsmN} problems) and MBPP (\Cres{CThreeTTwelveMbppN}): zero-shot chat prompt,
-256 tokens in blocks of 32, greedy, one seed, fp16, on one H200 GPU per task.
+256 tokens in blocks of 32, greedy, one seed, fp16.
 C3a is compared with confidence top-$k$, Fast-dLLM's threshold \citep{wu2025fastdllm},
-margin \citep{kim2025worst}, entropy-bounded \citep{benhamu2025entropy},
-KLASS \citep{kim2025klass} and PC-Sampler \citep{huang2025pcsampler} (full variant, background
-frequencies from FineWeb-Edu).
-Each decoder has one speed knob ($k$, $\tau$, $\gamma$, $\alpha$, \dots), calibrated per task on
-fit-half problems only to 2, 4 and 8 tokens per step (speeds 1 to 3). Every knob is chosen by
-speed alone, never by accuracy. Speed is aggregate tokens per step, $256N/\sum\mathrm{NFE}$ over
-a configuration's $N$ problems. Table~\ref{tab:c3-speed} shows speed 2 (about 4 tokens per
-step); Appendix~\ref{sec:c3-app} has the sanity check and the speed curves. Each decoder is
+margin \citep{kim2025worst}, entropy-bounded \citep{benhamu2025entropy} and PC-Sampler
+\citep{huang2025pcsampler}; our KLASS \citep{kim2025klass} run had implementation errors
+(Appendix~\ref{sec:c3-app}).
+Each decoder has one speed knob, set per task on fit-half problems, by speed alone, to 2, 4 and
+8 tokens per step (speeds 1 to 3). Speed is aggregate tokens per step, $256N/\sum\mathrm{NFE}$ over
+a configuration's $N$ problems. Table~\ref{tab:c3-speed} shows speed 2; Appendix~\ref{sec:c3-app}
+has the sanity check and the speed curves. Each decoder is
 taken at its setting nearest to C3a's tokens per step, within $\pm10\%$ (else ---); the accuracy
 difference is paired on the shared problems, with a 95\% percentile bootstrap interval from
-2,000 resamples of problems. The comparison is exploratory and outside the C1 analysis; no
-multiple-testing correction is applied.
+2,000 resamples of problems. The comparison is exploratory; no multiple-testing correction is
+applied.
 
 \paragraph{Result.}
 At matched speed on GSM8K, C3a is indistinguishable in accuracy from the threshold and
 entropy-bounded decoders (C3a $-$ threshold \CresCI{CThreeTTwelveGsmMatchedDiffThresholdSpeedTwo})
 and \Cres{CThreeTTwelveGsmMatchedDiffMarginSpeedTwo} to \Cres{CThreeTTwelveGsmMatchedDiffPcSamplerSpeedTwo}
 more accurate than top-$k$, margin and PC-Sampler (Table~\ref{tab:c3-speed}): the gain is in how
-many tokens are committed per step, which a raw threshold already achieves. On MBPP
-(\Cres{CThreeTTwelveMbppN} of 250 problems) it is again indistinguishable from both; the
-fixed-count decoders, over 10\% faster, are not compared.
+many tokens are committed per step, which a raw threshold already achieves.
+% MBPP N: prereg/deviations.md ("MBPP reduced N", "MBPP completion run"); N=250 sensitivity in
+%   artifacts/t12/sensitivity/mbpp250/ (threshold 0.028 [0.000, 0.056], entropy 0.020 [-0.028, 0.068]).
+On MBPP (the \Cres{CThreeTTwelveMbppN} of 250 problems all decoders finished before compute ran
+out; a later two-machine run of all 250 agrees, code archive) it is again indistinguishable from
+both; the fixed-count decoders, 11\% faster, are not paired.

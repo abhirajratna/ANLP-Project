@@ -9,13 +9,24 @@
 \paragraph{Scope.}
 We audit two 8B-scale families and one 110M MDLM on FineWeb-Edu, GSM8K and MBPP, with model
 type and text type confounded; the 7--8B models' C1 traces are in fp16, as the GPUs we traced on lack bfloat16. C2's
-exact terms cover one synthetic distribution and one 110M fine-tune.
+exact terms cover one synthetic distribution and one 110M fine-tune, which reads the $\rho$ marker only in
+part, so (B) moves with $\rho$ and $k$ too; on real text it has only a top-token proxy for (A), and a
+divergence between parallel and sequential distributions was not computed.
 
 \paragraph{Design and estimators.}
 C1 is teacher-forced: its states are those of an always-right decoder, not those after a free
-decoder's own mistakes, and a valid rewording counts as an error. The field term is only as
-context-aware as the state features of $\hat\pi(\ell,s)$: up to four, three in uniform states,
-where the step is constant.
+decoder's own mistakes, and a valid rewording counts as an error. The two-term split of the gap
+assumes positions' errors are independent given the state; they are not, and where the third
+term this adds is large (\S\ref{sec:c1-main}), E2 alone does not measure what selection does to
+the gap. The field term is only as context-aware as the state features of $\hat\pi(\ell,s)$: up
+to four, three in uniform states, where the step is constant. Its size also depends on how they
+enter: without products of $\ell$ and the features, the instruct models' E2 shrinks
+(\S\ref{sec:c1-robust}), and on the population the calibrators are fitted on: we did not refit
+them on only the states the averages keep (\S\ref{sec:estimands}). E2's intervals, and so its
+claims, leave out the calibrators' estimation error: a bootstrap that also refits them on resampled
+fit halves was not run (\S\ref{sec:inference}). Nor was a fit of $f$ jointly with the state effects
+in Eqs.~\ref{eq:eqtwo}--\ref{eq:eqthree}, which would show how much a slope that varies by state
+moves $\beta_z$.
 
 \paragraph{Contamination.}
 The screen flags only verbatim recall, and the time-split set mixes exposure with domain. Only
@@ -26,7 +37,8 @@ not levels; the levels we report (E3, the native gap) are descriptive.
 Analyses outside the E1/E2 Holm families (decoder states at $k\in\{2,8\}$, matched uniform states,
 $\beta_z$, $\gamma_k$, E3, the native gap, the controls, and the robustness runs of \S\ref{sec:c1-robust}) carry no claims. C3a is fitted on
 teacher-forced states but applied to free-running generation, and compared on one model, with
-greedy decoding, one seed and two tasks.
+greedy decoding, one seed and two tasks. Its calibration and its monotonicity in $\ell$ are checked
+on held-out teacher-forced states, not in free generation, which has no reference token per position.
 % TODO(results): name the T12 precision (bf16 on an A100 or fp16 on Ada; PR #7 allows both),
 %   which differs from the fp16 traces C3a is fitted on if bf16.  Say whether C3b and HumanEval
 %   ran; if not, add "C3b, which can reorder positions, and HumanEval were not run."  If T12 is

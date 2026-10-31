@@ -46,7 +46,8 @@ Three contributions follow.
   Holm-corrected tests on held-out documents.
   In the states a confidence decoder visits, the gap grows with field size for every model (in
   random masked states its sign varies). In those states its field term grows too for both instruct models on
-  both tasks; for the base and 110M models it is of the order of the estimator's bias.
+  both tasks (less with an additive calibrator; on MBPP a shared-error term grows more); for the
+  base and 110M models it is near the estimator's bias.
   At equal confidence, tokens are right less often in those states than in random masks of the
   same size, in every model (exploratory).
 \item \textbf{C2, an instrument for the two errors of parallel commitment}
@@ -60,6 +61,7 @@ Three contributions follow.
   positions as have recalibrated confidence at least $1-\alpha$, in
   the model's own order, with no extra forward pass. At matched speed
   (LLaDA-8B-Instruct, GSM8K) it beats top-$k$, margin and PC-Sampler but not the Fast-dLLM
-  threshold it recalibrates, which it trails at 8 tokens per step (exploratory).
+  threshold it recalibrates, which it trails at 8 tokens per step, or the entropy-bounded decoder
+  (exploratory).
   % MBPP clause (N = \Cres{CThreeTTwelveMbppN} of 250, prereg deviation 17) once parth scores it.
 \end{itemize}

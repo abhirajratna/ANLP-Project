@@ -18,7 +18,7 @@ positions are weighted by $1/(|M_s|\times\text{states in their document})$ to ma
 \paragraph{E3, trajectory shift.}
 On the positions of decoder states at each $k$ and of matched uniform states (secondary: the
 uniform grid, reweighted to the decoder's rate mix), mask rate in $[0.05,0.95)$, we fit
-$\Pr(a{=}1)=\sigma(\alpha_b+f(\ell)+\textit{dec}\cdot(g_0+h(\ell)))$, $\alpha_b$ per mask-rate bin (centred on $0.1,\dots,0.9$).
+$\Pr(a{=}1)=\sigma(\alpha_b+f(\ell)+\textit{dec}\cdot(g_0+h(\ell)))$, $\alpha_b$ per mask-rate bin, $f$, $h$ joint splines on \VivaKnots{} shared knots.
 The endpoint $\E_{\mathrm{dec}}[\pi_{\mathrm{ref}}(\ell,b)-\pi_{\mathrm{dec}}(\ell,b)]$ is positive if
 decoder-state tokens are right less often at equal confidence and mask rate; a sup-$t$ test checks $(g_0,h)$ jointly.
 

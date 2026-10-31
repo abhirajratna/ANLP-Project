@@ -58,7 +58,8 @@ of candidates it beat in all seven model and task arms (Holm-corrected, held-out
 and on the tokens it commits while 32--63 positions are still masked, confidence exceeds
 accuracy by 1.8 to 4.4 times the random-mask calibration error (descriptive). A
 split of the gap isolates a field term, the part that is a winner's curse: in those
-states it grows for both instruct models on both tasks, and for the base models it is near the
+states it grows for both instruct models on both tasks (less with an additive calibrator; on
+MBPP a shared-error term grows more), and for the base models it is near the
 estimator's bias. C2 computes the dependency and estimation errors of committing several
 tokens at once exactly on a JSON probe with known joint distribution: dependency dominates
 only for strongly coupled tokens committed several at a time, and on real text a proxy for it
@@ -67,6 +68,9 @@ with no extra forward pass. In an exploratory matched-speed comparison on GSM8K 
 decoders that commit a fixed number of tokens per step by 5 to 8 points but not a raw
 confidence threshold, which it trails at 8 tokens per step: recalibration gives the cutoff a
 meaning, not extra accuracy.
+% abhiraj, 31 Oct (review): the C1 parenthetical is about k=4 decoder states: E2 add. 0.007..0.039,
+%   all above 0 (tables/c1/c1_sensitivity.tex); MBPP third term at m=32 0.087, 0.088 > E2 0.036,
+%   0.076 (tables/c1/c1_shared.tex).
 % Hand-typed from artifacts/c3/macros_c3.tex: CThreeTTwelveGsmMatchedDiff{Margin,TopK,PcSampler}SpeedTwo
 %   (0.053, 0.059, 0.082: 5 to 8 percentage points, intervals above 0) and ...ThresholdSpeedTwo
 %   (interval holds 0).  Fixed-count decoders: top-k, margin, PC-Sampler.
