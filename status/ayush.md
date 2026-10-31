@@ -1,6 +1,6 @@
 ---
 member: ayush
-updated: 2026-10-30T21:57:06Z
-branch: ayush/audit-fixes
+updated: 2026-10-31T13:13:37Z
+branch: main
 ---
-T12 all done: GSM8K 659, MBPP 121 (+250 sensitivity), RTX PRO attempt-1 rescued (cc98327); Jarvis empty; next: final ZIP
+Final zip built from f3b26e6; waiting on ojas: which paper PDF (main vs newer Murfy report) is the submission copy
