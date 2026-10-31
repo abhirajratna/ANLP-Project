@@ -20,36 +20,35 @@
 
 % Eq. decomp (Sec. 2) gives (A) = TC(x_S | x_obs) = sum_i H(p*_i) - H(p*_S) and
 % (B) = sum_i KL(p*_i || p_theta,i); not restated here.
-Work on parallel decoding targets the dependency term (A) of Eq.~\ref{eq:decomp}
-(\S\ref{sec:setup}) and takes the marginals as accurate
-\citep{kim2026dapd,ringel2026demask,azangulov2026punt,kang2026parallelbench}.
+Parallel decoders target the dependency term (A) of Eq.~\ref{eq:decomp}
+and take the marginals as accurate (\S\ref{sec:related}).
 
 \subsection{A JSON probe with known $p^*$}
 \label{sec:c2-probe}
 
-% Dirichlet(1) marginals are seeded (see the generator).
+% Dirichlet(1) marginals are seeded (see the generator).  abhiraj, 31 Oct (review): 2-10 values per slot
+%   (c3/probe/spec.py:133-158); p drawn once per field (spec.py:294-296); follower map perm[arange(n_a) % n_b]
+%   (spec.py:301-302); p_theta not renormalised (grid.py:80-90); last step min(k, masked) (grid.py:99).
 % 200 schemas, 6--16 fields, 200k instances: artifacts/probe/manifest.json (n_schemas,
 % fields_per_schema.min/max, train.n).  rho values: artifacts/probe/spec.json (rhos).
 The probe fills the simple fields of 200 SchemaStore schemas \citep{schemastore}, 6--16 per
-schema, with single-token values; we call them slots. Each slot has a Dirichlet(1) marginal;
+schema, with single-token values; we call them slots. Each slot has 2--10 allowed values and a fixed Dirichlet(1) marginal;
 slots are paired: with probability $\rho$, stated in a marker at the start of the instance, the
-follower is a fixed function of its leader's value, otherwise an independent draw, so $p^*$
+follower is a fixed map of its leader's value (spread evenly over its own values), otherwise an independent draw, so $p^*$
 is known exactly. We fine-tune our 110M MDLM (\S\ref{sec:instrument}) on 200k instances and
 evaluate \CTwoProbeNInstances{} (\CTwoProbeNInstancesPerRho{} per
-$\rho\in\{0,.25,.5,.75,1\}$); the main model is the fine-tune that never saw the marker masked
+$\rho\in\{0,0.25,0.5,0.75,1\}$); the main model never saw the marker masked
 (Appendix~\ref{sec:c2-app}). Decoding starts with every value masked; each step picks
-$k\in\{1,2,4,8\}$ slots, the most confident or at random, scores (A)
-and (B) ($p_{\theta,i}$ is the model's probability of each allowed value; mass
+$k\in\{1,2,4,8\}$ slots (the last step, the rest), the most confident or at random, scores (A)
+and (B) ($p_{\theta,i}$: the model's probability of each allowed value, unnormalised, so mass
 off the list counts against (B)), and fills them with true values. Terms are summed over
-steps and divided by the number of slots; bootstrap intervals use \CTwoProbeNBoot{} instance
-resamples.
+steps and divided by the number of slots; intervals use \CTwoProbeNBoot{} instance resamples.
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=\columnwidth]{../artifacts/probe/figures/c2_crossover_ft110m-v3-visible}
-  \caption{(A) and (B) per slot on the probe (main model), with 95\% intervals, against
-    tokens per step $k$. Columns: $\rho$; rows: selection rule. Shaded: the $k$ where (A)
-    exceeds (B).}
+  \caption{(A) and (B) per slot (main model), with 95\% intervals, against $k$.
+    Columns: $\rho$; rows: selection rule. Shaded: the $k$ where (A) exceeds (B).}
   \label{fig:c2-crossover}
 \end{figure}
 
@@ -78,10 +77,13 @@ leaders with their followers more often than chance, bringing the crossover forw
 
 \paragraph{The terms trade off.}
 $\rho$ was meant to move only (A), but (B) rises too: at $k=1$, from \CTwoConfBatRhoZeroKOne{}
-at $\rho=0$ to \CTwoConfBatRhoOneKOne{} at $\rho=1$. Decoded after its leader, a follower should be a near-copy, but the model reads the marker
+at $\rho=0$ to \CTwoConfBatRhoOneKOne{} at $\rho=1$. Decoded after its leader, a follower should follow from it, but the model reads the marker
 only in part (Appendix~\ref{sec:c2-app}) and stays broad: error in (B). Decoded in the same
 step, the true marginal is broad too, and the missing coupling counts as (A). At $\rho=1$, from $k=1$ to $8$, (B) falls to
-\CTwoConfBatRhoOneKEight{} while (A) rises from $0$ to \CTwoConfAatRhoOneKEight. Without
+\CTwoConfBatRhoOneKEight{} while (A) rises from $0$ to \CTwoConfAatRhoOneKEight, so (B)'s fall moves the crossovers too.
+% abhiraj, 31 Oct (review): A_per_field means in artifacts/probe/results/grid_ft110m-v3-visible.json vs
+%   B_per_field(rho=0, k=1) = 0.032: first k with A > 0.032 is 4 at rho=0.5 and 2 at rho=1 (both rules); none at 0.25.
+(A) exceeds the $\rho=0$ (B), \CTwoConfBatRhoZeroKOne{}, from $k=4$ at $\rho=0.5$ and $k=2$ at $\rho=1$. Without
 fine-tuning, (B) dominates everywhere ((A) is ${\le}\,$\CTwoUntunedConfShareAMax\% of the
 total).
 
@@ -97,13 +99,13 @@ $\Delta=c-a$ and the cross-entropy (CE) of the true token, at the same positions
 % Mask rates 0.1, 0.2, ..., 1, one state each: config.rates in both T10 JSONs.
 We run the 110M model and LLaDA-8B-Base on
 \CTwoTTenNDocs{} fit-half FineWeb-Edu documents, one state at each
-mask rate $0.1, \dots, 1$ (Appendix~\ref{sec:c2-app}), and the proxy on the probe.
+mask rate $0.1, 0.2, \dots, 1$ (Appendix~\ref{sec:c2-app}), and the proxy on the probe.
 
 \paragraph{The proxy tracks (A) weakly.}
 Over the \CTwoTTenProbeNCells{} confidence-rule cells with $k\ge 2$, its Spearman
 correlation with the exact (A) is \CTwoTTenProbeSpearman{} [\CTwoTTenProbeSpearmanLo,
-\CTwoTTenProbeSpearmanHi] for the main model and \CTwoTTenAltProbeSpearman{}
-[\CTwoTTenAltProbeSpearmanLo, \CTwoTTenAltProbeSpearmanHi] for the other. It rises with $k$,
+\CTwoTTenProbeSpearmanHi]. It rises with $k$,
+% 31 Oct (space): the other fine-tune's Spearman, CTwoTTenAltProbeSpearman[Lo|Hi], cut.
 barely with $\rho$: at $k=8$, \CTwoTTenProbeDisatRhoZeroKEight{} at $\rho=0$, where (A) is zero,
 and \CTwoTTenProbeDisatRhoOneKEight{} at $\rho=1$.
 
@@ -111,15 +113,16 @@ and \CTwoTTenProbeDisatRhoOneKEight{} at $\rho=1$.
 % "At most DisKFour at k <= 4": DisKTwo, DisKFour, LladaDisKTwo, LladaDisKFour are all <= DisKFour.
 % "Delta cannot be told from zero at k = 1": [DeltaKOneLo, DeltaKOneHi] and the Llada one hold 0.
 % "LLaDA does not disagree there": LladaDisKTwo/KFour/KEightRateOne are 0.
-Over mask rates 0.1--0.9,\footnote{At rate 1 (all-\texttt{[MASK]} input) the 110M model's disagreement at $k=8$ is \CTwoTTenDisKEightRateOne{} (\CTwoTTenDisAllRatesKEight{} over all ten rates); LLaDA's is \CTwoTTenLladaDisKEightRateOne{}.}
+Over mask rates 0.1--0.9,
 disagreement at $k=8$ is \CTwoTTenDisKEight{} for the 110M model and \CTwoTTenLladaDisKEight{}
-for LLaDA, and at most \CTwoTTenDisKFour{} at $k\le4$. CE grows from \CTwoTTenCEKOne{} nats at
+for LLaDA, and at most \CTwoTTenDisKFour{} at $k\le4$; at rate 1 (all-\texttt{[MASK]} input), where free generation
+starts, it is \CTwoTTenDisKEightRateOne{} for the 110M model and \CTwoTTenLladaDisKEightRateOne{} for LLaDA at $k=8$. CE grows from \CTwoTTenCEKOne{} nats at
 $k=1$ to \CTwoTTenCEKEight{} at $k=8$ (LLaDA: \CTwoTTenLladaCEKOne{} to
 \CTwoTTenLladaCEKEight), though it includes the text's own entropy and lower ranks are harder
 positions. $\Delta$ cannot be told from zero at $k=1$ and is small but positive at $k=8$:
 \CTwoTTenDeltaKEight{} [\CTwoTTenDeltaKEightLo, \CTwoTTenDeltaKEightHi] and, for LLaDA,
 \CTwoTTenLladaDeltaKEight{} [\CTwoTTenLladaDeltaKEightLo, \CTwoTTenLladaDeltaKEightHi].
 
-So at 2--8 tokens per step the models act on almost no learned dependency between
-jointly committed positions. The proxy sees only learned dependence, so this does not show
-that (A) is small; real text gives a direction, not a split in nats.
+So below the all-mask state, committing 2--8 tokens at once rarely changes the models' top
+token. The proxy sees only dependence strong enough to flip a top token and barely moves with
+$\rho$ on the probe, so this does not show that (A) is small; real text gives a direction, not a split in nats.

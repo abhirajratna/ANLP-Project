@@ -9,8 +9,11 @@
 \label{sec:app-proofs}
 
 Notation is as in \S\ref{sec:setup}, with $\ell_{-i}=(\ell_j)_{j\in M\setminus\{i\}}$,
-tie-break randomness $U$, and $W_i$ the event that $i\in P$ wins; $\pi(\ell_i,s)$ may depend on
-$i$ (suppressed).
+tie-break randomness $U$, and $W_i$ the event that $i\in P$ wins. Probabilities are over a
+superpopulation of $(\ell_j,a_j)$ given $s$, with $P$ uniform on the index set $M_s$;
+$\pi(\ell_i,s)=\Pr(a_i{=}1\mid\ell_i,s)$ may depend on $i$ (suppressed). A calibrator pooled over a
+state's positions equals it only if they are exchangeable given $s$; otherwise the difference joins
+the third term.
 
 \paragraph{Proposition~\ref{prop:select}.}
 Let $Z=(\ell_i,s)$ and $Y=(\ell_{-i},P,U)$. Given $s$, $(P,U)$ is independent of
@@ -37,6 +40,5 @@ $\Delta(m)=\E_m[\sigma(\ell)-\pi(\ell,s)]$, and adding and subtracting $\pi(\ell
 calibration curve of this very population, and $\E_1[\pi(\ell,s)]=\E_1[a]$ as just shown, so
 the field term is zero. \hfill$\square$
 
-The estimator inherits this last step only if $\hat\pi$ is fitted on the population the averages
-use. Ours are fitted on all states of an arm with pool weights (\S\ref{sec:estimands}), while the
-averages keep states with at least 32 masked positions, so E2 is reported as a contrast.
+The estimator inherits this last step only if the calibrators are fitted on the averaged population;
+ours are not (\S\ref{sec:estimands}), so E2 is a contrast.
