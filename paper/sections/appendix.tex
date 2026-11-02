@@ -18,18 +18,19 @@
 % Bar, effects, NELBO and the choice: artifacts/probe/main_variant.json (via macros_t9.tex).
 \paragraph{Main model.}
 One fine-tune masked the $\rho$ marker like any token (\CTwoAltFtTokensM{}M tokens); the main
-model never did, as at evaluation (\CTwoFtTokensM{}M). Neither moved the copied value's
+model never did, as at evaluation (\CTwoFtTokensM{}M; about 6 and 18 passes over the 200k instances). Neither moved the mapped value's
 probability by our bar of \CTwoMarkerBar{} when the marker is switched from $\rho=1$ to $0$
 with only the leader observed (main \CTwoMarkerEffect, other \CTwoAltMarkerEffect), so we took the
 lower validation NELBO (main \CTwoValNelbo, other \CTwoAltValNelbo{} nats per token; the main
-model also trained on more tokens). The other crosses over at
+model also trained on more tokens; no checkpoint of it at \CTwoAltFtTokensM{}M was kept). The other crosses over at
 $k=\CTwoAltConfCrossKatRhoOne$ for every
 $\rho\ge\CTwoAltConfCrossRhoMin$ under both rules.
 
 % 256 tokens: config.max_tokens in both T10 JSONs (the C1 length filter); ids: documents.last_doc_id.
+% Passes: 299.9M / 99.98M tokens (artifacts/probe/main_variant.json) over 200k instances of ~84 tokens (c3/probe).
 \paragraph{Real text.}
-We skip documents under 256 tokens (fit-half ids up to
-\CTwoTTenLastDocId; \CTwoTTenLladaLastDocId{} for LLaDA) and keep at least \CTwoTTenMinMasked{}
+The \CTwoTTenNDocs{} documents are the fit-half ids up to
+\CTwoTTenLastDocId{} (\CTwoTTenLladaLastDocId{} for LLaDA) less those under 256 tokens; we keep at least \CTwoTTenMinMasked{}
 masked positions per state. Intervals resample documents (\CTwoTTenNBoot{} times).
 
 \input{sections/appendix_c1}   % C1 tables (owner abhiraj; fallback by ojas)
